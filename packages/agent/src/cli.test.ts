@@ -12,7 +12,7 @@ const cliBundle = resolve(packageRoot, 'dist/cli.js')
 
 beforeAll(() => {
   // Build the bundle once before all tests so we exercise the published artifact.
-  // spawnSync (not execSync) — argv array, no shell interpretation, no injection surface.
+  // Uses spawnSync with an argv array — no shell interpretation, no injection surface (T-00-07).
   const build = spawnSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
   if (build.status !== 0) {
     throw new Error(`pnpm build failed with status ${build.status}`)
