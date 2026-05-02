@@ -1,0 +1,8 @@
+{
+  "name": "@agenticapps/dashboard-spa",
+  "version": "0.0.0-bootstrap",
+  "private": true,
+  "scripts": {
+    "build": "echo 'placeholder build — actual build comes in Phase 0' && mkdir -p dist && cp -f ../../packages/spa/dist/index.html dist/index.html 2>/dev/null || true"
+  }
+}
