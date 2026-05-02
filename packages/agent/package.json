@@ -1,6 +1,6 @@
 {
   "name": "@agenticapps/dashboard-agent",
-  "version": "0.0.1-alpha.2",
+  "version": "0.0.1-alpha.3",
   "description": "AgenticApps Dashboard local agent (alpha placeholder — daemon lands in Phase 1)",
   "keywords": [
     "agenticapps",
@@ -54,7 +54,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "registry": "https://registry.npmjs.org/"
   }
 }
