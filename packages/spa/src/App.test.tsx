@@ -1,7 +1,6 @@
+import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-
-import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { App } from './App.js'
 
