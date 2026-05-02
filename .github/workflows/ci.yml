@@ -1,7 +1,43 @@
-# STUB — to be filled in GREEN commit. RED phase intentionally fails
-# the structure-check matrix below.
 name: CI
 
 on:
   push:
+    branches: [main, 'feat/**', 'fix/**', 'chore/**']
+  pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test --run
+
+      - name: Build
+        run: pnpm build
