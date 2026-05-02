@@ -1,20 +1,37 @@
 {
   "name": "@agenticapps/dashboard-agent",
   "version": "0.0.1-alpha.0",
-  "private": true,
+  "description": "AgenticApps Dashboard local agent (alpha placeholder — daemon lands in Phase 1)",
+  "private": false,
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
   },
+  "bin": {
+    "agentic-dashboard": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "echo 'agent: build added in Plan 03' && exit 0"
+    "build": "tsup",
+    "prepublishOnly": "pnpm build"
   },
-  "dependencies": {
-    "@agenticapps/dashboard-shared": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@agenticapps/dashboard-shared": "workspace:*",
+    "@types/node": "^20.19.39",
+    "commander": "catalog:",
+    "tsup": "^8.5.1",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
