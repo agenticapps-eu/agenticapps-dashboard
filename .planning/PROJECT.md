@@ -12,7 +12,7 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 
 ### Validated
 
-(None yet — Phase 0 not started)
+- **BOOT-01..BOOT-05** — Phase 0 (bootstrap): pnpm workspace skeleton, green CI pipeline (5 gates on push/PR), CF Pages preview deploy reproducibility doc, `@agenticapps/dashboard-agent@0.0.1-alpha.0` placeholder agent CLI ready for tag-driven publish, README at root. Live deploy + tag-publish + branch protection remain as human verification gates persisted in `00-HUMAN-UAT.md`.
 
 ### Active
 
@@ -94,4 +94,4 @@ After each phase transition, a successor session updates this file:
 5. Refresh "What This Is" if the product description has drifted.
 
 ---
-*Last updated: 2026-05-02 after initial spec hand-off and planning bootstrap*
+*Last updated: 2026-05-02 after Phase 0 (bootstrap) execution complete — workspace + CI + agent CLI scaffolded; live deploy / publish / branch-protection gates pending in 00-HUMAN-UAT.md*
