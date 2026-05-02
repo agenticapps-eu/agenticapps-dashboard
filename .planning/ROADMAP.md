@@ -40,10 +40,14 @@ A nine-phase journey from empty repo to a working multi-project pipeline dashboa
   3. `npm view @agenticapps/dashboard-agent@0.0.1-alpha.0` returns metadata; `npx @agenticapps/dashboard-agent@0.0.1-alpha.0` runs and prints a friendly "alpha placeholder" message and exit code 0.
   4. CI workflow runs lint + typecheck + test on push and PR; status is green on `main`.
   5. README at repo root opens with an "alpha" notice, the install snippet, and links to the spec.
-**Plans**: TBD (set during `/gsd-plan-phase 0`)
+**Plans**: 5 plans
 
 Plans:
-- [ ] 00-XX: TBD after planning
+- [ ] 00-01-PLAN.md — Workspace skeleton + HealthResponseSchema + CI workflow (smoke plan, Wave 1)
+- [ ] 00-02-PLAN.md — `packages/agent` commander CLI + tsup bundle + subprocess tests (Wave 2)
+- [ ] 00-03-PLAN.md — `packages/spa` Vite/React/Tailwind 4 shell with AgentVersion fallback (Wave 2)
+- [ ] 00-04-PLAN.md — `release.yml` workflow with provenance + publint/attw gates (Wave 3)
+- [ ] 00-05-PLAN.md — README.md + `docs/deploy/cloudflare-pages-setup.md` (Wave 3)
 
 ### Phase 1: Daemon + Registry + Pairing
 **Goal**: A working `agentic-dashboard` CLI/daemon that registers projects, serves a token-authed Hono API on `127.0.0.1:5193` with CORS lock, enforces path allow-lists, and prints a one-click pair URL.
