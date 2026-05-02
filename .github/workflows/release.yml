@@ -11,7 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # Required for npm provenance attestation (RESEARCH §Pattern 8)
+      # id-token: write — required for npm provenance, but the source repo is
+      # currently private and npm rejects provenance from private repos
+      # (E422 "Unsupported GitHub Actions source repository visibility").
+      # Re-enable in lockstep with `--provenance` when the repo goes public.
 
     steps:
       - name: Checkout repository
@@ -50,8 +53,11 @@ jobs:
         working-directory: packages/agent
         run: pnpm dlx --package=@arethetypeswrong/cli attw --pack . --profile esm-only
 
-      - name: Publish to npm with provenance
+      # Provenance is intentionally OFF until the repo is made public —
+      # see permissions block above. Re-add `--provenance` and the matching
+      # `id-token: write` permission together; npm enforces this pairing.
+      - name: Publish to npm
         working-directory: packages/agent
-        run: pnpm publish --provenance --access public --no-git-checks --tag alpha
+        run: pnpm publish --access public --no-git-checks --tag alpha
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
