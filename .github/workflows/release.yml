@@ -48,7 +48,7 @@ jobs:
 
       - name: Validate type exports (arethetypeswrong)
         working-directory: packages/agent
-        run: pnpm dlx --package=@arethetypeswrong/cli attw --pack .
+        run: pnpm dlx --package=@arethetypeswrong/cli attw --pack . --profile esm-only
 
       - name: Publish to npm with provenance
         working-directory: packages/agent
