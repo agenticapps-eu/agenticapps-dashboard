@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-
 import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
 
 describe('spa → shared workspace resolution (jsdom)', () => {
