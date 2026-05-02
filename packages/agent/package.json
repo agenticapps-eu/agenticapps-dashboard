@@ -1,0 +1,16 @@
+{
+  "name": "@agenticapps/dashboard-agent",
+  "version": "0.0.1-alpha.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "echo 'agent: build added in Plan 03' && exit 0"
+  },
+  "dependencies": {
+    "@agenticapps/dashboard-shared": "workspace:*"
+  }
+}
