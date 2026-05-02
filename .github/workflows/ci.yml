@@ -1,0 +1,7 @@
+# STUB — to be filled in GREEN commit. RED phase intentionally fails
+# the structure-check matrix below.
+name: CI
+
+on:
+  push:
+    branches: [main]
