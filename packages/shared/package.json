@@ -12,9 +12,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "build": "echo 'shared: source-only, no build' && exit 0"
   },
   "dependencies": {
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

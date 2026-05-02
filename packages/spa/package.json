@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "build": "echo 'spa: build added in Plan 04' && exit 0"
   },
   "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:"
   }
 }

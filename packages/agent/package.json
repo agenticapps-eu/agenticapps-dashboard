@@ -8,9 +8,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "build": "echo 'agent: build added in Plan 03' && exit 0"
   },
   "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
