@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Publish @agenticapps/dashboard-agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # Required for npm provenance attestation (RESEARCH §Pattern 8)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js (with npm registry auth)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test --run
+
+      - name: Build agent
+        run: pnpm --filter @agenticapps/dashboard-agent build
+
+      - name: Validate package exports (publint)
+        working-directory: packages/agent
+        run: pnpm dlx publint
+
+      - name: Validate type exports (arethetypeswrong)
+        working-directory: packages/agent
+        run: pnpm dlx --package=@arethetypeswrong/cli attw --pack .
+
+      - name: Publish to npm with provenance
+        working-directory: packages/agent
+        run: pnpm publish --provenance --access public --no-git-checks --tag alpha
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

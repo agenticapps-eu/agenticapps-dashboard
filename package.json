@@ -1,0 +1,32 @@
+{
+  "name": "agenticapps-dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.5.0"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "typescript-eslint": "catalog:",
+    "eslint-config-prettier": "catalog:",
+    "eslint-plugin-import": "catalog:",
+    "eslint-plugin-react": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "prettier": "catalog:"
+  }
+}

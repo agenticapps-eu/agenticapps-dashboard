@@ -1,0 +1,41 @@
+packages:
+  - 'packages/*'
+
+catalog:
+  # Cross-cutting (used by ≥2 packages)
+  zod: ^3.24.0
+  typescript: ^6.0.0
+  vitest: ^4.1.5
+  '@vitest/coverage-v8': ^4.1.5
+  # Lint + format
+  # NOTE: pinned to ESLint 9 (Rule 3 deviation): eslint-plugin-react@7.37.5
+  # has not bumped its peer-dep range past 9.7 and crashes on ESLint 10's
+  # rule-context API change (`contextOrFilename.getFilename is not a function`).
+  # All other plugins (typescript-eslint 8, eslint-plugin-import 2.32,
+  # eslint-plugin-react-hooks 7, eslint-config-prettier 10) support both
+  # 9 and 10 — ESLint 9 is the highest common denominator today.
+  # Revisit when eslint-plugin-react ships ESLint 10 support.
+  eslint: ^9.39.4
+  typescript-eslint: ^8.59.1
+  prettier: ^3.8.3
+  eslint-config-prettier: ^10.1.8
+  eslint-plugin-import: ^2.32.0
+  eslint-plugin-react: ^7.37.5
+  eslint-plugin-react-hooks: ^7.1.1
+  # SPA stack (consumed by Plan 03)
+  react: ^18.3.1
+  react-dom: ^18.3.1
+  '@types/react': ^19.2.14
+  '@types/react-dom': ^19.2.3
+  vite: ^8.0.10
+  '@vitejs/plugin-react': ^6.0.1
+  tailwindcss: ^4.2.4
+  '@tailwindcss/vite': ^4.2.4
+  '@tanstack/react-query': ^5.100.8
+  'lucide-react': ^1.14.0
+  jsdom: ^29.1.1
+  '@testing-library/react': ^16.3.2
+  '@testing-library/jest-dom': ^6.4.0
+  # Agent stack (consumed by Plan 02)
+  commander: ^14.0.0
+  tsx: ^4.20.0

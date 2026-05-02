@@ -1,0 +1,60 @@
+{
+  "name": "@agenticapps/dashboard-agent",
+  "version": "0.0.1-alpha.0",
+  "description": "AgenticApps Dashboard local agent (alpha placeholder — daemon lands in Phase 1)",
+  "keywords": [
+    "agenticapps",
+    "dashboard",
+    "cli",
+    "alpha"
+  ],
+  "homepage": "https://agenticapps-dashboard.pages.dev",
+  "bugs": {
+    "url": "https://github.com/agenticapps-eu/agenticapps-dashboard/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agenticapps-eu/agenticapps-dashboard.git",
+    "directory": "packages/agent"
+  },
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "agentic-dashboard": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsup",
+    "publish:dry": "pnpm publish --dry-run --no-git-checks --tag alpha",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@agenticapps/dashboard-shared": "workspace:*",
+    "@types/node": "^20.19.39",
+    "commander": "catalog:",
+    "tsup": "^8.5.1",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  }
+}
