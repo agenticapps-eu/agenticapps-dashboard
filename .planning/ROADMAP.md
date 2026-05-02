@@ -46,8 +46,8 @@ Plans:
 - [x] 00-01-PLAN.md — Workspace skeleton + HealthResponseSchema + CI workflow (smoke plan, Wave 1)
 - [x] 00-02-PLAN.md — `packages/agent` commander CLI + tsup bundle + subprocess tests (Wave 2)
 - [x] 00-03-PLAN.md — `packages/spa` Vite/React/Tailwind 4 shell with AgentVersion fallback (Wave 2)
-- [ ] 00-04-PLAN.md — `release.yml` workflow with provenance + publint/attw gates (Wave 3)
-- [ ] 00-05-PLAN.md — README.md + `docs/deploy/cloudflare-pages-setup.md` (Wave 3)
+- [x] 00-04-PLAN.md — `release.yml` workflow with provenance + publint/attw gates (Wave 3)
+- [x] 00-05-PLAN.md — README.md + `docs/deploy/cloudflare-pages-setup.md` (Wave 3)
 
 ### Phase 1: Daemon + Registry + Pairing
 **Goal**: A working `agentic-dashboard` CLI/daemon that registers projects, serves a token-authed Hono API on `127.0.0.1:5193` with CORS lock, enforces path allow-lists, and prints a one-click pair URL.
