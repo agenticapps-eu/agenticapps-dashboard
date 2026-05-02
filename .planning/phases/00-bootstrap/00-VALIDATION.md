@@ -48,14 +48,14 @@ last_updated: 2026-05-02
 | 00-02-1 | 02 | 2 | BOOT-04 | T-00-04 | tsup bundle inlines workspace dep; published artifact has zero runtime workspace deps; shebang + ESM | smoke | `pnpm --filter @agenticapps/dashboard-agent build && head -1 packages/agent/dist/cli.js \| grep -qF '#!/usr/bin/env node' && node packages/agent/dist/cli.js --version \| grep -qF '0.0.1-alpha.0'` | will create | ⬜ pending |
 | 00-02-2 | 02 | 2 | BOOT-04 | T-00-04, T-00-07 | CLI subprocess tests use spawnSync only (no shell exec); --version --json validates against HealthResponseSchema; bundle does not contain workspace import | unit (TDD) + smoke | `pnpm --filter @agenticapps/dashboard-agent test --run && cd packages/agent && pnpm publish --dry-run --no-git-checks` | will create | ⬜ pending |
 | 00-03-1 | 03 | 2 | BOOT-01, BOOT-03 | T-00-08, T-00-09 | SPA imports HealthResponseSchema; Tailwind 4 utilities compile via @tailwindcss/vite plugin; no third-party JS beyond spec-locked stack | unit (TDD) + smoke | `pnpm --filter @agenticapps/dashboard-spa test --run && pnpm --filter @agenticapps/dashboard-spa build && test -f packages/spa/dist/index.html` | will create | ⬜ pending |
-| 00-04-1 | 04 | 3 | BOOT-04 | T-00-04 | publishConfig.access=public, provenance=true; npm metadata fields populated | smoke | `node -p "require('./packages/agent/package.json').publishConfig.provenance" \| grep -qF "true" && cd packages/agent && pnpm publish --dry-run --no-git-checks` | will create | ⬜ pending |
-| 00-04-2 | 04 | 3 | BOOT-04 | T-00-04, T-00-11 | release.yml has id-token:write + registry-url + NODE_AUTH_TOKEN mapping; gates run before publish; publint + attw validations precede publish | YAML structure | `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/release.yml'))"` + grep for `id-token: write`, `registry-url`, `--provenance --access public`, `pnpm dlx publint`, `attw --pack` | will create | ⬜ pending |
+| 00-04-1 | 04 | 3 | BOOT-04 | T-00-04 | publishConfig.access=public, provenance=true; npm metadata fields populated; stub-first TDD on bootstrap config | JSON/package.json structure (TDD) | `node -p "require('./packages/agent/package.json').publishConfig.provenance" \| grep -qF "true" && node -p "require('./packages/agent/package.json').publishConfig.access" \| grep -qF "public" && node -p "require('./packages/agent/package.json').repository.directory" \| grep -qF "packages/agent" && cd packages/agent && pnpm publish --dry-run --no-git-checks` | will create | ⬜ pending |
+| 00-04-2 | 04 | 3 | BOOT-04 | T-00-04, T-00-11 | release.yml has id-token:write + registry-url + NODE_AUTH_TOKEN mapping; gates run before publish; publint + attw validations precede publish; stub-first TDD on CI workflow | YAML structure (TDD) | `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/release.yml'))"` + grep for `id-token: write`, `registry-url`, `--provenance --access public`, `pnpm dlx publint`, `attw --pack`, `pnpm install --frozen-lockfile` | will create | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 Notes:
-- Plan 05 (README + CF Pages docs) produces only markdown; no automated tests beyond grep-style content checks (see plan acceptance criteria). Not registered here.
-- Test type "smoke" = end-to-end command exits 0; "unit (TDD)" = vitest tests with explicit RED → GREEN commits required; "YAML structure" = parser + grep for required keys.
+- Plan 05 tasks have grep-based automated `<verify>` blocks but produce no executable code, so no Vitest test rows appear in the per-task verification map. (Their automated content checks are captured in each plan's `<acceptance_criteria>`.)
+- Test type "smoke" = end-to-end command exits 0; "unit (TDD)" = Vitest tests with explicit RED → GREEN commits required; "YAML structure" = parser + grep for required keys; "YAML structure (TDD)" / "JSON/package.json structure (TDD)" = parser + grep matrix used as the test, with stub-first RED → GREEN commit pair (mirrors Plan 01 Task 3 / Plan 04 Tasks 1 & 2 pattern for bootstrap config under CLAUDE.md TDD discipline).
 
 ---
 
@@ -91,11 +91,12 @@ Notes:
 
 ## Validation Sign-Off
 
-- [x] All tasks have `<automated>` verify or are docs-only (Plan 05).
+- [x] All tasks have `<automated>` verify or are docs-only (Plan 05). Plan 05 tasks have grep-based automated `<verify>` blocks but produce no executable code, so no Vitest test rows appear in the per-task verification map.
 - [x] Sampling continuity: every wave produces at least one automated verify command; no 3 consecutive tasks without automated verify.
 - [x] Wave 0 covers all MISSING references (Vitest install in Plan 01 Task 1; configs in Plan 01 Task 2).
 - [x] No watch-mode flags (`--run` always — verified across plans).
 - [x] Feedback latency < 30s (placeholder phase, simple tests).
 - [x] `nyquist_compliant: true` set in frontmatter.
+- [x] CLAUDE.md TDD discipline applied to every code-producing task AND every bootstrap-config task: Plan 01 Task 3 (`ci.yml`), Plan 04 Task 1 (`packages/agent/package.json` publish metadata), Plan 04 Task 2 (`release.yml`) all use the stub-first RED → GREEN protocol with structure-check matrices as the failing/passing assertions.
 
 **Approval:** ready for `/gsd-execute-phase 0`.
