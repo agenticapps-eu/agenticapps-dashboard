@@ -46,7 +46,7 @@ export function App() {
       </section>
 
       <footer className="text-xs text-neutral-600">
-        v0.0.1-alpha.0 · Phase 0 placeholder · daemon arrives in Phase 1
+        v0.0.1-alpha.1 · Phase 0 placeholder · daemon arrives in Phase 1
       </footer>
     </main>
   )

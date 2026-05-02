@@ -4,7 +4,7 @@ import { HealthResponseSchema } from '../index.js'
 
 describe('HealthResponseSchema', () => {
   it('accepts a valid health response', () => {
-    const valid = { ok: true, version: '0.0.1-alpha.0' }
+    const valid = { ok: true, version: '0.0.1-alpha.1' }
     expect(() => HealthResponseSchema.parse(valid)).not.toThrow()
   })
 

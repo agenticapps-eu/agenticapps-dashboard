@@ -1,6 +1,6 @@
 {
   "name": "@agenticapps/dashboard-agent",
-  "version": "0.0.1-alpha.0",
+  "version": "0.0.1-alpha.1",
   "description": "AgenticApps Dashboard local agent (alpha placeholder — daemon lands in Phase 1)",
   "keywords": [
     "agenticapps",

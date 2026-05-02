@@ -23,7 +23,7 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
   it('exits 0 and prints version on --version', () => {
     const result = spawnSync('node', [cliBundle, '--version'], { encoding: 'utf8' })
     expect(result.status).toBe(0)
-    expect(result.stdout).toMatch(/0\.0\.1-alpha\.0/)
+    expect(result.stdout).toMatch(/0\.0\.1-alpha\.1/)
   })
 
   it('exits 0 and prints alpha-placeholder on start', () => {
@@ -39,7 +39,7 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
     const parsed = JSON.parse(result.stdout)
     expect(() => HealthResponseSchema.parse(parsed)).not.toThrow()
     expect(parsed.ok).toBe(true)
-    expect(parsed.version).toBe('0.0.1-alpha.0')
+    expect(parsed.version).toBe('0.0.1-alpha.1')
     expect(typeof parsed.message).toBe('string')
   })
 
