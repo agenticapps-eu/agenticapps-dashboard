@@ -3,9 +3,8 @@ import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, it, expect, beforeAll } from 'vitest'
-
 import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
+import { describe, it, expect, beforeAll } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const packageRoot = resolve(__dirname, '..')
