@@ -226,16 +226,28 @@ export function addProject(
 
 /**
  * Remove a project by id or absolute path. Returns true if removed.
+ *
+ * Limit: when the registered root no longer exists on disk, canonicaliseRoot
+ * falls back to plain resolve() and may not match the realpath we stored at
+ * registration time (e.g. /tmp/X stored as /private/tmp/X on macOS). The
+ * supported recovery path in that case is removal by id — `unregister <id>`
+ * always works even when the filesystem path is gone. Walk-up canonicalisation
+ * is a possible future improvement; not blocking the v1 ship.
  */
 export function removeProject(
   idOrPath: string,
   filePath: string = REGISTRY_FILE,
 ): boolean {
   const reg = readRegistry(filePath)
-  // Canonicalise so a symlinked path matches the realpath we stored at registration.
-  const target = canonicaliseRoot(idOrPath)
+  // Try both the canonical (realpath-resolved when reachable) AND the plain
+  // resolve() form, so the user can remove with the same path string they used
+  // at registration even if it later became unreachable.
+  const targetCanonical = canonicaliseRoot(idOrPath)
+  const targetResolved = resolve(idOrPath)
   const before = reg.projects.length
-  reg.projects = reg.projects.filter((p) => p.id !== idOrPath && p.root !== target)
+  reg.projects = reg.projects.filter(
+    (p) => p.id !== idOrPath && p.root !== targetCanonical && p.root !== targetResolved,
+  )
   if (reg.projects.length === before) return false
   writeRegistry(reg, filePath)
   return true

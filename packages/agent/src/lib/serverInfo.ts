@@ -6,6 +6,7 @@ import { ServerInfoSchema, type ServerInfo } from '@agenticapps/dashboard-shared
 import { SERVER_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { agentError } from './logging.js'
 
 function ensureDir(filePath: string): void {
   const dir = dirname(filePath)
@@ -22,7 +23,10 @@ export function readServerInfo(file: string = SERVER_FILE): ServerInfo | null {
   if (!existsSync(file)) return null
   try {
     return ServerInfoSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
-  } catch {
+  } catch (err) {
+    // Corrupt server.json — log to stderr so the user gets a hint instead of
+    // a silent "daemon not reachable" from CLI consumers (status/stop/list).
+    agentError(`server.json parse failed at ${file}: ${(err as Error).message}`)
     return null
   }
 }
