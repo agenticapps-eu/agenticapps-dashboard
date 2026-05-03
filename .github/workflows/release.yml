@@ -17,14 +17,17 @@ jobs:
       # Re-enable in lockstep with `--provenance` when the repo goes public.
 
     steps:
+      # Actions pinned to commit SHAs (not tags) so a hostile retag of v* on
+      # the action repos cannot inject code into a release that holds NPM_TOKEN.
+      # Comments mark the tag at pinning time so dependabot/renovate can update.
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@26f6d4f2c533a43e6b5da0b4a5dd983f98f7b49a # v6
 
       - name: Setup Node.js (with npm registry auth)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
