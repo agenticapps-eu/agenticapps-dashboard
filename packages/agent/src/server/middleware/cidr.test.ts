@@ -38,6 +38,20 @@ describe('isTailscaleCIDR', () => {
   it('not-an-ip returns false', () => {
     expect(isTailscaleCIDR('not-an-ip')).toBe(false)
   })
+
+  it('rejects leading-zero octets (legacy octal interpretation)', () => {
+    // 100.064.x.x would parse to 100.64.x.x via Number() and incorrectly admit.
+    // node:net.isIPv4 rejects leading zeros — we rely on that for defense-in-depth.
+    expect(isTailscaleCIDR('100.064.5.5')).toBe(false)
+    expect(isTailscaleCIDR('100.64.005.5')).toBe(false)
+    expect(isTailscaleCIDR('0100.64.5.5')).toBe(false)
+  })
+
+  it('rejects malformed dotted-quads (extra dots, missing octets, trailing whitespace)', () => {
+    expect(isTailscaleCIDR('100.64.5.5.')).toBe(false)
+    expect(isTailscaleCIDR('100.64.5')).toBe(false)
+    expect(isTailscaleCIDR('100.64.5.5 ')).toBe(false)
+  })
 })
 
 describe('cidrMiddleware', () => {

@@ -1,3 +1,5 @@
+import { isIPv4 } from 'node:net'
+
 import type { MiddlewareHandler } from 'hono'
 import type { HttpBindings } from '@hono/node-server'
 
@@ -14,6 +16,11 @@ import { generateRequestId } from '../../lib/logging.js'
 export function isTailscaleCIDR(ip: string): boolean {
   // Strip IPv6-mapped IPv4 prefix
   const clean = ip.replace(/^::ffff:/i, '')
+
+  // Defense-in-depth: reject anything that isn't a strict dotted-quad IPv4
+  // before Number() conversion. node:net.isIPv4 rejects leading-zero octets
+  // (e.g. "100.064.5.5") that some legacy resolvers parse as octal.
+  if (!isIPv4(clean)) return false
 
   const parts = clean.split('.').map(Number)
   if (parts.length !== 4) return false
