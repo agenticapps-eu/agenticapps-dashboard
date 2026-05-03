@@ -64,6 +64,10 @@ registryRoute.post(
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
     const removed = removeProject(body.id, registryFile)
-    return c.body(null, removed ? 204 : 404)
+    if (removed) return c.body(null, 204)
+    return c.json(
+      { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
+      404,
+    )
   },
 )
