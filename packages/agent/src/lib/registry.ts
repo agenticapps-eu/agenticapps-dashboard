@@ -24,7 +24,7 @@ import {
   type RegistryListItem,
 } from '@agenticapps/dashboard-shared'
 
-import { CONFIG_DIR, REGISTRY_FILE } from '../constants.js'
+import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
 import { parseOrCorrupt } from './stateCorruption.js'
@@ -188,6 +188,7 @@ async function detectLastCommitAt(root: string): Promise<string | null> {
       cwd: root,
       reject: false,
       stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GIT_SUBPROCESS_TIMEOUT_MS,
     })
     return stdout.trim() || null
   } catch {

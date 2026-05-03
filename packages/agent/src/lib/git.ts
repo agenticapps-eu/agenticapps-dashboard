@@ -1,7 +1,7 @@
 import { execa } from 'execa'
 import { GitResponseSchema, type GitResponse } from '@agenticapps/dashboard-shared'
 
-import { GIT_ALLOWED_CMDS, type GitAllowedCmd } from '../constants.js'
+import { GIT_ALLOWED_CMDS, GIT_SUBPROCESS_TIMEOUT_MS, type GitAllowedCmd } from '../constants.js'
 
 export class GitNotAllowedError extends Error {
   constructor(public cmd: string) {
@@ -34,6 +34,7 @@ export async function runAllowedGit(cmd: string, cwd: string): Promise<GitRespon
       cwd,
       reject: false,
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: GIT_SUBPROCESS_TIMEOUT_MS,
     })
     // execa returns exitCode: null on spawn errors (e.g. ENOENT cwd); treat as 128
     const exitCode = result.exitCode ?? 128
