@@ -102,18 +102,18 @@ describe('cors-rejects-wrong-origin (mandatory TDD)', () => {
     expect(res.headers.get('access-control-allow-origin')).toBeNull()
   })
 
-  it('OPTIONS preflight from https://agenticapps-dashboard.pages.dev DOES get Access-Control-Allow-Origin', async () => {
+  it('OPTIONS preflight from https://dashboard.agenticapps.eu DOES get Access-Control-Allow-Origin', async () => {
     const app = createApp({ registryFile })
     const res = await app.request('http://127.0.0.1:5193/health', {
       method: 'OPTIONS',
       headers: {
-        Origin: 'https://agenticapps-dashboard.pages.dev',
+        Origin: 'https://dashboard.agenticapps.eu',
         'Access-Control-Request-Method': 'GET',
         'Access-Control-Request-Headers': 'Authorization',
       },
     })
     expect(res.headers.get('access-control-allow-origin')).toBe(
-      'https://agenticapps-dashboard.pages.dev',
+      'https://dashboard.agenticapps.eu',
     )
   })
 })

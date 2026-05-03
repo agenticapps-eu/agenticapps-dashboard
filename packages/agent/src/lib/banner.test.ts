@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { renderBanner, renderZeroBindWarning } from './banner.js'
 
 const SAMPLE_TOKEN = '8a3f-c9d2-1b47-e8f0-4a7c-9b1e-2d8a-6f93'
-const PROD_ORIGIN = 'https://agenticapps-dashboard.pages.dev'
+const PROD_ORIGIN = 'https://dashboard.agenticapps.eu'
 
 describe('renderBanner', () => {
   it('contains all 8 spec banner lines verbatim', () => {
@@ -20,7 +20,7 @@ describe('renderBanner', () => {
     expect(result).toContain('[agent] Listening on http://127.0.0.1:5193')
     expect(result).toContain(`[agent] Token: ${SAMPLE_TOKEN}`)
     expect(result).toContain('[agent] Pair this device:')
-    expect(result).toContain('[agent] Or pair manually at https://agenticapps-dashboard.pages.dev/settings:')
+    expect(result).toContain('[agent] Or pair manually at https://dashboard.agenticapps.eu/settings:')
     expect(result).toContain('[agent]   Agent URL: http://127.0.0.1:5193')
     expect(result).toContain(`[agent]   Token:     ${SAMPLE_TOKEN}`)
   })

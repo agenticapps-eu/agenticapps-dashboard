@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-export const PROD_ORIGIN = 'https://agenticapps-dashboard.pages.dev'
+export const PROD_ORIGIN = 'https://dashboard.agenticapps.eu'
 export const DEV_ORIGIN = 'http://localhost:5174'
 export const DEFAULT_HOST = '127.0.0.1'
 export const DEFAULT_PORT = 5193

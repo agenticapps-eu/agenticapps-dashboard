@@ -14,6 +14,7 @@ import {
   mkdirSync,
   chmodSync,
 } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, basename } from 'node:path'
 
 import { z } from 'zod'
@@ -66,9 +67,13 @@ export function assertSecurePermissions(filePath: string = AUTH_FILE): void {
   if (mode !== 0o600) {
     const octal = mode.toString(8).padStart(3, '0')
     const name = basename(filePath)
+    const home = homedir()
+    const displayPath = filePath.startsWith(home + '/')
+      ? '~' + filePath.slice(home.length)
+      : filePath
     throw new InsecurePermissionsError(
       `${name} has insecure permissions (mode ${octal}); ` +
-        `fix with \`chmod 600 ${filePath}\` or run \`agentic-dashboard rotate-token\` to regenerate.`,
+        `fix with \`chmod 600 ${displayPath}\` or run \`agentic-dashboard rotate-token\` to regenerate.`,
     )
   }
 }
