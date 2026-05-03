@@ -45,11 +45,13 @@ export function renderBanner(input: BannerInput): string {
 /**
  * Render the yellow warning printed when daemon binds to 0.0.0.0.
  * See CONTEXT.md D-20 for exact wording.
+ * When enforceCIDR is false (via --no-enforce-cidr), omit the "CIDR enforcement is ON" clause.
  */
-export function renderZeroBindWarning(): string {
+export function renderZeroBindWarning(enforceCIDR = true): string {
+  const cidrNote = enforceCIDR ? ' CIDR enforcement is ON.' : ''
   return (
     pc.yellow(
-      '[agent] WARNING: bound to 0.0.0.0 — only safe on Tailscale-isolated machines. CIDR enforcement is ON.',
+      `[agent] WARNING: bound to 0.0.0.0 — only safe on Tailscale-isolated machines.${cidrNote}`,
     ) + '\n'
   )
 }

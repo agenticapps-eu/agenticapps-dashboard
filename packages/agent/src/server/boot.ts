@@ -17,6 +17,8 @@ export interface BootOptions {
   /** hostname:port for pair URL — may differ from bind host on tailscale */
   pairHostname: string
   bindMode: 'loopback' | 'tailscale' | '0.0.0.0'
+  /** Whether CIDR enforcement is active — used to render accurate D-20 warning */
+  enforceCIDR?: boolean
 }
 
 /**
@@ -34,7 +36,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
     () => {
       // Print zero-bind warning before main banner (D-20)
       if (opts.bindMode === '0.0.0.0') {
-        process.stdout.write(renderZeroBindWarning())
+        process.stdout.write(renderZeroBindWarning(opts.enforceCIDR ?? true))
       }
 
       process.stdout.write(

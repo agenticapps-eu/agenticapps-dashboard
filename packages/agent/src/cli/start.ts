@@ -9,6 +9,7 @@ import { ensureRegistryFile } from '../lib/registry.js'
 import { assertNoStaleDaemon, StaleDaemonError } from '../lib/pidfile.js'
 import { createApp } from '../server/app.js'
 import { bootDaemon } from '../server/boot.js'
+import { getTailscaleIP, getTailscaleHostname, TailscaleNotDetectedError } from '../lib/tailscale.js'
 import { agentError } from '../lib/logging.js'
 import { AUTH_FILE, DEFAULT_HOST, DEFAULT_PORT } from '../constants.js'
 
@@ -19,6 +20,11 @@ export interface StartOpts {
   port: string
   /** CIDR enforcement — commander --no-enforce-cidr sets this to false */
   enforceCidr: boolean
+}
+
+/** Returns true for a dotted-quad IPv4 string */
+function isIPv4(s: string): boolean {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(s)
 }
 
 export async function runStart(opts: StartOpts): Promise<void> {
@@ -58,32 +64,44 @@ export async function runStart(opts: StartOpts): Promise<void> {
   }
 
   const port = Number.parseInt(opts.port, 10) || DEFAULT_PORT
-
-  // TODO(Plan 05): Replace this block with full Tailscale resolution.
-  // Plan 05 will replace this tailscale stub with:
-  //   - execa('tailscale', ['ip', '-4']) for bind IP
-  //   - execa('tailscale', ['status', '--json']) for MagicDNS pairHostname (D-19)
-  //   - D-17: refuse with exact remediation message when tailscale not detected
-  // For Plan 04 we support only loopback (127.0.0.1) and 0.0.0.0 binds.
-  // --bind tailscale falls through to loopback with a warning (lands in Plan 05).
-  let host = DEFAULT_HOST
+  let host: string = DEFAULT_HOST
+  let pairHostname: string
   let bindMode: 'loopback' | 'tailscale' | '0.0.0.0' = 'loopback'
 
   if (opts.bind === 'tailscale') {
-    // STUB: Plan 05 will replace this with real Tailscale integration (D-17, D-19)
-    agentError(
-      '--bind tailscale not yet wired (lands in Plan 05). Falling back to 127.0.0.1.',
-    )
-    host = DEFAULT_HOST
-    bindMode = 'loopback'
+    // D-17: resolve Tailscale IP; refuse with exact remediation message if absent
+    try {
+      const ip = await getTailscaleIP()
+      host = ip
+      // D-19: use MagicDNS hostname if available; fall back to raw IP
+      const dns = await getTailscaleHostname(ip)
+      pairHostname = `${dns}:${port}`
+      bindMode = 'tailscale'
+    } catch (e) {
+      if (e instanceof TailscaleNotDetectedError) {
+        agentError(e.message)
+        process.exit(1)
+      }
+      throw e
+    }
   } else if (opts.bind === '0.0.0.0') {
+    // D-20: yellow warning banner BEFORE the daemon banner (printed in bootDaemon via bindMode)
     host = '0.0.0.0'
+    pairHostname = `0.0.0.0:${port}`
     bindMode = '0.0.0.0'
-  } else {
+  } else if (isIPv4(opts.bind)) {
+    // Explicit IPv4: treat as loopback for 127.0.0.1, tailscale-class for anything else
     host = opts.bind
+    pairHostname = `${host}:${port}`
+    bindMode = host === '127.0.0.1' ? 'loopback' : 'tailscale'
+  } else {
+    // Unknown string — treat as loopback-equivalent
+    host = opts.bind
+    pairHostname = `${host}:${port}`
     bindMode = 'loopback'
   }
 
+  // D-18: CIDR enforcement ON by default for non-loopback binds; opt-out via --no-enforce-cidr
   const enforceCIDR = bindMode !== 'loopback' && opts.enforceCidr !== false
 
   const app = createApp({ enforceCIDR })
@@ -91,7 +109,8 @@ export async function runStart(opts: StartOpts): Promise<void> {
     app,
     host,
     port,
-    pairHostname: `${host}:${port}`,
+    pairHostname,
     bindMode,
+    enforceCIDR,
   })
 }
