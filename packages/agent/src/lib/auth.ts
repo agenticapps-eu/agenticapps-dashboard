@@ -3,8 +3,7 @@
  */
 import { randomBytes } from 'node:crypto'
 import {
-  statSync,
-  writeFileSync,
+  lstatSync,
   readFileSync,
   existsSync,
   mkdirSync,
@@ -17,6 +16,8 @@ import { AuthFileSchema, type AuthFile } from '@agenticapps/dashboard-shared'
 
 import { AGENT_VERSION } from '../version.js'
 import { AUTH_FILE, CONFIG_DIR, TOKEN_ROTATION_DAYS } from '../constants.js'
+
+import { atomicWriteFile } from './atomicWrite.js'
 
 export type { AuthFile }
 
@@ -47,18 +48,30 @@ export function generateToken(): string {
 }
 
 /**
- * Assert that the given file has mode 0600. Throws InsecurePermissionsError
- * with the EXACT spec remediation message if permissions are looser. (D-01, INV-02)
+ * Assert that the given file has mode 0600 AND is a regular file (not a symlink).
+ * Throws InsecurePermissionsError with the EXACT spec remediation message if
+ * permissions are looser, or the path is a symlink/directory/etc.
+ *
+ * Uses lstat (not stat) so a symlink at filePath pointing to an attacker-owned
+ * file with mode 0600 is rejected — without lstat, statSync would follow the
+ * symlink and report the target's mode. (D-01, INV-02)
  */
 export function assertSecurePermissions(filePath: string = AUTH_FILE): void {
-  const mode = statSync(filePath).mode & 0o777
+  const st = lstatSync(filePath)
+  const home = homedir()
+  const displayPath = filePath.startsWith(home + '/')
+    ? '~' + filePath.slice(home.length)
+    : filePath
+  const name = basename(filePath)
+  if (!st.isFile()) {
+    throw new InsecurePermissionsError(
+      `${name} is not a regular file (symlinks and special files are rejected); ` +
+        `remove ${displayPath} and run \`agentic-dashboard rotate-token\` to regenerate.`,
+    )
+  }
+  const mode = st.mode & 0o777
   if (mode !== 0o600) {
     const octal = mode.toString(8).padStart(3, '0')
-    const name = basename(filePath)
-    const home = homedir()
-    const displayPath = filePath.startsWith(home + '/')
-      ? '~' + filePath.slice(home.length)
-      : filePath
     throw new InsecurePermissionsError(
       `${name} has insecure permissions (mode ${octal}); ` +
         `fix with \`chmod 600 ${displayPath}\` or run \`agentic-dashboard rotate-token\` to regenerate.`,
@@ -83,14 +96,15 @@ export function readAuthFile(filePath: string = AUTH_FILE): AuthFile {
 }
 
 /**
- * Write auth.json. Always sets mode 0600 via both writeFileSync mode option
- * and an explicit chmodSync call to harden existing files (RESEARCH Pitfall 6).
+ * Write auth.json atomically (tmp + rename) at mode 0600. Atomicity prevents
+ * concurrent CLI mutations from corrupting the file mid-rotation, and the
+ * tmp-then-rename closes the umask/truncation window where a fresh-or-truncated
+ * file could briefly sit at the wrong mode (RESEARCH Pitfall 6).
  */
 export function writeAuthFile(data: AuthFile, filePath: string = AUTH_FILE): void {
   const validated = AuthFileSchema.parse(data)
   ensureConfigDir(dirname(filePath))
-  writeFileSync(filePath, JSON.stringify(validated, null, 2), { mode: 0o600 })
-  chmodSync(filePath, 0o600)
+  atomicWriteFile(filePath, JSON.stringify(validated, null, 2), 0o600)
 }
 
 /**

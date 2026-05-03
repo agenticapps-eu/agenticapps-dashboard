@@ -1,9 +1,11 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync, chmodSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, unlinkSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 import { ServerInfoSchema, type ServerInfo } from '@agenticapps/dashboard-shared'
 
 import { SERVER_FILE } from '../constants.js'
+
+import { atomicWriteFile } from './atomicWrite.js'
 
 function ensureDir(filePath: string): void {
   const dir = dirname(filePath)
@@ -13,8 +15,7 @@ function ensureDir(filePath: string): void {
 export function writeServerInfo(info: ServerInfo, file: string = SERVER_FILE): void {
   ensureDir(file)
   const validated = ServerInfoSchema.parse(info)
-  writeFileSync(file, JSON.stringify(validated, null, 2), { mode: 0o600 })
-  chmodSync(file, 0o600)
+  atomicWriteFile(file, JSON.stringify(validated, null, 2), 0o600)
 }
 
 export function readServerInfo(file: string = SERVER_FILE): ServerInfo | null {

@@ -1,6 +1,8 @@
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs'
+import { readFileSync, unlinkSync, existsSync } from 'node:fs'
 
 import { PIDFILE } from '../constants.js'
+
+import { atomicWriteFile } from './atomicWrite.js'
 
 /**
  * Check if a process is alive by sending signal 0.
@@ -23,7 +25,7 @@ export function isProcessAlive(pid: number): boolean {
 }
 
 export function writePidfile(pid: number = process.pid, file: string = PIDFILE): void {
-  writeFileSync(file, String(pid), { mode: 0o600 })
+  atomicWriteFile(file, String(pid), 0o600)
 }
 
 export function readPidfile(file: string = PIDFILE): number | null {

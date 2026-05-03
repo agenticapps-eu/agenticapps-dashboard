@@ -9,8 +9,6 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  writeFileSync,
-  chmodSync,
   statSync,
   readdirSync,
 } from 'node:fs'
@@ -27,6 +25,8 @@ import {
 } from '@agenticapps/dashboard-shared'
 
 import { CONFIG_DIR, REGISTRY_FILE } from '../constants.js'
+
+import { atomicWriteFile } from './atomicWrite.js'
 
 export type { RegistryEntry, RegistryFile, RegistryListItem }
 
@@ -52,8 +52,7 @@ export function ensureRegistryFile(filePath: string = REGISTRY_FILE): void {
   ensureConfigDir(dirname(filePath))
   if (!existsSync(filePath)) {
     const empty: RegistryFile = { version: 1, projects: [] }
-    writeFileSync(filePath, JSON.stringify(empty, null, 2), { mode: 0o600 })
-    chmodSync(filePath, 0o600)
+    atomicWriteFile(filePath, JSON.stringify(empty, null, 2), 0o600)
   }
 }
 
@@ -65,8 +64,7 @@ export function readRegistry(filePath: string = REGISTRY_FILE): RegistryFile {
 export function writeRegistry(reg: RegistryFile, filePath: string = REGISTRY_FILE): void {
   const validated = RegistryFileSchema.parse(reg)
   ensureConfigDir(dirname(filePath))
-  writeFileSync(filePath, JSON.stringify(validated, null, 2), { mode: 0o600 })
-  chmodSync(filePath, 0o600)
+  atomicWriteFile(filePath, JSON.stringify(validated, null, 2), 0o600)
 }
 
 export interface AddResult {
