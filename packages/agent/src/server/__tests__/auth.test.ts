@@ -131,7 +131,7 @@ describe('permissions-check-refuses-0644 (mandatory TDD)', () => {
       authFile,
       JSON.stringify({
         version: 1,
-        token: 'aaaa-bbbb-cccc-dddd-eeee-ffff-0000-1111',
+        token: 'aaaaaaaa-bbbbbbbb-cccccccc-dddddddd-eeeeeeee-ffffffff-00000000-11111111',
         rotatedAt: '2026-05-03T00:00:00.000Z',
         agentVersion: '0.0.1-alpha.3',
       }),

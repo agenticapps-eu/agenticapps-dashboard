@@ -55,7 +55,7 @@ describe('start subprocess', () => {
         authFile,
         JSON.stringify({
           version: 1,
-          token: 'aa-bb-cc-dd-ee-ff-gg-hh',
+          token: 'aaaaaaaa-bbbbbbbb-cccccccc-dddddddd-eeeeeeee-ffffffff-00000000-11111111',
           rotatedAt: new Date().toISOString(),
           agentVersion: '0.0.1',
         }),
