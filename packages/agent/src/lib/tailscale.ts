@@ -1,5 +1,7 @@
 import { execa } from 'execa'
 
+import { TAILSCALE_SUBPROCESS_TIMEOUT_MS } from '../constants.js'
+
 /**
  * Error thrown when the Tailscale binary is absent or daemon is not running.
  * D-17: exact remediation message per spec.
@@ -20,7 +22,7 @@ export class TailscaleNotDetectedError extends Error {
  */
 export async function getTailscaleIP(): Promise<string> {
   try {
-    const { stdout } = await execa('tailscale', ['ip', '-4'], { timeout: 5_000 })
+    const { stdout } = await execa('tailscale', ['ip', '-4'], { timeout: TAILSCALE_SUBPROCESS_TIMEOUT_MS })
     const ip = stdout.trim()
     if (!ip) throw new TailscaleNotDetectedError()
     return ip
@@ -40,7 +42,7 @@ export async function getTailscaleIP(): Promise<string> {
  */
 export async function getTailscaleHostname(fallbackIp: string): Promise<string> {
   try {
-    const { stdout } = await execa('tailscale', ['status', '--json'], { timeout: 5_000 })
+    const { stdout } = await execa('tailscale', ['status', '--json'], { timeout: TAILSCALE_SUBPROCESS_TIMEOUT_MS })
     const status = JSON.parse(stdout) as {
       Self?: { DNSName?: string; TailscaleIPs?: string[] }
     }

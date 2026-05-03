@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import { HealthResponseSchema, type HealthResponse } from '@agenticapps/dashboard-shared'
 
 import { AGENT_VERSION } from './version.js'
+import { DEFAULT_PORT } from './constants.js'
 
 const argv = process.argv.slice(2)
 
@@ -29,7 +30,7 @@ program
   .command('start')
   .description('Start the dashboard agent daemon')
   .option('--bind <mode>', 'bind mode: 127.0.0.1 | tailscale | 0.0.0.0', '127.0.0.1')
-  .option('--port <port>', 'port', String(5193))
+  .option('--port <port>', 'port', String(DEFAULT_PORT))
   .option('--no-enforce-cidr', 'disable CIDR enforcement on tailscale/0.0.0.0 binds')
   .action(async (opts) => {
     await (await import('./cli/start.js')).runStart(opts)

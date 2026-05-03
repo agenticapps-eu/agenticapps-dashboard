@@ -4,7 +4,7 @@ import { cors } from 'hono/cors'
 import { bearerAuth } from 'hono/bearer-auth'
 import { logger } from 'hono/logger'
 
-import { PROD_ORIGIN, DEV_ORIGIN } from '../constants.js'
+import { PROD_ORIGIN, DEV_ORIGIN, CORS_MAX_AGE_SECONDS } from '../constants.js'
 import { getActiveToken } from '../lib/auth.js'
 import { generateRequestId } from '../lib/logging.js'
 import { healthRoute } from '../routes/health.js'
@@ -66,7 +66,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
       origin: [PROD_ORIGIN, DEV_ORIGIN],
       allowHeaders: ['Authorization', 'Content-Type'],
       allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-      maxAge: 86400,
+      maxAge: CORS_MAX_AGE_SECONDS,
       credentials: false,
     }),
   )
