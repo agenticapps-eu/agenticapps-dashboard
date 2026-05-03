@@ -7,14 +7,15 @@ import { logger } from 'hono/logger'
 import { PROD_ORIGIN, DEV_ORIGIN } from '../constants.js'
 import { getActiveToken } from '../lib/auth.js'
 import { generateRequestId } from '../lib/logging.js'
-import { cidrMiddleware } from './middleware/cidr.js'
-import { errorHandler } from './middleware/errors.js'
 import { healthRoute } from '../routes/health.js'
 import { adminRoute } from '../routes/admin.js'
 import { registryRoute } from '../routes/registry.js'
 import { authRoute } from '../routes/auth.js'
 import { readRoute } from '../routes/read.js'
 import { gitRoute } from '../routes/git.js'
+
+import { errorHandler } from './middleware/errors.js'
+import { cidrMiddleware } from './middleware/cidr.js'
 
 export type Variables = {
   requestId: string

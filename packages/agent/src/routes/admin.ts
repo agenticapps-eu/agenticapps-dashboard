@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 
 import { agentLog } from '../lib/logging.js'
-
 import type { Env } from '../server/app.js'
 
 export const adminRoute = new Hono<Env>()

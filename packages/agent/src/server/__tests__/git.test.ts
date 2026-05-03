@@ -1,9 +1,10 @@
 import { join } from 'node:path'
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { execa } from 'execa'
 
 import { createApp } from '../app.js'
-import { setActiveToken, ensureAuthFile, getActiveToken } from '../../lib/auth.js'
+import { setActiveToken, ensureAuthFile } from '../../lib/auth.js'
 import { addProject } from '../../lib/registry.js'
 import { makeTmpHome, makeTmpProject } from '../../lib/__fixtures__/tmpHome.js'
 

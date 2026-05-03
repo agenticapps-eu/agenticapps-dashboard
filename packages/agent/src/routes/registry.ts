@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import type { Context } from 'hono'
-
 import {
   RegistryEntrySchema,
   RegistryListResponseSchema,
@@ -10,7 +9,6 @@ import {
 
 import { addProject, removeProject, listProjectsWithStatus } from '../lib/registry.js'
 import { outbound } from '../server/middleware/errors.js'
-
 import type { Env } from '../server/app.js'
 
 const RegisterBodySchema = z.object({

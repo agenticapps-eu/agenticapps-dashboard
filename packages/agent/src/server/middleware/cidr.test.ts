@@ -37,7 +37,7 @@ describe('isTailscaleCIDR', () => {
 describe('cidrMiddleware', () => {
   type TestEnv = { Bindings: HttpBindings; Variables: { requestId: string } }
 
-  function makeTestApp(ip: string) {
+  function makeTestApp() {
     const app = new Hono<TestEnv>()
     app.use(async (c, next) => { c.set('requestId', 'test-id'); await next() })
     app.use(cidrMiddleware())
@@ -46,7 +46,7 @@ describe('cidrMiddleware', () => {
   }
 
   it('request from 192.168.1.5 (non-Tailscale) returns 403 with cidr_violation', async () => {
-    const app = makeTestApp('192.168.1.5')
+    const app = makeTestApp()
     const res = await app.request(
       '/probe',
       {},
@@ -58,7 +58,7 @@ describe('cidrMiddleware', () => {
   })
 
   it('request from 100.64.5.5 (Tailscale) passes through with 200', async () => {
-    const app = makeTestApp('100.64.5.5')
+    const app = makeTestApp()
     const res = await app.request(
       '/probe',
       {},

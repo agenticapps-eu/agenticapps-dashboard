@@ -1,5 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync, chmodSync } from 'node:fs'
-import { mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, unlinkSync, chmodSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 import { ServerInfoSchema, type ServerInfo } from '@agenticapps/dashboard-shared'

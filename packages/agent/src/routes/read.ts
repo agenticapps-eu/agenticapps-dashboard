@@ -1,16 +1,15 @@
+import { readFile, stat } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { readFile, stat } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
 import type { Context } from 'hono'
-
 import { ReadResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { resolveAllowed } from '../lib/paths.js'
 import { readRegistry } from '../lib/registry.js'
 import { outbound } from '../server/middleware/errors.js'
-
 import type { Env } from '../server/app.js'
 
 const ReadQuerySchema = z.object({ path: z.string().min(1) })

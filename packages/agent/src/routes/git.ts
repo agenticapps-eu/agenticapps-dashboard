@@ -2,13 +2,11 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import type { Context } from 'hono'
-
 import { GitResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { runAllowedGit } from '../lib/git.js'
 import { readRegistry } from '../lib/registry.js'
 import { outbound } from '../server/middleware/errors.js'
-
 import type { Env } from '../server/app.js'
 
 const GitQuerySchema = z.object({ cmd: z.string().min(1) })

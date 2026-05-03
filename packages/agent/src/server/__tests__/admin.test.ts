@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import { createApp } from '../app.js'
@@ -29,7 +30,7 @@ describe('POST /api/admin/shutdown', () => {
     const token = getActiveToken()
 
     // Mock process.kill to prevent actual SIGTERM from shutting down the test runner
-    const killSpy = vi.spyOn(process, 'kill').mockImplementation((_pid, _signal) => true)
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true)
 
     try {
       const res = await app.request('http://127.0.0.1:5193/api/admin/shutdown', {

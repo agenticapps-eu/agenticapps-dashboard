@@ -4,6 +4,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import { createApp } from '../app.js'

@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import { createApp } from '../app.js'

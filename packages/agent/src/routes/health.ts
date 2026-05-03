@@ -1,12 +1,10 @@
 import { Hono } from 'hono'
-
 import { HealthResponseSchema, type HealthResponse } from '@agenticapps/dashboard-shared'
 
 import { AGENT_VERSION } from '../version.js'
 import { readRegistry } from '../lib/registry.js'
 import { getActiveToken } from '../lib/auth.js'
 import { outbound } from '../server/middleware/errors.js'
-
 import type { Env } from '../server/app.js'
 
 export const healthRoute = new Hono<Env>()
