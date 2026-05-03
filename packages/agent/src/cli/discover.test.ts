@@ -1,10 +1,12 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
 import { describe, it, expect, afterEach } from 'vitest'
 
-import { discoverProjects, registerInteractive, type DiscoveredMatch } from './discover.js'
 import { readRegistry, ensureRegistryFile } from '../lib/registry.js'
+
+import { discoverProjects, registerInteractive } from './discover.js'
 
 let tmpDir: string | null = null
 
@@ -107,8 +109,6 @@ describe('registerInteractive', () => {
     const matches = discoverProjects(parent, { depth: 1 })
     expect(matches).toHaveLength(2)
 
-    // Patch addProject to use isolated registry
-    const { addProject } = await import('../lib/registry.js')
     const results = await registerInteractive(matches, {
       yes: true,
       registryFile: regFile,

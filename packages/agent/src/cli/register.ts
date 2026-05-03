@@ -3,6 +3,7 @@ import pc from 'picocolors'
 import { agentError, agentLog } from '../lib/logging.js'
 import { addProject, removeProject } from '../lib/registry.js'
 import { ensureAuthFile } from '../lib/auth.js'
+
 import { discoverProjects, registerInteractive, type RegisterInteractiveOpts } from './discover.js'
 
 export interface RegisterOpts {

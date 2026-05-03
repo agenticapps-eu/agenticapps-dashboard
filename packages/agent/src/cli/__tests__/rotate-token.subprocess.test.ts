@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeAll } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { describe, it, expect, beforeAll } from 'vitest'
+
 import { makeIsolatedHome, runAgent } from './__shared__/spawnAgent.js'
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../')

@@ -7,7 +7,8 @@ export interface StopOpts {
   force?: boolean
 }
 
-export async function runStop(_opts: StopOpts): Promise<void> {
+export async function runStop(opts: StopOpts): Promise<void> {
+  void opts
   const info = readServerInfo()
   const auth = (() => {
     try {

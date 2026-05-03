@@ -1,12 +1,15 @@
-import { describe, it, expect, beforeAll } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { makeIsolatedHome, runAgent } from './__shared__/spawnAgent.js'
+
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   RegistryListResponseSchema,
   StatusResponseSchema,
 } from '@agenticapps/dashboard-shared'
+
+import { makeIsolatedHome, runAgent } from './__shared__/spawnAgent.js'
+
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../')
 
