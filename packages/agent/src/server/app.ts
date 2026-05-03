@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto'
+
 import { Hono } from 'hono'
 import type { HttpBindings } from '@hono/node-server'
 import { cors } from 'hono/cors'
@@ -72,7 +74,21 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   )
 
   // 4. Bearer auth — verifyToken reads in-memory ref at request entry (D-15)
-  app.use(bearerAuth({ verifyToken: async (token) => token === getActiveToken() }))
+  //    Uses timingSafeEqual to prevent string-equality timing leaks; refuses
+  //    empty tokens explicitly so a request with `Authorization: Bearer ` (or
+  //    a transient activeToken='' state during boot) cannot satisfy the check.
+  app.use(
+    bearerAuth({
+      verifyToken: async (token) => {
+        const active = getActiveToken()
+        if (!token || !active) return false
+        const a = Buffer.from(token)
+        const b = Buffer.from(active)
+        if (a.length !== b.length) return false
+        return timingSafeEqual(a, b)
+      },
+    }),
+  )
 
   // 5. CIDR enforcement (only when --bind tailscale or 0.0.0.0 from boot, per D-18)
   if (opts.enforceCIDR) app.use(cidrMiddleware())
