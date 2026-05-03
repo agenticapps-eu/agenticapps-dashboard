@@ -1,13 +1,6 @@
 /**
  * Registry lib: registry.json CRUD, slug generation, project status.
  *
- * NOTE: RegistryFileSchema, RegistryEntrySchema, RegistryListItemSchema are
- * defined locally here because packages/shared Plan 01-01 runs in parallel.
- * Plan 01-03 (Wave 2) will replace these with:
- *   import { RegistryFileSchema, RegistryEntrySchema, RegistryListItemSchema,
- *            type RegistryEntry, type RegistryFile, type RegistryListItem }
- *     from '@agenticapps/dashboard-shared'
- *
  * Subprocess discipline: only execa (argv array) for git invocation.
  * The project root is user-controlled; using a shell-based spawn would
  * interpret it as shell tokens. execa uses argv arrays — no shell injection. (T-01-02-10)
@@ -23,37 +16,19 @@ import {
 } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 
-import { z } from 'zod'
 import { execa } from 'execa'
+import {
+  RegistryEntrySchema,
+  RegistryFileSchema,
+  RegistryListItemSchema,
+  type RegistryEntry,
+  type RegistryFile,
+  type RegistryListItem,
+} from '@agenticapps/dashboard-shared'
 
 import { CONFIG_DIR, REGISTRY_FILE } from '../constants.js'
 
-// Local schemas — will be replaced by shared imports in Plan 01-03
-const RegistryEntrySchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  root: z.string().min(1),
-  client: z.string().nullable(),
-  addedAt: z.string().datetime(),
-  tags: z.array(z.string()),
-})
-
-const RegistryFileSchema = z.object({
-  version: z.literal(1),
-  projects: z.array(RegistryEntrySchema),
-})
-
-const RegistryListItemSchema = RegistryEntrySchema.extend({
-  status: z.object({
-    reachable: z.boolean(),
-    currentPhase: z.string().nullable(),
-    lastCommitAt: z.string().nullable(),
-  }),
-})
-
-export type RegistryEntry = z.infer<typeof RegistryEntrySchema>
-export type RegistryFile = z.infer<typeof RegistryFileSchema>
-export type RegistryListItem = z.infer<typeof RegistryListItemSchema>
+export type { RegistryEntry, RegistryFile, RegistryListItem }
 
 /**
  * Normalize a string to a URL-safe slug.

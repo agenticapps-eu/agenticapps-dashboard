@@ -1,9 +1,5 @@
 /**
  * Auth lib: token generation, auth.json I/O with permission enforcement, rotation logic.
- *
- * NOTE: AuthFileSchema is defined locally here because packages/shared Plan 01-01
- * runs in parallel. Plan 01-03 (Wave 2) will replace this with:
- *   import { AuthFileSchema, type AuthFile } from '@agenticapps/dashboard-shared'
  */
 import { randomBytes } from 'node:crypto'
 import {
@@ -17,20 +13,12 @@ import {
 import { homedir } from 'node:os'
 import { dirname, basename } from 'node:path'
 
-import { z } from 'zod'
+import { AuthFileSchema, type AuthFile } from '@agenticapps/dashboard-shared'
 
 import { AGENT_VERSION } from '../version.js'
 import { AUTH_FILE, CONFIG_DIR, TOKEN_ROTATION_DAYS } from '../constants.js'
 
-// Local schema — will be replaced by shared import in Plan 01-03
-const AuthFileSchema = z.object({
-  version: z.literal(1),
-  token: z.string().min(1),
-  rotatedAt: z.string().datetime(),
-  agentVersion: z.string().min(1),
-})
-
-export type AuthFile = z.infer<typeof AuthFileSchema>
+export type { AuthFile }
 
 export class InsecurePermissionsError extends Error {
   constructor(message: string) {
