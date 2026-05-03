@@ -1,8 +1,12 @@
 import { Hono } from 'hono'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { HttpBindings } from '@hono/node-server'
+import { join } from 'node:path'
 
 import { isTailscaleCIDR, cidrMiddleware } from './cidr.js'
+import { createApp } from '../app.js'
+import { ensureAuthFile, getActiveToken, setActiveToken } from '../../lib/auth.js'
+import { makeTmpHome } from '../../lib/__fixtures__/tmpHome.js'
 
 describe('isTailscaleCIDR', () => {
   it('100.64.0.1 is in the Tailscale CGNAT range', () => {
@@ -63,6 +67,58 @@ describe('cidrMiddleware', () => {
       '/probe',
       {},
       { incoming: { socket: { remoteAddress: '100.64.5.5' } } } as unknown as Record<string, unknown>,
+    )
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('cidrMiddleware integrated with createApp', () => {
+  let authFile: string
+  let registryFile: string
+  let cleanup: () => void
+
+  beforeEach(() => {
+    const tmp = makeTmpHome()
+    cleanup = tmp.cleanup
+    authFile = join(tmp.configDir, 'auth.json')
+    registryFile = join(tmp.configDir, 'registry.json')
+    const fresh = ensureAuthFile(authFile)
+    setActiveToken(fresh.token)
+  })
+
+  afterEach(() => cleanup())
+
+  it('returns 403 cidr_violation for non-CGNAT remoteAddress', async () => {
+    const token = getActiveToken()
+    const app = createApp({ enforceCIDR: true, authFile, registryFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/health',
+      { headers: { Authorization: `Bearer ${token}` } },
+      { incoming: { socket: { remoteAddress: '192.168.1.5' } } } as any,
+    )
+    expect(res.status).toBe(403)
+    const body = await res.json() as { error: string }
+    expect(body.error).toBe('cidr_violation')
+  })
+
+  it('passes through for 100.64.5.5 (within CGNAT)', async () => {
+    const token = getActiveToken()
+    const app = createApp({ enforceCIDR: true, authFile, registryFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/health',
+      { headers: { Authorization: `Bearer ${token}` } },
+      { incoming: { socket: { remoteAddress: '100.64.5.5' } } } as any,
+    )
+    expect(res.status).toBe(200)
+  })
+
+  it('createApp({ enforceCIDR: false }) does not gate by CIDR', async () => {
+    const token = getActiveToken()
+    const app = createApp({ enforceCIDR: false, authFile, registryFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/health',
+      { headers: { Authorization: `Bearer ${token}` } },
+      { incoming: { socket: { remoteAddress: '192.168.1.5' } } } as any,
     )
     expect(res.status).toBe(200)
   })
