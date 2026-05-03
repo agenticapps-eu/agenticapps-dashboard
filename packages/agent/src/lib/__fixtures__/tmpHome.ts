@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs'
+import { mkdtempSync, realpathSync, rmSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -22,7 +22,9 @@ export function makeTmpProject(opts: { withSymlinkEscape?: boolean } = {}): {
   root: string
   cleanup: () => void
 } {
-  const root = mkdtempSync(join(tmpdir(), 'agentic-proj-'))
+  // Canonicalise via realpath so fixture roots match what addProject() stores
+  // (on macOS, /var/folders/... realpaths to /private/var/folders/...).
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-proj-')))
   mkdirSync(join(root, '.planning'), { recursive: true })
   mkdirSync(join(root, '.claude', 'skills', 'foo'), { recursive: true })
   mkdirSync(join(root, '.git'), { recursive: true })

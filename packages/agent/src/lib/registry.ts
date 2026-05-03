@@ -9,6 +9,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   statSync,
   readdirSync,
 } from 'node:fs'
@@ -49,6 +50,22 @@ function ensureConfigDir(dir: string = CONFIG_DIR): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 })
 }
 
+/**
+ * Canonicalise a project root once at registration. realpath follows symlinks
+ * so that a symlink later repointed to a different directory cannot silently
+ * change which files the read endpoint resolves under. Falls back to resolve()
+ * if the path doesn't exist on disk yet — registering a missing path stays
+ * legal (it will surface as `reachable: false` in /api/registry).
+ */
+function canonicaliseRoot(pathArg: string): string {
+  const resolved = resolve(pathArg)
+  try {
+    return realpathSync(resolved)
+  } catch {
+    return resolved
+  }
+}
+
 export function ensureRegistryFile(filePath: string = REGISTRY_FILE): void {
   ensureConfigDir(dirname(filePath))
   if (!existsSync(filePath)) {
@@ -86,7 +103,7 @@ export function addProject(
   opts: { name?: string; client?: string | null; tags?: string[] } = {},
   filePath: string = REGISTRY_FILE,
 ): AddResult {
-  const root = resolve(pathArg)
+  const root = canonicaliseRoot(pathArg)
   const reg = readRegistry(filePath)
   const existing = reg.projects.find((p) => p.root === root)
   if (existing) return { entry: existing, alreadyRegistered: true }
@@ -119,7 +136,8 @@ export function removeProject(
   filePath: string = REGISTRY_FILE,
 ): boolean {
   const reg = readRegistry(filePath)
-  const target = resolve(idOrPath)
+  // Canonicalise so a symlinked path matches the realpath we stored at registration.
+  const target = canonicaliseRoot(idOrPath)
   const before = reg.projects.length
   reg.projects = reg.projects.filter((p) => p.id !== idOrPath && p.root !== target)
   if (reg.projects.length === before) return false

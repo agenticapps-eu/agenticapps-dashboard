@@ -5,7 +5,7 @@
  *           → rotate (API) → old-token-401 → stop → daemon exited
  */
 import { spawnSync, spawn } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,7 +29,9 @@ describe('Phase 1 end-to-end smoke (success criterion 1)', () => {
       const { home, cleanup } = makeIsolatedHome()
 
       // Build a minimal tmp project with .planning/PROJECT.md
-      const proj = mkdtempSync(join(tmpdir(), 'agentic-e2e-proj-'))
+      // Canonicalise via realpath so the comparison matches the realpath
+      // canonicalisation that addProject() applies at registration.
+      const proj = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-e2e-proj-')))
       mkdirSync(join(proj, '.planning'), { recursive: true })
       mkdirSync(join(proj, '.claude'), { recursive: true })
       writeFileSync(join(proj, '.planning', 'PROJECT.md'), '# tmp project for e2e')

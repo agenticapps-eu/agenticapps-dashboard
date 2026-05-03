@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,7 +19,7 @@ describe('register subprocess', () => {
   it('register <path> adds project to registry, exits 0', () => {
     const { home, cleanup } = makeIsolatedHome()
     // Create a tmp project root to register
-    const projDir = mkdtempSync(join(tmpdir(), 'proj-'))
+    const projDir = realpathSync(mkdtempSync(join(tmpdir(), 'proj-')))
     try {
       const result = runAgent(['register', projDir], home)
       expect(result.status).toBe(0)
@@ -39,7 +39,7 @@ describe('register subprocess', () => {
 
   it('second register of same path is idempotent (exit 0, already registered message)', () => {
     const { home, cleanup } = makeIsolatedHome()
-    const projDir = mkdtempSync(join(tmpdir(), 'proj-idem-'))
+    const projDir = realpathSync(mkdtempSync(join(tmpdir(), 'proj-idem-')))
     try {
       // First registration
       const first = runAgent(['register', projDir], home)
@@ -62,7 +62,7 @@ describe('register subprocess', () => {
 
   it('unregister removes the project, second unregister exits non-zero', () => {
     const { home, cleanup } = makeIsolatedHome()
-    const projDir = mkdtempSync(join(tmpdir(), 'proj-unreg-'))
+    const projDir = realpathSync(mkdtempSync(join(tmpdir(), 'proj-unreg-')))
     try {
       // Register
       runAgent(['register', projDir], home)

@@ -1,3 +1,5 @@
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -113,6 +115,45 @@ describe('addProject', () => {
     try {
       const { entry } = addProject('/Users/x/no-tags', {}, regFile)
       expect(entry.tags).toEqual([])
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('canonicalises symlink roots via realpath at registration', () => {
+    const { configDir, cleanup: cleanupHome } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const realDir = mkdtempSync(join(tmpdir(), 'agentic-real-'))
+    const linkParent = mkdtempSync(join(tmpdir(), 'agentic-link-'))
+    const linkPath = join(linkParent, 'aliased')
+    symlinkSync(realDir, linkPath)
+    try {
+      const { entry } = addProject(linkPath, {}, regFile)
+      // The registered root should be the realpath, not the symlink path.
+      // realpath() may add /private prefix on macOS, so just check the link is canonicalised away
+      expect(entry.root).not.toBe(linkPath)
+      expect(entry.root.endsWith('/aliased')).toBe(false)
+
+      // Re-registering via the symlink path is idempotent (D-10) — the canonical
+      // root matches even though pathArg differs.
+      const second = addProject(linkPath, {}, regFile)
+      expect(second.alreadyRegistered).toBe(true)
+      expect(second.entry.id).toBe(entry.id)
+    } finally {
+      rmSync(linkPath, { force: true })
+      rmSync(linkParent, { recursive: true, force: true })
+      rmSync(realDir, { recursive: true, force: true })
+      cleanupHome()
+    }
+  })
+
+  it('falls back to resolve() when path does not exist (registration of missing path stays legal)', () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    try {
+      const missing = join(tmpdir(), `nonexistent-${randomUUID()}`)
+      const { entry } = addProject(missing, {}, regFile)
+      expect(entry.root).toBe(missing)
     } finally {
       cleanup()
     }
