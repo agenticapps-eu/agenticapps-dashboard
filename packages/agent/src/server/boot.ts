@@ -7,6 +7,7 @@ import { agentLog, agentError } from '../lib/logging.js'
 import { renderBanner, renderZeroBindWarning } from '../lib/banner.js'
 import { listProjectsWithStatus } from '../lib/registry.js'
 import { getActiveToken } from '../lib/auth.js'
+import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
 import type { Env } from './app.js'
 
@@ -54,7 +55,10 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
     },
   )
 
+  let stopping = false
   const shutdown = (): void => {
+    if (stopping) return
+    stopping = true
     gracefulShutdown(server)
   }
   process.on('SIGTERM', shutdown)
@@ -65,15 +69,17 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
 
 /**
  * Gracefully close the server, clean up pidfile + server.json.
- * 5s hard timeout prevents keep-alive hangs (RESEARCH Pitfall 6, T-01-03-08).
+ * SHUTDOWN_TIMEOUT_MS hard timeout prevents keep-alive hangs (RESEARCH Pitfall 6, T-01-03-08).
  */
 export function gracefulShutdown(server: ServerType): void {
   const killer = setTimeout(() => {
-    agentError('shutdown timed out after 5s, forcing exit')
+    agentError(
+      `shutdown timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s, forcing exit`,
+    )
     removePidfile()
     removeServerInfo()
     process.exit(0)
-  }, 5000)
+  }, SHUTDOWN_TIMEOUT_MS)
 
   agentLog('shutting down…')
   server.close(() => {
