@@ -1,4 +1,5 @@
 import type { Context, ErrorHandler } from 'hono'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { HTTPException } from 'hono/http-exception'
 import { ZodError } from 'zod'
 
@@ -13,17 +14,20 @@ import { GitNotAllowedError } from '../../lib/git.js'
  * If Schema.parse throws (indicates the route's output shape drifted from the contract),
  * returns 500 with error='schema_drift'. This avoids the outbound-parse loop described in
  * RESEARCH Pitfall 8 — errors from this helper are NOT passed through Schema.parse again.
+ *
+ * `status` defaults to 200; pass 201 (created) etc. on routes that need a different success code.
  */
 export function outbound<T>(
   c: Context,
   parse: (payload: unknown) => T,
   payload: unknown,
+  status: ContentfulStatusCode = 200,
 ): Response {
   const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
   try {
     const validated = parse(payload)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return c.json(validated as any)
+    return c.json(validated as any, status)
   } catch (err) {
     agentError(`schema_drift requestId=${requestId} ${String(err)}`)
     return c.json({ ok: false, error: 'schema_drift', requestId }, 500)

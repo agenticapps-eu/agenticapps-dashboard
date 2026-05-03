@@ -7,6 +7,7 @@ export {
   RegistryFileSchema,
   RegistryListItemSchema,
   RegistryListResponseSchema,
+  RegisterResponseSchema,
   StatusResponseSchema,
 } from './schemas/registry.js'
 export type {
@@ -14,6 +15,7 @@ export type {
   RegistryFile,
   RegistryListItem,
   RegistryListResponse,
+  RegisterResponse,
   StatusResponse,
 } from './schemas/registry.js'
 export { ReadResponseSchema } from './schemas/read.js'

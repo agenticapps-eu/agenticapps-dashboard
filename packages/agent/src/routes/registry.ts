@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import type { Context } from 'hono'
 import {
-  RegistryEntrySchema,
+  RegisterResponseSchema,
   RegistryListResponseSchema,
 } from '@agenticapps/dashboard-shared'
 
@@ -49,9 +49,13 @@ registryRoute.post(
     if (body.name !== undefined) opts.name = body.name
     if (body.tags !== undefined) opts.tags = body.tags
     const result = addProject(body.path, opts, registryFile)
-    const status = result.alreadyRegistered ? (200 as const) : (201 as const)
-    const entry = RegistryEntrySchema.parse(result.entry)
-    return c.json({ ...entry, alreadyRegistered: result.alreadyRegistered }, status)
+    const status = result.alreadyRegistered ? 200 : 201
+    return outbound(
+      c,
+      RegisterResponseSchema.parse.bind(RegisterResponseSchema),
+      { ...result.entry, alreadyRegistered: result.alreadyRegistered },
+      status,
+    )
   },
 )
 

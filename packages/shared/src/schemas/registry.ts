@@ -28,6 +28,11 @@ export type RegistryListItem = z.infer<typeof RegistryListItemSchema>
 export const RegistryListResponseSchema = z.array(RegistryListItemSchema)
 export type RegistryListResponse = z.infer<typeof RegistryListResponseSchema>
 
+export const RegisterResponseSchema = RegistryEntrySchema.extend({
+  alreadyRegistered: z.boolean(),
+})
+export type RegisterResponse = z.infer<typeof RegisterResponseSchema>
+
 export const StatusResponseSchema = z.object({
   reachable: z.boolean(),
   uptime: z.number().int().nonnegative(),
