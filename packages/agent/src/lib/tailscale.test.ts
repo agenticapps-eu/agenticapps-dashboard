@@ -6,6 +6,7 @@ vi.mock('execa', () => ({
 }))
 
 import { execa } from 'execa'
+
 import { getTailscaleIP, getTailscaleHostname, TailscaleNotDetectedError } from './tailscale.js'
 
 const mockExeca = execa as unknown as ReturnType<typeof vi.fn>
@@ -14,7 +15,7 @@ describe('getTailscaleIP', () => {
   beforeEach(() => mockExeca.mockReset())
 
   it('returns trimmed IP on success', async () => {
-    mockExeca.mockResolvedValueOnce({ stdout: '100.64.5.5\n', stderr: '', exitCode: 0 } as any)
+    mockExeca.mockResolvedValueOnce({ stdout: '100.64.5.5\n', stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleIP()).resolves.toBe('100.64.5.5')
   })
 
@@ -38,7 +39,7 @@ describe('getTailscaleIP', () => {
   })
 
   it('throws TailscaleNotDetectedError on empty stdout', async () => {
-    mockExeca.mockResolvedValueOnce({ stdout: '   \n', stderr: '', exitCode: 0 } as any)
+    mockExeca.mockResolvedValueOnce({ stdout: '   \n', stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleIP()).rejects.toBeInstanceOf(TailscaleNotDetectedError)
   })
 })
@@ -48,18 +49,18 @@ describe('getTailscaleHostname', () => {
 
   it('strips trailing dot from Self.DNSName', async () => {
     const status = { Self: { DNSName: 'devbox.tailfa84dd.ts.net.' } }
-    mockExeca.mockResolvedValueOnce({ stdout: JSON.stringify(status), stderr: '', exitCode: 0 } as any)
+    mockExeca.mockResolvedValueOnce({ stdout: JSON.stringify(status), stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('devbox.tailfa84dd.ts.net')
   })
 
   it('falls back to IP when Self.DNSName is empty', async () => {
     const status = { Self: { DNSName: '' } }
-    mockExeca.mockResolvedValueOnce({ stdout: JSON.stringify(status), stderr: '', exitCode: 0 } as any)
+    mockExeca.mockResolvedValueOnce({ stdout: JSON.stringify(status), stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('100.64.5.5')
   })
 
   it('falls back to IP when Self.DNSName missing', async () => {
-    mockExeca.mockResolvedValueOnce({ stdout: '{}', stderr: '', exitCode: 0 } as any)
+    mockExeca.mockResolvedValueOnce({ stdout: '{}', stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('100.64.5.5')
   })
 
@@ -69,7 +70,7 @@ describe('getTailscaleHostname', () => {
   })
 
   it('falls back to IP when JSON parse fails', async () => {
-    mockExeca.mockResolvedValueOnce({ stdout: 'not json', stderr: '', exitCode: 0 } as any)
+    mockExeca.mockResolvedValueOnce({ stdout: 'not json', stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('100.64.5.5')
   })
 })

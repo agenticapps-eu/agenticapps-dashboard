@@ -1,12 +1,14 @@
+import { join } from 'node:path'
+
 import { Hono } from 'hono'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { HttpBindings } from '@hono/node-server'
-import { join } from 'node:path'
 
-import { isTailscaleCIDR, cidrMiddleware } from './cidr.js'
 import { createApp } from '../app.js'
 import { ensureAuthFile, getActiveToken, setActiveToken } from '../../lib/auth.js'
 import { makeTmpHome } from '../../lib/__fixtures__/tmpHome.js'
+
+import { isTailscaleCIDR, cidrMiddleware } from './cidr.js'
 
 describe('isTailscaleCIDR', () => {
   it('100.64.0.1 is in the Tailscale CGNAT range', () => {
@@ -94,7 +96,7 @@ describe('cidrMiddleware integrated with createApp', () => {
     const res = await app.request(
       'http://127.0.0.1:5193/health',
       { headers: { Authorization: `Bearer ${token}` } },
-      { incoming: { socket: { remoteAddress: '192.168.1.5' } } } as any,
+      { incoming: { socket: { remoteAddress: '192.168.1.5' } } } as unknown as Record<string, unknown>,
     )
     expect(res.status).toBe(403)
     const body = await res.json() as { error: string }
@@ -107,7 +109,7 @@ describe('cidrMiddleware integrated with createApp', () => {
     const res = await app.request(
       'http://127.0.0.1:5193/health',
       { headers: { Authorization: `Bearer ${token}` } },
-      { incoming: { socket: { remoteAddress: '100.64.5.5' } } } as any,
+      { incoming: { socket: { remoteAddress: '100.64.5.5' } } } as unknown as Record<string, unknown>,
     )
     expect(res.status).toBe(200)
   })
@@ -118,7 +120,7 @@ describe('cidrMiddleware integrated with createApp', () => {
     const res = await app.request(
       'http://127.0.0.1:5193/health',
       { headers: { Authorization: `Bearer ${token}` } },
-      { incoming: { socket: { remoteAddress: '192.168.1.5' } } } as any,
+      { incoming: { socket: { remoteAddress: '192.168.1.5' } } } as unknown as Record<string, unknown>,
     )
     expect(res.status).toBe(200)
   })
