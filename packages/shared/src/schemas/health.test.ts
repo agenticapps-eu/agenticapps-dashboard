@@ -17,4 +17,16 @@ describe('HealthResponseSchema', () => {
     const parsed = HealthResponseSchema.parse(valid)
     expect(parsed.message).toBe('hi')
   })
+
+  it('accepts new optional fields (daemonVersion, registryCount, paired)', () => {
+    const v = { ok: true, version: '1.0.0', daemonVersion: '0.1.0', registryCount: 3, paired: true }
+    const parsed = HealthResponseSchema.parse(v)
+    expect(parsed.daemonVersion).toBe('0.1.0')
+    expect(parsed.registryCount).toBe(3)
+    expect(parsed.paired).toBe(true)
+  })
+
+  it('still accepts old shape (only ok + version)', () => {
+    expect(() => HealthResponseSchema.parse({ ok: true, version: '0.0.1' })).not.toThrow()
+  })
 })

@@ -13,14 +13,17 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
+      # Actions pinned to commit SHAs (not tags). Comments mark the tag at
+      # pinning time so dependabot/renovate can update. See release.yml for
+      # the supply-chain rationale.
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@26f6d4f2c533a43e6b5da0b4a5dd983f98f7b49a # v6
 
       - name: Setup Node.js (from .nvmrc)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'

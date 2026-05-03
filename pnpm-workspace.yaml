@@ -3,7 +3,7 @@ packages:
 
 catalog:
   # Cross-cutting (used by ≥2 packages)
-  zod: ^3.24.0
+  zod: ^3.25.0
   typescript: ^6.0.0
   vitest: ^4.1.5
   '@vitest/coverage-v8': ^4.1.5

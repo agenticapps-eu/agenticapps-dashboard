@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-This repo is at **Phase 0 / bootstrap**. There is no `package.json`, no source code, and no build/test/lint commands yet — only:
+**Phases 0 and 1 shipped.** Phase 0 stood up the pnpm workspace, the Cloudflare Pages preview deploy, and the `@agenticapps/dashboard-agent` placeholder package. Phase 1 landed the local daemon (Hono on `127.0.0.1:5193`), the registry (`~/.agenticapps/dashboard/registry.json`), bearer-token auth, the CLI surface, and the `/api/projects/{id}/read` allow-list. **Phase 2 (SPA shell + pair flow) is the next work.**
 
-- `README.md` (placeholder)
+Authoritative inputs:
+
 - `docs/spec/dashboard-prompt.md` — **the spec that drives all phases. Read it before doing anything substantive.**
-- `.claude/skills/agenticapps-workflow/` — the workflow skill (Superpowers + GSD + gstack contract)
-
-The first real work is Phase 0: stand up the pnpm workspace, Cloudflare Pages preview deploy, and `@agenticapps/dashboard-agent` placeholder package per `docs/spec/dashboard-prompt.md` §"Phase 0".
+- `.planning/phases/01-daemon-registry-pairing/` — Phase 1 plan, decisions (D-01..D-23), threat model, verification, human-UAT.
+- `.claude/skills/agenticapps-workflow/` — the workflow skill (Superpowers + GSD + gstack contract).
 
 When the spec disagrees with intuition, the spec wins. When the spec is silent, surface the question via `/gsd-discuss-phase` rather than guessing.
 
@@ -55,4 +55,26 @@ The global `~/.claude/CLAUDE.md` already mandates the AgenticApps workflow (Supe
 
 ## Common commands
 
-None yet — `package.json`, lockfile, and CI workflow are all Phase 0 deliverables. Once Phase 0 lands, prefer per-package pnpm filters (e.g. `pnpm --filter @agenticapps/dashboard-spa dev`) and update this section accordingly.
+Workspace-wide (run from repo root):
+
+- `pnpm -r typecheck` — type-check every package.
+- `pnpm -r test` — run vitest in every package (160+ tests as of Phase 1 close).
+- `pnpm -r build` — build every package via tsup/Vite/tsc as appropriate.
+
+Per-package (preferred when iterating):
+
+- `pnpm --filter @agenticapps/dashboard-agent test` — agent vitest run.
+- `pnpm --filter @agenticapps/dashboard-spa dev` — Vite dev server on `localhost:5174`.
+- `pnpm --filter @agenticapps/dashboard-shared test` — shared schema tests.
+
+Daemon CLI (after `pnpm --filter @agenticapps/dashboard-agent build`):
+
+- `agentic-dashboard start` — launch the daemon. Flags: `--bind <127.0.0.1|tailscale|0.0.0.0>`, `--port`, `--no-enforce-cidr`.
+- `agentic-dashboard stop` — graceful shutdown via `/api/admin/shutdown`.
+- `agentic-dashboard status [--json]` — daemon health + registry count.
+- `agentic-dashboard register <path>` (or `--auto <parentDir>`) — add project to registry.
+- `agentic-dashboard unregister <idOrPath>` — remove from registry.
+- `agentic-dashboard list [--json]` — list registered projects with reachability/phase/lastCommit.
+- `agentic-dashboard rename <id> <newName>` / `agentic-dashboard tag <id> <tags...>`.
+- `agentic-dashboard rotate-token` — issue a new bearer token (D-13/D-14/D-15).
+- `agentic-dashboard pair` — print a fresh pair URL for this device.

@@ -26,12 +26,9 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
     expect(result.stdout).toMatch(/0\.0\.1-alpha\.3/)
   })
 
-  it('exits 0 and prints alpha-placeholder on start', () => {
-    const result = spawnSync('node', [cliBundle, 'start'], { encoding: 'utf8' })
-    expect(result.status).toBe(0)
-    expect(result.stdout).toContain('alpha placeholder')
-    expect(result.stdout).toContain('Phase 1')
-  })
+  // NOTE: 'start' subprocess test removed from cli.test.ts (Plan 01-04).
+  // The real boot test (boot → /health curl → SIGTERM) lives in
+  // src/cli/__tests__/start.subprocess.test.ts which has full daemon lifecycle isolation.
 
   it('emits HealthResponseSchema-valid JSON on --version --json', () => {
     const result = spawnSync('node', [cliBundle, '--version', '--json'], { encoding: 'utf8' })

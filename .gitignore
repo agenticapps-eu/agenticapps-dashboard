@@ -1,4 +1,5 @@
 .claude/skills/
+.gstack/
 node_modules
 dist
 .turbo
