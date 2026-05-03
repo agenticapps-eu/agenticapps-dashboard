@@ -1,4 +1,4 @@
-import { open } from 'node:fs/promises'
+import { open, realpath } from 'node:fs/promises'
 import { constants as fsConstants } from 'node:fs'
 import { createHash } from 'node:crypto'
 
@@ -45,12 +45,46 @@ readRoute.get(
     // Throws PathViolation → caught by errorHandler → 422 with path_not_allowed
     const real = await resolveAllowed(project.root, relPath)
 
-    // Open with O_NOFOLLOW so a symlink swap between resolveAllowed's realpath()
-    // and this open() (TOCTOU window) fails at open time rather than reading
-    // through the planted symlink. Then fstat the fd to enforce regular-file +
-    // size cap; reading from the fd avoids re-resolving the path.
-    const fh = await open(real, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+    // Open with O_NOFOLLOW so a symlink swap of the FINAL component between
+    // resolveAllowed's realpath() and this open() (TOCTOU window) fails at
+    // open time. ELOOP/ENOTDIR/ENOENT from intermediate-component swaps
+    // surface here too — translate them into path_not_allowed (422), not 500.
+    let fh
     try {
+      fh = await open(real, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === 'ELOOP' || code === 'EMLINK' || code === 'ENOTDIR' || code === 'ENOENT') {
+        return c.json(
+          { ok: false, error: 'path_not_allowed', requestId: c.get('requestId') },
+          422,
+        )
+      }
+      throw err
+    }
+    try {
+      // Re-realpath the same path string after open. If a parent component was
+      // swapped to a symlink between resolveAllowed and open, realpath() now
+      // resolves through the swap and yields a path different from `real`. The
+      // fd may already be bound to the attacker's file, but we close it without
+      // reading. (Defense beyond this requires openat() chains, which Node
+      // doesn't expose portably; this catches the realistic same-uid swap.)
+      let real2: string
+      try {
+        real2 = await realpath(real)
+      } catch {
+        return c.json(
+          { ok: false, error: 'path_not_allowed', requestId: c.get('requestId') },
+          422,
+        )
+      }
+      if (real2 !== real) {
+        return c.json(
+          { ok: false, error: 'path_not_allowed', requestId: c.get('requestId') },
+          422,
+        )
+      }
+
       const st = await fh.stat()
       if (!st.isFile()) {
         return c.json(
@@ -64,9 +98,25 @@ readRoute.get(
           413,
         )
       }
-      const buf = await fh.readFile()
-      const content = buf.toString('utf8')
-      const sha256 = createHash('sha256').update(buf).digest('hex')
+      // Read at most MAX_READ_BYTES from the fd. Hard-cap at the buffer length
+      // so a file growing concurrently between stat() and read cannot exceed
+      // the budget (Codex cross-confirmed concern). After the bounded read,
+      // assert no more bytes remain so we don't silently truncate.
+      const buf = Buffer.allocUnsafe(MAX_READ_BYTES)
+      const { bytesRead } = await fh.read(buf, 0, MAX_READ_BYTES, 0)
+      if (bytesRead >= MAX_READ_BYTES) {
+        const peek = Buffer.allocUnsafe(1)
+        const { bytesRead: extra } = await fh.read(peek, 0, 1, MAX_READ_BYTES)
+        if (extra > 0) {
+          return c.json(
+            { ok: false, error: 'file_too_large', requestId: c.get('requestId') },
+            413,
+          )
+        }
+      }
+      const slice = buf.subarray(0, bytesRead)
+      const content = slice.toString('utf8')
+      const sha256 = createHash('sha256').update(slice).digest('hex')
       return outbound(c, ReadResponseSchema.parse.bind(ReadResponseSchema), {
         content,
         mtime: st.mtime.toISOString(),
