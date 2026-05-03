@@ -47,45 +47,43 @@ created: 2026-05-03
 
 **Layout container:** `max-w-3xl` (768px) for `/onboarding` and `/settings`. `max-w-4xl` (896px) for the eventual home page (Phase 3); Phase 2 root `/` placeholder uses `max-w-3xl` to match. Page horizontal padding: `px-6` (24px) on mobile, `px-8` (32px) ≥ md breakpoint.
 
-Exceptions: focus ring (`outline-offset-2`) — that's an outline, not a margin/padding token. Permitted.
+**Exceptions to the 4px-multiple rule:** focus-ring offsets (`outline-offset-2`, `ring-offset-2`) are explicit exceptions — they're outline geometry, not layout spacing. **No other `*.5` Tailwind utilities are permitted** anywhere in component contracts (no `px-1.5`, no `py-0.5`, no `gap-1.5`, no `mt-2.5`, no `space-x-1.5`).
 
 ---
 
 ## Typography
 
-**Two weights only: 400 (regular) and 600 (semibold).** Hierarchy via size + weight + spacing, never color alone.
+**Four sizes, two weights.** Two weights only: 400 (regular) and 600 (semibold). Hierarchy via size + weight + spacing, never color alone. The Label tier serves dual duty as the project's mono code/diagnostic tier — an explicit family override (`font-mono`) on Label-tier elements keeps the scale at four while supporting code rendering.
 
-| Role | Size | Weight | Line Height | Tailwind | Usage |
-|------|------|--------|-------------|----------|-------|
-| Body | 16px | 400 | 1.5 (24px) | `text-base font-normal leading-relaxed` (use `leading-6` for exact 24px) | Default paragraph copy in onboarding aside, panel descriptions, form helper text. |
-| Label | 14px | 600 | 1.4 (≈20px) | `text-sm font-semibold leading-tight` | Form field labels, button labels, table headers, banner CTA. |
-| Heading | 20px | 600 | 1.3 (26px) | `text-xl font-semibold leading-snug` | Panel headings (e.g. "Schema drift detected", "Daemon not running"); `/settings` section titles. |
-| Display | 28px | 600 | 1.2 (≈34px) | `text-3xl font-semibold leading-tight tracking-tight` | OnboardingHero headline ("One local daemon. Every device.") only. |
-| Caption | 12px | 400 | 1.4 (≈17px) | `text-xs font-normal leading-snug` | Footer build-stamp, "matched: …" diagnostic lines, tertiary disclosures. **Use sparingly** — overuse signals dense data, which Phase 2 doesn't have. |
-| Code | 13px | 400 | 1.5 (≈20px) | `font-mono text-[13px] leading-relaxed` | Inside `<CodeBlock>`; `<SchemaDriftState>` field-path/expected/got values. |
+| Role | Size | Weight | Line Height | Family | Tailwind | Usage |
+|------|------|--------|-------------|--------|----------|-------|
+| Label | 14px | 400 / 600 | 1.4 (≈20px) | system-sans OR system-mono | `text-sm font-semibold leading-tight` (sans) · `font-mono text-sm` (mono) | Form field labels, button labels, table headers, banner CTA (sans/600); footer build-stamp, "matched: …" diagnostic lines, tertiary disclosures (sans/400 with `text-[--text-muted]`); `<CodeBlock>` body, `<SchemaDriftState>` field-path/expected/got values, inline `<code>` (mono/400). |
+| Body | 16px | 400 | 1.5 (24px) | system-sans | `text-base font-normal leading-relaxed` (use `leading-6` for exact 24px) | Default paragraph copy in onboarding aside, panel descriptions, form helper text. |
+| Heading | 20px | 600 | 1.3 (26px) | system-sans | `text-xl font-semibold leading-snug` | Panel headings (e.g. "Schema drift detected", "Daemon not running"); `/settings` section titles. |
+| Display | 28px | 600 | 1.2 (≈34px) | system-sans | `text-3xl font-semibold leading-tight tracking-tight` | OnboardingHero headline ("One local daemon. Every device.") only. |
 
 **Verbatim values for the executor:**
 
 ```css
 /* In global.css @theme block — referenced by Tailwind utilities. */
+--text-label: 0.875rem;   /* 14px — sans (default) and mono (override) */
 --text-body: 1rem;        /* 16px */
---text-label: 0.875rem;   /* 14px */
 --text-heading: 1.25rem;  /* 20px */
 --text-display: 1.75rem;  /* 28px */
---text-caption: 0.75rem;  /* 12px */
---text-code: 0.8125rem;   /* 13px */
 
---leading-body: 1.5;
 --leading-label: 1.4;
+--leading-body: 1.5;
 --leading-heading: 1.3;
 --leading-display: 1.2;
 ```
 
 **Rules:**
 - No font sizes outside this table. If the executor reaches for a 5th size, the spec is wrong — fix the spec, don't add a size.
+- **No `--text-caption` (12px) and no `--text-code` (13px).** Visual de-emphasis below Body is achieved via `text-[--text-muted]` on Label, NOT a size shrink. Mono code/diagnostic content uses `font-mono text-sm` (14px Label tier).
+- 12px is also borderline for WCAG AA contrast on tinted dark backgrounds — the Label-tier minimum (14px) keeps every reader on AAA-friendly territory.
 - No font weight other than 400 or 600. **No 500.** No 700. No italic for hierarchy (italic is for emphasis-in-prose only; Phase 2 has no prose that needs it).
 - `tracking-tight` (-0.025em) only on Display (28px). Body text uses default tracking.
-- Numerals in `<CodeBlock>` are mono regardless of context.
+- Numerals in `<CodeBlock>` are mono (Label tier with `font-mono`) regardless of context.
 
 ---
 
@@ -108,7 +106,7 @@ CSS variables drive both themes from a single class. Variables in `:root` (light
 | Border | `--border` | `#262626` (neutral-800) | `#e5e5e5` (neutral-200) | `border-[--border]` | All 1px borders. NEVER use accent for ordinary borders. |
 | Border strong | `--border-strong` | `#404040` (neutral-700) | `#d4d4d4` (neutral-300) | `border-[--border-strong]` | Form input border (default), code block border |
 | Text primary | `--text` | `#fafafa` (neutral-50) | `#0a0a0a` (neutral-950) | `text-[--text]` | Body, headings, labels |
-| Text muted | `--text-muted` | `#a3a3a3` (neutral-400) | `#525252` (neutral-600) | `text-[--text-muted]` | Helper text, captions, "matched: …" diagnostics, footer stamp |
+| Text muted | `--text-muted` | `#a3a3a3` (neutral-400) | `#525252` (neutral-600) | `text-[--text-muted]` | Helper text, de-emphasized Label-tier copy (footer stamp, "matched: …" diagnostics, tertiary disclosures) |
 | Text subtle | `--text-subtle` | `#737373` (neutral-500) | `#737373` (neutral-500) | `text-[--text-subtle]` | Disabled labels, decorative dividers — same in both themes (mid-gray works either side) |
 | Accent (10%) | `--accent` | `#3b82f6` (blue-500) | `#2563eb` (blue-600) | `text-[--accent]` / `bg-[--accent]` / `ring-[--accent]` | See "Accent reserved for" below |
 | Accent hover | `--accent-hover` | `#60a5fa` (blue-400) | `#1d4ed8` (blue-700) | `bg-[--accent-hover]` | Hover state on accent-tinted elements |
@@ -280,7 +278,7 @@ type SchemaDriftStateProps = {
   /** Full zod issue tree (rendered inside <details>) */
   fullIssues: ZodIssue[]
   /** Retries the underlying TanStack Query */
-  onReload: () => void
+  onRetry: () => void
 }
 ```
 
@@ -299,7 +297,7 @@ type SchemaDriftStateProps = {
 |                                                              |
 |  > Show full diff                                            |
 |                                                              |
-|  [ Reload ]                                                  |
+|  [ Retry request ]                                           |
 +--------------------------------------------------------------+
 ```
 
@@ -307,12 +305,12 @@ Tokens & spacing:
 - Container: `bg-[--surface]` + `border border-[--border]` + `rounded-md` (6px radius — soft, not chunky). Padding `p-6` (24px).
 - Heading row: `flex items-center gap-2`. Icon `<AlertTriangle size={16} />` colored `--danger`. Heading text "Schema drift detected" — Heading size (20px / 600), `text-[--text]`. (Heading is NOT colored danger — color is in the icon only; per "no decorative color" anti-slop rule.)
 - Explanation paragraph: Body size, `text-[--text-muted]`. Margin-top `mt-3` (12px).
-- Field-path block: `mt-6` (24px) below explanation. Three Code-sized lines, monospace, in a `<dl>`:
-  - `<dt>field:</dt><dd>phaseProgress.evidenceCount</dd>` — dt is `text-[--text-muted]` 13px mono; dd is `text-[--text]` 13px mono. Gap between dt and dd: 8px (CSS grid `grid-cols-[max-content_1fr] gap-x-2 gap-y-1`).
+- Field-path block: `mt-6` (24px) below explanation. Three Label-tier mono lines (14px `font-mono`) in a `<dl>`:
+  - `<dt>field:</dt><dd>phaseProgress.evidenceCount</dd>` — dt is `text-[--text-muted] font-mono text-sm`; dd is `text-[--text] font-mono text-sm`. Gap between dt and dd: 8px (CSS grid `grid-cols-[max-content_1fr] gap-x-2 gap-y-1`).
   - `<dt>expected:</dt><dd>number</dd>`.
   - `<dt>got:</dt><dd>undefined</dd>`.
-- Disclosure: `<details>` with `<summary>Show full diff</summary>`. Summary is Label size, `text-[--accent]` with subtle underline on focus/hover (link-styled). When open, body shows the full Zod issue tree as a `<pre><code>` in 13px mono, `bg-[--surface-elevated]` `p-4` `rounded` block, max-height 240px with `overflow-auto`. `mt-4` from preceding block.
-- Reload button: secondary style — `bg-[--surface-elevated] hover:bg-[--border]` + `border border-[--border-strong]`, `text-[--text]`, padding `px-4 py-2` (16/8 → 36px height), Label size. Has lucide `<RefreshCw size={14} />` left-icon with `mr-2` (8px) gap. `mt-6` from preceding.
+- Disclosure: `<details>` with `<summary>Show full diff</summary>`. Summary is Label size, `text-[--accent]` with subtle underline on focus/hover (link-styled). When open, body shows the full Zod issue tree as a `<pre><code>` in Label-tier mono (`font-mono text-sm`), `bg-[--surface-elevated]` `p-4` `rounded` block, max-height 240px with `overflow-auto`. `mt-4` from preceding block.
+- Retry button: secondary style — `bg-[--surface-elevated] hover:bg-[--border]` + `border border-[--border-strong]`, `text-[--text]`, padding `px-4 py-2` (16/8 → 36px height), Label size. Has lucide `<RefreshCw size={14} />` left-icon with `mr-2` (8px) gap. `mt-6` from preceding.
 
 **Reduced motion:** disclosure open/close uses native `<details>` toggle; no custom animation. Respect inherent `<details>` snap.
 
@@ -327,8 +325,8 @@ Tokens & spacing:
 type DaemonUnreachableStateProps = {
   /** Display the URL the SPA tried to reach (helps the user verify their pairing) */
   agentUrl: string
-  /** Retries the underlying TanStack Query */
-  onReload: () => void
+  /** Re-attempts the underlying fetch after the user has started the daemon */
+  onRetry: () => void
 }
 ```
 
@@ -339,9 +337,9 @@ type DaemonUnreachableStateProps = {
 |  [!] Daemon not running                                      |
 |                                                              |
 |  Couldn't reach the agent at http://127.0.0.1:5193.          |
-|  Start it with `agentic-dashboard start` and reload.         |
+|  Start it with `agentic-dashboard start` and try again.      |
 |                                                              |
-|  [ Reload ]                                                  |
+|  [ Try again ]                                               |
 +--------------------------------------------------------------+
 ```
 
@@ -349,8 +347,8 @@ Tokens:
 - Same container shape as drift state.
 - Icon `<AlertTriangle size={16} />` colored `--warning`.
 - Heading: "Daemon not running" — Heading size (20px / 600), `text-[--text]`.
-- Body: Body size, `text-[--text-muted]`. `agentUrl` is rendered inline in `<code>` with `font-mono text-[13px] bg-[--surface-elevated] px-1.5 py-0.5 rounded`.
-- Reload button: same as drift state.
+- Body: Body size, `text-[--text-muted]`. `agentUrl` is rendered inline in `<code>` with `font-mono text-sm bg-[--surface-elevated] px-2 rounded` (8px horizontal padding; vertical rhythm comes from the inherited body line-height — no explicit `py-*`).
+- Try-again button: same as Retry button on drift state.
 
 **No "open onboarding" / "re-pair" CTA in this state** — the issue is a stopped daemon, not a credential mismatch (D-07).
 
@@ -434,7 +432,7 @@ type CodeBlockProps = {
 
 Layout:
 - Outer: `flex items-stretch gap-2`.
-- Code container: `flex-1 bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 font-mono text-[13px] text-[--text] overflow-x-auto whitespace-nowrap`.
+- Code container: `flex-1 bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 font-mono text-sm text-[--text] overflow-x-auto whitespace-nowrap`.
 - Copy button: 36×36px square (matching code-container height), `bg-[--surface-elevated] hover:bg-[--border]` + `border border-[--border-strong] rounded-md`, lucide `<Copy size={14} />` centered. Aria-label = `copyLabel` prop.
 
 States on copy button:
@@ -478,10 +476,10 @@ States on copy button:
 Layout:
 - Container: `<section class="bg-[--surface] border border-[--border] rounded-md p-6">`.
 - Section heading: "Manual pair" — Heading size, `mb-6` (24px below).
-- Each field: `<div class="space-y-2">` containing `<label>`, `<input>`, `<p class="text-[--text-muted] text-xs">helper</p>`.
+- Each field: `<div class="space-y-2">` containing `<label>`, `<input>`, `<p class="text-[--text-muted] text-sm">helper</p>`.
   - Label: Label size, `text-[--text]`.
-  - Input: `w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 font-mono text-[13px] text-[--text] placeholder:text-[--text-subtle]`. Both fields are mono (URL + token are both fixed-width-friendly).
-  - Helper: Caption size (12px), `text-[--text-muted]`.
+  - Input: `w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 font-mono text-sm text-[--text] placeholder:text-[--text-subtle]`. Both fields are mono (URL + token are both fixed-width-friendly).
+  - Helper: Label tier (14px) with `text-[--text-muted]` for de-emphasis.
 - Field-to-field gap: `space-y-6` on the form (24px between fields).
 - Submit button: 24px above field stack. Primary style (only place primary fill appears in Phase 2): `bg-[--accent] text-[--accent-fg] hover:bg-[--accent-hover]` + `rounded-md px-4 py-2 font-semibold text-sm`. Disabled state: `opacity-50 cursor-not-allowed bg-[--surface-elevated] text-[--text-subtle]`.
 
@@ -562,7 +560,7 @@ Tokens: container same as `<SchemaDriftState>` (surface card, p-6). Heading + bo
 +--------------------------------------------------------------+
 ```
 
-Body shows the agentUrl in monospace inline. Same card chrome as the help stub.
+Body shows the agentUrl in monospace inline (`font-mono text-sm`). Same card chrome as the help stub.
 
 ---
 
@@ -593,10 +591,10 @@ Verbatim copy. The executor uses these strings exactly; the auditor diffs implem
 | **SchemaDriftState — body** | The agent and dashboard disagree on the shape of this response. Update both ends to match. |
 | **SchemaDriftState — field row labels** | `field:` / `expected:` / `got:` |
 | **SchemaDriftState — disclosure** | Show full diff |
-| **SchemaDriftState — reload button** | Reload |
+| **SchemaDriftState — retry button** | Retry request |
 | **DaemonUnreachableState — heading** | Daemon not running |
-| **DaemonUnreachableState — body** | Couldn't reach the agent at `{agentUrl}`. Start it with `agentic-dashboard start` and reload. |
-| **DaemonUnreachableState — reload button** | Reload |
+| **DaemonUnreachableState — body** | Couldn't reach the agent at `{agentUrl}`. Start it with `agentic-dashboard start` and try again. |
+| **DaemonUnreachableState — retry button** | Try again |
 | **ManualPairForm — section heading** | Manual pair |
 | **ManualPairForm — agent URL label** | Agent URL |
 | **ManualPairForm — agent URL helper** | Loopback or *.ts.net only. |
@@ -637,6 +635,7 @@ Verbatim copy. The executor uses these strings exactly; the auditor diffs implem
 - Em-dashes (—) and en-dashes (–) are the Unicode characters, not double hyphens.
 - "Cannot" → "couldn't" / "didn't" — friendlier and more accurate (the failure is a one-time event, not an architectural impossibility).
 - No emoji. No "✨", "🚀", "⚡". The `→` in "Why local-only →" is typographic (U+2192), allowed.
+- Retry CTAs use a verb + object pair. `<SchemaDriftState>` uses **"Retry request"** (panel-scoped — re-runs the underlying TanStack Query). `<DaemonUnreachableState>` uses **"Try again"** (network-error retry semantic — re-attempts the fetch after the user starts the daemon). Single-word retry labels ("Reload", "Retry") are banned — they ship without a noun and read as system jargon.
 
 **No destructive confirmations in Phase 2.** When destructive actions arrive (Phase 3+ unregister, Phase 6 token rotation UI), they get a confirmation copy contract; not now.
 
