@@ -1,7 +1,7 @@
 import pc from 'picocolors'
 
 import { agentError, agentLog } from '../lib/logging.js'
-import { addProject, removeProject } from '../lib/registry.js'
+import { addProject, RegistrationPathBlocked, removeProject } from '../lib/registry.js'
 import { ensureAuthFile } from '../lib/auth.js'
 
 import { discoverProjects, registerInteractive, type RegisterInteractiveOpts } from './discover.js'
@@ -61,7 +61,16 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
     tags: opts.tag ?? [],
   }
   if (opts.name !== undefined) addOpts.name = opts.name
-  const result = addProject(pathArg, addOpts)
+  let result: ReturnType<typeof addProject>
+  try {
+    result = addProject(pathArg, addOpts)
+  } catch (err) {
+    if (err instanceof RegistrationPathBlocked) {
+      agentError(`refusing to register ${err.target}: ${err.reason}`)
+      process.exit(1)
+    }
+    throw err
+  }
   if (result.alreadyRegistered) {
     agentLog(
       pc.gray(

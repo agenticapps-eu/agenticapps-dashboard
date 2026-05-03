@@ -13,7 +13,8 @@ import {
   statSync,
   readdirSync,
 } from 'node:fs'
-import { basename, dirname, resolve } from 'node:path'
+import { homedir } from 'node:os'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 
 import { execa } from 'execa'
 import {
@@ -66,6 +67,100 @@ function canonicaliseRoot(pathArg: string): string {
   }
 }
 
+/**
+ * Thrown when a registration target falls inside a known-sensitive system
+ * root or a user-secret dotfile dir. Stopgap defense against a confused-deputy
+ * scenario where a token holder (compromised SPA, browser extension, leaked
+ * pair URL) registers a high-value path and reads its `.planning` / `.claude`
+ * subtrees via /api/projects/:id/read. Proper fix (SPA banner-confirmed nonce)
+ * is deferred to Phase 2.
+ */
+export class RegistrationPathBlocked extends Error {
+  constructor(public readonly target: string, public readonly reason: string) {
+    super(`registration path is blocked: ${target} (${reason})`)
+    this.name = 'RegistrationPathBlocked'
+  }
+}
+
+/**
+ * System roots whose subtrees are not legitimate AgenticApps project dirs.
+ * Exact match OR child of (i.e. canonicalPath === root or starts with root+sep).
+ */
+const SYSTEM_ROOT_BLOCKLIST: readonly string[] = [
+  '/',
+  '/bin',
+  '/boot',
+  '/dev',
+  '/etc',
+  '/Library',
+  '/proc',
+  '/private/etc',
+  '/private/var/db',
+  '/private/var/root',
+  '/sbin',
+  '/sys',
+  '/System',
+  '/usr/bin',
+  '/usr/include',
+  '/usr/lib',
+  '/usr/libexec',
+  '/usr/sbin',
+  '/usr/share',
+  '/usr/local/bin',
+  '/usr/local/etc',
+  '/usr/local/sbin',
+]
+
+/**
+ * Names of dotfile dirs in $HOME that hold credentials/secrets and must never
+ * be registered. Combined with $HOME at check time so the list is OS-portable.
+ */
+const HOME_SECRET_DIR_NAMES: readonly string[] = [
+  '.aws',
+  '.azure',
+  '.config',
+  '.docker',
+  '.gcloud',
+  '.gnupg',
+  '.kube',
+  '.npm',
+  '.pgpass',
+  '.pki',
+  '.ssh',
+]
+
+function pathEqualsOrIsUnder(canonical: string, root: string): boolean {
+  return canonical === root || canonical.startsWith(root + sep)
+}
+
+/**
+ * Reject canonicalRoots that point at system or user-secret directories.
+ * No-op for normal project paths (anywhere under $HOME that isn't a secret dir,
+ * or anywhere under /tmp / /var/folders for tests). Throws RegistrationPathBlocked
+ * with a human-readable reason on hit.
+ */
+export function assertRegistrationAllowed(canonicalRoot: string): void {
+  for (const sysRoot of SYSTEM_ROOT_BLOCKLIST) {
+    if (pathEqualsOrIsUnder(canonicalRoot, sysRoot)) {
+      throw new RegistrationPathBlocked(canonicalRoot, `${sysRoot} is a system path`)
+    }
+  }
+  const home = homedir()
+  for (const name of HOME_SECRET_DIR_NAMES) {
+    const dir = join(home, name)
+    if (pathEqualsOrIsUnder(canonicalRoot, dir)) {
+      throw new RegistrationPathBlocked(
+        canonicalRoot,
+        `${join('~', name)} holds credentials/secrets`,
+      )
+    }
+  }
+  // Daemon's own state dir — registering it would expose auth.json / registry.json.
+  if (pathEqualsOrIsUnder(canonicalRoot, CONFIG_DIR)) {
+    throw new RegistrationPathBlocked(canonicalRoot, "daemon's own state directory")
+  }
+}
+
 export function ensureRegistryFile(filePath: string = REGISTRY_FILE): void {
   ensureConfigDir(dirname(filePath))
   if (!existsSync(filePath)) {
@@ -104,6 +199,7 @@ export function addProject(
   filePath: string = REGISTRY_FILE,
 ): AddResult {
   const root = canonicaliseRoot(pathArg)
+  assertRegistrationAllowed(root)
   const reg = readRegistry(filePath)
   const existing = reg.projects.find((p) => p.root === root)
   if (existing) return { entry: existing, alreadyRegistered: true }

@@ -122,4 +122,17 @@ describe('registry routes', () => {
     })
     expect(res.status).toBe(422)
   })
+
+  it('POST /api/registry/register with blocked system path returns 422 registration_path_blocked (B2)', async () => {
+    const app = createApp({ registryFile })
+    const res = await app.request('http://127.0.0.1:5193/api/registry/register', {
+      method: 'POST',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '/etc' }),
+    })
+    expect(res.status).toBe(422)
+    const body = await res.json() as { ok: boolean; error: string; detail: string }
+    expect(body.error).toBe('registration_path_blocked')
+    expect(body.detail).toMatch(/system path/)
+  })
 })

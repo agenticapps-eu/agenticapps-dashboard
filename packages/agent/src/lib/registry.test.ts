@@ -1,5 +1,5 @@
 import { mkdtempSync, rmSync, symlinkSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -15,6 +15,8 @@ import {
   setTags,
   listProjectsWithStatus,
   slugify,
+  assertRegistrationAllowed,
+  RegistrationPathBlocked,
 } from './registry.js'
 
 describe('slugify', () => {
@@ -265,6 +267,59 @@ describe('listProjectsWithStatus', () => {
     try {
       addProject(fakeRoot, {}, regFile)
       await expect(listProjectsWithStatus(regFile)).resolves.toHaveLength(1)
+    } finally {
+      cleanup()
+    }
+  })
+})
+
+describe('assertRegistrationAllowed (B2 confused-deputy stopgap)', () => {
+  it('throws RegistrationPathBlocked for system roots', () => {
+    expect(() => assertRegistrationAllowed('/etc')).toThrow(RegistrationPathBlocked)
+    expect(() => assertRegistrationAllowed('/usr/bin')).toThrow(RegistrationPathBlocked)
+    expect(() => assertRegistrationAllowed('/System')).toThrow(RegistrationPathBlocked)
+    expect(() => assertRegistrationAllowed('/')).toThrow(RegistrationPathBlocked)
+  })
+
+  it('throws for paths under system roots (e.g. /etc/foo)', () => {
+    expect(() => assertRegistrationAllowed('/etc/foo')).toThrow(RegistrationPathBlocked)
+    expect(() => assertRegistrationAllowed('/usr/bin/foo')).toThrow(RegistrationPathBlocked)
+  })
+
+  it('throws for $HOME credential dirs', () => {
+    expect(() => assertRegistrationAllowed(join(homedir(), '.ssh'))).toThrow(RegistrationPathBlocked)
+    expect(() => assertRegistrationAllowed(join(homedir(), '.aws'))).toThrow(RegistrationPathBlocked)
+    expect(() => assertRegistrationAllowed(join(homedir(), '.gnupg', 'pubring.gpg'))).toThrow(RegistrationPathBlocked)
+  })
+
+  it('throws for the daemon state dir itself', () => {
+    expect(() => assertRegistrationAllowed(join(homedir(), '.agenticapps', 'dashboard'))).toThrow(
+      RegistrationPathBlocked,
+    )
+    expect(() =>
+      assertRegistrationAllowed(join(homedir(), '.agenticapps', 'dashboard', 'subdir')),
+    ).toThrow(RegistrationPathBlocked)
+  })
+
+  it('allows normal project paths under $HOME (e.g. ~/Sourcecode/myproject)', () => {
+    expect(() =>
+      assertRegistrationAllowed(join(homedir(), 'Sourcecode', 'myproject')),
+    ).not.toThrow()
+  })
+
+  it('allows /tmp and /var/folders (test fixtures depend on these)', () => {
+    expect(() => assertRegistrationAllowed('/tmp/myproject')).not.toThrow()
+    expect(() => assertRegistrationAllowed('/var/folders/abc/T/agentic-test-')).not.toThrow()
+    expect(() => assertRegistrationAllowed('/private/var/folders/abc/T/x')).not.toThrow()
+  })
+
+  it('addProject() rethrows the error so HTTP / CLI layers can format it', () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    try {
+      expect(() => addProject('/etc', {}, regFile)).toThrow(RegistrationPathBlocked)
+      // Registry stays empty
+      expect(readRegistry(regFile).projects).toHaveLength(0)
     } finally {
       cleanup()
     }

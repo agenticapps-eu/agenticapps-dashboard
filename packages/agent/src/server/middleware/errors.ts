@@ -6,6 +6,7 @@ import { ZodError } from 'zod'
 import { agentError } from '../../lib/logging.js'
 import { PathViolation } from '../../lib/paths.js'
 import { GitNotAllowedError } from '../../lib/git.js'
+import { RegistrationPathBlocked } from '../../lib/registry.js'
 import { StateCorruptionError } from '../../lib/stateCorruption.js'
 
 /**
@@ -73,6 +74,20 @@ export const errorHandler: ErrorHandler = (err, c) => {
     agentError(`path violation requestId=${requestId} ${err.message}`)
     return c.json(
       { ok: false, error: 'path_not_allowed', requestId, ...(isDev && { detail: err.message }) },
+      422,
+    )
+  }
+
+  if (err instanceof RegistrationPathBlocked) {
+    agentError(`registration blocked requestId=${requestId} target=${err.target} reason=${err.reason}`)
+    return c.json(
+      {
+        ok: false,
+        error: 'registration_path_blocked',
+        requestId,
+        // Always include reason — it's about the user-supplied path, not server internals.
+        detail: err.reason,
+      },
       422,
     )
   }
