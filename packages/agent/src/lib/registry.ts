@@ -27,6 +27,7 @@ import {
 import { CONFIG_DIR, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { parseOrCorrupt } from './stateCorruption.js'
 
 export type { RegistryEntry, RegistryFile, RegistryListItem }
 
@@ -58,7 +59,11 @@ export function ensureRegistryFile(filePath: string = REGISTRY_FILE): void {
 
 export function readRegistry(filePath: string = REGISTRY_FILE): RegistryFile {
   ensureRegistryFile(filePath)
-  return RegistryFileSchema.parse(JSON.parse(readFileSync(filePath, 'utf8')))
+  return parseOrCorrupt(
+    RegistryFileSchema,
+    JSON.parse(readFileSync(filePath, 'utf8')),
+    'registry.json',
+  )
 }
 
 export function writeRegistry(reg: RegistryFile, filePath: string = REGISTRY_FILE): void {

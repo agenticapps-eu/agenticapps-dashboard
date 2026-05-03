@@ -6,6 +6,7 @@ import { ZodError } from 'zod'
 import { agentError } from '../../lib/logging.js'
 import { PathViolation } from '../../lib/paths.js'
 import { GitNotAllowedError } from '../../lib/git.js'
+import { StateCorruptionError } from '../../lib/stateCorruption.js'
 
 /**
  * D-16: Outbound schema-drift defense.
@@ -48,6 +49,13 @@ export function outbound<T>(
 export const errorHandler: ErrorHandler = (err, c) => {
   const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
   const isDev = process.env.NODE_ENV === 'development'
+
+  if (err instanceof StateCorruptionError) {
+    agentError(
+      `schema_drift requestId=${requestId} source=${err.source} ${JSON.stringify(err.cause.flatten())}`,
+    )
+    return c.json({ ok: false, error: 'schema_drift', requestId }, 500)
+  }
 
   if (err instanceof ZodError) {
     agentError(`zod validation failed requestId=${requestId} ${JSON.stringify(err.flatten())}`)

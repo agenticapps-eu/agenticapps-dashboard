@@ -18,6 +18,7 @@ import { AGENT_VERSION } from '../version.js'
 import { AUTH_FILE, CONFIG_DIR, TOKEN_ROTATION_DAYS } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { parseOrCorrupt } from './stateCorruption.js'
 
 export type { AuthFile }
 
@@ -92,7 +93,7 @@ function ensureConfigDir(dir: string = CONFIG_DIR): void {
 
 export function readAuthFile(filePath: string = AUTH_FILE): AuthFile {
   const raw = readFileSync(filePath, 'utf8')
-  return AuthFileSchema.parse(JSON.parse(raw))
+  return parseOrCorrupt(AuthFileSchema, JSON.parse(raw), 'auth.json')
 }
 
 /**
