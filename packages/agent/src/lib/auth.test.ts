@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
 import { join } from 'node:path'
 import { writeFileSync, chmodSync } from 'node:fs'
+
+import { describe, it, expect, afterEach } from 'vitest'
+
 import { makeTmpHome } from './__fixtures__/tmpHome.js'
 import {
   generateToken,

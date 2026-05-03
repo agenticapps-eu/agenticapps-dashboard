@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { RegistryEntrySchema, RegistryFileSchema, RegistryListItemSchema, StatusResponseSchema } from './registry.js'
 
 describe('RegistryEntrySchema', () => {
@@ -11,6 +12,7 @@ describe('RegistryEntrySchema', () => {
   })
   it('rejects missing id', () => {
     const { id: _id, ...rest } = valid
+    void _id
     expect(() => RegistryEntrySchema.parse(rest)).toThrow()
   })
 })

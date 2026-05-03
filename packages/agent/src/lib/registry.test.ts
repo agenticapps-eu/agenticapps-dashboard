@@ -1,6 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+
+import { describe, it, expect } from 'vitest'
+
 import { makeTmpHome, makeTmpProject } from './__fixtures__/tmpHome.js'
 import {
   readRegistry,
@@ -11,7 +13,6 @@ import {
   setTags,
   listProjectsWithStatus,
   slugify,
-  ensureRegistryFile,
 } from './registry.js'
 
 describe('slugify', () => {

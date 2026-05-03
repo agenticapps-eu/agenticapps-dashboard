@@ -1,5 +1,7 @@
-import { describe, it, expect, afterEach } from 'vitest'
 import { join } from 'node:path'
+
+import { describe, it, expect, afterEach } from 'vitest'
+
 import { makeTmpHome } from './__fixtures__/tmpHome.js'
 import {
   isProcessAlive,

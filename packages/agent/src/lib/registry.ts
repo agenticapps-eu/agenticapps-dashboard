@@ -22,8 +22,10 @@ import {
   readdirSync,
 } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
+
 import { z } from 'zod'
 import { execa } from 'execa'
+
 import { CONFIG_DIR, REGISTRY_FILE } from '../constants.js'
 
 // Local schemas — will be replaced by shared imports in Plan 01-03

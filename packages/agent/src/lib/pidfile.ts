@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs'
+
 import { PIDFILE } from '../constants.js'
 
 /**

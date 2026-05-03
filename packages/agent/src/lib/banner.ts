@@ -1,4 +1,5 @@
 import pc from 'picocolors'
+
 import { PROD_ORIGIN } from '../constants.js'
 
 export interface BannerInput {

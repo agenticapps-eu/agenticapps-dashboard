@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { renderBanner, renderZeroBindWarning } from './banner.js'
 
 const SAMPLE_TOKEN = '8a3f-c9d2-1b47-e8f0-4a7c-9b1e-2d8a-6f93'

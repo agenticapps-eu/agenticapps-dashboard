@@ -15,7 +15,9 @@ import {
   chmodSync,
 } from 'node:fs'
 import { dirname, basename } from 'node:path'
+
 import { z } from 'zod'
+
 import { AGENT_VERSION } from '../version.js'
 import { AUTH_FILE, CONFIG_DIR, TOKEN_ROTATION_DAYS } from '../constants.js'
 

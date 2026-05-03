@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { ErrorResponseSchema } from './errors.js'
 
 describe('ErrorResponseSchema', () => {

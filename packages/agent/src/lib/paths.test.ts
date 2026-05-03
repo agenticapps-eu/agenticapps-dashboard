@@ -1,6 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest'
 import { realpath } from 'node:fs/promises'
 import { join } from 'node:path'
+
+import { describe, it, expect, afterEach } from 'vitest'
+
 import { makeTmpProject } from './__fixtures__/tmpHome.js'
 import { resolveAllowed, PathViolation } from './paths.js'
 
