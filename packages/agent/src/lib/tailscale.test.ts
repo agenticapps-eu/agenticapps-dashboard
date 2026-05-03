@@ -73,4 +73,16 @@ describe('getTailscaleHostname', () => {
     mockExeca.mockResolvedValueOnce({ stdout: 'not json', stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
     await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('100.64.5.5')
   })
+
+  it('falls back to IP when DNSName does not match *.ts.net format', async () => {
+    const status = { Self: { DNSName: 'attacker.example.com.' } }
+    mockExeca.mockResolvedValueOnce({ stdout: JSON.stringify(status), stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
+    await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('100.64.5.5')
+  })
+
+  it('falls back to IP when DNSName contains url-meaningful chars (e.g. ":/?")', async () => {
+    const status = { Self: { DNSName: 'evil:443/path?.ts.net.' } }
+    mockExeca.mockResolvedValueOnce({ stdout: JSON.stringify(status), stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
+    await expect(getTailscaleHostname('100.64.5.5')).resolves.toBe('100.64.5.5')
+  })
 })

@@ -48,7 +48,9 @@ export async function getTailscaleHostname(fallbackIp: string): Promise<string> 
     }
     // Strip trailing dot per RESEARCH key finding 5 (Pitfall 5)
     const dnsName = status.Self?.DNSName?.replace(/\.$/, '')
-    if (dnsName && dnsName.length > 0) return dnsName
+    // Defense-in-depth: only trust well-formed MagicDNS names ending in .ts.net.
+    // A malformed/spoofed value (e.g. injected via crafted tailscale state) falls back to IP.
+    if (dnsName && /^[a-zA-Z0-9.-]+\.ts\.net$/.test(dnsName)) return dnsName
   } catch {
     // Fall through to IP fallback (D-19)
   }
