@@ -1,7 +1,8 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-export const PROD_ORIGIN = 'https://dashboard.agenticapps.eu'
+// D-21: hardcode pages.dev for v1; flip to dashboard.agenticapps.eu in Phase 6.
+export const PROD_ORIGIN = 'https://agenticapps-dashboard.pages.dev'
 export const DEV_ORIGIN = 'http://localhost:5174'
 export const DEFAULT_HOST = '127.0.0.1'
 export const DEFAULT_PORT = 5193
