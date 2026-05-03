@@ -17,5 +17,6 @@ export const TOKEN_ROTATION_DAYS = 30
 export const SHUTDOWN_TIMEOUT_MS = 5_000
 export const TAILSCALE_SUBPROCESS_TIMEOUT_MS = 5_000
 export const CORS_MAX_AGE_SECONDS = 24 * 60 * 60
+export const MAX_READ_BYTES = 5 * 1024 * 1024 // 5 MiB cap on /api/projects/:id/read
 export const GIT_ALLOWED_CMDS = ['log', 'status', 'diff-stat', 'branch'] as const
 export type GitAllowedCmd = (typeof GIT_ALLOWED_CMDS)[number]
