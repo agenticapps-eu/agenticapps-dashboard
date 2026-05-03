@@ -32,6 +32,28 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
   const projects = await listProjectsWithStatus()
   const bindUrl = `http://${opts.host}:${opts.port}`
 
+  // Wire signal handlers BEFORE serve() so a Ctrl-C between the listen-callback
+  // (which writes the pidfile + server.json) and a later handler-attach call
+  // cannot leak state files. The shutdown closure captures `server` via the
+  // mutable `serverRef` so an early signal — before serve resolves — exits
+  // cleanly without dereferencing undefined.
+  let serverRef: ServerType | null = null
+  let stopping = false
+  const shutdown = (): void => {
+    if (stopping) return
+    stopping = true
+    if (serverRef) {
+      gracefulShutdown(serverRef)
+    } else {
+      // Signal arrived before serve() returned: nothing to close.
+      removePidfile()
+      removeServerInfo()
+      process.exit(0)
+    }
+  }
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
+
   const server = serve(
     { fetch: opts.app.fetch, hostname: opts.host, port: opts.port },
     () => {
@@ -55,14 +77,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
     },
   )
 
-  let stopping = false
-  const shutdown = (): void => {
-    if (stopping) return
-    stopping = true
-    gracefulShutdown(server)
-  }
-  process.on('SIGTERM', shutdown)
-  process.on('SIGINT', shutdown)
+  serverRef = server
 
   return server
 }

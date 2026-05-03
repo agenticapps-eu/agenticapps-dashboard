@@ -39,14 +39,19 @@ export interface CreateAppOptions {
 /**
  * Factory function: creates a Hono app with the correct middleware chain.
  *
- * Middleware ordering per RESEARCH key finding 3 (CORS BEFORE bearerAuth):
- *   1. logger        — capture all requests including failed auth
- *   2. requestId     — inject per-request UUID for log correlation
- *   3. cors          — MUST precede bearerAuth so OPTIONS preflight (no Authorization header) succeeds
- *   4. bearerAuth    — verifyToken reads in-memory activeToken ref at request entry (D-15)
- *   5. cidrMiddleware — optional; only mounted when enforceCIDR is true (D-18)
- *   6. routes        — business logic
- *   7. onError       — errorHandler (D-06 NODE_ENV-gated verbosity)
+ * Middleware ordering:
+ *   1. logger          — capture all requests including failed auth
+ *   2. requestId       — inject per-request UUID for log correlation
+ *   3. cidrMiddleware  — when enforceCIDR is true, refuse non-CGNAT IPs
+ *                        BEFORE cors so OPTIONS preflight from outside the
+ *                        Tailscale range cannot probe daemon presence (D-18)
+ *   4. cors            — MUST precede bearerAuth so OPTIONS preflight from
+ *                        an allowed-origin browser succeeds without an
+ *                        Authorization header (RESEARCH Pitfall 1)
+ *   5. bearerAuth      — verifyToken reads in-memory activeToken ref at
+ *                        request entry (D-15)
+ *   6. routes          — business logic
+ *   7. onError         — errorHandler (D-06 NODE_ENV-gated verbosity)
  */
 export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   const app = new Hono<Env>()
@@ -62,7 +67,12 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
     await next()
   })
 
-  // 3. CORS BEFORE bearerAuth (RESEARCH Pitfall 1: preflight has no Authorization header)
+  // 3. CIDR enforcement (only when --bind tailscale or 0.0.0.0 from boot, per D-18)
+  //    Runs BEFORE cors so an OPTIONS preflight from a non-CGNAT IP cannot
+  //    leak daemon presence/origin policy via the 204 preflight short-circuit.
+  if (opts.enforceCIDR) app.use(cidrMiddleware())
+
+  // 4. CORS BEFORE bearerAuth (RESEARCH Pitfall 1: preflight has no Authorization header)
   app.use(
     cors({
       origin: [PROD_ORIGIN, DEV_ORIGIN],
@@ -73,7 +83,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
     }),
   )
 
-  // 4. Bearer auth — verifyToken reads in-memory ref at request entry (D-15)
+  // 5. Bearer auth — verifyToken reads in-memory ref at request entry (D-15)
   //    Uses timingSafeEqual to prevent string-equality timing leaks; refuses
   //    empty tokens explicitly so a request with `Authorization: Bearer ` (or
   //    a transient activeToken='' state during boot) cannot satisfy the check.
@@ -89,9 +99,6 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
       },
     }),
   )
-
-  // 5. CIDR enforcement (only when --bind tailscale or 0.0.0.0 from boot, per D-18)
-  if (opts.enforceCIDR) app.use(cidrMiddleware())
 
   // 6. Routes
   app.route('/health', healthRoute)
