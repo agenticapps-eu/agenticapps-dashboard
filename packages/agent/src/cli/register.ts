@@ -23,9 +23,8 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
       agentLog(`No AgenticApps projects found under ${opts.auto}`)
       process.exit(0)
     }
+    // exactOptionalPropertyTypes: build opts with conditional property assignment
     const interactiveOpts: RegisterInteractiveOpts = {
-      yes: opts.yes,
-      dryRun: opts.dryRun,
       promptYesNo: async (q) => {
         process.stdout.write(`${q} `)
         const buf: Buffer[] = []
@@ -37,6 +36,8 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
         return ans === '' || ans === 'y' || ans === 'yes'
       },
     }
+    if (opts.yes !== undefined) interactiveOpts.yes = opts.yes
+    if (opts.dryRun !== undefined) interactiveOpts.dryRun = opts.dryRun
     const results = await registerInteractive(matches, interactiveOpts)
     for (const r of results) {
       if (r.reason === 'new') agentLog(pc.green(`registered ${r.match.name} (${r.match.root})`))
@@ -53,11 +54,13 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
     agentError('register: path argument required (or use --auto <parent-dir>)')
     process.exit(1)
   }
-  const result = addProject(pathArg, {
-    name: opts.name,
+  // exactOptionalPropertyTypes: conditionally assign optional name
+  const addOpts: { name?: string; client?: string | null; tags?: string[] } = {
     client: opts.client ?? null,
     tags: opts.tag ?? [],
-  })
+  }
+  if (opts.name !== undefined) addOpts.name = opts.name
+  const result = addProject(pathArg, addOpts)
   if (result.alreadyRegistered) {
     agentLog(
       pc.gray(

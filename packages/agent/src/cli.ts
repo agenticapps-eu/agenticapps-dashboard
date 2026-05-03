@@ -17,11 +17,13 @@ if (argv.includes('--version') && argv.includes('--json')) {
 
 const program = new Command()
 
+// NOTE: --version --json is handled by the early argv.includes() block above.
+// The root program does NOT define --json because commander would consume it before
+// subcommands (list, status) can see their own --json option.
 program
   .name('agentic-dashboard')
   .description('AgenticApps Dashboard local agent')
   .version(AGENT_VERSION, '-v, --version', 'output the agent version')
-  .option('--json', 'when paired with --version, emit full HealthResponse JSON')
 
 program
   .command('start')
