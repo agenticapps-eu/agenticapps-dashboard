@@ -22,7 +22,8 @@ export function outbound<T>(
   const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
   try {
     const validated = parse(payload)
-    return c.json(validated as Parameters<typeof c.json>[0])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return c.json(validated as any)
   } catch (err) {
     agentError(`schema_drift requestId=${requestId} ${String(err)}`)
     return c.json({ ok: false, error: 'schema_drift', requestId }, 500)

@@ -12,7 +12,8 @@ import type { Env } from '../server/app.js'
 export const healthRoute = new Hono<Env>()
 
 healthRoute.get('/', (c) => {
-  const reg = readRegistry()
+  const registryFile = c.get('registryFile') as string | undefined
+  const reg = readRegistry(registryFile)
   const payload: HealthResponse = {
     ok: true,
     version: AGENT_VERSION,

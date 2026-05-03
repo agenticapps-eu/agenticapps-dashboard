@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { readFile, stat } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
+import type { Context } from 'hono'
 
 import { ReadResponseSchema } from '@agenticapps/dashboard-shared'
 
@@ -14,15 +15,24 @@ import type { Env } from '../server/app.js'
 
 const ReadQuerySchema = z.object({ path: z.string().min(1) })
 
+function validationError(c: Context): Response {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const requestId = ((c as any).get?.('requestId') as string | undefined) ?? 'unknown'
+  return c.json({ ok: false, error: 'invalid_request', requestId }, 422)
+}
+
 export const readRoute = new Hono<Env>()
 
 readRoute.get(
   '/:id/read',
-  zValidator('query', ReadQuerySchema),
+  zValidator('query', ReadQuerySchema, (result, c) => {
+    if (!result.success) return validationError(c)
+  }),
   async (c) => {
     const { id } = c.req.param()
     const { path: relPath } = c.req.valid('query')
-    const reg = readRegistry()
+    const registryFile = c.get('registryFile') as string | undefined
+    const reg = readRegistry(registryFile)
     const project = reg.projects.find((p) => p.id === id)
     if (!project) {
       return c.json(

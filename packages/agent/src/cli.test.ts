@@ -26,11 +26,9 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
     expect(result.stdout).toMatch(/0\.0\.1-alpha\.3/)
   })
 
-  it('exits 0 and prints alpha-placeholder on start', () => {
+  it('exits 0 on start (daemon boot wired in Plan 01-04)', () => {
     const result = spawnSync('node', [cliBundle, 'start'], { encoding: 'utf8' })
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain('alpha placeholder')
-    expect(result.stdout).toContain('Phase 1')
   })
 
   it('emits HealthResponseSchema-valid JSON on --version --json', () => {

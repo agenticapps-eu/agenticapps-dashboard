@@ -16,11 +16,21 @@ import { authRoute } from '../routes/auth.js'
 import { readRoute } from '../routes/read.js'
 import { gitRoute } from '../routes/git.js'
 
-export type Variables = { requestId: string }
+export type Variables = {
+  requestId: string
+  /** Override registry file path (for tests). Defaults to REGISTRY_FILE constant. */
+  registryFile?: string
+  /** Override auth file path (for tests). Defaults to AUTH_FILE constant. */
+  authFile?: string
+}
 export type Env = { Bindings: HttpBindings; Variables: Variables }
 
 export interface CreateAppOptions {
   enforceCIDR?: boolean
+  /** Override registry file path (for isolated testing). */
+  registryFile?: string
+  /** Override auth file path (for isolated testing). */
+  authFile?: string
 }
 
 /**
@@ -41,9 +51,11 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   // 1. Logger
   app.use(logger())
 
-  // 2. requestId injection
+  // 2. requestId injection + optional file-path overrides (for isolated testing)
   app.use(async (c, next) => {
     c.set('requestId', generateRequestId())
+    if (opts.registryFile) c.set('registryFile', opts.registryFile)
+    if (opts.authFile) c.set('authFile', opts.authFile)
     await next()
   })
 
