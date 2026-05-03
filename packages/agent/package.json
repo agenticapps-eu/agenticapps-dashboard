@@ -42,11 +42,18 @@
     "publish:dry": "pnpm publish --dry-run --no-git-checks --tag alpha",
     "prepublishOnly": "pnpm build"
   },
-  "dependencies": {},
-  "devDependencies": {
+  "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*",
-    "@types/node": "^20.19.39",
+    "@hono/node-server": "^2.0.1",
+    "@hono/zod-validator": "^0.7.6",
     "commander": "catalog:",
+    "execa": "^9.6.1",
+    "hono": "^4.12.16",
+    "picocolors": "^1.1.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
     "tsup": "^8.5.1",
     "tsx": "catalog:",
     "typescript": "catalog:",

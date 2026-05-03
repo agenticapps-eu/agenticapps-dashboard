@@ -19,6 +19,15 @@ export default defineConfig({
   clean: true,
   dts: true,
   sourcemap: true,
-  noExternal: ['@agenticapps/dashboard-shared', 'commander', 'zod'],
+  noExternal: [
+    '@agenticapps/dashboard-shared',
+    'commander',
+    'zod',
+    'hono',
+    '@hono/node-server',
+    '@hono/zod-validator',
+    'execa',
+    'picocolors',
+  ],
   banner: { js: banner },
 })
