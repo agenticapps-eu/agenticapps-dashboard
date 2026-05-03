@@ -4,12 +4,14 @@
  * Sequence: register → start → /health → /api/registry → /read → traversal-rejected
  *           → rotate (API) → old-token-401 → stop → daemon exited
  */
-import { describe, it, expect, beforeAll } from 'vitest'
 import { spawnSync, spawn } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { describe, it, expect, beforeAll } from 'vitest'
+
 import { makeIsolatedHome, cliBundle } from './__shared__/spawnAgent.js'
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../')
