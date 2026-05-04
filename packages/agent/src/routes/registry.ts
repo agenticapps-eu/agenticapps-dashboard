@@ -1,3 +1,5 @@
+import { basename } from 'node:path'
+
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
@@ -5,9 +7,26 @@ import type { Context } from 'hono'
 import {
   RegisterResponseSchema,
   RegistryListResponseSchema,
+  RegisterPrepareRequestSchema,
+  RegisterPrepareResponseSchema,
+  RegisterConfirmRequestSchema,
+  RegisterConfirmResponseSchema,
 } from '@agenticapps/dashboard-shared'
 
-import { addProject, removeProject, listProjectsWithStatus } from '../lib/registry.js'
+import {
+  addProject,
+  removeProject,
+  listProjectsWithStatus,
+  readRegistry,
+  assertRegistrationAllowed,
+  RegistrationPathBlocked,
+  canonicaliseRoot,
+  slugify,
+} from '../lib/registry.js'
+import { issueNonce, consumeNonce } from '../lib/registerNonces.js'
+import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
+import { logBlocked } from '../lib/registerLog.js'
+import { detectMarkers } from '../lib/projectOverview.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
@@ -25,6 +44,13 @@ function validationError(c: Context): Response {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const requestId = ((c as any).get?.('requestId') as string | undefined) ?? 'unknown'
   return c.json({ ok: false, error: 'invalid_request', requestId }, 422)
+}
+
+/** Extract the raw bearer token from the Authorization header. */
+function tokenFromAuthHeader(c: Context): string | null {
+  const auth = c.req.header('Authorization')
+  if (!auth?.startsWith('Bearer ')) return null
+  return auth.slice('Bearer '.length).trim()
 }
 
 export const registryRoute = new Hono<Env>()
@@ -72,6 +98,135 @@ registryRoute.post(
     return c.json(
       { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
       404,
+    )
+  },
+)
+
+// ─── Phase 3: prepare/confirm (D-09..D-19) ────────────────────────────────────
+
+registryRoute.post(
+  '/register-prepare',
+  zValidator('json', RegisterPrepareRequestSchema, (result, c) => {
+    if (!result.success) return validationError(c)
+  }),
+  async (c) => {
+    const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+
+    // D-14: rate limit (per token hash, sliding 10s window, cap 10)
+    const token = tokenFromAuthHeader(c)
+    const tokHash = token ? tokenHashOf(token) : 'no-token'
+    const rl = rlConsume(tokHash)
+    if (!rl.allowed) {
+      return c.json(
+        { ok: false, error: 'rate_limited', requestId },
+        429,
+        { 'Retry-After': String(rl.retryAfter) },
+      )
+    }
+
+    const body = c.req.valid('json')
+    const resolvedRoot = canonicaliseRoot(body.path)
+    const registryFile = c.get('registryFile') as string | undefined
+
+    // D-17: already registered?
+    const reg = readRegistry(registryFile)
+    const existing = reg.projects.find((p) => p.root === resolvedRoot)
+    if (existing) {
+      return outbound(
+        c,
+        RegisterPrepareResponseSchema.parse.bind(RegisterPrepareResponseSchema),
+        { canonicalRoot: resolvedRoot, alreadyRegistered: true as const, existingEntry: existing },
+      )
+    }
+
+    // D-11: blocked?
+    try {
+      assertRegistrationAllowed(resolvedRoot)
+    } catch (err) {
+      if (err instanceof RegistrationPathBlocked) {
+        logBlocked(err.reason, resolvedRoot, tokHash, requestId) // D-15
+        return outbound(
+          c,
+          RegisterPrepareResponseSchema.parse.bind(RegisterPrepareResponseSchema),
+          { canonicalRoot: resolvedRoot, blocked: true as const, blockedReason: err.reason },
+        )
+      }
+      throw err
+    }
+
+    // D-09: issue nonce
+    const suggestedName = basename(resolvedRoot)
+    const suggestedSlug = slugify(suggestedName)
+    const markers = detectMarkers(resolvedRoot)
+    const { nonce, expiresAt } = issueNonce({
+      canonicalRoot: resolvedRoot,
+      suggestedName,
+      suggestedSlug,
+      detectedMarkers: markers,
+    })
+
+    return outbound(
+      c,
+      RegisterPrepareResponseSchema.parse.bind(RegisterPrepareResponseSchema),
+      {
+        canonicalRoot: resolvedRoot,
+        suggestedName,
+        suggestedSlug,
+        alreadyRegistered: false as const,
+        blocked: false as const,
+        detectedMarkers: markers,
+        nonce,
+        expiresAt,
+      },
+    )
+  },
+)
+
+registryRoute.post(
+  '/register-confirm',
+  zValidator('json', RegisterConfirmRequestSchema, (result, c) => {
+    if (!result.success) return validationError(c)
+  }),
+  (c) => {
+    const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+    const body = c.req.valid('json')
+
+    // D-09 / D-18: consume the nonce (single-use; returns null for unknown OR expired)
+    const entry = consumeNonce(body.nonce)
+    if (!entry) {
+      return c.json({ ok: false, error: 'nonce_expired', requestId }, 410)
+    }
+
+    // Defense-in-depth: re-run assertRegistrationAllowed on confirm (D-09 supersedes
+    // Phase 1 B2 stopgap but stopgap stays as a second layer).
+    try {
+      assertRegistrationAllowed(entry.canonicalRoot)
+    } catch (err) {
+      if (err instanceof RegistrationPathBlocked) {
+        // Race window: path entered blocklist between prepare and confirm.
+        // Fail closed; do not register. Log per D-15.
+        const token = tokenFromAuthHeader(c)
+        const tokHash = token ? tokenHashOf(token) : 'no-token'
+        logBlocked(err.reason, entry.canonicalRoot, tokHash, requestId)
+        return c.json({ ok: false, error: 'path_blocked', requestId }, 422)
+      }
+      throw err
+    }
+
+    const registryFile = c.get('registryFile') as string | undefined
+    const opts: { name?: string; client?: string | null; tags?: string[] } = {
+      client: body.client ?? null,
+    }
+    opts.name = body.name ?? entry.suggestedName
+    if (body.tags !== undefined) opts.tags = body.tags
+
+    const result = addProject(entry.canonicalRoot, opts, registryFile)
+    const status = result.alreadyRegistered ? 200 : 201
+    return outbound(
+      c,
+      RegisterConfirmResponseSchema.parse.bind(RegisterConfirmResponseSchema),
+      { ...result.entry, alreadyRegistered: result.alreadyRegistered },
+      status,
     )
   },
 )

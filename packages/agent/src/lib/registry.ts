@@ -57,8 +57,10 @@ function ensureConfigDir(dir: string = CONFIG_DIR): void {
  * change which files the read endpoint resolves under. Falls back to resolve()
  * if the path doesn't exist on disk yet — registering a missing path stays
  * legal (it will surface as `reachable: false` in /api/registry).
+ *
+ * Exposed for /register-prepare in Phase 3 (D-09 prepare/confirm flow).
  */
-function canonicaliseRoot(pathArg: string): string {
+export function canonicaliseRoot(pathArg: string): string {
   const resolved = resolve(pathArg)
   try {
     return realpathSync(resolved)
