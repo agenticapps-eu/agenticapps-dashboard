@@ -8,7 +8,7 @@
  * 4. useRename onMutate optimistic update (hook test)
  * 5. useUnregister onMutate optimistic remove (hook test)
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -227,7 +227,8 @@ describe('useRename', () => {
     const mockedApiFetch = vi.mocked(mockApiFetch)
 
     // Use a never-resolving promise so we can check cache state before fetch completes
-    let resolveRename: (v: unknown) => void = () => undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let resolveRename: (v: any) => void = () => undefined
     mockedApiFetch.mockReturnValueOnce(
       new Promise((res) => {
         resolveRename = res
