@@ -26,3 +26,9 @@ export { ErrorResponseSchema } from './schemas/errors.js'
 export type { ErrorResponse } from './schemas/errors.js'
 export { ServerInfoSchema } from './schemas/server.js'
 export type { ServerInfo } from './schemas/server.js'
+export {
+  PairingSchema,
+  AgentUrlSchema,
+  AGENT_URL_REGEX,
+} from './schemas/pairing.js'
+export type { Pairing } from './schemas/pairing.js'
