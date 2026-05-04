@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { useRegisterPrepare, useRegisterConfirm } from '../lib/registry.js'
 import { ApiError } from '../lib/api.js'
+
 import { SchemaDriftState } from './SchemaDriftState.js'
 
 // ─── Local types for prepare response union ─────────────────────────────────
@@ -101,7 +102,9 @@ export function RegisterModal({
     if (isOpen) {
       previouslyFocused.current = document.activeElement as HTMLElement | null
       if (!dialog.open) dialog.showModal()
-      // Reset state on open
+      // Reset state on open — synchronous setState inside effect is intentional here:
+      // the dialog must start fresh each time it opens.
+      /* eslint-disable react-hooks/set-state-in-effect */
       setPath('')
       setNetworkError(false)
       setPrepareData(null)
@@ -112,6 +115,7 @@ export function RegisterModal({
       setTagInput('')
       setDirtyDiscardOpen(false)
       setRefreshing(false)
+      /* eslint-enable react-hooks/set-state-in-effect */
     } else {
       if (dialog.open) dialog.close()
       previouslyFocused.current?.focus()
@@ -188,7 +192,7 @@ export function RegisterModal({
     try {
       const result = await confirm.mutateAsync({
         nonce: allowed.nonce,
-        name: name || undefined,
+        ...(name ? { name } : {}),
         client: client || null,
         tags,
       })
@@ -215,7 +219,7 @@ export function RegisterModal({
             // Retry confirm directly with fresh nonce (avoid stale closure issue)
             const retryResult = await confirm.mutateAsync({
               nonce: freshAllowed.nonce,
-              name: name || undefined,
+              ...(name ? { name } : {}),
               client: client || null,
               tags,
             })

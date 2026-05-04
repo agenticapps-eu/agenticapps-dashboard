@@ -8,12 +8,12 @@ const mockRenameMutateAsync = vi.fn()
 const mockSetTagsMutateAsync = vi.fn()
 
 vi.mock('../lib/registry.js', () => ({
-  useRename: (_id: string) => ({
+  useRename: () => ({
     mutate: vi.fn(),
     mutateAsync: mockRenameMutateAsync,
     isPending: false,
   }),
-  useSetTags: (_id: string) => ({
+  useSetTags: () => ({
     mutate: vi.fn(),
     mutateAsync: mockSetTagsMutateAsync,
     isPending: false,
@@ -39,6 +39,7 @@ beforeEach(() => {
 })
 
 import type { RegistryListItem } from '@agenticapps/dashboard-shared'
+
 import { EditTagsDialog, RenameDialog } from './RenameTagsForms.js'
 
 function makeQueryClient() {

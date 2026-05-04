@@ -18,7 +18,6 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-
 import type { RegistryListItem, RegistryListResponse } from '@agenticapps/dashboard-shared'
 import { RegistryListResponseSchema } from '@agenticapps/dashboard-shared'
 
@@ -81,19 +80,22 @@ export function useRegisterConfirm(): UseMutationResult<any, Error, { nonce: str
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: { nonce: string; name?: string; client?: string | null; tags?: string[] }) => {
+      // Stub: plan 03-06 will use RegisterConfirmResponseSchema (single item).
+      // We reuse RegistryListResponseSchema here so the module compiles without the real schema.
       const result = await apiFetch('/api/registry/register-confirm', RegistryListResponseSchema, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       })
       if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
-      return result.data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return result.data as any
     },
-    onSuccess: (newEntry) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onSuccess: (newEntry: any) => {
       qc.setQueryData<RegistryListResponse>(['registry'], (old) => {
         if (!old) return old
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (old.some((p: any) => p.id === newEntry.id)) return old
+        if (old.some((p) => p.id === newEntry.id)) return old
         const optimistic: RegistryListItem = {
           ...newEntry,
           status: { reachable: true, currentPhase: null, lastCommitAt: null },
