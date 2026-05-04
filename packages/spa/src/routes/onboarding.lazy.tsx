@@ -1,6 +1,14 @@
+import { useEffect } from 'react'
 import { createLazyRoute } from '@tanstack/react-router'
+import { OnboardingHero } from '../components/OnboardingHero.js'
 
-// TODO Plan 04: onboarding — replace with D-01 hero + numbered steps
 export const Route = createLazyRoute('/onboarding')({
-  component: () => <p>TODO Plan 04: onboarding placeholder</p>,
+  component: OnboardingPage,
 })
+
+function OnboardingPage() {
+  useEffect(() => {
+    document.title = 'AgenticApps Dashboard — Onboarding'
+  }, [])
+  return <OnboardingHero />
+}
