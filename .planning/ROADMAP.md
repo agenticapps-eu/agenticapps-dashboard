@@ -80,12 +80,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Wave 0: catalog + PairingSchema/AgentUrlSchema + CF Pages _redirects/_headers + global.css UI-SPEC tokens + 4 RED stub tests
-- [ ] 02-02-PLAN.md — Wave 1A: lib/pairing + lib/theme (D-02/D-03) + ThemeChip + Header + AppShell + 5-route TanStack Router (D-04, D-05)
-- [ ] 02-03-PLAN.md — Wave 1B: lib/api (apiFetch + parseOrDrift + ApiError) + lib/queryClient (Pattern 6 401 interceptor) + lib/repair + SchemaDriftState + DaemonUnreachableState + RepairBanner
-- [ ] 02-04-PLAN.md — Wave 2A: CodeBlock + OnboardingHero (D-01) + /onboarding + /pair (validateSearch + happy-path + 4 error states)
-- [ ] 02-05-PLAN.md — Wave 2B: ThemeToggle + ManualPairForm (SPA-04 8-state machine) + /settings + / + /help routes; remove Phase 0 App.tsx
-- [ ] 02-06-PLAN.md — Wave 3: wire RepairProvider+QueryBridge in main.tsx; mount RepairBanner in AppShell; SPA-01 dev-perf-smoke subprocess test; e2e pair-flow test; README update
+- [x] 02-01-PLAN.md — Wave 0: catalog + PairingSchema/AgentUrlSchema + CF Pages _redirects/_headers + global.css UI-SPEC tokens + 4 RED stub tests
+- [x] 02-02-PLAN.md — Wave 1A: lib/pairing + lib/theme (D-02/D-03) + ThemeChip + Header + AppShell + 5-route TanStack Router (D-04, D-05)
+- [x] 02-03-PLAN.md — Wave 1B: lib/api (apiFetch + parseOrDrift + ApiError) + lib/queryClient (Pattern 6 401 interceptor) + lib/repair + SchemaDriftState + DaemonUnreachableState + RepairBanner
+- [x] 02-04-PLAN.md — Wave 2A: CodeBlock + OnboardingHero (D-01) + /onboarding + /pair (validateSearch + happy-path + 4 error states)
+- [x] 02-05-PLAN.md — Wave 2B: ThemeToggle + ManualPairForm (SPA-04 8-state machine) + /settings + / + /help routes; remove Phase 0 App.tsx
+- [x] 02-06-PLAN.md — Wave 3: wire RepairProvider+QueryBridge in main.tsx; mount RepairBanner in AppShell; SPA-01 dev-perf-smoke subprocess test; e2e pair-flow test; README update
 
 ### Phase 3: Multi-project Home Page
 **Goal**: A multi-project home page rendering one card per registered project with current phase, finding counts, and last-commit time; supports filters, search, sort, and an in-UI "Register project" modal.
