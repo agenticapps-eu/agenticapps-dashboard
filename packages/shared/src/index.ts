@@ -1,6 +1,6 @@
 export { HealthResponseSchema } from './schemas/health.js'
 export type { HealthResponse } from './schemas/health.js'
-export { AuthFileSchema } from './schemas/auth.js'
+export { AuthFileSchema, TokenSchema } from './schemas/auth.js'
 export type { AuthFile } from './schemas/auth.js'
 export {
   RegistryEntrySchema,
