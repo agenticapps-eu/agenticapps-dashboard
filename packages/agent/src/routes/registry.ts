@@ -6,11 +6,14 @@ import { z } from 'zod'
 import type { Context } from 'hono'
 import {
   RegisterResponseSchema,
+  RegistryEntrySchema,
   RegistryListResponseSchema,
   RegisterPrepareRequestSchema,
   RegisterPrepareResponseSchema,
   RegisterConfirmRequestSchema,
   RegisterConfirmResponseSchema,
+  RenameRequestSchema,
+  TagsRequestSchema,
 } from '@agenticapps/dashboard-shared'
 
 import {
@@ -22,11 +25,14 @@ import {
   RegistrationPathBlocked,
   canonicaliseRoot,
   slugify,
+  renameProject,
+  setTags,
 } from '../lib/registry.js'
 import { issueNonce, consumeNonce } from '../lib/registerNonces.js'
 import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { logBlocked } from '../lib/registerLog.js'
 import { detectMarkers } from '../lib/projectOverview.js'
+import { evict as evictOverviewCache } from '../lib/overviewCache.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
@@ -94,7 +100,10 @@ registryRoute.post(
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
     const removed = removeProject(body.id, registryFile)
-    if (removed) return c.body(null, 204)
+    if (removed) {
+      evictOverviewCache(body.id) // T-03-03-05 cache hygiene
+      return c.body(null, 204)
+    }
     return c.json(
       { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
       404,
@@ -228,5 +237,53 @@ registryRoute.post(
       { ...result.entry, alreadyRegistered: result.alreadyRegistered },
       status,
     )
+  },
+)
+
+// ─── Phase 3 Plan 05: rename + tags mutation routes (D-24) ────────────────────
+
+registryRoute.post(
+  '/:id/rename',
+  zValidator('json', RenameRequestSchema, (result, c) => {
+    if (!result.success) return validationError(c)
+  }),
+  (c) => {
+    const id = c.req.param('id')
+    const body = c.req.valid('json')
+    const registryFile = c.get('registryFile') as string | undefined
+    const ok = renameProject(id, body.name, registryFile)
+    if (!ok) {
+      return c.json(
+        { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
+        404,
+      )
+    }
+    // Return the updated registry entry
+    const reg = readRegistry(registryFile)
+    const updated = reg.projects.find((p) => p.id === id)!
+    return outbound(c, RegistryEntrySchema.parse.bind(RegistryEntrySchema), updated)
+  },
+)
+
+registryRoute.post(
+  '/:id/tags',
+  zValidator('json', TagsRequestSchema, (result, c) => {
+    if (!result.success) return validationError(c)
+  }),
+  (c) => {
+    const id = c.req.param('id')
+    const body = c.req.valid('json')
+    const registryFile = c.get('registryFile') as string | undefined
+    const ok = setTags(id, body.tags, registryFile)
+    if (!ok) {
+      return c.json(
+        { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
+        404,
+      )
+    }
+    // Return the updated registry entry
+    const reg = readRegistry(registryFile)
+    const updated = reg.projects.find((p) => p.id === id)!
+    return outbound(c, RegistryEntrySchema.parse.bind(RegistryEntrySchema), updated)
   },
 )
