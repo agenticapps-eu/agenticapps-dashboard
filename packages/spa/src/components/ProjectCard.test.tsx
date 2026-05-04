@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { RegistryListItem } from '@agenticapps/dashboard-shared'
+
 import type { ProjectOverview } from '../lib/registry.js'
 
 // Mock useNavigate from TanStack Router
@@ -19,7 +20,7 @@ vi.mock('../lib/registry.js', () => ({
 
 // Mock touchLongPress
 vi.mock('../lib/touchLongPress.js', () => ({
-  useLongPress: (_cb: () => void) => ({
+  useLongPress: () => ({
     onPointerDown: vi.fn(),
     onPointerUp: vi.fn(),
     onPointerMove: vi.fn(),

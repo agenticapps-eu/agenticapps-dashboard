@@ -5,6 +5,7 @@ import type { RegistryListItem } from '@agenticapps/dashboard-shared'
 
 import { useProjectOverview } from '../lib/registry.js'
 import { useLongPress } from '../lib/touchLongPress.js'
+
 import { SchemaDriftState } from './SchemaDriftState.js'
 
 export interface ProjectCardProps {
@@ -22,7 +23,7 @@ export interface ProjectCardProps {
 function extractPhaseNum(phase: string | null): string {
   if (!phase) return '—'
   const match = /^(\d+)/.exec(phase)
-  return match ? match[1] : phase
+  return match ? (match[1] ?? phase) : phase
 }
 
 /**

@@ -29,8 +29,9 @@ export type SortKey = 'recommended' | 'lastCommit' | 'name' | 'phase' | 'client'
  * When id is null (unreachable project), returns a disabled query.
  */
 export function useProjectOverview(
-  _id: string | null
+  ...args: [string | null]
 ): UseQueryResult<ProjectOverview> {
+  void args
   throw new Error('useProjectOverview: stub — plan 03-06 implementation required')
 }
 
@@ -38,8 +39,9 @@ export function useProjectOverview(
  * Returns a mutation for unregistering a project.
  */
 export function useUnregister(
-  _id: string
+  ...args: [string]
 ): UseMutationResult<void, Error, void> {
+  void args
   throw new Error('useUnregister: stub — plan 03-06 implementation required')
 }
 
@@ -47,8 +49,9 @@ export function useUnregister(
  * Returns a mutation for renaming a project.
  */
 export function useRename(
-  _id: string
+  ...args: [string]
 ): UseMutationResult<void, Error, { name: string }> {
+  void args
   throw new Error('useRename: stub — plan 03-06 implementation required')
 }
 
@@ -56,8 +59,9 @@ export function useRename(
  * Returns a mutation for setting project tags.
  */
 export function useSetTags(
-  _id: string
+  ...args: [string]
 ): UseMutationResult<void, Error, { tags: string[] }> {
+  void args
   throw new Error('useSetTags: stub — plan 03-06 implementation required')
 }
 
