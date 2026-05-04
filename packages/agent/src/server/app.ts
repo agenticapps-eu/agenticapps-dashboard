@@ -15,6 +15,7 @@ import { registryRoute } from '../routes/registry.js'
 import { authRoute } from '../routes/auth.js'
 import { readRoute } from '../routes/read.js'
 import { gitRoute } from '../routes/git.js'
+import { overviewRoute } from '../routes/overview.js'
 
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
@@ -107,6 +108,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/auth', authRoute)
   app.route('/api/projects', readRoute)
   app.route('/api/projects', gitRoute)
+  app.route('/api/projects', overviewRoute)
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)

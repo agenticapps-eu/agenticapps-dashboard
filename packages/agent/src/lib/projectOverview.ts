@@ -50,7 +50,9 @@ function detectLatestPhaseDir(root: string): string | null {
       .map((e) => e.name)
       .sort() // alphabetical == numeric order for NN-name format
     if (dirs.length === 0) return null
-    return join(phasesDir, dirs[dirs.length - 1])
+    const lastDir = dirs[dirs.length - 1]
+    if (!lastDir) return null
+    return join(phasesDir, lastDir)
   } catch {
     return null
   }
@@ -90,14 +92,14 @@ export function parseReviewFile(filePath: string): FindingCounts | null {
   // Extract YAML frontmatter between first two --- delimiters
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/)
   if (fmMatch) {
-    const fm = fmMatch[1]
+    const fm = fmMatch[1] ?? ''
     // Extract findings block (indented under findings:)
     const findingsBlock = fm.match(/^findings:\s*\n((?:[ \t]+\S+.*\n?)*)/m)
     if (findingsBlock) {
-      const block = findingsBlock[1]
+      const block = findingsBlock[1] ?? ''
       const getInt = (key: string): number => {
         const m = block.match(new RegExp(`[ \\t]+${key}:\\s*(\\d+)`))
-        return m ? parseInt(m[1], 10) : 0
+        return m?.[1] ? parseInt(m[1], 10) : 0
       }
       return {
         red: getInt('critical'),
@@ -114,7 +116,7 @@ export function parseReviewFile(filePath: string): FindingCounts | null {
   let green = 0
   let match: RegExpExecArray | null
   while ((match = severityPattern.exec(content)) !== null) {
-    const sev = match[1].toLowerCase()
+    const sev = (match[1] ?? '').toLowerCase()
     if (sev === 'critical' || sev === 'error') red++
     else if (sev === 'warning') yellow++
     else if (sev === 'info' || sev === 'suggestion') green++
@@ -144,13 +146,13 @@ export function parseSecurityFile(filePath: string): DbAuditFindings | null {
 
   const fmMatch = content.match(/^---\n([\s\S]*?)\n---/)
   if (!fmMatch) return null
-  const fm = fmMatch[1]
+  const fm = fmMatch[1] ?? ''
   const findingsBlock = fm.match(/^findings:\s*\n((?:[ \t]+\S+.*\n?)*)/m)
   if (!findingsBlock) return null
-  const block = findingsBlock[1]
+  const block = findingsBlock[1] ?? ''
   const getInt = (key: string): number => {
     const m = block.match(new RegExp(`[ \\t]+${key}:\\s*(\\d+)`))
-    return m ? parseInt(m[1], 10) : 0
+    return m?.[1] ? parseInt(m[1], 10) : 0
   }
   return {
     critical: getInt('critical'),
