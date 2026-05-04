@@ -5,8 +5,12 @@ import {
   redirect,
   type AnyRoute,
 } from '@tanstack/react-router'
+import { z } from 'zod'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
 import { AppShell } from './components/AppShell.js'
 import { getPairing } from './lib/pairing.js'
+import { MalformedPairUrl } from './routes/pair-error.js'
 
 /** Root route renders the persistent AppShell. */
 const rootRoute = createRootRoute({
@@ -33,10 +37,33 @@ const onboardingRoute = createRoute({
   path: '/onboarding',
 }).lazy(() => import('./routes/onboarding.lazy.js').then((m) => m.Route))
 
-/** /pair?agent=&token= — Plan 04 wires validateSearch + Pattern 2 errorComponent. */
+/**
+ * PairSearchSchema validates the required /pair?agent=&token= search params.
+ * Uses AgentUrlSchema (loopback / *.ts.net) and TokenSchema (D-13 dashed-hex).
+ * Checker W1: MalformedPairUrl lives in pair-error.tsx (NOT pair.lazy.tsx) so
+ * this eager import doesn't pull the entire pair.lazy chunk into the main bundle.
+ */
+const PairSearchSchema = z.object({
+  agent: AgentUrlSchema,
+  token: TokenSchema,
+})
+
 const pairRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/pair',
+  validateSearch: zodValidator(PairSearchSchema),
+  errorComponent: ({ error }) => {
+    // Pitfall 8: validateSearch errors surface via errorComponent with routerCode
+    if (
+      error &&
+      typeof error === 'object' &&
+      'routerCode' in error &&
+      error.routerCode === 'VALIDATE_SEARCH'
+    ) {
+      return <MalformedPairUrl />
+    }
+    throw error
+  },
 }).lazy(() => import('./routes/pair.lazy.js').then((m) => m.Route))
 
 const settingsRoute = createRoute({
