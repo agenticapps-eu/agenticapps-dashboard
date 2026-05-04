@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { RepairProvider, useRepair } from '../lib/repair.js'
 
@@ -33,7 +34,7 @@ afterEach(() => {
   cleanup()
 })
 
-/** Renders AppShell inside RepairProvider; returns getter for the RepairBus */
+/** Renders AppShell inside RepairProvider + QueryClientProvider; returns getter for the RepairBus */
 function renderAppShell() {
   let hookResult: ReturnType<typeof useRepair> | undefined
 
@@ -42,11 +43,15 @@ function renderAppShell() {
     return null
   }
 
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
   render(
-    <RepairProvider>
-      <Consumer />
-      <AppShell />
-    </RepairProvider>,
+    <QueryClientProvider client={qc}>
+      <RepairProvider>
+        <Consumer />
+        <AppShell />
+      </RepairProvider>
+    </QueryClientProvider>,
   )
 
   return () => hookResult!
