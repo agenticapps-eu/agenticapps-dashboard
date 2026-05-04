@@ -102,9 +102,7 @@ export function RegisterModal({
     if (isOpen) {
       previouslyFocused.current = document.activeElement as HTMLElement | null
       if (!dialog.open) dialog.showModal()
-      // Reset state on open — synchronous setState inside effect is intentional here:
-      // the dialog must start fresh each time it opens.
-      /* eslint-disable react-hooks/set-state-in-effect */
+      // Reset state on open — the dialog must start fresh each time it opens.
       setPath('')
       setNetworkError(false)
       setPrepareData(null)
@@ -115,7 +113,6 @@ export function RegisterModal({
       setTagInput('')
       setDirtyDiscardOpen(false)
       setRefreshing(false)
-      /* eslint-enable react-hooks/set-state-in-effect */
     } else {
       if (dialog.open) dialog.close()
       previouslyFocused.current?.focus()

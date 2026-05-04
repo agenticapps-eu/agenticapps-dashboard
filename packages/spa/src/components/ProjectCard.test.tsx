@@ -1,9 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { RegistryListItem } from '@agenticapps/dashboard-shared'
-
-import type { ProjectOverview } from '../lib/registry.js'
+import type { RegistryListItem, ProjectOverview } from '@agenticapps/dashboard-shared'
 
 // Mock useNavigate from TanStack Router
 const mockNavigate = vi.fn()

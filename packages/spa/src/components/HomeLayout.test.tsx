@@ -1,11 +1,16 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { RepairProvider } from '../lib/repair.js'
 import { setAppShellWidth, getSnapshot } from '../lib/appShellWidth.js'
 
 import { AppShell } from './AppShell.js'
 import { HomeLayout } from './HomeLayout.js'
+
+function makeQueryClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } })
+}
 
 /**
  * Tests for HomeLayout component.
@@ -87,9 +92,11 @@ describe('HomeLayout', () => {
   it('AppShell <main> reflects max-w-5xl when HomeLayout is mounted alongside AppShell', () => {
     // Render AppShell (starts at max-w-3xl from default store)
     const { unmount: unmountAppShell } = render(
-      <RepairProvider>
-        <AppShell />
-      </RepairProvider>,
+      <QueryClientProvider client={makeQueryClient()}>
+        <RepairProvider>
+          <AppShell />
+        </RepairProvider>
+      </QueryClientProvider>,
     )
 
     const main = document.getElementById('main')
@@ -110,9 +117,11 @@ describe('HomeLayout', () => {
 
   it('AppShell <main> reverts to max-w-3xl after setAppShellWidth reset', () => {
     render(
-      <RepairProvider>
-        <AppShell />
-      </RepairProvider>,
+      <QueryClientProvider client={makeQueryClient()}>
+        <RepairProvider>
+          <AppShell />
+        </RepairProvider>
+      </QueryClientProvider>,
     )
 
     act(() => {

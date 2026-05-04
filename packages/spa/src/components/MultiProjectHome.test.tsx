@@ -29,7 +29,9 @@ const mockFilterAndSort = vi.fn()
 
 vi.mock('../lib/registry.js', () => ({
   useRegistryList: () => mockUseRegistryList(),
+  useProjectOverview: () => ({ data: undefined, isLoading: false, isError: false }),
   filterAndSort: (items: RegistryListItem[], params: unknown) => mockFilterAndSort(items, params),
+  computeOverflowChips: () => [],
   useRegisterPrepare: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useRegisterConfirm: () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({ id: 'new-id' }), isPending: false }),
   useRename: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
@@ -128,7 +130,9 @@ describe('MultiProjectHome — with items', () => {
 
   it('renders HomeToolbar', () => {
     renderHome()
-    expect(screen.getByTestId('home-toolbar')).toBeInTheDocument()
+    // Canonical HomeToolbar (03-07) renders a search input + sort dropdown + filter chips.
+    // Probe via the search input which is uniquely identifiable.
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
   })
 })
 
@@ -198,7 +202,7 @@ describe('MultiProjectHome — context menu', () => {
     // Open the context menu via the kebab button on the ProjectCard stub
     await user.click(screen.getByRole('button', { name: 'Project options for Project One' }))
     // Now click Rename in the CardContextMenu stub
-    await user.click(screen.getByRole('menuitem', { name: /Rename Project One/ }))
+    await user.click(screen.getByRole('menuitem', { name: /^Rename$/ }))
     // RenameDialog should be open with item's name prefilled
     await waitFor(() => {
       expect(screen.getByDisplayValue('Project One')).toBeInTheDocument()
@@ -211,7 +215,7 @@ describe('MultiProjectHome — context menu', () => {
     // Open the context menu via the kebab button on the ProjectCard stub
     await user.click(screen.getByRole('button', { name: 'Project options for Project One' }))
     // Now click Edit tags in the CardContextMenu stub
-    await user.click(screen.getByRole('menuitem', { name: /Edit tags Project One/ }))
+    await user.click(screen.getByRole('menuitem', { name: /^Edit tags$/ }))
     await waitFor(() => {
       // EditTagsDialog shows "Edit tags" heading
       expect(screen.getByText('Edit tags')).toBeInTheDocument()
