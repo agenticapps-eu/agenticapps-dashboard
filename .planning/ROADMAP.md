@@ -108,7 +108,7 @@ Plans:
 - [x] 03-07-PLAN.md — Wave 2: HomeToolbar (chips + search + sort) + ProjectCard (compact + hover-expand + 5 states + kebab) + CardContextMenu (portal + roving tabindex + inline unregister confirm)
 - [x] 03-08-PLAN.md — Wave 2: RegisterModal (native <dialog> two-step + dirty discard + 410 auto-re-prepare + blocked + already-registered) + RegisterButtonCard + RenameTagsForms + MultiProjectHome composition + index route swap
 - [x] 03-09-PLAN.md — Wave 2: useLastRefresh hook + Header extension showing N projects + last-refresh timestamp (D-05)
-- [ ] 03-10-PLAN.md — Wave 3: CommandPalette (Cmd/Ctrl+K, native <dialog> + listbox + aria-activedescendant + 4 v1 actions) mounted in AppShell
+- [x] 03-10-PLAN.md — Wave 3: CommandPalette (Cmd/Ctrl+K, native <dialog> + listbox + aria-activedescendant + 4 v1 actions) mounted in AppShell
 - [ ] 03-11-PLAN.md — Wave 4: end-to-end subprocess test (daemon spawn + prepare → confirm + single-use semantics) + README "Phase 3 shipped" + full pre-flight (typecheck + test + build + lint)
 
 ### Phase 4: Single-project View — Discipline + Phase Progress
