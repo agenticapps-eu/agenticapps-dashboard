@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:subprocess": "vitest run --config vitest.subprocess.config.ts"
   },
   "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*",
