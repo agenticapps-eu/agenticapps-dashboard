@@ -1,9 +1,12 @@
 import { Outlet } from '@tanstack/react-router'
 
+import { useAppShellWidth } from '../lib/appShellWidth.js'
+
 import { Header } from './Header.js'
 import { RepairBanner } from './RepairBanner.js'
 
 export function AppShell(): React.JSX.Element {
+  const mainWidth = useAppShellWidth()
   return (
     <div className="flex min-h-screen flex-col bg-[--bg] text-[--text]">
       <a
@@ -16,7 +19,7 @@ export function AppShell(): React.JSX.Element {
       <div data-slot="banner-mount">
         <RepairBanner />
       </div>
-      <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-6 py-8 md:px-8">
+      <main id="main" className={`mx-auto w-full ${mainWidth} flex-1 px-6 py-8 md:px-8`}>
         <Outlet />
       </main>
     </div>

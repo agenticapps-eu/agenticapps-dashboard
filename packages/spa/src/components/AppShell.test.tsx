@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
 
 import { RepairProvider, useRepair } from '../lib/repair.js'
+import { setAppShellWidth } from '../lib/appShellWidth.js'
 
 import { AppShell } from './AppShell.js'
 
@@ -85,5 +86,47 @@ describe('AppShell', () => {
     // Banner should now be visible with verbatim copy
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByText('Agent token rejected.')).toBeInTheDocument()
+  })
+
+  it('<main> has max-w-3xl by default (appShellWidth default)', () => {
+    // Ensure default width state
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    renderAppShell()
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-3xl')
+    expect(main?.className).not.toContain('max-w-5xl')
+  })
+
+  it('<main> switches to max-w-5xl when setAppShellWidth("max-w-5xl") is called', () => {
+    // Ensure default width state
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    renderAppShell()
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-3xl')
+
+    act(() => {
+      setAppShellWidth('max-w-5xl')
+    })
+    expect(main?.className).toContain('max-w-5xl')
+    expect(main?.className).not.toContain('max-w-3xl')
+  })
+
+  it('<main> resets to max-w-3xl after width override is cleared', () => {
+    act(() => {
+      setAppShellWidth('max-w-5xl')
+    })
+    renderAppShell()
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-5xl')
+
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    expect(main?.className).toContain('max-w-3xl')
+    expect(main?.className).not.toContain('max-w-5xl')
   })
 })
