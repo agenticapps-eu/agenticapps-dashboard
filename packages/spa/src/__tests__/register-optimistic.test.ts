@@ -13,13 +13,14 @@
  * Security: T-03-11-01 — token is only sent in Authorization header, never logged.
  *           T-03-11-02 — SIGTERM + 200ms drain in afterAll; no orphan daemons.
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { mkdtempSync, mkdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
+import { fileURLToPath } from 'node:url'
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
