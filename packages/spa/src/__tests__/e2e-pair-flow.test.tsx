@@ -94,9 +94,10 @@ describe('Phase 2 e2e: unpaired → /onboarding redirect (SPA-03)', () => {
 describe('Phase 2 e2e: /pair happy path (SPA-02)', () => {
   it('valid pair URL persists pairing and lands on / paired', async () => {
     const { apiFetch } = await import('../lib/api.js')
-    vi.mocked(apiFetch).mockResolvedValue({
-      ok: true,
-      data: { ok: true, version: '1.0.0' },
+    // Health check call returns version; registry call returns empty array
+    vi.mocked(apiFetch).mockImplementation((path) => {
+      if (path === '/api/registry') return Promise.resolve({ ok: true, data: [] })
+      return Promise.resolve({ ok: true, data: { ok: true, version: '1.0.0' } })
     })
     await renderApp(`/pair?agent=http://127.0.0.1:5193&token=${VALID_TOKEN}`)
 
@@ -109,9 +110,10 @@ describe('Phase 2 e2e: /pair happy path (SPA-02)', () => {
       { timeout: 3000 },
     )
 
+    // Phase 3: MultiProjectHome renders "No projects registered yet." when registry is empty
     await waitFor(
       () => {
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Home')
+        expect(screen.getByText('No projects registered yet.')).toBeInTheDocument()
       },
       { timeout: 3000 },
     )
@@ -119,7 +121,10 @@ describe('Phase 2 e2e: /pair happy path (SPA-02)', () => {
 })
 
 describe('Phase 2 e2e: paired → / direct render (SPA-03 inverse)', () => {
-  it('paired user visits / and sees IndexPage placeholder (no redirect)', async () => {
+  it('paired user visits / and sees MultiProjectHome (no redirect)', async () => {
+    const { apiFetch } = await import('../lib/api.js')
+    // Registry call returns empty array so MultiProjectHome renders empty state
+    vi.mocked(apiFetch).mockResolvedValue({ ok: true, data: [] })
     localStorage.setItem(
       'agentic-dashboard:pairing',
       JSON.stringify({
@@ -129,10 +134,10 @@ describe('Phase 2 e2e: paired → / direct render (SPA-03 inverse)', () => {
       }),
     )
     await renderApp('/')
+    // Phase 3: MultiProjectHome renders on /, no redirect for paired users
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Home')
+      expect(screen.getByText('No projects registered yet.')).toBeInTheDocument()
     })
-    expect(screen.getByText(/Multi-project home arrives in Phase 3/)).toBeInTheDocument()
   })
 })
 
@@ -156,23 +161,21 @@ describe('Phase 2 e2e: paired → daemon 401 → RepairBanner visible (AUTH-04 �
     // Render the full app with the live repair bus wired into createQueryClient
     const getHook = await renderAppWithRepairBus('/')
 
-    // Wait for the index route to render (paired user sees Home)
+    // Wait for the index route to render — with 401, MultiProjectHome shows DaemonUnreachableState
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Home')
+      expect(screen.getByText('Daemon not running')).toBeInTheDocument()
     })
 
     // Manually fire the 401 through the repair bus — simulates QueryCache.onError
-    // (IndexPage has no queries, so we drive setNeedsRepair directly via the live bus)
+    // (MultiProjectHome's useRegistryList already errored; we drive setNeedsRepair directly)
     act(() => {
       getHook().setNeedsRepair(true)
     })
 
-    // Assert the RepairBanner shows. RepairBanner renders role="status" with verbatim copy.
-    // Note: role="status" accessible name is not derived from text content in RTL —
-    // we assert both the role and the verbatim text separately.
+    // Assert the RepairBanner shows. RepairBanner renders "Agent token rejected." text.
+    // Note: DaemonUnreachableState also uses role="status", so we query by verbatim text.
     await waitFor(
       () => {
-        expect(screen.getByRole('status')).toBeInTheDocument()
         expect(screen.getByText('Agent token rejected.')).toBeInTheDocument()
       },
       { timeout: 3000 },

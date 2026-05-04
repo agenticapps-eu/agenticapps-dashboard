@@ -1,9 +1,33 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { RepairProvider, useRepair } from '../lib/repair.js'
+import { setAppShellWidth } from '../lib/appShellWidth.js'
 
 import { AppShell } from './AppShell.js'
+
+// Mock commandPaletteActions so AppShell renders without real registry/theme deps
+vi.mock('../lib/commandPaletteActions.js', () => ({
+  useCommandPaletteActions: () => [],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  filterActions: (..._args: any[]) => [],
+}))
+
+// HTMLDialogElement polyfill for jsdom
+beforeEach(() => {
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', '')
+    }
+  }
+  if (!HTMLDialogElement.prototype.close) {
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute('open')
+      this.dispatchEvent(new Event('close'))
+    }
+  }
+})
 
 // Mock all router primitives used transitively by AppShell → Header → Link
 // and AppShell → RepairBanner → useNavigate.
@@ -33,7 +57,7 @@ afterEach(() => {
   cleanup()
 })
 
-/** Renders AppShell inside RepairProvider; returns getter for the RepairBus */
+/** Renders AppShell inside RepairProvider + QueryClientProvider; returns getter for the RepairBus */
 function renderAppShell() {
   let hookResult: ReturnType<typeof useRepair> | undefined
 
@@ -42,11 +66,15 @@ function renderAppShell() {
     return null
   }
 
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
   render(
-    <RepairProvider>
-      <Consumer />
-      <AppShell />
-    </RepairProvider>,
+    <QueryClientProvider client={qc}>
+      <RepairProvider>
+        <Consumer />
+        <AppShell />
+      </RepairProvider>
+    </QueryClientProvider>,
   )
 
   return () => hookResult!
@@ -85,5 +113,54 @@ describe('AppShell', () => {
     // Banner should now be visible with verbatim copy
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByText('Agent token rejected.')).toBeInTheDocument()
+  })
+
+  it('<main> has max-w-3xl by default (appShellWidth default)', () => {
+    // Ensure default width state
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    renderAppShell()
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-3xl')
+    expect(main?.className).not.toContain('max-w-5xl')
+  })
+
+  it('<main> switches to max-w-5xl when setAppShellWidth("max-w-5xl") is called', () => {
+    // Ensure default width state
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    renderAppShell()
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-3xl')
+
+    act(() => {
+      setAppShellWidth('max-w-5xl')
+    })
+    expect(main?.className).toContain('max-w-5xl')
+    expect(main?.className).not.toContain('max-w-3xl')
+  })
+
+  it('<main> resets to max-w-3xl after width override is cleared', () => {
+    act(() => {
+      setAppShellWidth('max-w-5xl')
+    })
+    renderAppShell()
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-5xl')
+
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    expect(main?.className).toContain('max-w-3xl')
+    expect(main?.className).not.toContain('max-w-5xl')
+  })
+
+  it('CommandPalette is globally mounted — listbox with aria-label="Actions" present in AppShell tree', () => {
+    renderAppShell()
+    // The listbox is rendered inside CommandPalette even when the dialog is closed
+    const listbox = document.querySelector('[role="listbox"][aria-label="Actions"]')
+    expect(listbox).not.toBeNull()
   })
 })

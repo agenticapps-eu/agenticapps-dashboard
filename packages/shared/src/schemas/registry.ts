@@ -42,3 +42,79 @@ export const StatusResponseSchema = z.object({
   tokenAge: z.number().int().nonnegative(),
 })
 export type StatusResponse = z.infer<typeof StatusResponseSchema>
+
+// ── Phase 3: prepare/confirm two-step registration (D-09..D-11) ──────────────
+
+export const RegisterPrepareRequestSchema = z.object({
+  path: z.string().min(1),
+})
+export type RegisterPrepareRequest = z.infer<typeof RegisterPrepareRequestSchema>
+
+const DetectedMarkersSchema = z.object({
+  gitRepo: z.boolean(),
+  planning: z.boolean(),
+  claudeSkills: z.boolean(),
+})
+
+/**
+ * 32-char lowercase hex nonce (crypto.randomBytes(16).toString('hex')) per D-10.
+ */
+const NonceHexSchema = z.string().regex(/^[0-9a-f]{32}$/)
+
+const RegisterPrepareAllowedSchema = z.object({
+  canonicalRoot: z.string(),
+  suggestedName: z.string(),
+  suggestedSlug: z.string(),
+  alreadyRegistered: z.literal(false),
+  blocked: z.literal(false),
+  detectedMarkers: DetectedMarkersSchema,
+  nonce: NonceHexSchema,
+  expiresAt: z.number().int(),
+})
+
+const RegisterPrepareBlockedSchema = z.object({
+  canonicalRoot: z.string(),
+  blocked: z.literal(true),
+  blockedReason: z.string(),
+})
+
+const RegisterPrepareAlreadyRegisteredSchema = z.object({
+  canonicalRoot: z.string(),
+  alreadyRegistered: z.literal(true),
+  existingEntry: RegistryEntrySchema,
+})
+
+/**
+ * Three-way union per RESEARCH Pattern 20.
+ * NOT discriminatedUnion — no single discriminator field covers all three shapes.
+ */
+export const RegisterPrepareResponseSchema = z.union([
+  RegisterPrepareAllowedSchema,
+  RegisterPrepareBlockedSchema,
+  RegisterPrepareAlreadyRegisteredSchema,
+])
+export type RegisterPrepareResponse = z.infer<typeof RegisterPrepareResponseSchema>
+
+export const RegisterConfirmRequestSchema = z.object({
+  nonce: NonceHexSchema,
+  name: z.string().min(1).optional(),
+  client: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+})
+export type RegisterConfirmRequest = z.infer<typeof RegisterConfirmRequestSchema>
+
+/** Confirm returns the same shape as the legacy /register endpoint. */
+export const RegisterConfirmResponseSchema = RegisterResponseSchema
+export type RegisterConfirmResponse = z.infer<typeof RegisterConfirmResponseSchema>
+
+// ── Phase 3: rename + tags mutation schemas (D-24) ───────────────────────────
+
+export const RenameRequestSchema = z.object({
+  name: z.string().min(1),
+})
+export type RenameRequest = z.infer<typeof RenameRequestSchema>
+
+export const TagsRequestSchema = z.object({
+  tags: z.array(z.string()),
+})
+export type TagsRequest = z.infer<typeof TagsRequestSchema>
