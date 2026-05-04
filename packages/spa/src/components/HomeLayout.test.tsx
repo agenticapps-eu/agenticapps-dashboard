@@ -1,13 +1,15 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
 
-import { RepairProvider, useRepair } from '../lib/repair.js'
+import { RepairProvider } from '../lib/repair.js'
+import { setAppShellWidth, getSnapshot } from '../lib/appShellWidth.js'
 
 import { AppShell } from './AppShell.js'
+import { HomeLayout } from './HomeLayout.js'
 
 /**
- * TDD RED: Tests for HomeLayout component.
- * These tests will fail until HomeLayout is implemented.
+ * Tests for HomeLayout component.
+ * Verifies that HomeLayout sets max-w-5xl on mount and resets to max-w-3xl on unmount.
  */
 
 // Mock all router primitives (same pattern as AppShell.test.tsx)
@@ -28,7 +30,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 beforeEach(() => {
   localStorage.clear()
   mockNavigate.mockClear()
-  vi.resetModules()
+  // Reset appShellWidth store to default before each test
+  setAppShellWidth('max-w-3xl')
 })
 
 afterEach(() => {
@@ -36,8 +39,7 @@ afterEach(() => {
 })
 
 describe('HomeLayout', () => {
-  it('renders children', async () => {
-    const { HomeLayout } = await import('./HomeLayout.js')
+  it('renders children', () => {
     render(
       <RepairProvider>
         <HomeLayout>
@@ -49,61 +51,23 @@ describe('HomeLayout', () => {
     expect(screen.getByText('hello')).toBeInTheDocument()
   })
 
-  it('sets max-w-5xl on AppShell <main> when mounted', async () => {
-    const { HomeLayout } = await import('./HomeLayout.js')
-    const { setAppShellWidth } = await import('../lib/appShellWidth.js')
-
-    // Ensure default state
-    act(() => {
-      setAppShellWidth('max-w-3xl')
-    })
+  it('sets max-w-5xl in the store on mount via useEffect', () => {
+    // Start in 3xl state (confirmed by beforeEach)
+    expect(getSnapshot()).toBe('max-w-3xl')
 
     render(
       <RepairProvider>
-        <AppShell />
+        <HomeLayout>
+          <span>content</span>
+        </HomeLayout>
       </RepairProvider>,
     )
 
-    // Before mounting HomeLayout, main should have max-w-3xl
-    const main = document.getElementById('main')
-    expect(main?.className).toContain('max-w-3xl')
-
-    // Mount HomeLayout and check that it triggers max-w-5xl
-    act(() => {
-      setAppShellWidth('max-w-5xl')
-    })
-    expect(main?.className).toContain('max-w-5xl')
-  })
-
-  it('resets to max-w-3xl after HomeLayout mounts then sets width', async () => {
-    const { HomeLayout } = await import('./HomeLayout.js')
-    const { setAppShellWidth, getSnapshot } = await import('../lib/appShellWidth.js')
-
-    // Simulate what HomeLayout useEffect does on mount
-    act(() => {
-      setAppShellWidth('max-w-5xl')
-    })
+    // After mount, useEffect runs and sets max-w-5xl
     expect(getSnapshot()).toBe('max-w-5xl')
-
-    // Simulate cleanup (unmount)
-    act(() => {
-      setAppShellWidth('max-w-3xl')
-    })
-    expect(getSnapshot()).toBe('max-w-3xl')
   })
 
-  it('HomeLayout sets max-w-5xl on mount via useEffect', async () => {
-    // Dynamically import so module state is reset
-    const { HomeLayout } = await import('./HomeLayout.js')
-    const { getSnapshot, setAppShellWidth } = await import('../lib/appShellWidth.js')
-
-    // Start in 3xl state
-    act(() => {
-      setAppShellWidth('max-w-3xl')
-    })
-    expect(getSnapshot()).toBe('max-w-3xl')
-
-    // When HomeLayout mounts, it should call setAppShellWidth('max-w-5xl')
+  it('resets store to max-w-3xl on unmount (cleanup)', () => {
     const { unmount } = render(
       <RepairProvider>
         <HomeLayout>
@@ -112,10 +76,56 @@ describe('HomeLayout', () => {
       </RepairProvider>,
     )
 
+    // After mount: 5xl
     expect(getSnapshot()).toBe('max-w-5xl')
 
-    // When HomeLayout unmounts, it should reset to max-w-3xl
+    // After unmount: back to 3xl
     unmount()
     expect(getSnapshot()).toBe('max-w-3xl')
+  })
+
+  it('AppShell <main> reflects max-w-5xl when HomeLayout is mounted alongside AppShell', () => {
+    // Render AppShell (starts at max-w-3xl from default store)
+    const { unmount: unmountAppShell } = render(
+      <RepairProvider>
+        <AppShell />
+      </RepairProvider>,
+    )
+
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-3xl')
+    expect(main?.className).not.toContain('max-w-5xl')
+
+    // Mount HomeLayout elsewhere — it updates the shared store
+    // AppShell re-renders because useSyncExternalStore detects the change
+    act(() => {
+      setAppShellWidth('max-w-5xl')
+    })
+
+    expect(main?.className).toContain('max-w-5xl')
+    expect(main?.className).not.toContain('max-w-3xl')
+
+    unmountAppShell()
+  })
+
+  it('AppShell <main> reverts to max-w-3xl after setAppShellWidth reset', () => {
+    render(
+      <RepairProvider>
+        <AppShell />
+      </RepairProvider>,
+    )
+
+    act(() => {
+      setAppShellWidth('max-w-5xl')
+    })
+
+    const main = document.getElementById('main')
+    expect(main?.className).toContain('max-w-5xl')
+
+    act(() => {
+      setAppShellWidth('max-w-3xl')
+    })
+    expect(main?.className).toContain('max-w-3xl')
+    expect(main?.className).not.toContain('max-w-5xl')
   })
 })
