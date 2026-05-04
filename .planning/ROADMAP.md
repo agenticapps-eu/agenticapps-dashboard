@@ -99,10 +99,10 @@ Plans:
 **Plans**: 11 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Wave 0: shared schemas (overview.ts + registry.ts extensions) + 4 daemon RED stubs (registerNonces / rateLimiter / registerLog / overviewCache) + projectOverview reader + touchLongPress; ~25 new tests
-- [ ] 03-02-PLAN.md — Wave 0: AppShell max-w override pattern (useSyncExternalStore-backed) + HomeLayout wrapper for the 5xl home page width
-- [ ] 03-03-PLAN.md — Wave 1: GET /api/projects/:id/overview route + 5s memo cache + outbound() schema-drift defense + 404 + unreachable graceful Pending
-- [ ] 03-04-PLAN.md — Wave 1: POST /register-prepare + /register-confirm (D-09 confused-deputy nonce flow) + rate limiter (D-14) + BLOCKED stderr log (D-15)
+- [x] 03-01-PLAN.md — Wave 0: shared schemas (overview.ts + registry.ts extensions) + 4 daemon RED stubs (registerNonces / rateLimiter / registerLog / overviewCache) + projectOverview reader + touchLongPress; ~25 new tests
+- [x] 03-02-PLAN.md — Wave 0: AppShell max-w override pattern (useSyncExternalStore-backed) + HomeLayout wrapper for the 5xl home page width
+- [x] 03-03-PLAN.md — Wave 1: GET /api/projects/:id/overview route + 5s memo cache + outbound() schema-drift defense + 404 + unreachable graceful Pending
+- [x] 03-04-PLAN.md — Wave 1: POST /register-prepare + /register-confirm (D-09 confused-deputy nonce flow) + rate limiter (D-14) + BLOCKED stderr log (D-15)
 - [ ] 03-05-PLAN.md — Wave 1: POST /:id/rename + /:id/tags routes (D-24) + evict() in /unregister for cache hygiene
 - [ ] 03-06-PLAN.md — Wave 2: SPA query/mutation hooks for all 7 endpoints + filterAndSort/computeOverflowChips pure functions + D-12 apiFetch guard + /projects/$projectId placeholder route
 - [ ] 03-07-PLAN.md — Wave 2: HomeToolbar (chips + search + sort) + ProjectCard (compact + hover-expand + 5 states + kebab) + CardContextMenu (portal + roving tabindex + inline unregister confirm)
