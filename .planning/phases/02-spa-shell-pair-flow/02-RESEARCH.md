@@ -842,32 +842,39 @@ describe('SPA-01: dev server hot-reload', () => {
 
 **Confirmation needed before execution:** A5 (Tailscale tailnet regex shape) and A7 (CF Pages SPA fallback). Both are LOW-MEDIUM risk; planner should add verification tasks rather than assumptions.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All five questions identified during research were resolved during planning. Each item below records the resolution and the implementing reference so the checker can trace decision → execution.
 
 1. **Tailscale tailnet regex precision (A5)**
    - **What we know:** Phase 1 D-19's regex (`^[a-zA-Z0-9.-]+\.ts\.net$`) is broad; this matches `acme.ts.net`, `devbox.tail-abc.ts.net`, `host.subdomain.tail-xyz.ts.net`. Spec line 222 says `*.tail-*.ts.net`.
    - **What's unclear:** Does Donald's actual Tailscale setup produce hostnames like `acme.ts.net` (single label), `devbox.acme.ts.net` (two-label custom), or `devbox.tail-abc.ts.net` (default magicdns)?
    - **Recommendation:** Use the broader regex for now (matches Phase 1 D-19 — `^[a-z0-9-]+(\.[a-z0-9-]+)+\.ts\.net$`). Surface during `/gsd-plan-phase` review. If Donald's tailnet uses a custom name, the regex still passes.
+   - **RESOLVED:** Plan 01 Task 1 ships `AGENT_URL_REGEX` requiring ≥1 dot before `.ts.net` (`^...https?:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)+\.ts\.net(?::\d{1,5})?$`). Accepts `devbox.tail-abc123.ts.net`, `acme-org.tail-x9z.ts.net`; rejects bare `acme.ts.net` single-label and `ts.net.attacker.com` lookalikes. [Plan 02-01 Task 1, behavior bullets + acceptance test `'rejects ts.net lookalike domains'`]
 
 2. **CF Pages SPA fallback (A7)**
    - **What we know:** Cloudflare Pages needs `_redirects` (or `_headers`) for SPA routing — without it, refreshing on `/onboarding` returns a 404.
    - **What's unclear:** Whether Phase 0 set up `packages/spa/public/_redirects` already.
    - **Recommendation:** Wave 0 task in the plan: verify file exists; create if missing with content `/*  /index.html  200`.
+   - **RESOLVED:** Plan 01 Task 2 creates `packages/spa/public/_redirects` with `/*    /index.html   200` plus a strict CSP `_headers` file. Build verifies both files copy to `dist/` verbatim. [Plan 02-01 Task 2]
 
 3. **Vite HMR detection mechanism for SPA-01 test (A4)**
    - **What we know:** Vite emits HMR updates over WebSocket; many community examples assert against the `hmr update` stdout log line.
    - **What's unclear:** Whether the log line wording is stable across Vite v8.x. (Vite v8 is post-rebrand; some log messages changed.)
    - **Recommendation:** Plan a fallback: if stdout-grep is flaky, switch to a WebSocket-attach test (open `ws://localhost:5174` with the Vite HMR protocol, listen for `update` payload).
+   - **RESOLVED:** Plan 06 Task 2 adopts the stdout-grep approach with WebSocket fallback documented inline. The subprocess test warms the dev server first (Pitfall 9), then asserts `hmr update|page reload` regex within 2000ms. If the executor sees flake on retry, fallback path is described in the action block. [Plan 02-06 Task 2]
 
 4. **`@tanstack/react-router` devtools in Phase 2?**
    - **What we know:** `@tanstack/router-devtools@1.166.13` exists; same release train.
    - **What's unclear:** Add now (helps debugging the pair flow) or defer to Phase 6 polish.
    - **Recommendation:** Add as a `devDependencies` entry now; conditionally render the devtools panel in `import.meta.env.DEV` only. Costs nothing in prod.
+   - **RESOLVED:** **Deferred to Phase 6 polish.** No plan in Phase 2 includes `@tanstack/router-devtools` in `files_modified`, package.json deps, or catalog entries. Confirmed against Plan 01 Task 1 (catalog adds only `@tanstack/react-router`, `@tanstack/zod-adapter`, `@testing-library/user-event`). Phase 6 adds devtools alongside the other polish work.
 
 5. **`/help` route — empty stub or 404?**
    - **What we know:** Spec lists `/help` as a route (line 398). CONTEXT defers help content to Phase 6.
    - **What's unclear:** Should `/help` exist as a stub route in Phase 2's route tree?
    - **Recommendation:** **Yes — stub it.** Adding it later means revisiting `router.tsx`. Stub renders `<p>Coming in Phase 6 — see <a href="/onboarding">Get started</a>.</p>`. Cheap and matches D-05 (one chunk per route).
+   - **RESOLVED:** Plan 05 Task 3 ships `/help` as a stub route with the verbatim "Detailed help arrives in Phase 6" copy and a link back to `/onboarding`. Route is lazy-loaded same as the other four. [Plan 02-05 Task 3]
 
 ## Environment Availability
 
@@ -1087,11 +1094,11 @@ describe('SPA-01: dev server hot-reload', () => {
 | Pitfalls | HIGH-MEDIUM | Community + repo evidence; HMR-2s on CI is empirical |
 | Security | HIGH | STRIDE × surfaces; no novel claims |
 
-### Open Questions (for `/gsd-plan-phase 2`)
+### Open Questions (RESOLVED — see §"Open Questions (RESOLVED)" above for traceability)
 
-1. Tailscale tailnet regex precision (single-label `acme.ts.net` vs `*.acme.ts.net`) — see Open Questions §1.
-2. CF Pages `_redirects` file existence (audit Wave 0 task) — see Open Questions §2.
-3. Vite HMR detection mechanism (stdout-grep vs WebSocket attach) — see Open Questions §3.
+1. **RESOLVED:** Tailscale tailnet regex precision (single-label `acme.ts.net` vs `*.acme.ts.net`) — narrowed to ≥1 dot before `.ts.net`. [Plan 02-01 Task 1]
+2. **RESOLVED:** CF Pages `_redirects` file existence — created in Wave 0. [Plan 02-01 Task 2]
+3. **RESOLVED:** Vite HMR detection mechanism — stdout-grep with WebSocket fallback documented. [Plan 02-06 Task 2]
 4. Add `@tanstack/router-devtools` now or in Phase 6? — recommendation: now, dev-only.
 5. `/help` route stub vs 404? — recommendation: stub now to avoid Phase 6 router-tree edits.
 
