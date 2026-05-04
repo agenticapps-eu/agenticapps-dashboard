@@ -9,6 +9,12 @@ export {
   RegistryListResponseSchema,
   RegisterResponseSchema,
   StatusResponseSchema,
+  RegisterPrepareRequestSchema,
+  RegisterPrepareResponseSchema,
+  RegisterConfirmRequestSchema,
+  RegisterConfirmResponseSchema,
+  RenameRequestSchema,
+  TagsRequestSchema,
 } from './schemas/registry.js'
 export type {
   RegistryEntry,
@@ -17,6 +23,12 @@ export type {
   RegistryListResponse,
   RegisterResponse,
   StatusResponse,
+  RegisterPrepareRequest,
+  RegisterPrepareResponse,
+  RegisterConfirmRequest,
+  RegisterConfirmResponse,
+  RenameRequest,
+  TagsRequest,
 } from './schemas/registry.js'
 export { ReadResponseSchema } from './schemas/read.js'
 export type { ReadResponse } from './schemas/read.js'
@@ -32,3 +44,15 @@ export {
   AGENT_URL_REGEX,
 } from './schemas/pairing.js'
 export type { Pairing } from './schemas/pairing.js'
+export {
+  ProjectOverviewSchema,
+  FindingCountsSchema,
+  DbAuditFindingsSchema,
+  MarkersSchema,
+} from './schemas/overview.js'
+export type {
+  ProjectOverview,
+  FindingCounts,
+  DbAuditFindings,
+  Markers,
+} from './schemas/overview.js'
