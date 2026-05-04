@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, vi, afterAll } from 'vitest'
 import {
   mkdtempSync,
   writeFileSync,
@@ -9,6 +8,7 @@ import {
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { ProjectOverviewSchema } from '@agenticapps/dashboard-shared'
 
 import {

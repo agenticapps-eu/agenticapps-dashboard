@@ -8,12 +8,10 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, basename } from 'node:path'
+import { join } from 'node:path'
 
 import { execa } from 'execa'
-
-import { ProjectOverviewSchema } from '@agenticapps/dashboard-shared'
-import type { ProjectOverview } from '@agenticapps/dashboard-shared'
+import { ProjectOverviewSchema, type ProjectOverview } from '@agenticapps/dashboard-shared'
 
 import { GIT_SUBPROCESS_TIMEOUT_MS } from '../constants.js'
 
@@ -55,7 +53,7 @@ export function findLatestPhaseDir(root: string): string | null {
       const nb = parseInt(b, 10)
       return nb - na
     })
-    return join(phasesDir, dirs[0])
+    return join(phasesDir, dirs[0]!)
   } catch {
     return null
   }
@@ -91,9 +89,9 @@ export function parseReviewFile(
         return {
           ran: true,
           findings: {
-            red: criticalMatch ? parseInt(criticalMatch[1], 10) : 0,
-            yellow: warningMatch ? parseInt(warningMatch[1], 10) : 0,
-            green: infoMatch ? parseInt(infoMatch[1], 10) : 0,
+            red: criticalMatch ? parseInt(criticalMatch[1]!, 10) : 0,
+            yellow: warningMatch ? parseInt(warningMatch[1]!, 10) : 0,
+            green: infoMatch ? parseInt(infoMatch[1]!, 10) : 0,
           },
         }
       }
@@ -284,10 +282,10 @@ export async function readOverview(root: string): Promise<ProjectOverview> {
           if (critM ?? highM ?? medM ?? lowM) {
             dbAudit = {
               findings: {
-                critical: critM ? parseInt(critM[1], 10) : 0,
-                high: highM ? parseInt(highM[1], 10) : 0,
-                medium: medM ? parseInt(medM[1], 10) : 0,
-                low: lowM ? parseInt(lowM[1], 10) : 0,
+                critical: critM ? parseInt(critM[1]!, 10) : 0,
+                high: highM ? parseInt(highM[1]!, 10) : 0,
+                medium: medM ? parseInt(medM[1]!, 10) : 0,
+                low: lowM ? parseInt(lowM[1]!, 10) : 0,
               },
             }
           }

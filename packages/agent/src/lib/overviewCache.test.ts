@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import type { ProjectOverview } from '@agenticapps/dashboard-shared'
 
 import { getCached, setCached, evict, _resetForTests } from './overviewCache.js'
-import type { ProjectOverview } from '@agenticapps/dashboard-shared'
 
 const sampleOverview: ProjectOverview = {
   phaseStatus: 'In Progress',

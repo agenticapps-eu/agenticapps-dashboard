@@ -11,7 +11,7 @@ describe('logBlocked', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     logBlocked('reason text', '/some/path', 'abc12345', 'req-1')
     expect(spy).toHaveBeenCalledOnce()
-    expect(spy.mock.calls[0][0]).toMatch(
+    expect(spy.mock.calls[0]![0]).toMatch(
       /^\[agent\] BLOCKED register: \/some\/path \(reason text\) tokenHash=abc12345 requestId=req-1$/
     )
   })
@@ -19,7 +19,7 @@ describe('logBlocked', () => {
   it('escapes newlines in reason to prevent log injection', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     logBlocked('reason\nwith newline', '/some/path', 'abc12345', 'req-2')
-    const line = spy.mock.calls[0][0] as string
+    const line = spy.mock.calls[0]![0] as string
     expect(line).not.toContain('\n')
     expect(line).toContain('\\n')
   })
