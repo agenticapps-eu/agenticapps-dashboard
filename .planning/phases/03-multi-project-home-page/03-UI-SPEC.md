@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: multi-project-home-page
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-04
+reviewed_at: 2026-05-04
 ---
 
 # Phase 3 — UI Design Contract
@@ -130,6 +131,8 @@ Phase 2 items 1–6 remain in force. Phase 3 adds:
 ### `<MultiProjectHome>`
 
 **Purpose:** Top-level home route component. Replaced the Phase 2 placeholder at `/`.
+
+**Visual focal point:** The card grid is the primary focal point — project names at Heading size (20px / 600) draw the eye first; the RegisterButtonCard's dashed accent border is the secondary focal point that anchors the empty/just-started state.
 
 **Layout:**
 ```
@@ -313,7 +316,7 @@ Flex row, `flex items-center gap-3 flex-wrap`. Filter chips on the left, search 
 │  └─────────────────────────────────────────────┘   │
 │  Full path to the project root.                     │
 │                                                     │
-│  [ Preview ]                                        │
+│  [ Preview path ]                                   │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -341,7 +344,7 @@ Flex row, `flex items-center gap-3 flex-wrap`. Filter chips on the left, search 
 │  ⓘ No git repo or .planning/.claude found here.    │
 │     Cards may show empty data.                      │
 │                                                     │
-│  [ Back ]   [ Confirm ]                             │
+│  [ Back ]   [ Confirm registration ]                │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -358,26 +361,26 @@ Flex row, `flex items-center gap-3 flex-wrap`. Filter chips on the left, search 
 - Label: "Project path" — Label size, `text-[--text] font-semibold`.
 - Input: `<input type="text" autocomplete="off">`. Mono font: `font-mono text-sm`. Same input styling as `ManualPairForm`: `w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 font-mono text-sm text-[--text]`.
 - Helper text: "Full path to the project root." — Label size, `text-[--text-muted]`.
-- Enter key: triggers Preview (same as clicking `[Preview]`).
-- `[Preview]` button: secondary style. `bg-[--surface-elevated] border border-[--border-strong] text-[--text] px-4 py-2 text-sm font-semibold rounded-md`. In-flight state: `<Loader2 size={14} class="animate-spin mr-2">` + "Previewing…". Disabled while in-flight.
+- Enter key: triggers Preview path (same as clicking `[Preview path]`).
+- `[Preview path]` button: secondary style. `bg-[--surface-elevated] border border-[--border-strong] text-[--text] px-4 py-2 text-sm font-semibold rounded-md`. In-flight state: `<Loader2 size={14} class="animate-spin mr-2">` + "Previewing…". Disabled while in-flight.
 
 **Step 2 fields:**
 - "Resolved path": static text, not an input. `font-mono text-sm text-[--text] bg-[--surface-elevated] px-3 py-2 rounded-md` display block.
 - "Name" input: pre-filled with `suggestedName`. Same input styling as step 1 but sans-serif.
 - "Client" input: empty by default. Same input styling.
 - "Tags": Existing tags from the registry as toggle chip pills (`bg-[--surface-elevated] border border-[--border] text-sm px-2 py-1 rounded`; selected = `bg-[--accent] text-[--accent-fg] border-[--accent]`). Free-text input adds new tags. Enter on the tag input = add the chip (do not submit the form). New tag chip appears inline.
-- Enter key: Enter on name = confirm. Enter on tag input = add chip (not confirm). Enter on Confirm button = confirm. Enter on Back = back. Enter on Cancel = close (fires dirty-state check).
+- Enter key: Enter on name = confirm. Enter on tag input = add chip (not confirm). Enter on Confirm registration button = confirm. Enter on Back = back. Enter on Cancel = close (fires dirty-state check).
 
 **Inline error states:**
-- Preview network failure: `"Couldn't reach the daemon. [Retry]"` inline below the path input. Label size, `text-[--text-muted]`. Retry re-calls `/register-prepare`.
+- Preview network failure: `"Couldn't reach the daemon. [Retry preview]"` inline below the path input. Label size, `text-[--text-muted]`. Retry preview re-calls `/register-prepare`.
 - Prepare schema drift: `<SchemaDriftState />` rendered inside the modal panel (replaces the step content).
-- Blocked path (D-27): Step 2 renders normally with the canonical path visible. Confirm button is disabled (`opacity-50 cursor-not-allowed`). Red inline banner above the action buttons: `bg-[--danger-surface] border-l-2 border-l-[--danger] px-4 py-3 rounded-md text-sm text-[--text]`. Content: "Blocked: {blockedReason}" — verbatim from daemon, no client-side string manipulation.
+- Blocked path (D-27): Step 2 renders normally with the canonical path visible. Confirm registration button is disabled (`opacity-50 cursor-not-allowed`). Red inline banner above the action buttons: `bg-[--danger-surface] border-l-2 border-l-[--danger] px-4 py-3 rounded-md text-sm text-[--text]`. Content: "Blocked: {blockedReason}" — verbatim from daemon, no client-side string manipulation.
 - Already registered (D-17): Step 2 renders with a blue info banner: `bg-[--surface-elevated] border border-[--border] px-4 py-3 rounded-md`. Content: `"Already registered as {existingEntry.id} since {date}."` + two buttons: `[Open project]` (accent fill, navigates and closes) + `[Close]` (secondary).
 - No markers detected (D-30): muted info note below tags field, only when `detectedMarkers.gitRepo === false && detectedMarkers.planning === false && detectedMarkers.claudeSkills === false`. Icon: `ⓘ` character (U+24D8, monospace, `text-[--text-muted]`). Text: "No git repo or .planning/.claude found here. Cards may show empty data." Label size, `text-[--text-muted]`. NOT blocking.
 
 **Actions (step 2):**
 - `[Back]` — secondary style, returns to step 1 with path pre-filled. Positioned left.
-- `[Confirm]` — primary style (`bg-[--accent] text-[--accent-fg] hover:bg-[--accent-hover]`). Disabled when blocked. In-flight: spinner + "Registering…". Positioned right.
+- `[Confirm registration]` — primary style (`bg-[--accent] text-[--accent-fg] hover:bg-[--accent-hover]`). Disabled when blocked. In-flight: spinner + "Registering…". Positioned right.
 - `[Cancel]` — not a button in step 2 — cancel is via `[×]` or `Esc`. This avoids a three-button row.
 
 **Post-confirm:** On 201 from `/register-confirm`, modal closes, the new card is optimistically added to the grid (D-25). Focus moves to the new card (`tabIndex={-1}` + `scrollIntoView({ block: 'nearest' })` + `element.focus()`).
@@ -427,7 +430,7 @@ Flex row, `flex items-center gap-3 flex-wrap`. Filter chips on the left, search 
 - `<input type="search" placeholder="Search or jump to…" aria-label="Command palette search" aria-owns="palette-listbox">`.
 - Styling: `w-full bg-transparent border-0 px-4 py-3 text-base text-[--text] placeholder:text-[--text-subtle] focus:outline-none`.
 - `<Search size={16} />` icon left of input: `absolute left-4 text-[--text-muted]` — same pattern as HomeToolbar search.
-- `⌘K` hint chip: `absolute right-4 top-1/2 -translate-y-1/2`. Styling: `bg-[--surface-elevated] border border-[--border] rounded px-1.5 py-0.5 font-mono text-xs text-[--text-muted]`. **Exception to the no-`*.5` rule:** `px-1.5 py-0.5` is permitted for the ⌘K badge only — it is a decorative hint chip, not a spacing token. This exception is annotated inline.
+- `⌘K` hint chip: `absolute right-4 top-1/2 -translate-y-1/2`. Styling: `bg-[--surface-elevated] border border-[--border] rounded px-2 leading-none flex items-center font-mono text-xs text-[--text-muted]`. The chip relies on natural line-height centering via `leading-none flex items-center` — no explicit vertical padding needed.
 - Separator below input row: `border-b border-[--border]`.
 
 **Listbox:**
@@ -448,7 +451,7 @@ Flex row, `flex items-center gap-3 flex-wrap`. Filter chips on the left, search 
 - `Tab`: close palette (focus leaves).
 - When input has no filter text and the palette opens, first row is highlighted by default.
 
-**Fuzzy filter:** Lower-cased substring match on action label + project names. No external library. Typing in the input narrows the list in real time. When filter produces zero matches: render a single non-interactive row "No actions found." — Label size, `text-[--text-muted]`, `px-4 py-3`.
+**Fuzzy filter:** Lower-cased substring match on action label + project names. No external library. Typing in the input narrows the list in real time. When filter produces zero matches: render a single non-interactive row "No actions found. Try a shorter search." — Label size, `text-[--text-muted]`, `px-4 py-3`.
 
 **Focus management:** On open, focus moves to the search input. On close, focus returns to the element that was focused before the palette opened (capture `document.activeElement` on `keydown` before `.showModal()`).
 
@@ -517,7 +520,7 @@ All Phase 2 interaction states (resting / hover / focus-visible / active / disab
 | Modal backdrop | `<RegisterModal>`, `<CommandPalette>` | `rgba(0,0,0,0.6)` via `::backdrop` | Both themes |
 | Modal dirty close | `<RegisterModal>` | Inline banner replaces action buttons | Not a second `<dialog>` |
 | Palette row focused | `<CommandPalette>` | `bg-[--surface-elevated]` | `aria-activedescendant` on input |
-| Palette no-results | `<CommandPalette>` | `text-[--text-muted]` non-interactive row | "No actions found." |
+| Palette no-results | `<CommandPalette>` | `text-[--text-muted]` non-interactive row | "No actions found. Try a shorter search." |
 
 ---
 
@@ -575,7 +578,7 @@ Inherits all Phase 2 copy. Phase 3 additions:
 | **RegisterModal — step 1 heading** | Register a project |
 | **RegisterModal — path field label** | Project path |
 | **RegisterModal — path field helper** | Full path to the project root. |
-| **RegisterModal — preview button (resting)** | Preview |
+| **RegisterModal — preview button (resting)** | Preview path |
 | **RegisterModal — preview button (in-flight)** | Previewing… |
 | **RegisterModal — step 2 heading** | Confirm registration |
 | **RegisterModal — resolved path label** | Resolved path |
@@ -587,14 +590,14 @@ Inherits all Phase 2 copy. Phase 3 additions:
 | **RegisterModal — already-registered heading** | Already registered |
 | **RegisterModal — already-registered body** | Already registered as {id} since {date}. |
 | **RegisterModal — already-registered CTA** | Open project |
-| **RegisterModal — confirm button (resting)** | Confirm |
+| **RegisterModal — confirm button (resting)** | Confirm registration |
 | **RegisterModal — confirm button (in-flight)** | Registering… |
 | **RegisterModal — back button** | Back |
 | **RegisterModal — discard confirm** | Discard changes? |
 | **RegisterModal — discard: confirm action** | Discard |
 | **RegisterModal — discard: cancel action** | Keep editing |
 | **RegisterModal — preview error heading** | Couldn't reach the daemon. |
-| **RegisterModal — preview error action** | Retry |
+| **RegisterModal — preview error action** | Retry preview |
 | **RegisterModal — close button aria-label** | Close registration dialog |
 | **CardContextMenu — rename item** | Rename |
 | **CardContextMenu — edit tags item** | Edit tags |
@@ -608,7 +611,7 @@ Inherits all Phase 2 copy. Phase 3 additions:
 | **CommandPalette — action: jump prefix** | Jump to {name} |
 | **CommandPalette — action: refresh** | Refresh data |
 | **CommandPalette — action: toggle theme** | Toggle theme |
-| **CommandPalette — no results** | No actions found. |
+| **CommandPalette — no results** | No actions found. Try a shorter search. |
 | **HomeToolbar — search placeholder** | Search projects… |
 | **HomeToolbar — search aria-label** | Search projects |
 | **HomeToolbar — sort aria-label (visually hidden label)** | Sort by |
