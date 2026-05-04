@@ -174,6 +174,32 @@ describe('ManualPairForm', () => {
     resolveSubmit({ ok: true, data: { ok: true, version: '0' } })
   })
 
+  it('WR-04: pressing Enter while a submit is in-flight does not fire a second apiFetch', async () => {
+    const user = userEvent.setup()
+    let resolveSubmit!: (value: unknown) => void
+    const submitPromise = new Promise((resolve) => {
+      resolveSubmit = resolve
+    })
+    mockApiFetch.mockReturnValueOnce(submitPromise as ReturnType<typeof apiFetch>)
+    render(<ManualPairForm />)
+    await user.type(screen.getByLabelText(/Agent URL/i), VALID_URL)
+    await user.type(screen.getByLabelText(/^Token$/i), VALID_TOKEN)
+    // First submit (kicks off the in-flight request)
+    await user.click(screen.getByRole('button', { name: /Save & connect/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Connecting/i })).toBeInTheDocument()
+    })
+    expect(mockApiFetch).toHaveBeenCalledTimes(1)
+    // Press Enter while the token field is focused — must NOT trigger a second submit
+    const tokenInput = screen.getByLabelText(/^Token$/i)
+    tokenInput.focus()
+    await user.keyboard('{Enter}')
+    // apiFetch must still have been called only once
+    expect(mockApiFetch).toHaveBeenCalledTimes(1)
+    // Cleanup
+    resolveSubmit({ ok: true, data: { ok: true, version: '0' } })
+  })
+
   it('after success state, navigates to / after ~800ms', async () => {
     const user = userEvent.setup()
     mockApiFetch.mockResolvedValueOnce({ ok: true, data: { ok: true, version: '0.1.0' } })

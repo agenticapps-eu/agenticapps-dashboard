@@ -48,6 +48,10 @@ export function ManualPairForm() {
 
   const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
+    // WR-04: re-entry guard — protects against Enter-key resubmission while
+    // a previous submission is still in-flight (aria-disabled alone is a
+    // screen-reader hint and does NOT block keyboard form submission).
+    if (status.kind === 'submitting') return
     const aErr = validateAgentUrl(agentUrl)
     const tErr = validateToken(token)
     setAgentUrlError(aErr)
@@ -182,6 +186,7 @@ export function ManualPairForm() {
         {/* Submit */}
         <button
           type="submit"
+          disabled={!canSubmit || status.kind === 'submitting'}
           aria-disabled={!canSubmit || status.kind === 'submitting'}
           className={[
             'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]',
