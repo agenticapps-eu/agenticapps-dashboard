@@ -56,6 +56,14 @@ export function MultiProjectHome(): React.JSX.Element {
     return () => clearTimeout(t)
   }, [newCardId])
 
+  // Command palette "Register project" action dispatches palette:open-register
+  // (commandPaletteActions.ts). Listen for it and open the modal (D-32).
+  useEffect(() => {
+    const onOpenRegister = () => setRegisterOpen(true)
+    window.addEventListener('palette:open-register', onOpenRegister)
+    return () => window.removeEventListener('palette:open-register', onOpenRegister)
+  }, [])
+
   // Error states for the registry list
   if (list.isError) {
     if (list.error?.message?.startsWith('schema_drift:')) {

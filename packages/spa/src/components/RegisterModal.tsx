@@ -103,6 +103,9 @@ export function RegisterModal({
       previouslyFocused.current = document.activeElement as HTMLElement | null
       if (!dialog.open) dialog.showModal()
       // Reset state on open — the dialog must start fresh each time it opens.
+      // The cascading renders the rule warns about are intended: each open
+      // resets internal form state in one batch (D-13 dirty-discard semantics).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPath('')
       setNetworkError(false)
       setPrepareData(null)

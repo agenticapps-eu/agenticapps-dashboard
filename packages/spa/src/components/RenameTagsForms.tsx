@@ -18,6 +18,8 @@ export function RenameDialog({ isOpen, item, onClose }: RenameDialogProps): Reac
 
   useEffect(() => {
     if (isOpen && item) {
+      // Sync form state from incoming item; intentional reset on open.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(item.name)
       if (!dialogRef.current?.open) {
         dialogRef.current?.showModal()
@@ -115,6 +117,8 @@ export function EditTagsDialog({
 
   useEffect(() => {
     if (isOpen && item) {
+      // Sync form state from incoming item; intentional reset on open.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTags(item.tags)
       setInput('')
       if (!dialogRef.current?.open) {

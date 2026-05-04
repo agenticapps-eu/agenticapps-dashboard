@@ -92,7 +92,7 @@ function FindingRow({
 
 export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JSX.Element {
   const navigate = useNavigate()
-  const cardRef = useRef<HTMLButtonElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
   const unreachable = item.status.reachable === false
 
   const overview = useProjectOverview(unreachable ? null : item.id)
@@ -126,14 +126,26 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
     .filter(Boolean)
     .join(' ')
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      // Activate the card unless the keypress targets a nested interactive element.
+      if (e.target === e.currentTarget) {
+        e.preventDefault()
+        handleCardClick()
+      }
+    }
+  }
+
   return (
-    <button
+    <div
       ref={cardRef}
-      type="button"
+      role="button"
+      tabIndex={0}
       className={containerClass}
       aria-label={`View ${item.name}`}
       aria-busy={isLoading ? 'true' : undefined}
       onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
       {...longPress}
     >
@@ -299,6 +311,6 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
           )}
         </>
       ) : null}
-    </button>
+    </div>
   )
 }
