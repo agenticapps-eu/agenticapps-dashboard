@@ -1,6 +1,12 @@
 # AgenticApps Pipeline Dashboard
 
-> **Alpha — placeholder release.** Phases 0–6 ship a complete, useful dashboard with zero third-party service dependencies. We are at Phase 0 (bootstrap). Daemon and SPA logic land in Phase 1 onward. Don't run this against anything you care about yet.
+> **Alpha — early release.** Phases 0–6 ship a complete, useful dashboard with zero third-party service dependencies. Don't run this against anything you care about yet.
+
+## Status
+
+**Phases 0, 1, and 2 shipped.** Phase 0 stood up the pnpm workspace + Cloudflare Pages preview deploy + npm placeholder. Phase 1 landed the local daemon (Hono on `127.0.0.1:5193`), registry, bearer-token auth, CLI surface, and path allow-list. Phase 2 ships the SPA shell + pair flow: 5 routes (`/`, `/onboarding`, `/pair`, `/settings`, `/help`), TanStack Router with Zod-validated search params, dark theme by default with system + light + tri-state toggle, manual-pair fallback at `/settings`, schema-drift inline panel state (INV-04 SPA-side), and 401 → re-pair banner UX (AUTH-04 SPA-side).
+
+**Phase 3 (multi-project home) is the next work.**
 
 A registry-based, multi-project dashboard that visualizes the running state of the AgenticApps Superpowers + GSD + gstack pipeline across every registered project — from any device, while keeping all data on your own machine.
 
