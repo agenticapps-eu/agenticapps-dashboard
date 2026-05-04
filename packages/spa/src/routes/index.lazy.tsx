@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createLazyRoute } from '@tanstack/react-router'
+
 import { getPairing } from '../lib/pairing.js'
 
 export const Route = createLazyRoute('/')({

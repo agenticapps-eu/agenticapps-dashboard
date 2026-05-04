@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
 import { SchemaDriftState } from './SchemaDriftState.js'
 
 const FIRST_ISSUE = { path: 'foo.bar', expected: 'number', got: 'undefined' }

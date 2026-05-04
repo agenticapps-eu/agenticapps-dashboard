@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createLazyRoute } from '@tanstack/react-router'
+
 import { ManualPairForm } from '../components/ManualPairForm.js'
 import { ThemeToggle } from '../components/ThemeToggle.js'
 

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, cleanup, act } from '@testing-library/react'
 import { RouterProvider, createRouter, createMemoryHistory, type AnyRouter } from '@tanstack/react-router'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
+
 import { RepairProvider, useRepair } from '../lib/repair.js'
 import { createQueryClient } from '../lib/queryClient.js'
 
@@ -45,10 +47,15 @@ async function renderAppWithRepairBus(initialUrl: string) {
   const memoryHistory = createMemoryHistory({ initialEntries: [initialUrl] })
   const testRouter = createRouter({ routeTree: router.routeTree, history: memoryHistory })
 
-  let hookResult: ReturnType<typeof useRepair> | undefined
+  // Use a mutable container (object property mutation, not variable reassignment)
+  // so react-hooks/globals doesn't flag the capture as a render-time side effect.
+  const captured: { repair?: ReturnType<typeof useRepair> } = {}
 
   function BusCapture() {
-    hookResult = useRepair()
+    const repair = useRepair()
+    useEffect(() => {
+      captured.repair = repair
+    }, [repair])
     return null
   }
 
@@ -60,7 +67,7 @@ async function renderAppWithRepairBus(initialUrl: string) {
     </RepairProvider>,
   )
 
-  return () => hookResult!
+  return () => captured.repair!
 }
 
 function QueryBridgeForTest({ router: testRouter }: { router: AnyRouter }) {

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+
 import { useRepair } from '../lib/repair.js'
 
 export function RepairBanner(): React.JSX.Element | null {

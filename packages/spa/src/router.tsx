@@ -9,6 +9,7 @@ import {
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
+
 import { AppShell } from './components/AppShell.js'
 import { getPairing } from './lib/pairing.js'
 import { MalformedPairUrl, RouteError } from './routes/pair-error.js'

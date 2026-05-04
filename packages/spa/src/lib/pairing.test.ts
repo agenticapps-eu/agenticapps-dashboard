@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getPairing, setPairing, clearPairing } from './pairing.js'
 import type { Pairing } from '@agenticapps/dashboard-shared'
+
+import { getPairing, setPairing, clearPairing } from './pairing.js'
 
 const VALID_PAIRING: Pairing = {
   agentUrl: 'http://localhost:5193',

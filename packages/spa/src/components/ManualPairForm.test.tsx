@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
+import { ApiError , apiFetch } from '../lib/api.js'
+
 import { ManualPairForm } from './ManualPairForm.js'
-import { ApiError } from '../lib/api.js'
+
 
 // Mock useNavigate from @tanstack/react-router
 const mockNavigate = vi.fn()
@@ -25,7 +28,6 @@ vi.mock('../lib/api.js', () => ({
   },
 }))
 
-import { apiFetch } from '../lib/api.js'
 const mockApiFetch = vi.mocked(apiFetch)
 
 // Valid D-13 token: 8 groups of 8 hex chars separated by dashes (71 chars total)

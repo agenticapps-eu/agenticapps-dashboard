@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
+
 import { ApiError, apiFetch, parseOrDrift } from './api.js'
 
 vi.mock('./pairing.js', () => ({

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { MalformedPairUrl, RouteError } from './pair-error.js'
+
 
 // Mock apiFetch and ApiError from lib/api.ts
 vi.mock('../lib/api.js', () => {
@@ -47,6 +47,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 import { apiFetch, ApiError } from '../lib/api.js'
 import { setPairing, clearPairing } from '../lib/pairing.js'
+
+import { MalformedPairUrl, RouteError } from './pair-error.js'
 import { PairFlow } from './pair.lazy.js'
 
 const mockApiFetch = vi.mocked(apiFetch)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createLazyRoute, useNavigate, getRouteApi } from '@tanstack/react-router'
 import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
+
 import { apiFetch, ApiError, type DriftIssue } from '../lib/api.js'
 import { setPairing, clearPairing } from '../lib/pairing.js'
 import { SchemaDriftState } from '../components/SchemaDriftState.js'

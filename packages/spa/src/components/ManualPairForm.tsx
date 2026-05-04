@@ -6,6 +6,7 @@ import {
   TokenSchema,
   HealthResponseSchema,
 } from '@agenticapps/dashboard-shared'
+
 import { apiFetch, ApiError } from '../lib/api.js'
 import { setPairing, clearPairing, getPairing } from '../lib/pairing.js'
 

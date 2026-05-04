@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
+
 import { CodeBlock } from './CodeBlock.js'
 
 // jsdom does not implement navigator.clipboard. We install a mock on the

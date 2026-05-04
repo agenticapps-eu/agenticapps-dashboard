@@ -1,5 +1,6 @@
 import { Settings } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
+
 import { ThemeChip } from './ThemeChip.js'
 
 export function Header() {

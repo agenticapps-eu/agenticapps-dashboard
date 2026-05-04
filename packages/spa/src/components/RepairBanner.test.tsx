@@ -1,8 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
+
 import { RepairProvider, useRepair } from '../lib/repair.js'
+
 import { RepairBanner } from './RepairBanner.js'
 
 const mockNavigate = vi.fn()
@@ -17,10 +19,15 @@ function Wrapper({ children }: { children: ReactNode }) {
 
 /** Helper: render RepairBanner inside RepairProvider; returns the hook result for manipulation */
 function renderBanner() {
-  let hookResult: ReturnType<typeof useRepair> | undefined
+  // Use a mutable container (object property mutation, not variable reassignment)
+  // so react-hooks/globals doesn't flag the capture as a render-time side effect.
+  const captured: { repair?: ReturnType<typeof useRepair> } = {}
 
   function Inner() {
-    hookResult = useRepair()
+    const repair = useRepair()
+    useEffect(() => {
+      captured.repair = repair
+    }, [repair])
     return <RepairBanner />
   }
 
@@ -30,7 +37,7 @@ function renderBanner() {
     </Wrapper>,
   )
 
-  return () => hookResult!
+  return () => captured.repair!
 }
 
 describe('RepairBanner', () => {

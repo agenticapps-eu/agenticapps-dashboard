@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
 import { ThemeChip } from './ThemeChip.js'
 
 function makeMatchMedia(matches: boolean) {

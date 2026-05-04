@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import { ErrorResponseSchema } from '@agenticapps/dashboard-shared'
+
 import { getPairing } from './pairing.js'
 
 export class ApiError extends Error {

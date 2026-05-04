@@ -1,4 +1,5 @@
 import { Moon, Sun, Monitor } from 'lucide-react'
+
 import { useTheme, type ThemeChoice } from '../lib/theme.js'
 
 const CYCLE: Record<ThemeChoice, ThemeChoice> = {
