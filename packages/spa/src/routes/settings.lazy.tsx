@@ -1,6 +1,20 @@
+import { useEffect } from 'react'
 import { createLazyRoute } from '@tanstack/react-router'
+import { ManualPairForm } from '../components/ManualPairForm.js'
+import { ThemeToggle } from '../components/ThemeToggle.js'
 
-// TODO Plan 05: settings — replace with manual pair form + theme toggle
 export const Route = createLazyRoute('/settings')({
-  component: () => <p>TODO Plan 05: settings placeholder</p>,
+  component: SettingsPage,
 })
+
+function SettingsPage() {
+  useEffect(() => {
+    document.title = 'AgenticApps Dashboard — Settings'
+  }, [])
+  return (
+    <div className="space-y-12">
+      <ManualPairForm />
+      <ThemeToggle />
+    </div>
+  )
+}
