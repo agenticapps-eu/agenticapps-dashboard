@@ -1,28 +1,17 @@
 ---
 phase: 03-multi-project-home-page
-verified: 2026-05-04T21:00:00Z
-status: gaps_found
-score: 5/6 must-haves verified
+verified: 2026-05-04T22:00:00Z
+status: human_needed
+score: 6/6 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "User can open Register project modal from the command palette"
-    status: failed
-    reason: "commandPaletteActions.ts dispatches 'palette:open-register' CustomEvent but MultiProjectHome.tsx has no window.addEventListener for it. The event fires into the void — clicking 'Register project' in the palette closes the palette without opening the modal."
-    artifacts:
-      - path: "packages/spa/src/lib/commandPaletteActions.ts"
-        issue: "Dispatch side exists (line 48: window.dispatchEvent(new CustomEvent('palette:open-register'))) but listener side is absent"
-      - path: "packages/spa/src/components/MultiProjectHome.tsx"
-        issue: "No window.addEventListener('palette:open-register', ...) event listener present; the register modal is only openable via RegisterButtonCard click"
-    missing:
-      - "Add useEffect in MultiProjectHome.tsx: window.addEventListener('palette:open-register', () => setRegisterOpen(true)) with cleanup on unmount"
-  - truth: "Project card interactive element is valid HTML with no nested interactive elements"
-    status: failed
-    reason: "ProjectCard.tsx renders a <button> as the card container (line 130) with two nested <button> elements inside: the kebab options button (line 141) and the 'Unregister?' inline button in the unreachable state (line 178). Nested interactive elements are invalid HTML per spec and produce inconsistent browser behavior."
-    artifacts:
-      - path: "packages/spa/src/components/ProjectCard.tsx"
-        issue: "Outer <button> (line 130) contains inner <button data-kebab> (line 141) and conditional inner <button>Unregister?</button> (line 178)"
-    missing:
-      - "Replace outer <button> with <article> or <div role='button' tabIndex={0}> and handle click/keydown navigation manually, OR extract the card-click affordance to a separate <a> overlay that sits behind the kebab button in z-order"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 5/6
+  gaps_closed:
+    - "User can open Register project modal from the command palette (IN-04) — useEffect listener added in MultiProjectHome.tsx lines 59-65, commit 37c5b21"
+    - "Project card interactive element is valid HTML with no nested interactive elements (WR-03) — outer <button> replaced with <div role='button' tabIndex={0}> in ProjectCard.tsx lines 140-150, commit 37c5b21"
+  gaps_remaining: []
+  regressions: []
 human_verification:
   - test: "Card hover-expand visual transition"
     expected: "Hovering a project card smoothly expands to show Stage 1/DB-AUDIT/TDD/Verification/Branch rows; transition is 120ms max-height+opacity ease-out with no bounce, shimmer, rotate, or glow (D-42/D-43)"
@@ -50,9 +39,53 @@ human_verification:
 # Phase 3: Multi-Project Home Page — Verification Report
 
 **Phase Goal:** A multi-project home page rendering one card per registered project with current phase, finding counts, and last-commit time; supports filters, search, sort, and an in-UI "Register project" modal.
-**Verified:** 2026-05-04T21:00:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-05-04T22:00:00Z
+**Status:** human_needed
+**Re-verification:** Yes — after inline gap closure in commit 37c5b21
+
+## Gap Closure Re-Verification
+
+Both gaps flagged in the initial verification (2026-05-04T21:00:00Z) were closed inline in
+commit 37c5b21, without a separate gap-closure phase. This is the standard inline-fix path
+for implementation defects discovered at verification time.
+
+### Gap 1 (IN-04) — palette:open-register listener
+
+**Previous finding:** `commandPaletteActions.ts` dispatched `palette:open-register` but
+`MultiProjectHome.tsx` had no listener. The event fired into the void.
+
+**Fix verified at:** `packages/spa/src/components/MultiProjectHome.tsx` lines 59-65.
+
+```typescript
+useEffect(() => {
+  const onOpenRegister = () => setRegisterOpen(true)
+  window.addEventListener('palette:open-register', onOpenRegister)
+  return () => window.removeEventListener('palette:open-register', onOpenRegister)
+}, [])
+```
+
+The named handler (not an inline arrow) ensures the cleanup reference matches the add
+reference. Empty dependency array is correct — `setRegisterOpen` is a stable React
+state setter. The dispatch side in `commandPaletteActions.ts` line 48 is unchanged and
+confirmed present. The event loop is now closed. **Gap 1: CLOSED.**
+
+### Gap 2 (WR-03) — nested button HTML invalidity
+
+**Previous finding:** `ProjectCard.tsx` used `<button>` as the outer card container with
+two nested `<button>` elements inside (kebab, "Unregister?").
+
+**Fix verified at:** `packages/spa/src/components/ProjectCard.tsx` lines 95, 129-137, 140-150.
+
+- `cardRef` typed as `useRef<HTMLDivElement>(null)` (line 95).
+- Outer container changed to `<div role="button" tabIndex={0} ...>` (line 140).
+- `handleKeyDown` (lines 129-137) guards `e.target === e.currentTarget` so Enter/Space
+  on the inner kebab `<button>` does not trigger card-click navigation.
+- Inner kebab `<button>` (line 153) and "Unregister?" `<button>` (line 191) are now
+  valid native buttons inside a `<div>` — HTML invalidity is resolved.
+
+**Gap 2: CLOSED.**
+
+---
 
 ## Goal Achievement
 
@@ -65,22 +98,22 @@ human_verification:
 | 3 | Cards refresh every 5s and per-card freshness is visible | ✓ VERIFIED | registry.ts: refetchInterval: 5_000, refetchIntervalInBackground: false; Header.tsx wired to useLastRefresh() showing "N projects · last refresh Ns ago" |
 | 4 | Filter chips and search box filter the card grid | ✓ VERIFIED | HomeToolbar.tsx provides chips (all/active/client/internal + overflow), search input; filterAndSort pure function in registry.ts; MultiProjectHome passes filtered set to render |
 | 5 | Sort by tag priority (active > client > internal), then last commit desc | ✓ VERIFIED | filterAndSort implements tag-priority then lastCommit desc then unreachable-last; 11 tests in registry.test.ts confirm behavior |
-| 6 | "+ Register project" opens modal from all entry points | ✗ FAILED (PARTIAL) | RegisterButtonCard opens modal correctly; command palette "Register project" action dispatches palette:open-register CustomEvent but MultiProjectHome has no listener — modal does not open from palette (IN-04) |
+| 6 | "+ Register project" opens modal from all entry points | ✓ VERIFIED | RegisterButtonCard opens modal via setRegisterOpen(true); commandPaletteActions.ts dispatches palette:open-register; MultiProjectHome.tsx lines 59-65 listen and call setRegisterOpen(true) — both paths confirmed wired |
 
-**Score:** 5/6 truths verified
+**Score:** 6/6 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `packages/spa/src/components/MultiProjectHome.tsx` | Composition root — card grid, toolbar, modal state | ✓ VERIFIED | 5.5KB, wired to index.lazy.tsx |
-| `packages/spa/src/components/ProjectCard.tsx` | Per-project card with hover-expand and 5 states | ⚠️ PARTIAL | Exists, substantive, rendered in MultiProjectHome — but contains nested button HTML validity issue (WR-03) |
+| `packages/spa/src/components/MultiProjectHome.tsx` | Composition root — card grid, toolbar, modal state | ✓ VERIFIED | Wired to index.lazy.tsx; palette listener added at lines 59-65 |
+| `packages/spa/src/components/ProjectCard.tsx` | Per-project card with hover-expand and 5 states | ✓ VERIFIED | Outer container now `<div role="button">` — HTML validity resolved; kebab and Unregister? buttons are valid children |
 | `packages/spa/src/components/HomeToolbar.tsx` | Filter chips, search, sort select | ✓ VERIFIED | Exists, substantive, used in MultiProjectHome |
 | `packages/spa/src/components/CardContextMenu.tsx` | Portal context menu + unregister confirm | ✓ VERIFIED | Exists, substantive, triggered from ProjectCard and MultiProjectHome |
-| `packages/spa/src/components/RegisterModal.tsx` | Two-step native dialog with prepare/confirm flow | ✓ VERIFIED | Exists, opened via RegisterButtonCard; D-10/D-13/D-19 branches implemented |
+| `packages/spa/src/components/RegisterModal.tsx` | Two-step native dialog with prepare/confirm flow | ✓ VERIFIED | Exists, opened via RegisterButtonCard and palette route |
 | `packages/spa/src/components/RegisterButtonCard.tsx` | Dashed CTA card that opens RegisterModal | ✓ VERIFIED | Exists, wired in MultiProjectHome card grid |
 | `packages/spa/src/components/CommandPalette.tsx` | Native dialog + WAI-ARIA listbox + Cmd/Ctrl+K | ✓ VERIFIED | Exists, mounted in AppShell, keyboard listener wired |
-| `packages/spa/src/lib/commandPaletteActions.ts` | Declarative action registry for palette | ✗ PARTIAL | Dispatch side of palette:open-register exists; listener side absent in MultiProjectHome |
+| `packages/spa/src/lib/commandPaletteActions.ts` | Declarative action registry for palette | ✓ VERIFIED | Dispatch side (line 48) confirmed; listener side confirmed in MultiProjectHome — full event loop closed |
 | `packages/spa/src/lib/registry.ts` | TanStack Query hooks — useRegistryList, useProjectOverview, mutation hooks | ✓ VERIFIED | 12KB; all 9 exports present; polling config confirmed |
 | `packages/agent/src/routes/overview.ts` | GET /api/projects/:id/overview daemon route | ✓ VERIFIED | 1.6KB; mounted via app.route in server/app.ts |
 | `packages/agent/src/routes/registry.ts` | POST register-prepare + register-confirm routes | ✓ VERIFIED | Lines 117, 195 confirm route definitions; nonce TTL + rate limit implemented |
@@ -96,7 +129,7 @@ human_verification:
 | `ProjectCard.tsx` | `useProjectOverview(id)` | import from registry.ts | ✓ WIRED | Per-card overview polling |
 | `Header.tsx` | `useLastRefresh()` | import from lastRefresh.ts | ✓ WIRED | Lines 4, 9 |
 | `AppShell.tsx` | `CommandPalette` | import + mount | ✓ WIRED | Line 5 import, line 26 `<CommandPalette />` |
-| `commandPaletteActions.ts` | `MultiProjectHome.tsx` (register modal) | CustomEvent `palette:open-register` | ✗ NOT WIRED | Dispatch fires (line 48) but no addEventListener in MultiProjectHome — modal never opens from palette |
+| `commandPaletteActions.ts` | `MultiProjectHome.tsx` (register modal) | CustomEvent `palette:open-register` | ✓ WIRED | Dispatch (line 48) + addEventListener in MultiProjectHome lines 59-65 — loop closed in commit 37c5b21 |
 | `RegisterModal.tsx` | `/api/registry/register-prepare` | useRegisterPrepare mutation | ✓ WIRED | prepare/confirm hooks in registry.ts; daemon routes confirmed at lines 117, 195 |
 | `SPA apiFetch` | `/api/registry/register` | D-12 guard throws | ✓ WIRED | api.ts throws if path matches `/api/registry/register` (direct registration blocked per D-12) |
 
@@ -122,16 +155,17 @@ Step 7b: SKIPPED — requires running daemon + dev server to verify API response
 | HOME-03 | 03-06, 03-07, 03-08, 03-09 | Home page renders one card per project; cards refresh every 5s; per-card freshness visible | ✓ SATISFIED | MultiProjectHome.tsx + ProjectCard.tsx; refetchInterval: 5_000; useLastRefresh() in Header |
 | HOME-04 | 03-06, 03-07 | Filter chips (all/active/client/internal) and search box filter the card grid | ✓ SATISFIED | HomeToolbar.tsx chips + search; filterAndSort in registry.ts; 11 passing tests |
 | HOME-05 | 03-06 | Sort: tag priority then last commit desc | ✓ SATISFIED | filterAndSort implements tag-priority (active > client > internal > untagged), then lastCommit desc, then unreachable-last |
-| HOME-06 | 03-04, 03-06, 03-08, 03-10 | "+ Register project" card opens modal that POSTs to /api/registry/register | ✓ PARTIAL | RegisterButtonCard → RegisterModal → useRegisterPrepare/Confirm works; command palette path broken (IN-04 above) |
+| HOME-06 | 03-04, 03-06, 03-08, 03-10 | "+ Register project" card opens modal that POSTs to /api/registry/register | ✓ SATISFIED | RegisterButtonCard path confirmed; palette path confirmed via event loop closure in commit 37c5b21 |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `packages/spa/src/components/ProjectCard.tsx` | 130, 141, 178 | `<button>` nested inside `<button>` | ⚠️ Warning | Invalid HTML per spec; inconsistent browser handling of click events on inner buttons; accessibility violation (interactive element inside interactive element) — WR-03 |
 | `packages/spa/src/components/RenameTagsForms.tsx` | 21, 118 | `react-hooks/set-state-in-effect` (setState in useEffect) | ℹ️ Info | Known pre-existing lint errors deferred to pre-PR cleanup; functional but lint gate will fail on PR if not addressed |
 | `packages/spa/src/components/RegisterModal.tsx` | 106 | `react-hooks/set-state-in-effect` | ℹ️ Info | Same as above — deferred |
 | `packages/spa/src/lib/api.test.ts` | 5 | `import/order` lint error | ℹ️ Info | Pre-existing from Plan 03-06; deferred |
+
+The WR-03 nested-button blocker is no longer present — removed from anti-patterns table.
 
 ### Human Verification Required
 
@@ -159,19 +193,25 @@ Step 7b: SKIPPED — requires running daemon + dev server to verify API response
 **Expected:** Step 1 calls /api/registry/register-prepare and returns a nonce. Step 2 shows nonce, detected markers, suggested name. Confirm calls /api/registry/register-confirm. New card appears in grid within 5 seconds without page reload. Second confirm of same nonce returns 410 (D-10 single-use enforcement — browser-visible only via re-prepare auto-trigger in D-19).
 **Why human:** Multi-step network flow with real filesystem I/O requires running daemon with a real project path.
 
-#### 5. Per-Card Freshness Display
+#### 5. Palette "Register project" Action in Browser
+
+**Test:** Press Cmd+K (or Ctrl+K), type "Register", select "Register project", press Enter.
+**Expected:** Palette closes and the Register project modal opens immediately — verifying the event loop from commandPaletteActions.ts dispatch through MultiProjectHome.tsx listener.
+**Why human:** CustomEvent dispatch-to-listener wiring across components requires a running browser to observe; the code path cannot be fully traced statically without execution.
+
+#### 6. Per-Card Freshness Display
 
 **Test:** Load the home page, wait 10+ seconds while watching the Header.
 **Expected:** Header shows "{N} projects · last refresh Ns ago" where N increments from 0 and resets after each 5s refetch. The count reflects the actual number of registered projects.
 **Why human:** Real-time timer requires running dev server; tick interval behavior not simulable in static checks.
 
-#### 6. Empty Registry State
+#### 7. Empty Registry State
 
 **Test:** Stop the daemon, clear registry.json, restart, load home page.
 **Expected:** Home page shows only the dashed "+" RegisterButtonCard with no error overlay, empty-list text, or broken UI. Toolbar shows "all (0)".
 **Why human:** Requires a clean daemon state.
 
-#### 7. impeccable:critique Baseline
+#### 8. impeccable:critique Baseline
 
 **Test:** Run `superpowers:impeccable:critique` against the Phase 3 UI surfaces.
 **Expected:** Score >= 90 (hard requirement per CLAUDE.md).
@@ -179,29 +219,15 @@ Step 7b: SKIPPED — requires running daemon + dev server to verify API response
 
 ### Gaps Summary
 
-Two gaps prevent full phase goal achievement:
+No automation gaps remain. Both previously identified gaps were closed inline in commit 37c5b21:
 
-**Gap 1 (Blocking — IN-04): Command palette "Register project" action is non-functional.**
+- IN-04 (blocking): palette:open-register listener added to MultiProjectHome.tsx — modal now opens from palette.
+- WR-03 (warning): outer `<button>` replaced with `<div role="button">` in ProjectCard.tsx — HTML validity restored.
 
-`commandPaletteActions.ts` dispatches `window.dispatchEvent(new CustomEvent('palette:open-register'))` when the Register action is activated in the command palette. However, `MultiProjectHome.tsx` has no `window.addEventListener('palette:open-register', ...)` handler. The Plan 10 SUMMARY incorrectly claimed this was "fully wired" by referencing Plan 03-08's work — but that listener was never added. The fix is a one-line `useEffect` in `MultiProjectHome.tsx`:
-
-```typescript
-useEffect(() => {
-  const handler = () => setRegisterOpen(true)
-  window.addEventListener('palette:open-register', handler)
-  return () => window.removeEventListener('palette:open-register', handler)
-}, [])
-```
-
-This gap affects HOME-06 (partial) and blocks the D-32 acceptance criterion for the command palette register action.
-
-**Gap 2 (Warning — WR-03): Nested `<button>` elements in ProjectCard.**
-
-`ProjectCard.tsx` uses `<button>` as the outer card container and places two `<button>` elements inside it (kebab button, "Unregister?" button). This is invalid HTML per the HTML5 spec (interactive content model forbids nested interactive elements). Browsers handle this inconsistently — some silently close the outer button before the inner, breaking the layout. The kebab button has `e.stopPropagation()` which mitigates the click-event issue but not the HTML validity or screen-reader traversal problem.
-
-The structured YAML above contains the `gaps` for `/gsd-plan-phase --gaps` to consume.
+All 6/6 must-haves are verified. Phase goal is achieved in code. Human verification items (listed above) are required before final phase sign-off and will be persisted to `03-HUMAN-UAT.md` by the orchestrator.
 
 ---
 
-_Verified: 2026-05-04T21:00:00Z_
+_Verified: 2026-05-04T22:00:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Re-verification: gaps_found → human_needed (2 gaps closed, 0 gaps remaining)_
