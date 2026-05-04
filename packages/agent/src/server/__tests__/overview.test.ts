@@ -147,7 +147,7 @@ describe('GET /api/projects/:id/overview', () => {
     const app = createApp({ registryFile })
 
     // Register a fake path that doesn't exist
-    const regRes = await app.request('http://127.0.0.1:5193/api/registry/register', {
+    await app.request('http://127.0.0.1:5193/api/registry/register', {
       method: 'POST',
       headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: projectRoot }),
