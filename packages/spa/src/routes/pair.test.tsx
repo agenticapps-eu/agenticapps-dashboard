@@ -1,0 +1,224 @@
+import type { ReactElement } from 'react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+
+
+// Mock apiFetch and ApiError from lib/api.ts
+vi.mock('../lib/api.js', () => {
+  class MockApiError extends Error {
+    status: number
+    requestId: string | undefined
+    constructor(status: number, requestId: string | undefined, message: string) {
+      super(message)
+      this.name = 'ApiError'
+      this.status = status
+      this.requestId = requestId
+    }
+  }
+  return {
+    apiFetch: vi.fn(),
+    ApiError: MockApiError,
+  }
+})
+
+// Mock pairing helpers
+vi.mock('../lib/pairing.js', () => ({
+  getPairing: vi.fn().mockReturnValue(null),
+  setPairing: vi.fn(),
+  clearPairing: vi.fn(),
+}))
+
+const VALID_TOKEN = 'aabbccdd-11223344-aabbccdd-11223344-aabbccdd-11223344-aabbccdd-11223344'
+const VALID_AGENT = 'http://127.0.0.1:5193'
+
+const mockNavigate = vi.fn().mockResolvedValue(undefined)
+
+// Mock TanStack Router hooks used by PairFlow
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return {
+    ...actual,
+    getRouteApi: () => ({
+      useSearch: () => ({ agent: VALID_AGENT, token: VALID_TOKEN }),
+    }),
+    useNavigate: () => mockNavigate,
+  }
+})
+
+import { apiFetch, ApiError } from '../lib/api.js'
+import { setPairing, clearPairing } from '../lib/pairing.js'
+
+import { MalformedPairUrl, RouteError } from './pair-error.js'
+import { PairFlow } from './pair.lazy.js'
+
+const mockApiFetch = vi.mocked(apiFetch)
+const mockSetPairing = vi.mocked(setPairing)
+const mockClearPairing = vi.mocked(clearPairing)
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockNavigate.mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('PairFlow', () => {
+  it('valid pair URL: writes pairing then calls /health then navigates to /', async () => {
+    mockApiFetch.mockResolvedValueOnce({ ok: true, data: { ok: true, version: '1.0.0' } })
+    render(<PairFlow />)
+    await waitFor(() => {
+      expect(mockSetPairing).toHaveBeenCalledOnce()
+    })
+    expect(mockSetPairing).toHaveBeenCalledWith(
+      expect.objectContaining({ agentUrl: VALID_AGENT, token: VALID_TOKEN }),
+    )
+    await waitFor(() => {
+      expect(mockApiFetch).toHaveBeenCalledOnce()
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/', replace: true })
+    })
+  })
+
+  it('schema drift on /health: renders SchemaDriftState and clears pairing', async () => {
+    mockApiFetch.mockResolvedValueOnce({
+      ok: false,
+      drift: { path: 'ok', expected: 'boolean', got: 'string', issues: [] },
+    })
+    render(<PairFlow />)
+    await waitFor(() => {
+      expect(mockClearPairing).toHaveBeenCalledOnce()
+    })
+    expect(screen.getByRole('heading', { name: /Schema drift detected/i })).toBeInTheDocument()
+  })
+
+  it('401 from /health: renders "Token rejected" and clears pairing', async () => {
+    mockApiFetch.mockRejectedValueOnce(new ApiError(401, undefined, 'unauthorized'))
+    render(<PairFlow />)
+    await waitFor(() => {
+      expect(mockClearPairing).toHaveBeenCalledOnce()
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Token rejected/i })).toBeInTheDocument()
+    })
+  })
+
+  it('TypeError from /health (ECONNREFUSED): renders DaemonUnreachableState', async () => {
+    mockApiFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    render(<PairFlow />)
+    await waitFor(() => {
+      expect(mockClearPairing).toHaveBeenCalledOnce()
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Daemon not running/i })).toBeInTheDocument()
+    })
+  })
+})
+
+describe('MalformedPairUrl', () => {
+  it("renders verbatim heading \"This pair URL doesn't look right\"", () => {
+    render(<MalformedPairUrl />)
+    expect(
+      screen.getByRole('heading', { name: /This pair URL doesn't look right/i }),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('RouteError (WR-02)', () => {
+  it('renders a visible alert section with the error message', () => {
+    const err = new Error('beforeLoad blew up')
+    render(<RouteError error={err} />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('beforeLoad blew up')).toBeInTheDocument()
+  })
+
+  it('falls back to "Unknown error." when error has no message', () => {
+    render(<RouteError error={undefined} />)
+    expect(screen.getByText('Unknown error.')).toBeInTheDocument()
+  })
+
+  it('renders a "Try again" button that calls reset when provided', async () => {
+    const reset = vi.fn()
+    render(<RouteError error={new Error('boom')} reset={reset} />)
+    const btn = screen.getByRole('button', { name: /Try again/i })
+    btn.click()
+    expect(reset).toHaveBeenCalledOnce()
+  })
+
+  it('omits the "Try again" button when no reset is provided', () => {
+    render(<RouteError error={new Error('boom')} />)
+    expect(screen.queryByRole('button', { name: /Try again/i })).not.toBeInTheDocument()
+  })
+
+  it('always renders the onboarding escape hatch link', () => {
+    render(<RouteError error={new Error('boom')} />)
+    const link = screen.getByRole('link', { name: /Open onboarding/i })
+    expect(link).toHaveAttribute('href', '/onboarding')
+  })
+})
+
+/**
+ * WR-02 contract test: the /pair route's errorComponent must NOT re-throw
+ * when given a non-VALIDATE_SEARCH error. The errorComponent callback is
+ * exported as `pairErrorComponent` from router.tsx so we can test it
+ * without driving a full router.
+ */
+describe('pair route errorComponent (WR-02)', () => {
+  it('renders MalformedPairUrl on VALIDATE_SEARCH error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    const element = pairErrorComponent({
+      error: { routerCode: 'VALIDATE_SEARCH', message: 'bad agent' },
+      reset: () => {},
+    })
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /This pair URL doesn't look right/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders RouteError fallback (no throw) on a generic Error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    let element!: ReactElement
+    expect(() => {
+      element = pairErrorComponent({
+        error: new Error('beforeLoad blew up'),
+        reset: () => {},
+      })
+    }).not.toThrow()
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('beforeLoad blew up')).toBeInTheDocument()
+  })
+
+  it('renders RouteError fallback (no throw) on a string-shaped error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    let element!: ReactElement
+    expect(() => {
+      element = pairErrorComponent({ error: 'plain string', reset: () => {} })
+    }).not.toThrow()
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('plain string')).toBeInTheDocument()
+  })
+
+  it('renders RouteError fallback (no throw) on null error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    let element!: ReactElement
+    expect(() => {
+      element = pairErrorComponent({ error: null, reset: () => {} })
+    }).not.toThrow()
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+  })
+})

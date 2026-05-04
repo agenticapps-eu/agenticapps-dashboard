@@ -1,6 +1,6 @@
 export { HealthResponseSchema } from './schemas/health.js'
 export type { HealthResponse } from './schemas/health.js'
-export { AuthFileSchema } from './schemas/auth.js'
+export { TokenSchema, AuthFileSchema } from './schemas/auth.js'
 export type { AuthFile } from './schemas/auth.js'
 export {
   RegistryEntrySchema,
@@ -26,3 +26,9 @@ export { ErrorResponseSchema } from './schemas/errors.js'
 export type { ErrorResponse } from './schemas/errors.js'
 export { ServerInfoSchema } from './schemas/server.js'
 export type { ServerInfo } from './schemas/server.js'
+export {
+  PairingSchema,
+  AgentUrlSchema,
+  AGENT_URL_REGEX,
+} from './schemas/pairing.js'
+export type { Pairing } from './schemas/pairing.js'

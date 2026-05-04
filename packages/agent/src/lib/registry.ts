@@ -316,7 +316,12 @@ async function detectLastCommitAt(root: string): Promise<string | null> {
       stdio: ['ignore', 'pipe', 'ignore'],
       timeout: GIT_SUBPROCESS_TIMEOUT_MS,
     })
-    return stdout.trim() || null
+    const trimmed = stdout.trim()
+    if (!trimmed) return null
+    // git's %cI emits ISO-8601 with offset (e.g. 2026-05-04T11:44:11+02:00).
+    // Zod's z.string().datetime() requires UTC `Z` form, so normalise here.
+    const parsed = new Date(trimmed)
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
   } catch {
     return null
   }

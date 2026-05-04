@@ -271,6 +271,31 @@ describe('listProjectsWithStatus', () => {
       cleanup()
     }
   })
+
+  it('returns lastCommitAt as UTC `Z` form so RegistryListItemSchema validation passes', async () => {
+    // Regression: git's %cI emits ISO-8601 with timezone offset (e.g. 2026-05-04T11:44:11+02:00),
+    // but z.string().datetime() rejects offsets unless { offset: true }. detectLastCommitAt
+    // must normalise to UTC Z so the daemon's boot-time validation doesn't crash.
+    const { execa } = await import('execa')
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const proj = makeTmpProject()
+    try {
+      // Initialise a real git repo with one commit so detectLastCommitAt has output
+      await execa('git', ['init', '-q', '-b', 'main'], { cwd: proj.root })
+      await execa('git', ['config', 'user.email', 'test@example.com'], { cwd: proj.root })
+      await execa('git', ['config', 'user.name', 'Test'], { cwd: proj.root })
+      await execa('git', ['add', '.'], { cwd: proj.root })
+      await execa('git', ['commit', '-q', '-m', 'initial'], { cwd: proj.root })
+      addProject(proj.root, {}, regFile)
+      const list = await listProjectsWithStatus(regFile)
+      expect(list[0]!.status.lastCommitAt).toMatch(/Z$/)
+      expect(list[0]!.status.lastCommitAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+    } finally {
+      proj.cleanup()
+      cleanup()
+    }
+  })
 })
 
 describe('assertRegistrationAllowed (B2 confused-deputy stopgap)', () => {
