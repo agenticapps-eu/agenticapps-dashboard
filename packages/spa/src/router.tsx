@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import {
   createRootRoute,
   createRoute,
@@ -10,7 +11,7 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
 import { AppShell } from './components/AppShell.js'
 import { getPairing } from './lib/pairing.js'
-import { MalformedPairUrl } from './routes/pair-error.js'
+import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
 
 /** Root route renders the persistent AppShell. */
 const rootRoute = createRootRoute({
@@ -48,22 +49,37 @@ const PairSearchSchema = z.object({
   token: TokenSchema,
 })
 
+/**
+ * Exported so a unit test can verify it never re-throws on a non-VALIDATE_SEARCH
+ * error (WR-02). Pitfall 8: validateSearch errors arrive here with
+ * `error.routerCode === 'VALIDATE_SEARCH'` and render <MalformedPairUrl/>;
+ * any other error renders a visible <RouteError/> fallback instead of
+ * re-throwing into React render (which, with no outer error boundary, would
+ * blank the screen).
+ */
+export function pairErrorComponent({
+  error,
+  reset,
+}: {
+  error: unknown
+  reset: () => void
+}): ReactElement {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'routerCode' in error &&
+    (error as { routerCode: string }).routerCode === 'VALIDATE_SEARCH'
+  ) {
+    return <MalformedPairUrl />
+  }
+  return <RouteError error={error} reset={reset} />
+}
+
 const pairRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/pair',
   validateSearch: zodValidator(PairSearchSchema),
-  errorComponent: ({ error }) => {
-    // Pitfall 8: validateSearch errors surface via errorComponent with routerCode
-    if (
-      error &&
-      typeof error === 'object' &&
-      'routerCode' in error &&
-      error.routerCode === 'VALIDATE_SEARCH'
-    ) {
-      return <MalformedPairUrl />
-    }
-    throw error
-  },
+  errorComponent: pairErrorComponent,
 }).lazy(() => import('./routes/pair.lazy.js').then((m) => m.Route))
 
 const settingsRoute = createRoute({

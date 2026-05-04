@@ -1,6 +1,7 @@
+import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { MalformedPairUrl } from './pair-error.js'
+import { MalformedPairUrl, RouteError } from './pair-error.js'
 
 // Mock apiFetch and ApiError from lib/api.ts
 vi.mock('../lib/api.js', () => {
@@ -119,6 +120,103 @@ describe('MalformedPairUrl', () => {
     render(<MalformedPairUrl />)
     expect(
       screen.getByRole('heading', { name: /This pair URL doesn't look right/i }),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('RouteError (WR-02)', () => {
+  it('renders a visible alert section with the error message', () => {
+    const err = new Error('beforeLoad blew up')
+    render(<RouteError error={err} />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('beforeLoad blew up')).toBeInTheDocument()
+  })
+
+  it('falls back to "Unknown error." when error has no message', () => {
+    render(<RouteError error={undefined} />)
+    expect(screen.getByText('Unknown error.')).toBeInTheDocument()
+  })
+
+  it('renders a "Try again" button that calls reset when provided', async () => {
+    const reset = vi.fn()
+    render(<RouteError error={new Error('boom')} reset={reset} />)
+    const btn = screen.getByRole('button', { name: /Try again/i })
+    btn.click()
+    expect(reset).toHaveBeenCalledOnce()
+  })
+
+  it('omits the "Try again" button when no reset is provided', () => {
+    render(<RouteError error={new Error('boom')} />)
+    expect(screen.queryByRole('button', { name: /Try again/i })).not.toBeInTheDocument()
+  })
+
+  it('always renders the onboarding escape hatch link', () => {
+    render(<RouteError error={new Error('boom')} />)
+    const link = screen.getByRole('link', { name: /Open onboarding/i })
+    expect(link).toHaveAttribute('href', '/onboarding')
+  })
+})
+
+/**
+ * WR-02 contract test: the /pair route's errorComponent must NOT re-throw
+ * when given a non-VALIDATE_SEARCH error. The errorComponent callback is
+ * exported as `pairErrorComponent` from router.tsx so we can test it
+ * without driving a full router.
+ */
+describe('pair route errorComponent (WR-02)', () => {
+  it('renders MalformedPairUrl on VALIDATE_SEARCH error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    const element = pairErrorComponent({
+      error: { routerCode: 'VALIDATE_SEARCH', message: 'bad agent' },
+      reset: () => {},
+    })
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /This pair URL doesn't look right/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders RouteError fallback (no throw) on a generic Error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    let element!: ReactElement
+    expect(() => {
+      element = pairErrorComponent({
+        error: new Error('beforeLoad blew up'),
+        reset: () => {},
+      })
+    }).not.toThrow()
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('beforeLoad blew up')).toBeInTheDocument()
+  })
+
+  it('renders RouteError fallback (no throw) on a string-shaped error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    let element!: ReactElement
+    expect(() => {
+      element = pairErrorComponent({ error: 'plain string', reset: () => {} })
+    }).not.toThrow()
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('plain string')).toBeInTheDocument()
+  })
+
+  it('renders RouteError fallback (no throw) on null error', async () => {
+    const { pairErrorComponent } = await import('../router.js')
+    let element!: ReactElement
+    expect(() => {
+      element = pairErrorComponent({ error: null, reset: () => {} })
+    }).not.toThrow()
+    render(element)
+    expect(
+      screen.getByRole('heading', { name: /Pairing failed unexpectedly/i }),
     ).toBeInTheDocument()
   })
 })
