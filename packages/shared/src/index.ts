@@ -1,10 +1,3 @@
-export {
-  ProjectOverviewSchema,
-  FindingCountsSchema,
-  DbAuditFindingsSchema,
-  MarkersSchema,
-} from './schemas/overview.js'
-export type { ProjectOverview, FindingCounts, DbAuditFindings, Markers } from './schemas/overview.js'
 export { HealthResponseSchema } from './schemas/health.js'
 export type { HealthResponse } from './schemas/health.js'
 export { TokenSchema, AuthFileSchema } from './schemas/auth.js'
@@ -63,15 +56,3 @@ export {
   AGENT_URL_REGEX,
 } from './schemas/pairing.js'
 export type { Pairing } from './schemas/pairing.js'
-export {
-  ProjectOverviewSchema,
-  FindingCountsSchema,
-  DbAuditFindingsSchema,
-  MarkersSchema,
-} from './schemas/overview.js'
-export type {
-  ProjectOverview,
-  FindingCounts,
-  DbAuditFindings,
-  Markers,
-} from './schemas/overview.js'
