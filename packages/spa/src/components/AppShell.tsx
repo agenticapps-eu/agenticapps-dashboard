@@ -2,6 +2,7 @@ import { Outlet } from '@tanstack/react-router'
 
 import { useAppShellWidth } from '../lib/appShellWidth.js'
 
+import { CommandPalette } from './CommandPalette.js'
 import { Header } from './Header.js'
 import { RepairBanner } from './RepairBanner.js'
 
@@ -22,6 +23,7 @@ export function AppShell(): React.JSX.Element {
       <main id="main" className={`mx-auto w-full ${mainWidth} flex-1 px-6 py-8 md:px-8`}>
         <Outlet />
       </main>
+      <CommandPalette />
     </div>
   )
 }

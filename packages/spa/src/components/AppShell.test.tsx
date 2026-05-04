@@ -7,6 +7,28 @@ import { setAppShellWidth } from '../lib/appShellWidth.js'
 
 import { AppShell } from './AppShell.js'
 
+// Mock commandPaletteActions so AppShell renders without real registry/theme deps
+vi.mock('../lib/commandPaletteActions.js', () => ({
+  useCommandPaletteActions: () => [],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  filterActions: (..._args: any[]) => [],
+}))
+
+// HTMLDialogElement polyfill for jsdom
+beforeEach(() => {
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', '')
+    }
+  }
+  if (!HTMLDialogElement.prototype.close) {
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute('open')
+      this.dispatchEvent(new Event('close'))
+    }
+  }
+})
+
 // Mock all router primitives used transitively by AppShell → Header → Link
 // and AppShell → RepairBanner → useNavigate.
 // We spread importActual so the mock is transparent except for the pieces we need.
@@ -133,5 +155,12 @@ describe('AppShell', () => {
     })
     expect(main?.className).toContain('max-w-3xl')
     expect(main?.className).not.toContain('max-w-5xl')
+  })
+
+  it('CommandPalette is globally mounted — listbox with aria-label="Actions" present in AppShell tree', () => {
+    renderAppShell()
+    // The listbox is rendered inside CommandPalette even when the dialog is closed
+    const listbox = document.querySelector('[role="listbox"][aria-label="Actions"]')
+    expect(listbox).not.toBeNull()
   })
 })

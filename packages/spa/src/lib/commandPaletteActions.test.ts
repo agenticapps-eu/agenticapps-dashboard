@@ -51,13 +51,13 @@ describe('filterActions', () => {
   it('filters to only jump actions when query is "jump"', () => {
     const result = filterActions(STATIC_ACTIONS, 'jump')
     expect(result).toHaveLength(1)
-    expect(result[0].type).toBe('jump')
+    expect(result.at(0)?.type).toBe('jump')
   })
 
   it('is case-insensitive — "THEME" matches "Toggle theme"', () => {
     const result = filterActions(STATIC_ACTIONS, 'THEME')
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('toggle-theme')
+    expect(result.at(0)?.id).toBe('toggle-theme')
   })
 
   it('returns empty array for a query with no matches', () => {
@@ -79,9 +79,9 @@ describe('useCommandPaletteActions', () => {
     const { wrapper } = buildWrapper()
     const { result } = renderHook(() => useCommandPaletteActions(close), { wrapper })
     expect(result.current).toHaveLength(3)
-    expect(result.current[0].id).toBe('register')
-    expect(result.current[1].id).toBe('refresh')
-    expect(result.current[2].id).toBe('toggle-theme')
+    expect(result.current.at(0)?.id).toBe('register')
+    expect(result.current.at(1)?.id).toBe('refresh')
+    expect(result.current.at(2)?.id).toBe('toggle-theme')
   })
 
   it('with 2-item registry returns 5 actions in order: Register, Jump A, Jump B, Refresh, Toggle theme', () => {
@@ -95,13 +95,13 @@ describe('useCommandPaletteActions', () => {
     const { wrapper } = buildWrapper()
     const { result } = renderHook(() => useCommandPaletteActions(close), { wrapper })
     expect(result.current).toHaveLength(5)
-    expect(result.current[0].id).toBe('register')
-    expect(result.current[1].id).toBe('jump:proj-a')
-    expect(result.current[1].label).toBe('Jump to acme-app')
-    expect(result.current[2].id).toBe('jump:proj-b')
-    expect(result.current[2].label).toBe('Jump to beta-app')
-    expect(result.current[3].id).toBe('refresh')
-    expect(result.current[4].id).toBe('toggle-theme')
+    expect(result.current.at(0)?.id).toBe('register')
+    expect(result.current.at(1)?.id).toBe('jump:proj-a')
+    expect(result.current.at(1)?.label).toBe('Jump to acme-app')
+    expect(result.current.at(2)?.id).toBe('jump:proj-b')
+    expect(result.current.at(2)?.label).toBe('Jump to beta-app')
+    expect(result.current.at(3)?.id).toBe('refresh')
+    expect(result.current.at(4)?.id).toBe('toggle-theme')
   })
 
   it('Register action dispatches palette:open-register CustomEvent on window AND calls close', () => {
@@ -118,7 +118,7 @@ describe('useCommandPaletteActions', () => {
     registerAction.run()
 
     expect(dispatchedEvents).toHaveLength(1)
-    expect(dispatchedEvents[0].type).toBe('palette:open-register')
+    expect(dispatchedEvents.at(0)?.type).toBe('palette:open-register')
     expect(close).toHaveBeenCalledOnce()
 
     window.removeEventListener('palette:open-register', listener)
