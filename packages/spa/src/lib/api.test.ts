@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
+import { z } from 'zod'
+import { HealthResponseSchema, RegisterPrepareResponseSchema, RegisterConfirmResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { ApiError, apiFetch, parseOrDrift } from './api.js'
 
@@ -104,6 +105,55 @@ describe('apiFetch', () => {
       status: 500,
     })
     await expect(apiFetch('/health', HealthResponseSchema)).rejects.toBeInstanceOf(ApiError)
+  })
+
+  // D-12: SPA must never call /api/registry/register directly (CLI-only route)
+  it('D-12: apiFetch throws hard error for /api/registry/register before any fetch', async () => {
+    await expect(apiFetch('/api/registry/register', z.object({}))).rejects.toThrow(/CLI-only/)
+    // Guard must fire before fetch — fetch should never be called
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('D-12: apiFetch on /api/registry/register-prepare does NOT throw the D-12 guard error', async () => {
+    const prepareShape = {
+      canonicalRoot: '/home/user/project',
+      suggestedName: 'project',
+      suggestedSlug: 'project',
+      alreadyRegistered: false,
+      blocked: false,
+      detectedMarkers: { gitRepo: true, planning: true, claudeSkills: false },
+      nonce: 'aabbccddeeff00112233445566778899',
+      expiresAt: Date.now() + 300_000,
+    }
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify(prepareShape), { status: 200 }),
+    )
+    // Should not throw a D-12 guard error — may throw other errors on schema parse but not the guard
+    const resultPromise = apiFetch('/api/registry/register-prepare', RegisterPrepareResponseSchema, {
+      method: 'POST',
+      body: JSON.stringify({ path: '/home/user/project' }),
+    })
+    await expect(resultPromise).resolves.toBeDefined()
+  })
+
+  it('D-12: apiFetch on /api/registry/register-confirm does NOT throw the D-12 guard error', async () => {
+    const confirmShape = {
+      id: 'proj-001',
+      name: 'project',
+      root: '/home/user/project',
+      client: null,
+      addedAt: '2026-05-04T00:00:00.000Z',
+      tags: [],
+      alreadyRegistered: false,
+    }
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify(confirmShape), { status: 201 }),
+    )
+    const resultPromise = apiFetch('/api/registry/register-confirm', RegisterConfirmResponseSchema, {
+      method: 'POST',
+      body: JSON.stringify({ nonce: 'aabbccddeeff00112233445566778899' }),
+    })
+    await expect(resultPromise).resolves.toBeDefined()
   })
 })
 
