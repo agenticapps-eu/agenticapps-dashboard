@@ -1,7 +1,8 @@
 import { Outlet } from '@tanstack/react-router'
 import { Header } from './Header.js'
+import { RepairBanner } from './RepairBanner.js'
 
-export function AppShell() {
+export function AppShell(): React.JSX.Element {
   return (
     <div className="flex min-h-screen flex-col bg-[--bg] text-[--text]">
       <a
@@ -11,8 +12,9 @@ export function AppShell() {
         Skip to main content
       </a>
       <Header />
-      {/* RepairBanner mount slot — Plan 04 wires the banner in. Reserved space is intentional. */}
-      <div data-slot="banner-mount" />
+      <div data-slot="banner-mount">
+        <RepairBanner />
+      </div>
       <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-6 py-8 md:px-8">
         <Outlet />
       </main>
