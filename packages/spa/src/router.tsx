@@ -93,12 +93,23 @@ const helpRoute = createRoute({
   path: '/help',
 }).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
 
+/**
+ * D-37 (Phase 3): Placeholder route for /projects/$projectId.
+ * Phase 3 ships the route stub so card click-through resolves cleanly.
+ * Phase 4 replaces the body with Discipline + Phase columns.
+ */
+const projectsIdRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects/$projectId',
+}).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   onboardingRoute,
   pairRoute,
   settingsRoute,
   helpRoute,
+  projectsIdRoute,
 ] as AnyRoute[])
 
 export const router = createRouter({ routeTree })

@@ -63,6 +63,13 @@ export async function apiFetch<S extends z.ZodTypeAny>(
   schema: S,
   init: RequestInit = {},
 ): Promise<ParseOrDrift<z.infer<S>>> {
+  // D-12 (Phase 3): SPA must use prepare/confirm flow, not the legacy CLI route.
+  if (path === '/api/registry/register') {
+    throw new Error(
+      'SPA must use /api/registry/register-prepare and /api/registry/register-confirm. ' +
+        '/api/registry/register is CLI-only (D-12).',
+    )
+  }
   const pairing = getPairing()
   if (!pairing) throw new ApiError(401, undefined, 'unpaired')
 

@@ -4,9 +4,11 @@
 
 ## Status
 
-**Phases 0, 1, and 2 shipped.** Phase 0 stood up the pnpm workspace + Cloudflare Pages preview deploy + npm placeholder. Phase 1 landed the local daemon (Hono on `127.0.0.1:5193`), registry, bearer-token auth, CLI surface, and path allow-list. Phase 2 ships the SPA shell + pair flow: 5 routes (`/`, `/onboarding`, `/pair`, `/settings`, `/help`), TanStack Router with Zod-validated search params, dark theme by default with system + light + tri-state toggle, manual-pair fallback at `/settings`, schema-drift inline panel state (INV-04 SPA-side), and 401 → re-pair banner UX (AUTH-04 SPA-side).
+**Phases 0, 1, 2, and 3 shipped.** Phase 0 stood up the pnpm workspace + Cloudflare Pages preview deploy + npm placeholder. Phase 1 landed the local daemon (Hono on `127.0.0.1:5193`), registry, bearer-token auth, CLI surface, and path allow-list. Phase 2 ships the SPA shell + pair flow: 5 routes (`/`, `/onboarding`, `/pair`, `/settings`, `/help`), TanStack Router with Zod-validated search params, dark theme by default with system + light + tri-state toggle, manual-pair fallback at `/settings`, schema-drift inline panel state (INV-04 SPA-side), and 401 → re-pair banner UX (AUTH-04 SPA-side).
 
-**Phase 3 (multi-project home) is the next work.**
+**Phase 3 (multi-project home) shipped:** home page card grid with filter chips, search, sort, and per-card freshness; register modal using a confused-deputy-defended prepare/confirm flow (D-09, two-step nonce); right-click / long-press / kebab context menu for rename, edit tags, and unregister; Cmd/Ctrl+K command palette; `GET /api/projects/{id}/overview` daemon route; and a `/projects/$projectId` placeholder route. See [`.planning/phases/03-multi-project-home-page/`](.planning/phases/03-multi-project-home-page/) for plans and decisions.
+
+**Phase 4 (single-project Discipline + Phase columns) is the next work.**
 
 A registry-based, multi-project dashboard that visualizes the running state of the AgenticApps Superpowers + GSD + gstack pipeline across every registered project — from any device, while keeping all data on your own machine.
 
