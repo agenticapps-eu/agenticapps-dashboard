@@ -1,5 +1,8 @@
 .claude/skills/
+.claude/scheduled_tasks.lock
+.claude/worktrees/
 .gstack/
+session-handoff.md
 node_modules
 dist
 .turbo
