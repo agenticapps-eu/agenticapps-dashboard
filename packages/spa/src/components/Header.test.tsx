@@ -109,6 +109,38 @@ describe('Header', () => {
   })
 
   // -----------------------------------------------------------------------
+  // Regression: pluralization
+  // Found by /qa on 2026-05-05: "1 projects" → should be "1 project"
+  // Report: .gstack/qa-reports/qa-report-phase-03-2026-05-05.md
+  // -----------------------------------------------------------------------
+  it('uses singular "project" when registry has exactly 1 entry', async () => {
+    const now = Date.now()
+    qc.setQueryData(['registry'], [{ id: 'only-one' }])
+    const registryQuery = qc.getQueryCache().find({ queryKey: ['registry'] })
+    if (registryQuery) {
+      registryQuery.state.dataUpdatedAt = now - 1_000
+    }
+
+    render(React.createElement(Header), { wrapper: makeWrapper(qc) })
+
+    expect(screen.getByText(/1 project · last refresh/)).toBeInTheDocument()
+    expect(screen.queryByText(/1 projects · last refresh/)).not.toBeInTheDocument()
+  })
+
+  it('uses plural "projects" for 0 and N≠1', async () => {
+    const now = Date.now()
+    qc.setQueryData(['registry'], [])
+    const registryQuery = qc.getQueryCache().find({ queryKey: ['registry'] })
+    if (registryQuery) {
+      registryQuery.state.dataUpdatedAt = now - 1_000
+    }
+
+    render(React.createElement(Header), { wrapper: makeWrapper(qc) })
+
+    expect(screen.getByText(/0 projects · last refresh/)).toBeInTheDocument()
+  })
+
+  // -----------------------------------------------------------------------
   // New: the status span renders between brand link and spacer
   // -----------------------------------------------------------------------
   it('status span contains "projects ·" text', () => {

@@ -16,7 +16,7 @@ export function Header() {
         AgenticApps Dashboard
       </Link>
       <span aria-hidden="true" className="text-sm text-[--text-muted]">
-        {count !== null ? `${count} projects · ` : '— projects · '}{refreshLabel}
+        {count !== null ? `${count} ${count === 1 ? 'project' : 'projects'} · ` : '— projects · '}{refreshLabel}
       </span>
       <span className="flex-1" aria-hidden="true" />
       <ThemeChip />
