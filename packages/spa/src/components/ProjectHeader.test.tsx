@@ -6,7 +6,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import React from 'react'
-import type { RegistryListResponse, ProjectOverview } from '@agenticapps/dashboard-shared'
+import type { ProjectOverview } from '@agenticapps/dashboard-shared'
 
 // Mock registry hooks
 const mockUseRegistryList = vi.fn()
@@ -62,14 +62,14 @@ function makeRegistryItem(overrides: Partial<{
 
 function makeOverview(overrides: Partial<ProjectOverview> = {}): ProjectOverview {
   return {
-    branch: overrides.branch ?? 'main',
+    branch: overrides.branch !== undefined ? overrides.branch : 'main',
     phaseStatus: overrides.phaseStatus ?? 'In Progress',
-    lastCommitAt: overrides.lastCommitAt ?? '2026-05-04T10:00:00.000Z',
-    lastCommitMessage: overrides.lastCommitMessage ?? 'feat: something',
-    gsdVersion: overrides.gsdVersion ?? null,
-    findings: overrides.findings ?? { red: 0, yellow: 0, green: 0 },
-    markers: overrides.markers ?? {},
-    dbAuditFindings: overrides.dbAuditFindings ?? null,
+    stage1: overrides.stage1 ?? null,
+    stage2: overrides.stage2 ?? null,
+    dbAudit: overrides.dbAudit ?? null,
+    tdd: overrides.tdd ?? null,
+    verification: overrides.verification ?? null,
+    markers: overrides.markers ?? { gitRepo: true, planning: true, claudeSkills: true },
   }
 }
 

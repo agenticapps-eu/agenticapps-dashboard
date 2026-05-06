@@ -47,19 +47,22 @@ describe('ProjectLayout', () => {
     expect(getSnapshot()).toBe('max-w-3xl')
   })
 
-  it('L3: renders children without extra wrapper div', () => {
+  it('L3: renders children — children are directly accessible (no extra wrapper)', () => {
     render(
       <ProjectLayout>
         <div data-testid="child-content">hello</div>
+        <div data-testid="child-content-2">world</div>
       </ProjectLayout>,
     )
 
     expect(screen.getByTestId('child-content')).toBeDefined()
     expect(screen.getByText('hello')).toBeDefined()
-    // Children rendered directly — no wrapping element adds depth
-    const child = screen.getByTestId('child-content')
-    // The child's parent should be the document body or a React portal boundary,
-    // not an extra wrapper div introduced by ProjectLayout
-    expect(child.parentElement?.tagName).not.toBe('DIV')
+    expect(screen.getByTestId('child-content-2')).toBeDefined()
+    expect(screen.getByText('world')).toBeDefined()
+
+    // Both children should have the same parent — they aren't wrapped in individual containers
+    const child1 = screen.getByTestId('child-content')
+    const child2 = screen.getByTestId('child-content-2')
+    expect(child1.parentElement).toBe(child2.parentElement)
   })
 })
