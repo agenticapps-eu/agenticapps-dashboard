@@ -206,6 +206,10 @@ describe('GET /api/projects/:id/observations/recent', () => {
       const data = (await res.json()) as { entries: unknown[]; skillInstalled: boolean }
       expect(data.skillInstalled).toBe(false)
       expect(Array.isArray(data.entries)).toBe(true)
+      // IN-03 fix: pin the empty-entries contract per D-4-15. With WR-03 fixed
+      // (entries returned as [] when skillInstalled is false), this assertion
+      // now reliably enforces the expected shape.
+      expect(data.entries).toHaveLength(0)
     } finally {
       noSkillFixture.cleanup()
     }
