@@ -1,14 +1,14 @@
 /**
  * SingleProjectView.test.tsx — TDD tests for SingleProjectView component.
  *
- * Updated by Plan 05: SV3 now asserts real panel components are mounted
- * (the 3 discipline-column data-slot divs were replaced by real components).
+ * Updated by Plan 06: SV4 now asserts all 8 real panel regions are mounted
+ * (all 5 phase-progress-column data-slot divs replaced by real components).
  *
  * Tests SV1–SV7:
  * SV1: renders ProjectHeader
  * SV2: renders 2-column grid with grid-cols-[1fr_1.5fr]
  * SV3: discipline-column renders CommitmentBlock + HookFirings + RationalizationFires panel regions
- * SV4: center column (phase-progress-column) has 5 placeholder slots (Plan 06 will fill these)
+ * SV4: phase-progress-column renders all 5 real panel regions (Plan 06 filled these)
  * SV5: NO right-column DOM element (health-column absent)
  * SV6: document.title updates on mount
  * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-4 on columns)
@@ -93,22 +93,24 @@ describe('SingleProjectView', () => {
     expect(col.querySelector('[data-slot="rationalization-fires"]')).toBeNull()
   })
 
-  it('SV4: phase-progress-column has 5 placeholder slots (Plan 06 will fill these)', () => {
+  it('SV4: phase-progress-column mounts all 5 real panel regions (Plan 06 filled)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
-    const col = screen.getByTestId('phase-progress-column')
-    expect(col).toBeDefined()
+    // PanelContainer panels render <section aria-labelledby="{id}-title"> + <h2 id="{id}-title">
+    // Use heading queries to confirm each panel is mounted (heading = panel title in PanelContainer)
+    expect(screen.getByRole('heading', { level: 2, name: 'Phase Progress' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Execution Timeline' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Review Status' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Security Status' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Verification Status' })).toBeDefined()
 
-    const slots = [
-      'phase-progress',
-      'execution-timeline',
-      'review-status',
-      'security-status',
-      'verification-status',
-    ]
-    for (const slot of slots) {
-      expect(col.querySelector(`[data-slot="${slot}"]`)).not.toBeNull()
-    }
+    // No old data-slot placeholder divs remain
+    const col = screen.getByTestId('phase-progress-column')
+    expect(col.querySelector('[data-slot="phase-progress"]')).toBeNull()
+    expect(col.querySelector('[data-slot="execution-timeline"]')).toBeNull()
+    expect(col.querySelector('[data-slot="review-status"]')).toBeNull()
+    expect(col.querySelector('[data-slot="security-status"]')).toBeNull()
+    expect(col.querySelector('[data-slot="verification-status"]')).toBeNull()
   })
 
   it('SV5: NO health-column DOM element (anti-stub guarantee, D-4-09)', () => {

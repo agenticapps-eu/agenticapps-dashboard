@@ -5,7 +5,7 @@
  * NO right-column DOM element — D-4-13 anti-skeleton policy.
  *
  * Plan 05 filled: CommitmentBlock, HookFirings, RationalizationFires.
- * Plan 06 fills: PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus.
+ * Plan 06 filled: PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus.
  *
  * document.title is set here (not in ProjectLayout — layout is generic; title is per-page).
  */
@@ -13,8 +13,13 @@ import { useEffect } from 'react'
 
 import { ProjectHeader } from './ProjectHeader.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
+import { ExecutionTimeline } from './panels/ExecutionTimeline.js'
 import { HookFirings } from './panels/HookFirings.js'
+import { PhaseProgress } from './panels/PhaseProgress.js'
 import { RationalizationFires } from './panels/RationalizationFires.js'
+import { ReviewStatus } from './panels/ReviewStatus.js'
+import { SecurityStatus } from './panels/SecurityStatus.js'
+import { VerificationStatus } from './panels/VerificationStatus.js'
 
 export type SingleProjectViewProps = { projectId: string }
 
@@ -44,11 +49,11 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           aria-label="Phase Progress"
           className="flex flex-col gap-4"
         >
-          <div data-slot="phase-progress" />
-          <div data-slot="execution-timeline" />
-          <div data-slot="review-status" />
-          <div data-slot="security-status" />
-          <div data-slot="verification-status" />
+          <PhaseProgress projectId={projectId} />
+          <ExecutionTimeline projectId={projectId} />
+          <ReviewStatus projectId={projectId} />
+          <SecurityStatus projectId={projectId} />
+          <VerificationStatus projectId={projectId} />
         </section>
       </div>
     </div>
