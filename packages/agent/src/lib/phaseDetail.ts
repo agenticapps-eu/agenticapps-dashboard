@@ -225,11 +225,28 @@ export function parseRationalizationRows(
     cell = cell.replace(/^"|"$/g, '')
     if (cell.length > 0) labels.push(cell)
   }
+  // WR-02 fix: count an event as a fire only when its `payload` field matches
+  // the row label. D-4-07 says the counter aggregates events whose `payload.row`
+  // (or equivalent field per D-4-06 passthrough shape) matches a label. The
+  // previous implementation serialized the entire entry to JSON and checked for
+  // any substring match, which produced false positives when an unrelated field
+  // (skill, hook, etc.) happened to contain the label as a substring.
   const rows = labels.map((label) => {
     let fires = 0
     for (const e of entries) {
-      const blob = JSON.stringify(e)
-      if (blob.includes(label)) fires++
+      const payload: unknown = (e as Record<string, unknown>).payload
+      let matches = false
+      if (typeof payload === 'string') {
+        matches = payload.includes(label)
+      } else if (payload !== null && typeof payload === 'object') {
+        for (const v of Object.values(payload as Record<string, unknown>)) {
+          if (typeof v === 'string' && v.includes(label)) {
+            matches = true
+            break
+          }
+        }
+      }
+      if (matches) fires++
     }
     return { label, fires }
   })
