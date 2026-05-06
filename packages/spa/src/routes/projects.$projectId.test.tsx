@@ -1,12 +1,14 @@
 /**
- * projects.$projectId.test.tsx — TDD tests for the /projects/$projectId placeholder route.
+ * projects.$projectId.test.tsx — TDD tests for the /projects/$projectId route.
  *
- * Tests:
- * 1. Heading "Three-column view" is present
- * 2. "← Back to all projects" link points to /
- * 3. document.title is set to "<id> — AgenticApps Dashboard"
+ * Tests R1–R3 (Phase 4 route swap from placeholder to SingleProjectView):
+ * R1: route mounts ProjectLayout > SingleProjectView{projectId}
+ * R2: Phase 3 placeholder text is GONE ("Three-column view", "Phase 4 work")
+ * R3: back link is now part of ProjectHeader (in SingleProjectView), not top-level
+ *
+ * Also verifies document.title from SingleProjectView.
  */
-import { describe, expect, it, afterEach } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import React from 'react'
 import {
@@ -17,23 +19,39 @@ import {
   RouterProvider,
   Outlet,
 } from '@tanstack/react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 afterEach(cleanup)
 
+// Mock registry hooks used transitively by ProjectHeader
+vi.mock('../lib/registry.js', () => ({
+  useRegistryList: () => ({ data: undefined, isLoading: true }),
+  useProjectOverview: () => ({ data: undefined, isLoading: true }),
+}))
+
+function makeQCWrapper(qc: QueryClient) {
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: qc }, children)
+}
+
 /** Minimal router fixture that registers the /projects/$projectId route. */
 async function makeRouter(projectId: string) {
-  // Import the component directly from the lazy file (not through Route.options which is typed as | undefined)
   const { Route } = await import('./projects.$projectId.lazy.js')
-  // createLazyRoute sets component; assert it here for type safety
   const Component = Route.options.component
   if (!Component) throw new Error('Route component not set')
 
-  const rootRoute = createRootRoute({ component: Outlet })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
+  const rootRoute = createRootRoute({ component: Outlet })
   const projectRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/projects/$projectId',
-    component: Component,
+    component: () =>
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(Component),
+      ),
   })
 
   const routeTree = rootRoute.addChildren([projectRoute])
@@ -44,27 +62,34 @@ async function makeRouter(projectId: string) {
   return createRouter({ routeTree, history: memoryHistory })
 }
 
-describe('ProjectIdPlaceholder route (/projects/$projectId)', () => {
-  it('renders "Three-column view" heading', async () => {
+describe('ProjectIdPage route (/projects/$projectId)', () => {
+  it('R1: route renders SingleProjectView grid (data-testid="single-project-grid")', async () => {
     const router = await makeRouter('test-proj-123')
     render(React.createElement(RouterProvider, { router }))
-    await screen.findByText('Three-column view')
-    expect(screen.getByRole('heading', { name: 'Three-column view' })).toBeDefined()
+    const grid = await screen.findByTestId('single-project-grid')
+    expect(grid).toBeDefined()
   })
 
-  it('renders "← Back to all projects" link pointing to /', async () => {
+  it('R2: Phase 3 placeholder text "Three-column view" is gone', async () => {
     const router = await makeRouter('test-proj-123')
     render(React.createElement(RouterProvider, { router }))
-    const link = await screen.findByText('← Back to all projects')
-    expect(link.closest('a')).toBeDefined()
-    const href = link.closest('a')?.getAttribute('href')
-    expect(href).toBe('/')
+    // Wait for the route to mount by finding the grid
+    await screen.findByTestId('single-project-grid')
+    expect(screen.queryByText('Three-column view')).toBeNull()
+    expect(screen.queryByText(/Phase 4 work/)).toBeNull()
+  })
+
+  it('R3: discipline-column is rendered (ProjectHeader is part of SingleProjectView)', async () => {
+    const router = await makeRouter('test-proj-123')
+    render(React.createElement(RouterProvider, { router }))
+    await screen.findByTestId('discipline-column')
+    expect(screen.getByTestId('discipline-column')).toBeDefined()
   })
 
   it('sets document.title to "<projectId> — AgenticApps Dashboard"', async () => {
     const router = await makeRouter('my-cool-project')
     render(React.createElement(RouterProvider, { router }))
-    await screen.findByText('Three-column view')
+    await screen.findByTestId('single-project-grid')
     expect(document.title).toBe('my-cool-project — AgenticApps Dashboard')
   })
 })
