@@ -7,6 +7,7 @@ import { createApp } from '../app.js'
 import { setActiveToken, ensureAuthFile } from '../../lib/auth.js'
 import { makeTmpHome, makeTmpProject } from '../../lib/__fixtures__/tmpHome.js'
 import { setCached, getCached, _resetForTests as resetOverviewCache } from '../../lib/overviewCache.js'
+import { setPhaseCache, getPhaseCache, _resetForTests as resetPhaseCache } from '../../lib/phaseCache.js'
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` }
@@ -282,5 +283,28 @@ describe('registry mutation routes (rename / tags / eviction)', () => {
     })
     expect(res.status).toBe(204)
     expect(getCached(id)).toBeNull()
+  })
+
+  it('POST /api/registry/unregister evicts phaseCache entries for the removed id (T-04-03-07)', async () => {
+    const app = createApp({ registryFile })
+    const id = await registerProject(app)
+
+    // Populate phaseCache with fake commitment + discipline entries for this project
+    resetPhaseCache()
+    setPhaseCache(`${id}:commitment`, { markdown: 'I commit.', sourceFile: 'obs.md' })
+    setPhaseCache(`${id}:discipline`, { rationalization: { rows: [], skillInstalled: true } })
+    expect(getPhaseCache(`${id}:commitment`)).not.toBeNull()
+    expect(getPhaseCache(`${id}:discipline`)).not.toBeNull()
+
+    // Unregister — should evict both overviewCache AND phaseCache entries
+    const res = await app.request('http://127.0.0.1:5193/api/registry/unregister', {
+      method: 'POST',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    expect(res.status).toBe(204)
+    // phaseCache entries must be gone
+    expect(getPhaseCache(`${id}:commitment`)).toBeNull()
+    expect(getPhaseCache(`${id}:discipline`)).toBeNull()
   })
 })

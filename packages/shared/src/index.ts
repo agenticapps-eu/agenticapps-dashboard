@@ -56,3 +56,47 @@ export {
   AGENT_URL_REGEX,
 } from './schemas/pairing.js'
 export type { Pairing } from './schemas/pairing.js'
+export { CommitmentBlockResponseSchema } from './schemas/commitment.js'
+export type { CommitmentBlockResponse } from './schemas/commitment.js'
+export {
+  HookFiringSchema,
+  ObservationsRecentResponseSchema,
+} from './schemas/observations.js'
+export type {
+  HookFiring,
+  ObservationsRecentResponse,
+} from './schemas/observations.js'
+export {
+  RationalizationRowSchema,
+  DisciplineResponseSchema,
+} from './schemas/discipline.js'
+export type {
+  RationalizationRow,
+  DisciplineResponse,
+} from './schemas/discipline.js'
+export {
+  PhaseFileStatusSchema,
+  ExecutionTimelineEntrySchema,
+  ReviewFindingCountsSchema,
+  ReviewStatusPayloadSchema,
+  VerificationStatusPayloadSchema,
+  PhaseProgressResponseSchema,
+} from './schemas/phaseDetail.js'
+export type {
+  PhaseFileStatus,
+  ExecutionTimelineEntry,
+  ReviewFindingCounts,
+  ReviewStatusPayload,
+  VerificationStatusPayload,
+  PhaseProgressResponse,
+} from './schemas/phaseDetail.js'
+export {
+  CsoSummarySchema,
+  DbSentinelSummarySchema,
+  SecurityResponseSchema,
+} from './schemas/security.js'
+export type {
+  CsoSummary,
+  DbSentinelSummary,
+  SecurityResponse,
+} from './schemas/security.js'

@@ -67,7 +67,7 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 ### Single-project View — Discipline Column (Phase 4)
 
-- [ ] **DISC-01**: Left column shows `CommitmentBlock` panel: last `## Workflow commitment` block from the project
+- [ ] **DISC-01**: Left column shows `CommitmentBlock` panel: last `## Workflow commitment` block from the project — *Phase 4 ships the panel + parser; data source `.planning/skill-observations/*.md` requires a transcript persister (meta-observer or equivalent) which lands in Phase 5+. Until then the panel renders the empty state. Acceptance gated on Phase 5+ data path.*
 - [ ] **DISC-02**: Left column shows `HookFirings` panel: last 20 entries from `.planning/skill-observations/`
 - [ ] **DISC-03**: Left column shows `RationalizationFires` panel: counter per rationalization-table row that fired
 - [ ] **DISC-04**: When meta-observer skill is missing, panel shows install hint with copy-pasteable command (no crash)
@@ -193,7 +193,7 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | HOME-04 | Phase 3 | Pending |
 | HOME-05 | Phase 3 | Pending |
 | HOME-06 | Phase 3 | Pending |
-| DISC-01 | Phase 4 | Pending |
+| DISC-01 | Phase 4 (panel) + Phase 5+ (data) | Partial — panel ships in Phase 4, populated state deferred to Phase 5 (UAT G1) |
 | DISC-02 | Phase 4 | Pending |
 | DISC-03 | Phase 4 | Pending |
 | DISC-04 | Phase 4 | Pending |

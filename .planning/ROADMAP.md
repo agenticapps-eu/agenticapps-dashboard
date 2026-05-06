@@ -121,7 +121,15 @@ Plans:
   3. ExecutionTimeline parses `test(RED)` and `feat(GREEN)` commit pairs from `git log` and groups them per task.
   4. ReviewStatus parses `<finding severity="...">` blocks per spec §"Stage 2 finding count" and renders by severity.
   5. VerificationStatus shows must_haves count vs evidence count from `VERIFICATION.md`.
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [x] 04-01-PLAN.md — Wave 0: shared schemas (commitment, observations, phaseDetail, discipline, security) + barrel re-export + 22+ failing-then-passing schema tests
+- [x] 04-02-PLAN.md — Wave 1: phaseCache (per-route 5s memo, evictPhaseCacheProject) + phaseDetail.ts (8 parsers: parseCommitmentBlock, readSkillObservations, parseRationalizationRows, parsePhaseChecklist, parseExecutionTimeline, parseSecurityReports, parseReviewFindings4, parseVerificationDetail) + phase4-fixture helper + 49+ tests
+- [x] 04-03-PLAN.md — Wave 2: 5 daemon routes (/commitment, /observations/recent, /phase-progress, /discipline, /security) + app.ts wiring + unregister cache eviction + 36+ in-process Hono tests
+- [x] 04-04-PLAN.md — Wave 3: SPA infrastructure — projectQueries (5 TanStack Query hooks) + ProjectLayout (max-w-7xl) + SingleProjectView shell with 2-col grid + ProjectHeader + replace placeholder route body
+- [x] 04-05-PLAN.md — Wave 4: Discipline column — PanelContainer + relativeTime + 3 panels (CommitmentBlock, HookFirings with DISC-04 install-hint, RationalizationFires) + mount in SingleProjectView
+- [x] 04-06-PLAN.md — Wave 5: Phase Progress column — extract shared InlineDrift + 5 panels (PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus) + mount + e2e route test verifying ROADMAP success criteria 1-5
 
 ### Phase 5: Skills + Health Panels
 **Goal**: The right column — InstalledSkills (global + local), SkillHealth (AgentLinter-backed), ObservabilityHealth, SecretsHealth, IntegrationsHealth — with cached AgentLinter subprocess and grep-based detection.
