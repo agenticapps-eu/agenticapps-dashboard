@@ -19,7 +19,7 @@ import { createApp } from '../app.js'
 import { setActiveToken, ensureAuthFile } from '../../lib/auth.js'
 import { makeTmpHome } from '../../lib/__fixtures__/tmpHome.js'
 import { makePhase4Fixture } from '../../lib/__fixtures__/phase4-fixture.js'
-import { _resetForTests as resetPhaseCache, evictPhaseCacheProject } from '../../lib/phaseCache.js'
+import { _resetForTests as resetPhaseCache } from '../../lib/phaseCache.js'
 import { _resetForTests as resetOverviewCache } from '../../lib/overviewCache.js'
 import * as phaseDetailLib from '../../lib/phaseDetail.js'
 
