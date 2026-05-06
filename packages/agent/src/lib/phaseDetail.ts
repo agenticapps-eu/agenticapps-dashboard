@@ -4,8 +4,8 @@
  * Read-only invariant (INV-01): this module never writes to any project filesystem.
  * All path construction uses join() over a canonical root stored at registration
  * time. Internal parser paths use hardcoded string literals — no user-supplied
- * path segments flow into these parsers. resolveAllowed() is NOT called here
- * (Pitfall 7: it is reserved for user-supplied /api/projects/:id/read?path=... queries).
+ * path segments flow into these parsers. The path-allow-list checker is NOT
+ * invoked here (Pitfall 7: it is reserved for user-supplied /api/projects/:id/read?path=...).
  *
  * Types are defined locally (structural equivalents of the @agenticapps/dashboard-shared
  * schemas from Plan 04-01 which lands in a parallel wave).
