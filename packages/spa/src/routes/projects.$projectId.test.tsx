@@ -29,11 +29,6 @@ vi.mock('../lib/registry.js', () => ({
   useProjectOverview: () => ({ data: undefined, isLoading: true }),
 }))
 
-function makeQCWrapper(qc: QueryClient) {
-  return ({ children }: { children: React.ReactNode }) =>
-    React.createElement(QueryClientProvider, { client: qc }, children)
-}
-
 /** Minimal router fixture that registers the /projects/$projectId route. */
 async function makeRouter(projectId: string) {
   const { Route } = await import('./projects.$projectId.lazy.js')
@@ -42,16 +37,15 @@ async function makeRouter(projectId: string) {
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
+  function WrappedComponent() {
+    return React.createElement(QueryClientProvider, { client: qc }, React.createElement(Component))
+  }
+
   const rootRoute = createRootRoute({ component: Outlet })
   const projectRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/projects/$projectId',
-    component: () =>
-      React.createElement(
-        QueryClientProvider,
-        { client: qc },
-        React.createElement(Component),
-      ),
+    component: WrappedComponent,
   })
 
   const routeTree = rootRoute.addChildren([projectRoute])

@@ -6,9 +6,9 @@
  * L2: on unmount, calls setAppShellWidth('max-w-3xl')
  * L3: renders children unwrapped (no extra wrapper div in DOM)
  */
+import React from 'react'
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import React from 'react'
 
 import { setAppShellWidth, getSnapshot } from '../lib/appShellWidth.js'
 import { ProjectLayout } from './ProjectLayout.js'

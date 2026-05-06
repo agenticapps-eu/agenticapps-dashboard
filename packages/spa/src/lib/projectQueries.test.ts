@@ -79,7 +79,7 @@ function makeDriftResponse() {
 
 const COMMITMENT_BODY = { markdown: '## Workflow commitment\n\nI commit.', sourceFile: 'session-2026.md' }
 const OBSERVATIONS_BODY = { entries: [{ ts: '2026-05-01T10:00:00Z', skill: 'meta-observer', hook: 'PostToolUse' }], skillInstalled: true }
-const DISCIPLINE_BODY = { rows: [{ label: 'Workflow skill not followed', fires: 2 }], skillInstalled: true }
+const DISCIPLINE_BODY = { rationalization: { rows: [{ label: 'Workflow skill not followed', fires: 2 }], skillInstalled: true } }
 const PHASE_PROGRESS_BODY = {
   phase: '04-single-project-view',
   paddedPhase: '04',
@@ -151,9 +151,11 @@ describe('useCommitment', () => {
     const queries = cache.getAll()
     const q = queries.find((q) => JSON.stringify(q.queryKey) === JSON.stringify(['commitment', 'acme']))
     expect(q).toBeDefined()
-    expect(q?.options.staleTime).toBe(5_000)
-    expect(q?.options.refetchInterval).toBe(5_000)
-    expect(q?.options.refetchIntervalInBackground).toBe(false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts = q?.options as any
+    expect(opts?.staleTime).toBe(5_000)
+    expect(opts?.refetchInterval).toBe(5_000)
+    expect(opts?.refetchIntervalInBackground).toBe(false)
 
     qc.clear()
   })
@@ -217,6 +219,19 @@ describe('useDiscipline', () => {
 
     const keys = qc.getQueryCache().getAll().map((q) => q.queryKey)
     expect(keys).toContainEqual(['discipline', 'acme'])
+
+    qc.clear()
+  })
+
+  it('fetches /api/projects/acme/discipline and returns data on success', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(DISCIPLINE_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useDiscipline('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/discipline')
 
     qc.clear()
   })
@@ -301,14 +316,11 @@ describe('cross-project cache isolation (Q11)', () => {
     const acmeBody = { markdown: 'acme commitment', sourceFile: 'acme.md' }
     const betaBody = { markdown: 'beta commitment', sourceFile: 'beta.md' }
 
-    let callCount = 0
     mockFetch.mockImplementation((url: string) => {
       if (url.includes('/acme/')) {
-        callCount++
         return Promise.resolve(makeSuccessResponse(acmeBody))
       }
       if (url.includes('/beta/')) {
-        callCount++
         return Promise.resolve(makeSuccessResponse(betaBody))
       }
       return Promise.reject(new Error('unexpected url'))
