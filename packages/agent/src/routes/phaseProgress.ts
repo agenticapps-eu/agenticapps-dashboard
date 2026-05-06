@@ -76,10 +76,13 @@ phaseProgressRoute.get('/:id/phase-progress', async (c) => {
     } catch {
       dirFiles = []
     }
+    // IN-02 fix: narrow the review-file pattern to `NN-REVIEW.md` (two-digit
+    // phase prefix) so future filenames such as `*-IMPECCABLE-REVIEW.md`
+    // cannot be misclassified as the Stage 1 review artifact.
     const reviewFile = dirFiles.find(
-      (f) => f.endsWith('-REVIEW.md') && !f.endsWith('-REVIEW-FIX.md'),
+      (f) => /\d{2}-REVIEW\.md$/.test(f) && !/\d{2}-REVIEW-FIX\.md$/.test(f),
     )
-    const reviewFixFile = dirFiles.find((f) => f.endsWith('-REVIEW-FIX.md'))
+    const reviewFixFile = dirFiles.find((f) => /\d{2}-REVIEW-FIX\.md$/.test(f))
     const stage1 = reviewFile
       ? parseReviewFindings4(join(phaseDir, reviewFile))
       : null
