@@ -279,6 +279,11 @@ export function parsePhaseChecklist(phaseDir: string): PhaseFileStatus[] {
     const matchingSummary = plan.replace('-PLAN.md', '-SUMMARY.md')
     if (summaries.includes(matchingSummary)) planPairOrder.push(matchingSummary)
   }
+  // WR-01 fix: append orphan summaries (SUMMARY without paired PLAN) so a
+  // deleted plan file does not silently hide completed work from the checklist.
+  for (const summary of summaries) {
+    if (!planPairOrder.includes(summary)) planPairOrder.push(summary)
+  }
   const statRow = (displayName: string): PhaseFileStatus => {
     const found = dirEntries.find(
       (f) => f === displayName || f.endsWith(`-${displayName}`),
