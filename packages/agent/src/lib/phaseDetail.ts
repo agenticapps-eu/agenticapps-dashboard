@@ -189,7 +189,9 @@ export async function readSkillObservations(
       }
     }
   }
-  all.sort((a, b) => (b.ts > a.ts ? 1 : b.ts < a.ts ? -1 : 0))
+  // IN-01 fix: use Date-object comparison so mixed ISO 8601 offset formats
+  // (e.g. `Z` vs `+00:00`) sort by actual instant rather than ASCII codepoint.
+  all.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
   return { entries: all.slice(0, limit), skillInstalled }
 }
 
