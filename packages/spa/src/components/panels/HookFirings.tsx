@@ -16,13 +16,13 @@
  *   5. skillInstalled true, entries empty → empty-state copy
  *   6. skillInstalled true, entries present → row list
  */
-import { AlertTriangle } from 'lucide-react'
 import React from 'react'
 
 import { useObservations } from '../../lib/projectQueries.js'
 import { formatRelativeTime } from '../../lib/relativeTime.js'
 import { CodeBlock } from '../CodeBlock.js'
 
+import { InlineDrift } from './InlineDrift.js'
 import { PanelContainer } from './PanelContainer.js'
 
 export interface HookFiringsProps {
@@ -110,39 +110,3 @@ export function HookFirings({ projectId }: HookFiringsProps): React.JSX.Element 
   )
 }
 
-/**
- * InlineDrift — duplicate of CommitmentBlock.InlineDrift.
- * Phase 6 polish todo: extract to a shared file (currently 3 copies in Plan 05).
- */
-function InlineDrift({
-  panelId,
-  title,
-  path,
-  onRetry,
-}: {
-  panelId: string
-  title: string
-  path: string
-  onRetry: () => void
-}): React.JSX.Element {
-  return (
-    <PanelContainer panelId={panelId} title={`Schema drift — ${title}`}>
-      <div className="flex items-start gap-2 text-sm">
-        <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 text-[--danger]" />
-        <div>
-          <p className="text-[--text]">
-            The agent and dashboard disagree on the response shape.
-          </p>
-          <p className="mt-1 font-mono text-xs text-[--text-muted]">field: {path}</p>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="mt-2 rounded border border-[--border-strong] bg-[--surface-elevated] px-3 py-1 text-xs font-semibold hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    </PanelContainer>
-  )
-}
