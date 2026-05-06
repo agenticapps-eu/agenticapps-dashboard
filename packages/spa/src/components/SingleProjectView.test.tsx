@@ -1,11 +1,14 @@
 /**
  * SingleProjectView.test.tsx — TDD tests for SingleProjectView component.
  *
+ * Updated by Plan 05: SV3 now asserts real panel components are mounted
+ * (the 3 discipline-column data-slot divs were replaced by real components).
+ *
  * Tests SV1–SV7:
  * SV1: renders ProjectHeader
  * SV2: renders 2-column grid with grid-cols-[1fr_1.5fr]
- * SV3: left column (discipline-column) has 3 placeholder slots
- * SV4: center column (phase-progress-column) has 5 placeholder slots
+ * SV3: discipline-column renders CommitmentBlock + HookFirings + RationalizationFires panel regions
+ * SV4: center column (phase-progress-column) has 5 placeholder slots (Plan 06 will fill these)
  * SV5: NO right-column DOM element (health-column absent)
  * SV6: document.title updates on mount
  * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-4 on columns)
@@ -28,6 +31,16 @@ vi.mock('./ProjectHeader.js', () => ({
 vi.mock('../lib/registry.js', () => ({
   useRegistryList: () => ({ data: undefined, isLoading: true }),
   useProjectOverview: () => ({ data: undefined, isLoading: true }),
+}))
+
+// Mock projectQueries so the 3 Discipline panels render their loading state
+// (the cleanest assertion target — no network / QueryClient needed for content).
+vi.mock('../lib/projectQueries.js', () => ({
+  useCommitment: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useObservations: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useDiscipline: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  usePhaseProgress: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useSecurity: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
 }))
 
 import { SingleProjectView } from './SingleProjectView.js'
@@ -65,22 +78,22 @@ describe('SingleProjectView', () => {
     expect(grid.className).toContain('grid-cols-[1fr_1.5fr]')
   })
 
-  it('SV3: discipline-column has 3 placeholder slots (commitment, hook-firings, rationalization-fires)', () => {
+  it('SV3: discipline-column mounts CommitmentBlock + HookFirings + RationalizationFires panel regions', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
+    // PanelContainer makes each panel a region (aria-labelledby → role="region")
+    expect(screen.getByRole('region', { name: 'Commitment' })).toBeDefined()
+    expect(screen.getByRole('region', { name: 'Hook Firings' })).toBeDefined()
+    expect(screen.getByRole('region', { name: 'Rationalization Fires' })).toBeDefined()
+
+    // The old data-slot placeholder divs are gone (replaced by real components)
     const col = screen.getByTestId('discipline-column')
-    expect(col).toBeDefined()
-
-    const commitment = col.querySelector('[data-slot="commitment"]')
-    const hookFirings = col.querySelector('[data-slot="hook-firings"]')
-    const rationalization = col.querySelector('[data-slot="rationalization-fires"]')
-
-    expect(commitment).toBeDefined()
-    expect(hookFirings).toBeDefined()
-    expect(rationalization).toBeDefined()
+    expect(col.querySelector('[data-slot="commitment"]')).toBeNull()
+    expect(col.querySelector('[data-slot="hook-firings"]')).toBeNull()
+    expect(col.querySelector('[data-slot="rationalization-fires"]')).toBeNull()
   })
 
-  it('SV4: phase-progress-column has 5 placeholder slots', () => {
+  it('SV4: phase-progress-column has 5 placeholder slots (Plan 06 will fill these)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const col = screen.getByTestId('phase-progress-column')

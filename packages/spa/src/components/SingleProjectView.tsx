@@ -4,18 +4,17 @@
  * D-4-09: 2-column grid (left=Discipline, center=Phase Progress).
  * NO right-column DOM element — D-4-13 anti-skeleton policy.
  *
- * Plans 05 + 06 fill the panel slots below by replacing each
- * <div data-slot=".../> with the actual panel component import.
- *
- * Plan order:
- *  Plan 05 → CommitmentBlock, HookFirings, RationalizationFires
- *  Plan 06 → PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus
+ * Plan 05 filled: CommitmentBlock, HookFirings, RationalizationFires.
+ * Plan 06 fills: PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus.
  *
  * document.title is set here (not in ProjectLayout — layout is generic; title is per-page).
  */
 import { useEffect } from 'react'
 
 import { ProjectHeader } from './ProjectHeader.js'
+import { CommitmentBlock } from './panels/CommitmentBlock.js'
+import { HookFirings } from './panels/HookFirings.js'
+import { RationalizationFires } from './panels/RationalizationFires.js'
 
 export type SingleProjectViewProps = { projectId: string }
 
@@ -36,9 +35,9 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           aria-label="Discipline"
           className="flex flex-col gap-4"
         >
-          <div data-slot="commitment" />
-          <div data-slot="hook-firings" />
-          <div data-slot="rationalization-fires" />
+          <CommitmentBlock projectId={projectId} />
+          <HookFirings projectId={projectId} />
+          <RationalizationFires projectId={projectId} />
         </section>
         <section
           data-testid="phase-progress-column"
