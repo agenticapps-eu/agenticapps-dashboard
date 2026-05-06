@@ -153,6 +153,11 @@ export async function readSkillObservations(
   limit: number,
 ): Promise<{ entries: HookFiring[]; skillInstalled: boolean }> {
   const skillInstalled = findSkillPath(root, META_OBSERVER_DIRS) !== null
+  // WR-03 fix (D-4-15): when the meta-observer skill is absent, return an
+  // empty entries array. The detection contract specifies the daemon should
+  // surface { entries: [], skillInstalled: false } so consumers do not see
+  // stale JSONL when the producing skill is uninstalled.
+  if (!skillInstalled) return { entries: [], skillInstalled }
   const dir = join(root, '.planning', 'skill-observations')
   if (!existsSync(dir)) return { entries: [], skillInstalled }
   let files: string[]

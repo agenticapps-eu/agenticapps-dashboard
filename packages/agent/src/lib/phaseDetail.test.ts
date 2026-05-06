@@ -178,18 +178,20 @@ describe('readSkillObservations', () => {
 
   it('O3: without meta-observer skill returns entries:[], skillInstalled:false', async () => {
     const fix = makePhase4Fixture()
-    // No writeMetaObserverSkill call
+    // No writeMetaObserverSkill call. JSONL exists but the producing skill is
+    // uninstalled — D-4-15 requires entries to be empty in that case.
     fix.writeJsonl('session.jsonl', [
       { ts: '2026-05-01T10:00:00Z', skill: 'gsd', hook: 'pre-phase' },
     ])
     const result = await readSkillObservations(fix.root, 20)
     expect(result.skillInstalled).toBe(false)
-    expect(result.entries).toHaveLength(1)
+    expect(result.entries).toHaveLength(0)
     fix.cleanup()
   })
 
   it('O4: malformed JSONL line is silently skipped; valid lines parse', async () => {
     const fix = makePhase4Fixture()
+    fix.writeMetaObserverSkill()
     const dir = join(fix.root, '.planning', 'skill-observations')
     writeFileSync(join(dir, 'mixed.jsonl'), [
       '{"ts":"2026-05-01T10:00:00Z","skill":"gsd","hook":"pre"}',
@@ -203,6 +205,7 @@ describe('readSkillObservations', () => {
 
   it('O5: limit=20 returns 20 most recent when 30 available, sorted ts desc', async () => {
     const fix = makePhase4Fixture()
+    fix.writeMetaObserverSkill()
     const lines = Array.from({ length: 30 }, (_, i) => ({
       ts: `2026-05-${String(i + 1).padStart(2, '0')}T00:00:00Z`,
       skill: 'gsd',
@@ -218,6 +221,7 @@ describe('readSkillObservations', () => {
 
   it('O6: lines missing ts, skill, or hook are skipped', async () => {
     const fix = makePhase4Fixture()
+    fix.writeMetaObserverSkill()
     const dir = join(fix.root, '.planning', 'skill-observations')
     writeFileSync(join(dir, 'partial.jsonl'), [
       '{"ts":"2026-05-01T10:00:00Z","skill":"gsd","hook":"pre"}',
