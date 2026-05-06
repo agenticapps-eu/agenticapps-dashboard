@@ -9,7 +9,7 @@
  *
  * document.title is set here (not in ProjectLayout — layout is generic; title is per-page).
  */
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 import { ProjectHeader } from './ProjectHeader.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
