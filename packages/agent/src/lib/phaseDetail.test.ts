@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
 import { writeFileSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execSync } from 'node:child_process'
+
+import { describe, it, expect } from 'vitest'
 
 import { makePhase4Fixture } from './__fixtures__/phase4-fixture.js'
 import {
