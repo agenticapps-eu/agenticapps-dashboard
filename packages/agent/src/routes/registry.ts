@@ -33,6 +33,7 @@ import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { logBlocked } from '../lib/registerLog.js'
 import { detectMarkers } from '../lib/projectOverview.js'
 import { evict as evictOverviewCache } from '../lib/overviewCache.js'
+import { evictPhaseCacheProject } from '../lib/phaseCache.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
@@ -102,6 +103,7 @@ registryRoute.post(
     const removed = removeProject(body.id, registryFile)
     if (removed) {
       evictOverviewCache(body.id) // T-03-03-05 cache hygiene
+      evictPhaseCacheProject(body.id) // T-04-03-07 Phase 4 cache hygiene
       return c.body(null, 204)
     }
     return c.json(
