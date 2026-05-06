@@ -89,7 +89,7 @@ describe('RationalizationFires', () => {
       screen.getByText('agentic-apps-workflow skill not installed in this project.'),
     ).toBeDefined()
     // Placeholder install command rendered in CodeBlock
-    expect(screen.getByText('claude skill install agenticapps-workflow')).toBeDefined()
+    expect(screen.getByText('claude skill install agentic-apps-workflow')).toBeDefined()
   })
 
   it('RF3: skillInstalled true + rows empty → empty-state copy verbatim', () => {

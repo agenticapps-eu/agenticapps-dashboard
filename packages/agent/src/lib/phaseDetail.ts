@@ -115,19 +115,44 @@ export function parseCommitmentBlock(root: string): CommitmentBlockResponse {
   }
 }
 
+// ── Skill layout probing ──────────────────────────────────────────────────────
+
+/**
+ * D-4-07 + D-4-15 (amended 2026-05-06): probe both canonical single-file layout
+ * (`<dir>/SKILL.md`) and bundle layout (`<dir>/skill/SKILL.md`) for a skill that
+ * may be installed via `claude skill install` (canonical) or `git clone` (bundle).
+ *
+ * `dirNames` is searched in priority order. Returns the first existing path,
+ * or null if none exist. All segments are hardcoded string literals (T-04-02-01
+ * mitigation preserved).
+ */
+function findSkillPath(root: string, dirNames: readonly string[]): string | null {
+  for (const dir of dirNames) {
+    const canonical = join(root, '.claude', 'skills', dir, 'SKILL.md')
+    if (existsSync(canonical)) return canonical
+    const bundle = join(root, '.claude', 'skills', dir, 'skill', 'SKILL.md')
+    if (existsSync(bundle)) return bundle
+  }
+  return null
+}
+
+const META_OBSERVER_DIRS = ['meta-observer'] as const
+// Canonical name (matches `discover.ts:18`) takes precedence over the legacy
+// `agenticapps-workflow` (no hyphen) used by older github-clone bundles.
+const WORKFLOW_DIRS = ['agentic-apps-workflow', 'agenticapps-workflow'] as const
+
 // ── readSkillObservations ─────────────────────────────────────────────────────
 
 /**
  * D-4-08 + D-4-15: Top-N hook firings across .planning/skill-observations/*.jsonl
- * sorted by ts desc, plus skillInstalled flag (presence of meta-observer SKILL.md).
+ * sorted by ts desc, plus skillInstalled flag (presence of meta-observer SKILL.md
+ * at either canonical or bundle layout).
  */
 export async function readSkillObservations(
   root: string,
   limit: number,
 ): Promise<{ entries: HookFiring[]; skillInstalled: boolean }> {
-  const skillInstalled = existsSync(
-    join(root, '.claude', 'skills', 'meta-observer', 'SKILL.md'),
-  )
+  const skillInstalled = findSkillPath(root, META_OBSERVER_DIRS) !== null
   const dir = join(root, '.planning', 'skill-observations')
   if (!existsSync(dir)) return { entries: [], skillInstalled }
   let files: string[]
@@ -174,15 +199,8 @@ export function parseRationalizationRows(
   root: string,
   entries: HookFiring[],
 ): { rows: { label: string; fires: number }[]; skillInstalled: boolean } {
-  const skillPath = join(
-    root,
-    '.claude',
-    'skills',
-    'agenticapps-workflow',
-    'skill',
-    'SKILL.md',
-  )
-  if (!existsSync(skillPath)) return { rows: [], skillInstalled: false }
+  const skillPath = findSkillPath(root, WORKFLOW_DIRS)
+  if (skillPath === null) return { rows: [], skillInstalled: false }
   let content: string
   try {
     content = readFileSync(skillPath, 'utf8')

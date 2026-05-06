@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 04-single-project-view-discipline-phase-progress
 source: [04-VERIFICATION.md]
 started: "2026-05-06T12:00:00Z"
-updated: "2026-05-06T15:35:00Z"
+updated: "2026-05-06T15:55:00Z"
 ---
 
 ## Current Test
 
-[testing paused — 1 issue (G1 + G2), 1 blocked on Phase 5 prerequisite]
+[testing complete — G1 deferred to Phase 5 (data-path scope), G2 fixed in Phase 4 closure, Test 3 blocked on same Phase 5 prerequisite as G1]
 
 ## Tests
 
@@ -40,42 +40,38 @@ blocked: 1
 ## Gaps
 
 - truth: "CommitmentBlock surfaces the most recent `## Workflow commitment` from a real project's session output (REQUIREMENTS.md DISC-01)"
-  status: failed
+  status: deferred
+  resolution: "Option 1A — defer DISC-01 acceptance to Phase 5+. Phase 4 panel + parser ship as-is; populated-state branch validated by fixture tests in `phaseDetail.test.ts`. Empty state renders correctly until a transcript persister (meta-observer or equivalent in Phase 5+) writes `## Workflow commitment` blocks to `.planning/skill-observations/*.md`. REQUIREMENTS.md DISC-01 row updated 2026-05-06 to mark Partial."
+  decided_by: "user (2026-05-06)"
   reason: "Parser reads `.planning/skill-observations/*.md` but no skill in the v1 bundle writes commitment markdown there. Workflow skill defines the ritual as a transcript-only artifact; meta-observer (the proposed transcript persister) is Phase 5+ scope. CommitmentBlock therefore renders the empty state for every project today."
   severity: major
   test: 2
   gap_id: G1
   affects:
-    - "REQUIREMENTS.md:DISC-01"
+    - "REQUIREMENTS.md:DISC-01 (now annotated Partial — Phase 5+ data path)"
     - "ROADMAP.md L120 (commitment surfacing)"
   artifacts:
     - path: "packages/agent/src/lib/phaseDetail.ts"
       issue: "parseCommitmentBlock reads a path no shipping skill writes to"
-  options:
-    - "(A) Defer DISC-01 from Phase 4 acceptance until Phase 5 meta-observer ships the persister; document as known empty-state until then"
-    - "(B) Re-source the parser to read commitment blocks from phase artifacts (PLAN.md/SUMMARY.md/conversation logs) — wider rewrite"
-    - "(C) Ship a lightweight commitment recorder in Phase 4.x that captures `## Workflow commitment` blocks from the active session into `.planning/skill-observations/*.md`"
-  missing:
-    - "Decision on which option (A/B/C) closes DISC-01"
-  debug_session: ""
+  follow_up:
+    - "Phase 5 must include a transcript persister that writes `## Workflow commitment` blocks to `<projectRoot>/.planning/skill-observations/*.md`"
 
 - truth: "Skill install-hint logic correctly detects installed workflow + meta-observer skills regardless of which canonical layout is used (DISC-04 + RationalizationFires gate)"
-  status: failed
-  reason: "Parser hardcodes the bundle layout `<root>/.claude/skills/agenticapps-workflow/skill/SKILL.md` (D-4-07) and `<root>/.claude/skills/meta-observer/SKILL.md` (D-4-15). The workflow README documents two valid layouts: bundle (no hyphen, with `skill/` subdir) AND canonical single-file (`agentic-apps-workflow/SKILL.md`, hyphenated). Projects on the canonical single-file layout — like cparx — get a false-negative `not installed` hint."
+  status: closed
+  resolution: "Option 2A — fixed in Phase 4 closure (2026-05-06). Parser now probes a 4-path candidate list for the workflow skill (`agentic-apps-workflow/SKILL.md` → `agentic-apps-workflow/skill/SKILL.md` → `agenticapps-workflow/SKILL.md` → `agenticapps-workflow/skill/SKILL.md`) and a 2-path candidate list for meta-observer (canonical, then bundle), via a shared `findSkillPath()` helper. Canonical hyphenated layout takes precedence — matches `cli/discover.ts:18` and the workflow skill's `name:` field. SPA install-cmd `claude skill install agentic-apps-workflow` aligned with display name. D-4-07 + D-4-15 amended in `04-CONTEXT.md` documenting the dual-layout probe. New tests: O7 (meta-observer bundle layout), R6 (canonical workflow layout), R7 (canonical-takes-precedence)."
+  decided_by: "user (2026-05-06)"
+  reason: "Parser hardcoded the bundle layout `<root>/.claude/skills/agenticapps-workflow/skill/SKILL.md` (D-4-07) and `<root>/.claude/skills/meta-observer/SKILL.md` (D-4-15). The workflow README documents two valid layouts: bundle (no hyphen, with `skill/` subdir) AND canonical single-file (`agentic-apps-workflow/SKILL.md`, hyphenated). Projects on the canonical single-file layout — like cparx — got a false-negative `not installed` hint."
   severity: major
   test: 2
   gap_id: G2
   affects:
     - "REQUIREMENTS.md:DISC-04"
-    - "D-4-07 (locked, would need amendment)"
-    - "D-4-15 (locked, would need amendment)"
+    - "D-4-07 (amended)"
+    - "D-4-15 (amended)"
   artifacts:
     - path: "packages/agent/src/lib/phaseDetail.ts"
-      issue: "Lines 128-129 (meta-observer) + 177-184 (workflow): hardcoded path misses canonical single-file layout"
+      issue: "FIXED — `findSkillPath()` helper added; both parsers now probe canonical + bundle layouts"
     - path: "packages/spa/src/components/panels/RationalizationFires.tsx"
-      issue: "Line 75 displays 'agentic-apps-workflow' but install command uses 'agenticapps-workflow' — naming inconsistency confirms the layout assumption"
-  missing:
-    - "Detection logic that probes BOTH `<root>/.claude/skills/<name>/SKILL.md` AND `<root>/.claude/skills/<name>/skill/SKILL.md`, with `<name>` accepting both `agentic-apps-workflow` and `agenticapps-workflow`"
-    - "Same fanout for meta-observer (singular layout exists per same README convention)"
-    - "ADR amendment to D-4-07 + D-4-15 documenting the dual-layout probe"
-  debug_session: ""
+      issue: "FIXED — install command updated to use canonical hyphenated form"
+    - path: "eslint.config.mjs"
+      issue: "FIXED — added `.claude/worktrees/**` ignore so `pnpm lint` reflects active source only"

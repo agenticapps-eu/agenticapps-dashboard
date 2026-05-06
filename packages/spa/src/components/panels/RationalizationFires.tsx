@@ -34,7 +34,7 @@ export interface RationalizationFiresProps {
 /**
  * Placeholder install command (D-4-15 deferred — Phase 6 confirms canonical CLI invocation).
  */
-const WORKFLOW_INSTALL_CMD = 'claude skill install agenticapps-workflow'
+const WORKFLOW_INSTALL_CMD = 'claude skill install agentic-apps-workflow'
 
 export function RationalizationFires({ projectId }: RationalizationFiresProps): React.JSX.Element {
   const query = useDiscipline(projectId)

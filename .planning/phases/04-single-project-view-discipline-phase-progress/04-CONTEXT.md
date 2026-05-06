@@ -69,13 +69,18 @@ Out of scope (later phases):
   4. Return everything from that heading to the next `^## ` (any H2) or EOF, excluding the next heading itself.
   - Empty/null states (no dir → triggers DISC-04 install hint; dir exists but no `.md` files; file exists but no commitment heading) all surface as `{ markdown: null, sourceFile: null }`.
 - **D-4-06:** **`HookFiringSchema` = `{ ts: ISO8601, skill: string, hook: string, payload?: unknown }`.** Implemented as `z.object({ ts, skill, hook }).passthrough()` so unknown fields from a future meta-observer release don't trip schema-drift. SPA renders `ts` (relative time) + `skill` (bold) + `hook` (badge). Unknown fields ignored visually but preserved in the cached query data for future expansion.
-- **D-4-07:** **`RationalizationFires` row labels parsed at request time from the project's `.claude/skills/agenticapps-workflow/skill/SKILL.md` rationalization markdown table.** Algorithm:
-  1. Read `<projectRoot>/.claude/skills/agenticapps-workflow/skill/SKILL.md` (allow-list permits this path under `.claude`).
+- **D-4-07 (amended 2026-05-06 — UAT G2):** **`RationalizationFires` row labels parsed at request time from the project's workflow skill SKILL.md rationalization markdown table, probing both canonical and bundle layouts.** Algorithm:
+  1. Probe these paths in order, picking the first that exists (all under `.claude` allow-list):
+     - `<projectRoot>/.claude/skills/agentic-apps-workflow/SKILL.md` (canonical; matches `cli/discover.ts:18` and the workflow skill's own `name:` field)
+     - `<projectRoot>/.claude/skills/agentic-apps-workflow/skill/SKILL.md` (canonical with bundle subdir)
+     - `<projectRoot>/.claude/skills/agenticapps-workflow/SKILL.md` (legacy hyphen-less, single-file)
+     - `<projectRoot>/.claude/skills/agenticapps-workflow/skill/SKILL.md` (legacy hyphen-less, bundle — the original `git clone` target)
   2. Find the rationalization markdown table (canonical heading per the skill — researcher confirms exact heading, e.g. `## Rationalizations to watch for` or `## Rationalization Table`).
   3. Extract first column of each row as a label, skipping the header row.
   4. Counter aggregates JSONL hook events from `.planning/skill-observations/*.jsonl` whose `payload.row` (or equivalent field per D-4-06 passthrough shape) matches a label.
   - Self-updating: when the workflow skill adds rows in a future release, the dashboard adapts on next reload. No dashboard release coupling.
-  - Empty state when SKILL.md missing: panel shows "agentic-apps-workflow skill not installed in this project" with a copy-pasteable install command (parallel to DISC-04's meta-observer hint).
+  - Empty state when no SKILL.md found at any candidate path: panel shows "agentic-apps-workflow skill not installed in this project" with `claude skill install agentic-apps-workflow` (display name + install command both use the canonical hyphenated form per the skill's `name:` field).
+  - **Amendment rationale (UAT G2, 2026-05-06):** Original locked decision hardcoded only the bundle layout (`agenticapps-workflow/skill/SKILL.md`), producing false-negative install hints for projects on the canonical single-file layout (`agentic-apps-workflow/SKILL.md`) that the workflow README documents and that `cli/discover.ts` already detects. The amended probe order keeps the original path as a fallback (no behavior change for existing bundle installs) while adding the canonical layout that real projects actually use.
 - **D-4-08:** **HookFirings recency = last 20 lines globally across `.planning/skill-observations/*.jsonl` by line `ts` desc.** Daemon walks all `.jsonl` (and `.ndjson` if present) files, parses each line as JSON, sorts by `ts` desc across all files, returns top 20. Implemented as a streaming read (don't load all session files into memory; use `node:readline` per file, then merge top-N with a small heap) — researcher picks the exact pattern. Robust to per-file line counts (a quiet last session doesn't blank the panel if prior session had activity).
 
 ### Layout: header + 3-column shell
@@ -108,7 +113,7 @@ Out of scope (later phases):
   - ReviewStatus no review files → `No review run yet — try `/review` or `/gsd-code-review`.`
   - SecurityStatus no `*-SECURITY.md` → `No /cso audit yet for this phase.`
   - VerificationStatus no `*-VERIFICATION.md` → `No verification run yet — try `/gsd-verify-work`.`
-- **D-4-15:** **DISC-04 install hint** — when `<projectRoot>/.claude/skills/meta-observer/SKILL.md` is absent, the HookFirings panel shows:
+- **D-4-15 (amended 2026-05-06 — UAT G2):** **DISC-04 install hint** — when no `meta-observer` SKILL.md is found at either `<projectRoot>/.claude/skills/meta-observer/SKILL.md` (canonical single-file) or `<projectRoot>/.claude/skills/meta-observer/skill/SKILL.md` (bundle), the HookFirings panel shows:
   ```
   No skill-observations yet
   ─────────────────────────

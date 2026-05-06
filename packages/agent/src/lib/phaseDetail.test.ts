@@ -229,6 +229,14 @@ describe('readSkillObservations', () => {
     expect(result.entries).toHaveLength(1)
     fix.cleanup()
   })
+
+  it('O7: meta-observer at bundle layout (skill/SKILL.md) is detected', async () => {
+    const fix = makePhase4Fixture()
+    fix.writeMetaObserverSkillBundle()
+    const result = await readSkillObservations(fix.root, 20)
+    expect(result.skillInstalled).toBe(true)
+    fix.cleanup()
+  })
 })
 
 // ── parseRationalizationRows tests ───────────────────────────────────────────
@@ -304,6 +312,38 @@ describe('parseRationalizationRows', () => {
     const result = parseRationalizationRows(fix.root, [])
     expect(result.skillInstalled).toBe(true)
     expect(result.rows).toHaveLength(0)
+    fix.cleanup()
+  })
+
+  it('R6: canonical single-file layout (agentic-apps-workflow/SKILL.md) is detected', () => {
+    const fix = makePhase4Fixture()
+    fix.writeWorkflowSkillCanonical(SKILL_WITH_TABLE)
+    const result = parseRationalizationRows(fix.root, [])
+    expect(result.skillInstalled).toBe(true)
+    expect(result.rows).toHaveLength(3)
+    expect(result.rows[0]!.label).toBe('Row label one')
+    fix.cleanup()
+  })
+
+  it('R7: canonical layout takes precedence when both layouts coexist', () => {
+    const fix = makePhase4Fixture()
+    // Bundle has 1-row table, canonical has 3-row table
+    fix.writeWorkflowSkill([
+      '# Bundle',
+      '',
+      '## Rationalization Table — Check Before Skipping Anything',
+      '',
+      '| If you think | Then remember |',
+      '| --- | --- |',
+      '| "Bundle row" | bundle |',
+      '',
+    ].join('\n'))
+    fix.writeWorkflowSkillCanonical(SKILL_WITH_TABLE)
+    const result = parseRationalizationRows(fix.root, [])
+    expect(result.skillInstalled).toBe(true)
+    // Canonical (3 rows) wins over bundle (1 row)
+    expect(result.rows).toHaveLength(3)
+    expect(result.rows[0]!.label).toBe('Row label one')
     fix.cleanup()
   })
 })

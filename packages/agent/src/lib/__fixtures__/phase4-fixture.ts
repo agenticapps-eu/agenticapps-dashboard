@@ -28,10 +28,14 @@ export interface Phase4Fixture {
   writeObservation: (name: string, content: string) => string
   /** Write JSON lines to <root>/.planning/skill-observations/<name>.jsonl, returns abs path */
   writeJsonl: (name: string, lines: Record<string, unknown>[]) => string
-  /** Write <root>/.claude/skills/agenticapps-workflow/skill/SKILL.md */
+  /** Write <root>/.claude/skills/agenticapps-workflow/skill/SKILL.md (legacy bundle layout) */
   writeWorkflowSkill: (content: string) => string
-  /** Write <root>/.claude/skills/meta-observer/SKILL.md (default: minimal content) */
+  /** Write <root>/.claude/skills/agentic-apps-workflow/SKILL.md (canonical single-file layout) */
+  writeWorkflowSkillCanonical: (content: string) => string
+  /** Write <root>/.claude/skills/meta-observer/SKILL.md (canonical single-file layout; default: minimal content) */
   writeMetaObserverSkill: (content?: string) => string
+  /** Write <root>/.claude/skills/meta-observer/skill/SKILL.md (bundle layout; default: minimal content) */
+  writeMetaObserverSkillBundle: (content?: string) => string
   /** Create files under <root>/.planning/phases/<name>/ */
   writeLatestPhaseDir: (name: string, files: Record<string, string>) => string
   /** Set atime+mtime of absPath to a Date (or ISO string) for deterministic ordering */
@@ -81,8 +85,24 @@ export function makePhase4Fixture(): Phase4Fixture {
     return absPath
   }
 
+  const writeWorkflowSkillCanonical = (content: string): string => {
+    const dir = join(root, '.claude', 'skills', 'agentic-apps-workflow')
+    mkdirSync(dir, { recursive: true })
+    const absPath = join(dir, 'SKILL.md')
+    writeFileSync(absPath, content)
+    return absPath
+  }
+
   const writeMetaObserverSkill = (content = '# meta-observer\n'): string => {
     const dir = join(root, '.claude', 'skills', 'meta-observer')
+    mkdirSync(dir, { recursive: true })
+    const absPath = join(dir, 'SKILL.md')
+    writeFileSync(absPath, content)
+    return absPath
+  }
+
+  const writeMetaObserverSkillBundle = (content = '# meta-observer\n'): string => {
+    const dir = join(root, '.claude', 'skills', 'meta-observer', 'skill')
     mkdirSync(dir, { recursive: true })
     const absPath = join(dir, 'SKILL.md')
     writeFileSync(absPath, content)
@@ -109,7 +129,9 @@ export function makePhase4Fixture(): Phase4Fixture {
     writeObservation,
     writeJsonl,
     writeWorkflowSkill,
+    writeWorkflowSkillCanonical,
     writeMetaObserverSkill,
+    writeMetaObserverSkillBundle,
     writeLatestPhaseDir,
     setMtime,
   }
