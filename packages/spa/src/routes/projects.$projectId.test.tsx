@@ -32,13 +32,15 @@ vi.mock('../lib/registry.js', () => ({
 /** Minimal router fixture that registers the /projects/$projectId route. */
 async function makeRouter(projectId: string) {
   const { Route } = await import('./projects.$projectId.lazy.js')
-  const Component = Route.options.component
-  if (!Component) throw new Error('Route component not set')
+  const MaybeComponent = Route.options.component
+  if (!MaybeComponent) throw new Error('Route component not set')
+  // Capture in a non-optional local so TS control flow tracks it inside WrappedComponent
+  const RouteComponent = MaybeComponent
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   function WrappedComponent() {
-    return React.createElement(QueryClientProvider, { client: qc }, React.createElement(Component))
+    return React.createElement(QueryClientProvider, { client: qc }, React.createElement(RouteComponent))
   }
 
   const rootRoute = createRootRoute({ component: Outlet })
