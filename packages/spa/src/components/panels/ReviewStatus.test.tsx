@@ -25,6 +25,7 @@ vi.mock('../../lib/projectQueries.js', () => ({
 }))
 
 import { usePhaseProgress } from '../../lib/projectQueries.js'
+
 import { ReviewStatus } from './ReviewStatus.js'
 
 type MockQueryResult = Partial<UseQueryResult<PhaseProgressResponse, Error>>

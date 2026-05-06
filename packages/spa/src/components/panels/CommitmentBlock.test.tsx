@@ -23,6 +23,7 @@ vi.mock('../../lib/projectQueries.js', () => ({
 }))
 
 import { useCommitment } from '../../lib/projectQueries.js'
+
 import { CommitmentBlock } from './CommitmentBlock.js'
 
 type MockQueryResult = Partial<UseQueryResult<CommitmentBlockResponse, Error>>

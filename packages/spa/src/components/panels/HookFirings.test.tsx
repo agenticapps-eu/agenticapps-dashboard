@@ -29,6 +29,7 @@ vi.mock('../../lib/relativeTime.js', () => ({
 
 import { useObservations } from '../../lib/projectQueries.js'
 import { formatRelativeTime } from '../../lib/relativeTime.js'
+
 import { HookFirings } from './HookFirings.js'
 
 type MockQueryResult = Partial<UseQueryResult<ObservationsRecentResponse, Error>>

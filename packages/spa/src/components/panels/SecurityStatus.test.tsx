@@ -23,6 +23,7 @@ vi.mock('../../lib/projectQueries.js', () => ({
 }))
 
 import { useSecurity } from '../../lib/projectQueries.js'
+
 import { SecurityStatus } from './SecurityStatus.js'
 
 type MockQueryResult = Partial<UseQueryResult<SecurityResponse, Error>>

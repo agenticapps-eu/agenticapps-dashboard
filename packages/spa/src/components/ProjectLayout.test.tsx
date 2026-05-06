@@ -11,6 +11,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 
 import { setAppShellWidth, getSnapshot } from '../lib/appShellWidth.js'
+
 import { ProjectLayout } from './ProjectLayout.js'
 
 beforeEach(() => {

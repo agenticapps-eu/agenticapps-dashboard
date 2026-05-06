@@ -28,6 +28,7 @@ vi.mock('../../lib/relativeTime.js', () => ({
 }))
 
 import { usePhaseProgress } from '../../lib/projectQueries.js'
+
 import { ExecutionTimeline } from './ExecutionTimeline.js'
 
 type MockQueryResult = Partial<UseQueryResult<PhaseProgressResponse, Error>>

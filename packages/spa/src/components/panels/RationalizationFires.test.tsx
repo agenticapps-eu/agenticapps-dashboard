@@ -22,6 +22,7 @@ vi.mock('../../lib/projectQueries.js', () => ({
 }))
 
 import { useDiscipline } from '../../lib/projectQueries.js'
+
 import { RationalizationFires } from './RationalizationFires.js'
 
 type MockQueryResult = Partial<UseQueryResult<DisciplineResponse, Error>>

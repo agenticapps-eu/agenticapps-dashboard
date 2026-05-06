@@ -10,7 +10,6 @@
  * Glyphs are aria-hidden; the parent element carries aria-label for screen readers.
  */
 import React from 'react'
-
 import type { ReviewFindingCounts, ReviewStatusPayload } from '@agenticapps/dashboard-shared'
 
 import { usePhaseProgress } from '../../lib/projectQueries.js'
