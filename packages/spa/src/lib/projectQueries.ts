@@ -15,6 +15,11 @@
  * enabled: id !== null mirrors Phase 3's useProjectOverview. Even though the
  * route always provides a string projectId, this keeps the hook robust if a
  * future caller passes null (e.g. on transient route-mid-transition states).
+ *
+ * Phase 5 additions (D-5-12, D-5-14, D-5-15):
+ *   useGlobalSkills() — singleton, 60s TTL, no projectId in key.
+ *   useLocalSkills(id) — per-project, 60s TTL, id in key (cross-project safety T-05-04-Cross-Project-Cache).
+ *   useAgentLinter(id) — per-project, 1h TTL, no refetchInterval (manual retry only via refetch()).
  */
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -28,12 +33,20 @@ import {
   type PhaseProgressResponse,
   SecurityResponseSchema,
   type SecurityResponse,
+  GlobalSkillsResponseSchema,
+  type GlobalSkillsResponse,
+  LocalSkillsResponseSchema,
+  type LocalSkillsResponse,
+  AgentLinterResponseSchema,
+  type AgentLinterResponse,
 } from '@agenticapps/dashboard-shared'
 
 import { apiFetch } from './api.js'
 
 const POLL_MS = 5_000
 const DEFAULT_OBS_LIMIT = 20
+const SKILLS_TTL_MS = 60_000
+const AGENTLINTER_TTL_MS = 3_600_000
 
 /**
  * useCommitment — polls GET /api/projects/{id}/commitment every 5s.
@@ -129,6 +142,67 @@ export function useSecurity(id: string | null) {
     enabled: id !== null,
     staleTime: POLL_MS,
     refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useGlobalSkills — polls GET /api/skills/global every 60s.
+ * Singleton — no projectId in query key (global skills shared across all projects per D-5-12).
+ * Cross-project cache safety: global skills are the same for all projects; per-project skills
+ * use useLocalSkills(id) which includes id in the key.
+ */
+export function useGlobalSkills() {
+  return useQuery({
+    queryKey: ['skills', 'global'] as const,
+    queryFn: async (): Promise<GlobalSkillsResponse> => {
+      const result = await apiFetch('/api/skills/global', GlobalSkillsResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    staleTime: SKILLS_TTL_MS,
+    refetchInterval: SKILLS_TTL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useLocalSkills — polls GET /api/projects/{id}/skills/local every 60s.
+ * Per-project: id included in queryKey to prevent cross-project cache leakage
+ * (T-05-04-Cross-Project-Cache).
+ */
+export function useLocalSkills(id: string | null) {
+  return useQuery({
+    queryKey: ['skills', 'local', id] as const,
+    queryFn: async (): Promise<LocalSkillsResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/skills/local`, LocalSkillsResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: SKILLS_TTL_MS,
+    refetchInterval: SKILLS_TTL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useAgentLinter — fetches GET /api/projects/{id}/agentlinter once, caches for 1h.
+ * D-5-14: staleTime 1h hard ceiling; NO refetchInterval (manual retry only).
+ * The SkillHealth panel's Retry button calls apiFetch with ?bypassCache=1 directly,
+ * then uses queryClient.setQueryData to update the cache.
+ * Per-project: id included in queryKey (T-05-04-Cross-Project-Cache).
+ */
+export function useAgentLinter(id: string | null) {
+  return useQuery({
+    queryKey: ['agentlinter', id] as const,
+    queryFn: async (): Promise<AgentLinterResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/agentlinter`, AgentLinterResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: AGENTLINTER_TTL_MS,
     refetchIntervalInBackground: false,
   })
 }
