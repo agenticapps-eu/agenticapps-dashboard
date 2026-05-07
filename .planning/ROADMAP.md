@@ -148,7 +148,7 @@ Plans:
 - [x] 05-03-PLAN.md — Wave 1: paths.ts resolveAllowedNamed extension (D-5-13) + projectMetadataScan (9 detectors for package.json/.infisical.json/.sentryclirc/.env/.spotlight/CI YAML/sentry-cli binary) + integrationsState 3-state truth table + 3 daemon routes (observability/secrets/integrations)
 - [x] 05-04-PLAN.md — Wave 2: 3 TanStack Query hooks (useGlobalSkills/useLocalSkills/useAgentLinter) + InstalledSkills panel (HEALTH-01) + SkillHealth panel (HEALTH-02) with row-expand + 4-class empty states + retry button
 - [x] 05-05-PLAN.md — Wave 2: 3 TanStack Query hooks (useObservability/useSecrets/useIntegrations) + ObservabilityHealth (HEALTH-03 multi-signal provenance) + SecretsHealth (HEALTH-04 3-state) + IntegrationsHealth (HEALTH-05 3-state with verbatim configure-to-enable paragraphs)
-- [ ] 05-06-PLAN.md — Wave 3: SingleProjectView 3-col grid widening (D-5-01 / D-4-09 staged) + meta-observer end-to-end script + D-5-10 closure gate (real Claude session populates CommitmentBlock + HookFirings) + final regression
+- [x] 05-06-PLAN.md — Wave 3: SingleProjectView 3-col grid widening (D-5-01 / D-4-09 staged) + meta-observer end-to-end script + D-5-10 closure gate (real Claude session populates CommitmentBlock + HookFirings) + final regression
 
 ### Phase 6: Polish + Service Install + Acceptance
 **Goal**: Production-ready dashboard — keyboard shortcuts, LaunchAgent / systemd installers, impeccable-critique gate, two-stage review, README with FAQ + troubleshooting, CF Access policy applied (already done pre-flight).
