@@ -20,6 +20,11 @@
  *   useGlobalSkills() — singleton, 60s TTL, no projectId in key.
  *   useLocalSkills(id) — per-project, 60s TTL, id in key (cross-project safety T-05-04-Cross-Project-Cache).
  *   useAgentLinter(id) — per-project, 1h TTL, no refetchInterval (manual retry only via refetch()).
+ *
+ * Phase 5 Plan 05 additions (D-5-17, D-5-18, D-5-19):
+ *   useObservability(id) — per-project, 5s polling. T-05-05-Cross-Project-Cache.
+ *   useSecrets(id) — per-project, 5s polling. T-05-05-NoSecretRead-SPA (never renders workspaceId).
+ *   useIntegrations(id) — per-project, 5s polling. T-05-05-Static-Copy-Trust.
  */
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -39,6 +44,12 @@ import {
   type LocalSkillsResponse,
   AgentLinterResponseSchema,
   type AgentLinterResponse,
+  ObservabilityResponseSchema,
+  type ObservabilityResponse,
+  SecretsResponseSchema,
+  type SecretsResponse,
+  IntegrationsResponseSchema,
+  type IntegrationsResponse,
 } from '@agenticapps/dashboard-shared'
 
 import { apiFetch } from './api.js'
@@ -203,6 +214,67 @@ export function useAgentLinter(id: string | null) {
     },
     enabled: id !== null,
     staleTime: AGENTLINTER_TTL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useObservability — polls GET /api/projects/{id}/observability every 5s.
+ * Returns multi-signal detection state for Sentry, Spotlight, sentry-cli (D-5-17).
+ * Per-project: id in queryKey (T-05-05-Cross-Project-Cache).
+ */
+export function useObservability(id: string | null) {
+  return useQuery({
+    queryKey: ['observability', id] as const,
+    queryFn: async (): Promise<ObservabilityResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/observability`, ObservabilityResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: POLL_MS,
+    refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useSecrets — polls GET /api/projects/{id}/secrets every 5s.
+ * Returns 3-state Infisical config presence (D-5-18).
+ * NEVER renders workspaceId or defaultEnvironment — T-05-05-NoSecretRead-SPA.
+ * Per-project: id in queryKey (T-05-05-Cross-Project-Cache).
+ */
+export function useSecrets(id: string | null) {
+  return useQuery({
+    queryKey: ['secrets', id] as const,
+    queryFn: async (): Promise<SecretsResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/secrets`, SecretsResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: POLL_MS,
+    refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useIntegrations — polls GET /api/projects/{id}/integrations every 5s.
+ * Returns 3-state per integration (configured / present-but-not-configured / not-detected) (D-5-19).
+ * Per-project: id in queryKey (T-05-05-Cross-Project-Cache).
+ */
+export function useIntegrations(id: string | null) {
+  return useQuery({
+    queryKey: ['integrations', id] as const,
+    queryFn: async (): Promise<IntegrationsResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/integrations`, IntegrationsResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: POLL_MS,
+    refetchInterval: POLL_MS,
     refetchIntervalInBackground: false,
   })
 }
