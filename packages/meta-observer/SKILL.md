@@ -16,6 +16,8 @@ hooks:
 
 # meta-observer
 
+<!-- Shipped in Phase 5 (skills + health panels). -->
+
 A silent persister — no user-facing skill body required. The SessionEnd hook
 runs `node hooks/session-end.mjs` once per Claude session at natural session
 boundary. It reads the session transcript and writes two files per session:

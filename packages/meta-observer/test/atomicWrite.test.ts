@@ -32,6 +32,18 @@ describe('atomicWrite', () => {
     }
   })
 
+  it('bootstraps a sandboxRoot that does not exist yet (first-fire case)', async () => {
+    const parent = makeTmpDir()
+    try {
+      const sandbox = join(parent, 'skill-observations')
+      const target = join(sandbox, 'first.md')
+      await atomicWrite(target, 'bootstrap', { sandboxRoot: sandbox })
+      expect(readFileSync(target, 'utf8')).toBe('bootstrap')
+    } finally {
+      cleanup(parent)
+    }
+  })
+
   it('creates parent directories recursively if they do not exist', async () => {
     const sandbox = makeTmpDir()
     try {

@@ -53,6 +53,9 @@ export async function atomicWrite(
     throw new PathViolation('path traversal not allowed: targetPath contains ".."')
   }
 
+  // First-fire bootstrap: create sandboxRoot if it doesn't exist, so realpath resolves
+  // even on the very first SessionEnd hook fire in a fresh project.
+  await mkdir(opts.sandboxRoot, { recursive: true })
   const sandboxReal = await realpath(opts.sandboxRoot)
 
   const parentDir = dirname(targetPath)
