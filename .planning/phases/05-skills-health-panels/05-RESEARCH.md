@@ -896,32 +896,39 @@ export function parseInfisicalConfig(projectRoot: string): SecretsResponse {
 | A7 | INI parse for `.sentryclirc` need only check "file is present + parses without throwing" (no value extraction) | Don't Hand-Roll | If a future panel wants to surface "DSN configured for project X", we'd need real INI parsing. Phase 5 doesn't, but Phase 7 might. |
 | A8 | `LINEAR_API_KEY` is the canonical Linear env var; no `.linearrc` config file exists | Pattern 5 | [VERIFIED: linear.app/docs + @linear/sdk README, 2026-05-07] — but the project signal is weak (just branch name regex). Could feel noisy. |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All five open questions resolved during plan-phase 5. Each citation below names the plan + task that captured the resolution. The recommendations were adopted as written.
 
 1. **"Position Risk" panel terminology — keep the spec name or rename to "AgentLinter findings"?**
    - What we know: Spec says "Position Risk warnings"; AgentLinter doesn't have that as a category in 2026.
    - What's unclear: Whether the spec writer was thinking of a specific AgentLinter version or a desired UX label.
    - Recommendation: planner picks "AgentLinter findings" (aligns with what the linter actually emits) and surfaces to user during plan-phase as a copy decision.
+   - **RESOLVED:** rename to "AgentLinter findings"; mapping codified in **05-04 Task 3** SkillHealth panel (severity glyphs ⚪/🟠/🔴 over the 3 AgentLinter severities; "Position Risk" not surfaced as a category since it doesn't appear in live AgentLinter output).
 
 2. **Skill-scoped SessionEnd hook activation semantics**
    - What we know: Docs say hooks are "scoped to component lifetime" (skills code.claude.com/docs/en/skills).
    - What's unclear: Whether "lifetime" means "session lifetime" (always active when skill loaded) or "invocation lifetime" (only when skill is being used).
    - Recommendation: **Wave 0 live test**: install the skeleton meta-observer skill on the dashboard repo, run a non-meta-observer session, see if `session-end.mjs` fires. If not: fall back to `.claude/settings.json` hook entry — the SKILL.md still ships in `packages/meta-observer/` but its frontmatter no longer holds the hook.
+   - **RESOLVED:** Wave-0 probe in **05-01 Task 0** (`packages/meta-observer/test/__fixtures__/skeleton-skill-probe.md` documents the outcome). If dormant skills' SessionEnd hooks fire, the SKILL.md frontmatter `hooks: SessionEnd` path is used; otherwise the fallback declares the hook in `.claude/settings.json` per project (probe outcome locks the install path for **05-01 Task 4**'s SKILL.md).
 
 3. **AgentLinter cache disk persistence — yes or no?**
    - What we know: D-5-14 says 1h TTL; CONTEXT.md `<decisions>` Claude's Discretion explicitly leaves persistence open.
    - What's unclear: Daemon restart frequency in dogfooding. The G1 closure (D-5-10) requires running a real session; Phase 5's dev-loop will restart the daemon repeatedly.
    - Recommendation: **In-memory only for v1**, with a planner note to revisit if the dogfood loop feels painful. On-disk cache adds 0600 permission enforcement code we don't otherwise need.
+   - **RESOLVED:** in-memory only per **05-02 Task 2** `agentLinterCache.ts` (`Map<string, CachedRow>`, 1h TTL, mtime invalidation). On-disk persistence revisited in Phase 6 polish only if a real complaint surfaces during D-5-10 closure-gate UAT.
 
 4. **Per-skill vs whole-project AgentLinter invocation**
    - What we know: AgentLinter scans CLAUDE.md by default; doesn't recurse into `.claude/skills/`.
    - What's unclear: Whether SkillHealth's per-skill row should each show a per-skill AgentLinter score (requires N subprocess invocations) or whether the panel shows a project-level health score plus skill listing.
    - Recommendation: project-level only for v1 (matches spec wording). SkillHealth panel groups by file: "CLAUDE.md (score 92, 17 diagnostics)". Per-skill scoring is a Phase 6 polish if visible value.
+   - **RESOLVED:** project-root-only invocation per **05-02 Task 2** (`runAgentLinter(projectRoot)` spawns one subprocess; SkillHealth panel groups diagnostics by `report.diagnostics[].file`). Per-skill scoring deferred to Phase 6 if visible value emerges from D-5-10 dogfooding.
 
 5. **Does Claude Code expose `CLAUDE_PROJECT_DIR` reliably across Mac / Linux / WSL?**
    - What we know: Docs claim it's exposed (verified via code.claude.com/docs/en/hooks 2026-05-07).
    - What's unclear: Whether all hook events get it, or only some (e.g., SessionStart sets it; SessionEnd may not).
    - Recommendation: the meta-observer's `resolveProjectRoot()` already has the CWD walk-up fallback per D-5-07. If `CLAUDE_PROJECT_DIR` is unset, it walks; tests must cover both paths.
+   - **RESOLVED:** prefer `CLAUDE_PROJECT_DIR` env, fall back to CWD walk-up per **05-01 Task 2** `resolveProjectRoot()`. Tests cover both paths (env set + marker present, env unset + marker found via walk-up, neither marker found → returns null).
 
 ## Environment Availability
 
