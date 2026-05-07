@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
-import { mkdirSync, rmdirSync, rmSync, existsSync } from 'node:fs'
+import { describe, it, expect, afterEach } from 'vitest'
+import { mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'

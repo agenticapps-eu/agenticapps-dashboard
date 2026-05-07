@@ -17,7 +17,7 @@
  *  - parseInfisicalConfig
  */
 import { join } from 'node:path'
-import { readFile, readdir, stat, existsSync, statSync } from 'node:fs'
+import { readFile, readdir, existsSync, statSync } from 'node:fs'
 import { promisify } from 'node:util'
 
 import { execa } from 'execa'

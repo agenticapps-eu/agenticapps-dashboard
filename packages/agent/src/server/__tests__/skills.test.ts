@@ -106,7 +106,6 @@ describe('GET /api/skills/global + GET /api/projects/:id/skills/local', () => {
 
   it('S4: /api/projects/:id/skills/local returns valid LocalSkillsResponseSchema with installed skill', async () => {
     // Install a local skill in the fixture project
-    const fixture = { root: projectRoot } as { root: string }
     const { mkdirSync, writeFileSync } = await import('node:fs')
     const skillDir = join(projectRoot, '.claude', 'skills', 'test-skill')
     mkdirSync(skillDir, { recursive: true })

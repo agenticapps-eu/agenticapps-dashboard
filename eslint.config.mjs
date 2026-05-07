@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/coverage/**',
       '**/.vite/**',
       '.claude/worktrees/**',
+      '.claude/skills/**',
     ],
   },
   ...tseslint.configs.recommended,

@@ -1,5 +1,5 @@
 import { mkdir, writeFile, rename, realpath } from 'node:fs/promises'
-import { isAbsolute, dirname, sep, join } from 'node:path'
+import { isAbsolute, dirname, sep } from 'node:path'
 
 /**
  * Thrown when atomicWrite detects a path traversal or sandbox escape attempt.

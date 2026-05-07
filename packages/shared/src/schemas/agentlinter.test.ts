@@ -68,7 +68,8 @@ describe('AgentLinterDiagnosticSchema', () => {
   })
 
   it('rejects diagnostic without required message', () => {
-    const { message: _, ...withoutMessage } = validDiagnostic
+    const { message: _unused, ...withoutMessage } = validDiagnostic
+    void _unused
     expect(() => AgentLinterDiagnosticSchema.parse(withoutMessage)).toThrow()
   })
 })
