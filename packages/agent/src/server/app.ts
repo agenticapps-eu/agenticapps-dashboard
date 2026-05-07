@@ -21,6 +21,8 @@ import { observationsRoute } from '../routes/observations.js'
 import { overviewRoute } from '../routes/overview.js'
 import { phaseProgressRoute } from '../routes/phaseProgress.js'
 import { securityRoute } from '../routes/security.js'
+import { skillsRoute } from '../routes/skills.js'
+import { agentlinterRoute } from '../routes/agentlinter.js'
 
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
@@ -119,6 +121,8 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/projects', observationsRoute)
   app.route('/api/projects', phaseProgressRoute)
   app.route('/api/projects', securityRoute)
+  app.route('/api', skillsRoute)
+  app.route('/api/projects', agentlinterRoute)
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)
