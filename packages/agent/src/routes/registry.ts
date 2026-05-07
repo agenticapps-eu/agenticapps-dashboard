@@ -34,6 +34,11 @@ import { logBlocked } from '../lib/registerLog.js'
 import { detectMarkers } from '../lib/projectOverview.js'
 import { evict as evictOverviewCache } from '../lib/overviewCache.js'
 import { evictPhaseCacheProject } from '../lib/phaseCache.js'
+import { evictAgentLinterCacheProject } from '../lib/agentLinterCache.js'
+import { evictSkillsCacheProject } from './skills.js'
+import { evictObservabilityCacheProject } from './observability.js'
+import { evictSecretsCacheProject } from './secrets.js'
+import { evictIntegrationsCacheProject } from './integrations.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
@@ -104,6 +109,15 @@ registryRoute.post(
     if (removed) {
       evictOverviewCache(body.id) // T-03-03-05 cache hygiene
       evictPhaseCacheProject(body.id) // T-04-03-07 Phase 4 cache hygiene
+      // Phase 5 cache hygiene (WR-01 from 05-REVIEW.md): unregister must
+      // also evict skills/AgentLinter/observability/secrets/integrations
+      // caches so a re-registration at the same path doesn't see stale
+      // data for up to 1 hour (AgentLinter TTL).
+      evictSkillsCacheProject(body.id)
+      evictAgentLinterCacheProject(body.id)
+      evictObservabilityCacheProject(body.id)
+      evictSecretsCacheProject(body.id)
+      evictIntegrationsCacheProject(body.id)
       return c.body(null, 204)
     }
     return c.json(
