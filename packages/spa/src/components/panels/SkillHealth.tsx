@@ -25,15 +25,15 @@
  */
 import React, { useState, useId } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-
-import { useAgentLinter } from '../../lib/projectQueries.js'
-import { apiFetch } from '../../lib/api.js'
 import { AgentLinterResponseSchema } from '@agenticapps/dashboard-shared'
 import type { AgentLinterResponse } from '@agenticapps/dashboard-shared'
 
-import { PanelContainer } from './PanelContainer.js'
-import { InlineDrift } from './InlineDrift.js'
+import { useAgentLinter } from '../../lib/projectQueries.js'
+import { apiFetch } from '../../lib/api.js'
 import { CodeBlock } from '../CodeBlock.js'
+
+import { InlineDrift } from './InlineDrift.js'
+import { PanelContainer } from './PanelContainer.js'
 
 export type SkillHealthProps = { projectId: string }
 
