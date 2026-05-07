@@ -82,8 +82,8 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 ### Single-project View — Health Column (Phase 5)
 
-- [ ] **HEALTH-01**: Right column shows `InstalledSkills`: `~/.claude/skills/` (global) + project `.claude/skills/`
-- [ ] **HEALTH-02**: Right column shows `SkillHealth`: AgentLinter scores + Position Risk warnings (cached 1h)
+- [x] **HEALTH-01**: Right column shows `InstalledSkills`: `~/.claude/skills/` (global) + project `.claude/skills/`
+- [x] **HEALTH-02**: Right column shows `SkillHealth`: AgentLinter scores + Position Risk warnings (cached 1h)
 - [ ] **HEALTH-03**: Right column shows `ObservabilityHealth`: detection of Spotlight / Sentry SDK / sentry-cli via grep
 - [ ] **HEALTH-04**: Right column shows `SecretsHealth`: `.infisical.json` presence detection (informational only)
 - [ ] **HEALTH-05**: Right column shows `IntegrationsHealth`: Sentry / Linear / Infisical configured-or-not status with "configure" links
@@ -202,8 +202,8 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | PHASE-03 | Phase 4 | Pending |
 | PHASE-04 | Phase 4 | Pending |
 | PHASE-05 | Phase 4 | Pending |
-| HEALTH-01 | Phase 5 | Pending |
-| HEALTH-02 | Phase 5 | Pending |
+| HEALTH-01 | Phase 5 | Complete |
+| HEALTH-02 | Phase 5 | Complete |
 | HEALTH-03 | Phase 5 | Pending |
 | HEALTH-04 | Phase 5 | Pending |
 | HEALTH-05 | Phase 5 | Pending |
