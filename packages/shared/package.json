@@ -6,19 +6,20 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "echo 'shared: source-only, no build' && exit 0"
+    "build": "tsup src/index.ts --format esm --out-dir dist"
   },
   "dependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
+    "tsup": "^8.5.1",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
