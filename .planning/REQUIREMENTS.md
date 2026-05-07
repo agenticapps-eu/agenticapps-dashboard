@@ -84,9 +84,9 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 - [x] **HEALTH-01**: Right column shows `InstalledSkills`: `~/.claude/skills/` (global) + project `.claude/skills/`
 - [x] **HEALTH-02**: Right column shows `SkillHealth`: AgentLinter scores + Position Risk warnings (cached 1h)
-- [ ] **HEALTH-03**: Right column shows `ObservabilityHealth`: detection of Spotlight / Sentry SDK / sentry-cli via grep
-- [ ] **HEALTH-04**: Right column shows `SecretsHealth`: `.infisical.json` presence detection (informational only)
-- [ ] **HEALTH-05**: Right column shows `IntegrationsHealth`: Sentry / Linear / Infisical configured-or-not status with "configure" links
+- [x] **HEALTH-03**: Right column shows `ObservabilityHealth`: detection of Spotlight / Sentry SDK / sentry-cli via grep
+- [x] **HEALTH-04**: Right column shows `SecretsHealth`: `.infisical.json` presence detection (informational only)
+- [x] **HEALTH-05**: Right column shows `IntegrationsHealth`: Sentry / Linear / Infisical configured-or-not status with "configure" links
 
 ### Polish, Service Install, Acceptance (Phase 6)
 
@@ -101,7 +101,7 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 - [ ] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
 - [ ] **INV-02**: Registry, auth, env files in `~/.agenticapps/dashboard/` enforce mode `0600`; daemon refuses to start if looser
-- [ ] **INV-03**: Dashboard renders fully and gracefully when Sentry / Linear / Infisical are unconfigured
+- [x] **INV-03**: Dashboard renders fully and gracefully when Sentry / Linear / Infisical are unconfigured
 - [ ] **INV-04**: Schema validation runs at both ends of every API call; mismatches surface as "schema drift" warnings
 - [ ] **INV-05**: No native dependencies in `packages/agent` (no `keytar`, no FFI)
 
@@ -204,9 +204,9 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | PHASE-05 | Phase 4 | Pending |
 | HEALTH-01 | Phase 5 | Complete |
 | HEALTH-02 | Phase 5 | Complete |
-| HEALTH-03 | Phase 5 | Pending |
-| HEALTH-04 | Phase 5 | Pending |
-| HEALTH-05 | Phase 5 | Pending |
+| HEALTH-03 | Phase 5 | Complete |
+| HEALTH-04 | Phase 5 | Complete |
+| HEALTH-05 | Phase 5 | Complete |
 | POLISH-01 | Phase 6 | Pending |
 | POLISH-02 | Phase 6 | Pending |
 | POLISH-03 | Phase 6 | Pending |
@@ -215,7 +215,7 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | POLISH-06 | Phase 6 | Pending |
 | INV-01 | All phases | Pending |
 | INV-02 | Phase 1 (then upheld) | Pending |
-| INV-03 | All phases | Pending |
+| INV-03 | All phases | Complete |
 | INV-04 | All phases | Pending |
 | INV-05 | All phases | Pending |
 

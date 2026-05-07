@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Working dashboard
 status: executing
-stopped_at: Completed Phase 05 Plan 02 (daemon skills + AgentLinter routes)
-last_updated: "2026-05-07T13:02:14.571Z"
+stopped_at: Completed Phase 05 Plan 03 (metadata scanners + 3 health routes)
+last_updated: "2026-05-07T13:14:22.599Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 39
-  completed_plans: 30
-  percent: 77
+  completed_plans: 31
+  percent: 79
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 05 (skills-health-panels) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 05 P01 | 75 | 4 tasks | 28 files |
 | Phase 05 P02 | 70 | 3 tasks | 11 files |
+| Phase 05 P03 | 80 | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - [Phase 05]: Route path pattern: agentlinterRoute uses /:id/agentlinter internally (not /projects/:id/agentlinter) when mounted at /api/projects
 - [Phase 05]: description: | literal block: full multi-line read in parseFrontmatter; SPA CSS-clamps to 1 line
 - [Phase 05]: bypassCache=1 does NOT call setAgentLinterCached (one-call skip per D-5-15)
+- [Phase 05]: resolveAllowedNamed allowedNames+extension mutually exclusive (PathViolation on both); parseSentryClirc existence-only (no INI); detectSentryDsnEnv evidence=file:line never DSN value; Linear detection via runAllowedGit branch regex /[A-Z]{2,}-\d+/
 
 ### Pending Todos
 
@@ -82,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T13:02:14.565Z
-Stopped at: Completed Phase 05 Plan 02 (daemon skills + AgentLinter routes)
+Last session: 2026-05-07T13:14:22.595Z
+Stopped at: Completed Phase 05 Plan 03 (metadata scanners + 3 health routes)
 Resume file: None
