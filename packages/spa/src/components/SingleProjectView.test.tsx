@@ -1,20 +1,29 @@
 /**
  * SingleProjectView.test.tsx — TDD tests for SingleProjectView component.
  *
- * Updated by Plan 06: SV4 now asserts all 8 real panel regions are mounted
- * (all 5 phase-progress-column data-slot divs replaced by real components).
+ * Updated by Plan 06 Task 1 (Phase 5): 3-col grid + health-column added.
+ * - SV2 updated: now asserts grid-cols-[1fr_1.5fr_1fr] (3-col)
+ * - SV5 updated: health-column IS present (was absent in Phase 4)
+ * - SV8: health-column has correct attributes and class
+ * - SV9: all 5 Phase 5 panel headings render inside health-column
+ * - SV10: panel DOM order in health-column matches UI-SPEC (InstalledSkills first, IntegrationsHealth last)
+ * - SV11: health-column has flex flex-col gap-4 classes
  *
- * Tests SV1–SV7:
+ * Tests SV1–SV11:
  * SV1: renders ProjectHeader
- * SV2: renders 2-column grid with grid-cols-[1fr_1.5fr]
+ * SV2: renders 3-column grid with grid-cols-[1fr_1.5fr_1fr]  (UPDATED from 2-col)
  * SV3: discipline-column renders CommitmentBlock + HookFirings + RationalizationFires panel regions
  * SV4: phase-progress-column renders all 5 real panel regions (Plan 06 filled these)
- * SV5: NO right-column DOM element (health-column absent)
+ * SV5: health-column IS present (Phase 5 filled it)  (UPDATED from "absent")
  * SV6: document.title updates on mount
  * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-4 on columns)
+ * SV8: health-column has data-testid="health-column" and aria-label="Health"
+ * SV9: all 5 Phase 5 panel headings render inside health-column
+ * SV10: panel DOM order matches UI-SPEC: InstalledSkills → SkillHealth → Observability → Secrets → Integrations
+ * SV11: health-column has flex flex-col gap-4 class
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, within } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -33,7 +42,7 @@ vi.mock('../lib/registry.js', () => ({
   useProjectOverview: () => ({ data: undefined, isLoading: true }),
 }))
 
-// Mock projectQueries so the 3 Discipline panels render their loading state
+// Mock projectQueries so all panels render their loading state
 // (the cleanest assertion target — no network / QueryClient needed for content).
 vi.mock('../lib/projectQueries.js', () => ({
   useCommitment: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
@@ -41,6 +50,12 @@ vi.mock('../lib/projectQueries.js', () => ({
   useDiscipline: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   usePhaseProgress: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useSecurity: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useGlobalSkills: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useLocalSkills: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useAgentLinter: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useObservability: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useSecrets: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useIntegrations: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
 }))
 
 import { SingleProjectView } from './SingleProjectView.js'
@@ -70,12 +85,13 @@ describe('SingleProjectView', () => {
     expect(header.getAttribute('data-project-id')).toBe('acme')
   })
 
-  it('SV2: renders a 2-column grid with grid-cols-[1fr_1.5fr]', () => {
+  it('SV2: renders a 3-column grid with grid-cols-[1fr_1.5fr_1fr]', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const grid = screen.getByTestId('single-project-grid')
     expect(grid).toBeDefined()
-    expect(grid.className).toContain('grid-cols-[1fr_1.5fr]')
+    expect(grid.className).toContain('grid-cols-[1fr_1.5fr_1fr]')
+    expect(grid.className).not.toContain('grid-cols-[1fr_1.5fr]')
   })
 
   it('SV3: discipline-column mounts CommitmentBlock + HookFirings + RationalizationFires panel regions', () => {
@@ -113,10 +129,11 @@ describe('SingleProjectView', () => {
     expect(col.querySelector('[data-slot="verification-status"]')).toBeNull()
   })
 
-  it('SV5: NO health-column DOM element (anti-stub guarantee, D-4-09)', () => {
+  it('SV5: health-column IS present (Phase 5 added it)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
-    expect(screen.queryByTestId('health-column')).toBeNull()
+    const healthCol = screen.getByTestId('health-column')
+    expect(healthCol).toBeDefined()
   })
 
   it('SV6: document.title is set to "<projectId> — AgenticApps Dashboard"', () => {
@@ -125,7 +142,7 @@ describe('SingleProjectView', () => {
     expect(document.title).toBe('my-project — AgenticApps Dashboard')
   })
 
-  it('SV7: grid has gap-6 class; discipline-column and phase-progress-column have flex flex-col gap-4', () => {
+  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-4', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const grid = screen.getByTestId('single-project-grid')
@@ -140,5 +157,57 @@ describe('SingleProjectView', () => {
     expect(phaseCol.className).toContain('flex')
     expect(phaseCol.className).toContain('flex-col')
     expect(phaseCol.className).toContain('gap-4')
+  })
+
+  it('SV8: health-column has correct aria-label="Health" attribute', () => {
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const healthCol = screen.getByTestId('health-column')
+    expect(healthCol.getAttribute('aria-label')).toBe('Health')
+  })
+
+  it('SV9: all 5 Phase 5 panel headings render inside health-column', () => {
+    render(<SingleProjectView projectId="test-project" />, { wrapper: makeWrapper() })
+
+    const healthCol = screen.getByTestId('health-column')
+    const { getByRole } = within(healthCol)
+
+    expect(getByRole('heading', { level: 2, name: 'Installed Skills' })).toBeDefined()
+    expect(getByRole('heading', { level: 2, name: 'Skill Health' })).toBeDefined()
+    expect(getByRole('heading', { level: 2, name: 'Observability' })).toBeDefined()
+    expect(getByRole('heading', { level: 2, name: 'Secrets' })).toBeDefined()
+    expect(getByRole('heading', { level: 2, name: 'Integrations' })).toBeDefined()
+  })
+
+  it('SV10: panel DOM order in health-column matches UI-SPEC (InstalledSkills first, IntegrationsHealth last)', () => {
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const healthCol = screen.getByTestId('health-column')
+    const headings = Array.from(healthCol.querySelectorAll('h2')).map((h) => h.textContent)
+
+    // InstalledSkills must appear before IntegrationsHealth
+    const installedIdx = headings.findIndex((h) => h === 'Installed Skills')
+    const skillHealthIdx = headings.findIndex((h) => h === 'Skill Health')
+    const observabilityIdx = headings.findIndex((h) => h === 'Observability')
+    const secretsIdx = headings.findIndex((h) => h === 'Secrets')
+    const integrationsIdx = headings.findIndex((h) => h === 'Integrations')
+
+    expect(installedIdx).toBeGreaterThanOrEqual(0)
+    expect(integrationsIdx).toBeGreaterThanOrEqual(0)
+    expect(installedIdx).toBeLessThan(integrationsIdx)
+    // Full order assertion
+    expect(installedIdx).toBeLessThan(skillHealthIdx)
+    expect(skillHealthIdx).toBeLessThan(observabilityIdx)
+    expect(observabilityIdx).toBeLessThan(secretsIdx)
+    expect(secretsIdx).toBeLessThan(integrationsIdx)
+  })
+
+  it('SV11: health-column has flex flex-col gap-4 class', () => {
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const healthCol = screen.getByTestId('health-column')
+    expect(healthCol.className).toContain('flex')
+    expect(healthCol.className).toContain('flex-col')
+    expect(healthCol.className).toContain('gap-4')
   })
 })

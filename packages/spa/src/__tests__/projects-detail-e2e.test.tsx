@@ -127,6 +127,23 @@ const SECURITY_RESPONSE = {
   dbSentinel: null,
 }
 
+// Phase 5 mock responses — minimal valid shapes for the 5 new Health column routes.
+// These prevent the health-column panels from entering schema-drift loops in e2e tests.
+const GLOBAL_SKILLS_RESPONSE = { scope: 'global' as const, skills: [] }
+const LOCAL_SKILLS_RESPONSE = { scope: 'local' as const, skills: [] }
+const AGENTLINTER_RESPONSE = { kind: 'not-installed' as const }
+const OBSERVABILITY_RESPONSE = {
+  sentry: { detected: false, signals: [] },
+  spotlight: { detected: false, signals: [] },
+  sentryCli: { detected: false, signals: [] },
+}
+const SECRETS_RESPONSE = { state: 'absent' as const }
+const INTEGRATIONS_RESPONSE = {
+  sentry: 'not-detected' as const,
+  linear: 'not-detected' as const,
+  infisical: 'not-detected' as const,
+}
+
 /** Build a mock apiFetch handler for the /projects/acme API surface. */
 function buildMockApiFetch(overrides: Record<string, unknown> = {}) {
   return async (path: string) => {
@@ -150,6 +167,26 @@ function buildMockApiFetch(overrides: Record<string, unknown> = {}) {
     }
     if (path === '/api/projects/acme/security') {
       return { ok: true, data: overrides['security'] ?? SECURITY_RESPONSE }
+    }
+    // Phase 5 Health column routes — return minimal valid responses to prevent
+    // schema-drift loops in tests that exercise the 3-col layout.
+    if (path === '/api/skills/global') {
+      return { ok: true, data: overrides['globalSkills'] ?? GLOBAL_SKILLS_RESPONSE }
+    }
+    if (path?.startsWith('/api/projects/acme/skills/local')) {
+      return { ok: true, data: overrides['localSkills'] ?? LOCAL_SKILLS_RESPONSE }
+    }
+    if (path?.startsWith('/api/projects/acme/agentlinter')) {
+      return { ok: true, data: overrides['agentlinter'] ?? AGENTLINTER_RESPONSE }
+    }
+    if (path === '/api/projects/acme/observability') {
+      return { ok: true, data: overrides['observability'] ?? OBSERVABILITY_RESPONSE }
+    }
+    if (path === '/api/projects/acme/secrets') {
+      return { ok: true, data: overrides['secrets'] ?? SECRETS_RESPONSE }
+    }
+    if (path === '/api/projects/acme/integrations') {
+      return { ok: true, data: overrides['integrations'] ?? INTEGRATIONS_RESPONSE }
     }
     // Default fallback
     return { ok: true, data: {} }
