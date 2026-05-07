@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Working dashboard
 status: executing
-stopped_at: Completed Phase 05 Plan 04 (InstalledSkills + SkillHealth panels)
-last_updated: "2026-05-07T13:28:59.090Z"
+stopped_at: Completed Phase 05 Plan 05 (ObservabilityHealth + SecretsHealth + IntegrationsHealth panels)
+last_updated: "2026-05-07T13:45:37.762Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 39
-  completed_plans: 32
-  percent: 82
+  completed_plans: 33
+  percent: 85
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 05 (skills-health-panels) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P02 | 70 | 3 tasks | 11 files |
 | Phase 05 P03 | 80 | 3 tasks | 13 files |
 | Phase 05 P04 | 9 | 3 tasks | 6 files |
+| Phase 05 P05 | 10 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Cross-project cache safety: useLocalSkills + useAgentLinter include projectId in queryKey; proven by cross-project cache isolation tests
 - [Phase 05]: SkillHealth retry wiring: direct apiFetch with bypassCache=1 + queryClient.setQueryData (outside TanStack Query) — avoids query key mutation
 - [Phase 05]: Severity glyph 3-of-4: AgentLinter emits info/warning/error only; yellow-circle glyph unused — honest reflection of 3-value severity vocab (UI-SPEC §OQ3 resolved)
+- [Phase 05]: SecretsHealth renders only { state } from query.data — workspaceId and defaultEnvironment never extracted or rendered (T-05-05-NoSecretRead-SPA privacy invariant)
+- [Phase 05]: INTEGRATIONS table stores nudges+paragraphs as React JSX literals — no daemon content interpolation in configure-to-enable guides (T-05-05-Static-Copy-Trust)
 
 ### Pending Todos
 
@@ -88,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T13:28:59.086Z
-Stopped at: Completed Phase 05 Plan 04 (InstalledSkills + SkillHealth panels)
+Last session: 2026-05-07T13:45:37.759Z
+Stopped at: Completed Phase 05 Plan 05 (ObservabilityHealth + SecretsHealth + IntegrationsHealth panels)
 Resume file: None
