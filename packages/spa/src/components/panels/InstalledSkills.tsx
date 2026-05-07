@@ -89,21 +89,24 @@ export function InstalledSkills({ projectId }: InstalledSkillsProps): React.JSX.
 
   return (
     <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-      <ul className="divide-y divide-[--border]">
-        {merged.map((s) => {
-          const firstLine =
-            (s.description ?? '').split('\n').find((l) => l.trim().length > 0) ?? ''
-          return (
-            <li key={`${s.scope}:${s.dir}`} className="flex items-center gap-2 py-2">
-              <span className="inline-flex items-center rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide text-[--text-muted]">
-                {s.scope}
-              </span>
-              <span className="font-mono text-sm text-[--text]">{s.name}</span>
-              <span className="text-sm text-[--text-muted] truncate flex-1">{firstLine}</span>
-            </li>
-          )
-        })}
-      </ul>
+      <p className="-mt-2 text-xs text-[--text-muted]">{merged.length} skills</p>
+      <div className="max-h-[480px] overflow-y-auto">
+        <ul className="divide-y divide-[--border]">
+          {merged.map((s) => {
+            const firstLine =
+              (s.description ?? '').split('\n').find((l) => l.trim().length > 0) ?? ''
+            return (
+              <li key={`${s.scope}:${s.dir}`} className="flex min-w-0 items-center gap-2 py-2">
+                <span className="inline-flex shrink-0 items-center rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide text-[--text-muted]">
+                  {s.scope}
+                </span>
+                <span className="shrink-0 font-mono text-sm text-[--text]">{s.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-[--text-muted]">{firstLine}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </PanelContainer>
   )
 }

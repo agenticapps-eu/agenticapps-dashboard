@@ -140,19 +140,19 @@ AppShell (sticky h-14 header + CommandPalette + RepairBanner)
   data-testid="health-column"
   aria-label="Health"
   class="flex flex-col gap-4">
-  <InstalledSkills projectId={projectId} />
   <SkillHealth projectId={projectId} />
   <ObservabilityHealth projectId={projectId} />
   <SecretsHealth projectId={projectId} />
   <IntegrationsHealth projectId={projectId} />
+  <InstalledSkills projectId={projectId} />
 </section>
 ```
 
-**Panel order (top-to-bottom in the right column):** InstalledSkills → SkillHealth → ObservabilityHealth → SecretsHealth → IntegrationsHealth. Rationale:
+**Panel order (top-to-bottom in the right column):** SkillHealth → ObservabilityHealth → SecretsHealth → IntegrationsHealth → InstalledSkills. Rationale (revised during D-5-10 closure UAT — original order put the long reference list on top and crowded out the actionables):
 
-1. **Skills first** — these surface the most user-actionable signals (which skills are installed, which are linting clean). Two skill panels read as a coherent pair at the top.
-2. **Observability next** — multi-signal detection panel; provides project-fact rather than user-action.
-3. **Secrets + Integrations last** — both are configuration-state panels with the lowest information density per row. Bottom of column reduces scroll cost when nothing is configured.
+1. **SkillHealth first** — AgentLinter surfaces actionable warnings/errors. Highest priority.
+2. **Observability / Secrets / Integrations next** — three configuration-state panels. Each row is a status indicator ("configured" / "unconfigured" / "broken") with high signal density and short height. They read as a coherent triad.
+3. **InstalledSkills last** — a long reference list of every globally installed skill (often 100+ entries). Belongs at the bottom of the column so it doesn't push the actionable panels off-screen on a typical 1080–1200px viewport.
 
 **No responsive break-out for Phase 5.** D-5-01 is explicit: "no responsive break-out for Phase 5; narrow-screen stacking is for the planner to size if it shows up in QA." Below ~1024px the 3-column grid will render with the third column squeezed; the planner judges whether to ship a `lg:` breakpoint that stacks columns vertically. **Recommendation:** add `@media (max-width: 1023px)` Tailwind class `lg:grid-cols-[1fr_1.5fr_1fr] grid-cols-1` so the third column stacks below the center on narrow screens; if planner agrees, add `lg:` prefix to all grid utilities. **Defer the final call to the planner per D-5-01.**
 

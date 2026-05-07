@@ -179,27 +179,25 @@ describe('SingleProjectView', () => {
     expect(getByRole('heading', { level: 2, name: 'Integrations' })).toBeDefined()
   })
 
-  it('SV10: panel DOM order in health-column matches UI-SPEC (InstalledSkills first, IntegrationsHealth last)', () => {
+  it('SV10: panel DOM order in health-column puts actionables first, InstalledSkills reference list last', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const healthCol = screen.getByTestId('health-column')
     const headings = Array.from(healthCol.querySelectorAll('h2')).map((h) => h.textContent)
 
-    // InstalledSkills must appear before IntegrationsHealth
-    const installedIdx = headings.findIndex((h) => h === 'Installed Skills')
     const skillHealthIdx = headings.findIndex((h) => h === 'Skill Health')
     const observabilityIdx = headings.findIndex((h) => h === 'Observability')
     const secretsIdx = headings.findIndex((h) => h === 'Secrets')
     const integrationsIdx = headings.findIndex((h) => h === 'Integrations')
+    const installedIdx = headings.findIndex((h) => h === 'Installed Skills')
 
+    expect(skillHealthIdx).toBeGreaterThanOrEqual(0)
     expect(installedIdx).toBeGreaterThanOrEqual(0)
-    expect(integrationsIdx).toBeGreaterThanOrEqual(0)
-    expect(installedIdx).toBeLessThan(integrationsIdx)
-    // Full order assertion
-    expect(installedIdx).toBeLessThan(skillHealthIdx)
+    // Actionable health panels first, long reference list last
     expect(skillHealthIdx).toBeLessThan(observabilityIdx)
     expect(observabilityIdx).toBeLessThan(secretsIdx)
     expect(secretsIdx).toBeLessThan(integrationsIdx)
+    expect(integrationsIdx).toBeLessThan(installedIdx)
   })
 
   it('SV11: health-column has flex flex-col gap-4 class', () => {

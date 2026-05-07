@@ -44,7 +44,7 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
         <section
           data-testid="discipline-column"
           aria-label="Discipline"
-          className="flex flex-col gap-4"
+          className="flex min-w-0 flex-col gap-4"
         >
           <CommitmentBlock projectId={projectId} />
           <HookFirings projectId={projectId} />
@@ -53,7 +53,7 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
         <section
           data-testid="phase-progress-column"
           aria-label="Phase Progress"
-          className="flex flex-col gap-4"
+          className="flex min-w-0 flex-col gap-4"
         >
           <PhaseProgress projectId={projectId} />
           <ExecutionTimeline projectId={projectId} />
@@ -64,13 +64,13 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
         <section
           data-testid="health-column"
           aria-label="Health"
-          className="flex flex-col gap-4"
+          className="flex min-w-0 flex-col gap-4"
         >
-          <InstalledSkills projectId={projectId} />
           <SkillHealth projectId={projectId} />
           <ObservabilityHealth projectId={projectId} />
           <SecretsHealth projectId={projectId} />
           <IntegrationsHealth projectId={projectId} />
+          <InstalledSkills projectId={projectId} />
         </section>
       </div>
     </div>
