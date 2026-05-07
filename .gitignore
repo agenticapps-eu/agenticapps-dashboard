@@ -1,6 +1,8 @@
 .claude/skills/
 .claude/scheduled_tasks.lock
 .claude/worktrees/
+.playwright-mcp/
+.planning/skill-observations/
 .gstack/
 session-handoff.md
 node_modules
