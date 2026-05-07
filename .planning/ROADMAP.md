@@ -143,7 +143,7 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Wave 1: 5 shared schemas (skills/agentlinter/observability/secrets/integrations) + meta-observer workspace pkg with SessionEnd hook + atomic write + transcript extractors + 2 Wave-0 probes
+- [x] 05-01-PLAN.md — Wave 1: 5 shared schemas (skills/agentlinter/observability/secrets/integrations) + meta-observer workspace pkg with SessionEnd hook + atomic write + transcript extractors + 2 Wave-0 probes
 - [ ] 05-02-PLAN.md — Wave 1: skillsScan (dual-layout SKILL.md frontmatter reader) + agentLinterRunner (5-class outcome with --local privacy invariant) + agentLinterCache (1h+mtime) + 3 daemon routes (/api/skills/global, /api/projects/:id/skills/local, /api/projects/:id/agentlinter)
 - [ ] 05-03-PLAN.md — Wave 1: paths.ts resolveAllowedNamed extension (D-5-13) + projectMetadataScan (9 detectors for package.json/.infisical.json/.sentryclirc/.env/.spotlight/CI YAML/sentry-cli binary) + integrationsState 3-state truth table + 3 daemon routes (observability/secrets/integrations)
 - [ ] 05-04-PLAN.md — Wave 2: 3 TanStack Query hooks (useGlobalSkills/useLocalSkills/useAgentLinter) + InstalledSkills panel (HEALTH-01) + SkillHealth panel (HEALTH-02) with row-expand + 4-class empty states + retry button
@@ -193,7 +193,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 →
 | 2. SPA Shell + Pair Flow | 0/TBD | Not started | - |
 | 3. Multi-project Home | 0/TBD | Not started | - |
 | 4. Single-project View — Disc + Phase | 0/TBD | Not started | - |
-| 5. Skills + Health Panels | 0/TBD | Not started | - |
+| 5. Skills + Health Panels | 1/6 | In Progress|  |
 | 6. Polish + Service Install + Acceptance | 0/TBD | Not started | - |
 | 7. Optional Integrations | 0/TBD | Deferred (held until upstream tooling) | - |
 | 8. Open-source Readiness | 0/TBD | Deferred (much later) | - |
