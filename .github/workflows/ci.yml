@@ -37,8 +37,11 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test --run
-
+      # Build before test: shared's package.json exports point to ./dist/index.js
+      # for runtime imports, so vitest in downstream packages (agent/spa) can't
+      # resolve cross-package imports without dist/ on a fresh CI checkout.
       - name: Build
         run: pnpm build
+
+      - name: Test
+        run: pnpm test --run
