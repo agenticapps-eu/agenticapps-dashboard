@@ -43,6 +43,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
+    "@agenticapps/agentlinter": "workspace:*",
     "@agenticapps/dashboard-shared": "workspace:*",
     "@hono/node-server": "^2.0.1",
     "@hono/zod-validator": "^0.7.6",
