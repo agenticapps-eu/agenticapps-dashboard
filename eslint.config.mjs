@@ -12,6 +12,10 @@ export default tseslint.config(
       '**/coverage/**',
       '**/.vite/**',
       '.claude/worktrees/**',
+      '.claude/skills/**',
+      // Vendored upstream fork (D-5-21). Cherry-picks land here verbatim;
+      // applying our lint rules would churn upstream-style code and break sync.
+      'packages/agentlinter/**',
     ],
   },
   ...tseslint.configs.recommended,

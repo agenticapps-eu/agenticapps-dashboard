@@ -1,0 +1,25 @@
+{
+  "name": "@agenticapps/agentlinter",
+  "version": "2.3.0-fork.0",
+  "description": "AgenticApps fork of agentlinter — ESLint for AI Agents. Vendored for the dashboard SkillHealth panel; no network code.",
+  "private": true,
+  "type": "commonjs",
+  "bin": {
+    "agentlinter": "dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "tsup": "^8.5.1",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

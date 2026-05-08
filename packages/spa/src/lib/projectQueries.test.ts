@@ -22,6 +22,12 @@ import {
   useDiscipline,
   usePhaseProgress,
   useSecurity,
+  useGlobalSkills,
+  useLocalSkills,
+  useAgentLinter,
+  useObservability,
+  useSecrets,
+  useIntegrations,
 } from './projectQueries.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -341,6 +347,462 @@ describe('cross-project cache isolation (Q11)', () => {
     expect(betaCacheData).toEqual(betaBody)
     // Critically: they are different objects (no leakage)
     expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+})
+
+// ── Fixtures for new Phase 5 hooks ────────────────────────────────────────────
+
+const GLOBAL_SKILLS_BODY = {
+  scope: 'global',
+  skills: [
+    { name: 'meta-observer', dir: '/home/.claude/skills/meta-observer', scope: 'global', description: 'Observes sessions' },
+    { name: 'careful', dir: '/home/.claude/skills/careful', scope: 'global', description: 'Careful skill' },
+  ],
+}
+
+const LOCAL_SKILLS_BODY = {
+  scope: 'local',
+  skills: [
+    { name: 'project-skill', dir: '/project/.claude/skills/project-skill', scope: 'local', description: 'Local project skill' },
+  ],
+}
+
+const AGENTLINTER_OK_BODY = {
+  kind: 'ok',
+  report: {
+    score: 87,
+    categories: [],
+    diagnostics: [
+      { severity: 'warning', category: 'description', rule: 'missing-description', file: 'meta-observer/SKILL.md', message: 'Description too short' },
+    ],
+    files: ['meta-observer/SKILL.md'],
+    timestamp: '2026-05-07T12:00:00.000Z',
+  },
+  cachedAt: '2026-05-07T12:00:00.000Z',
+}
+
+// ── useGlobalSkills ────────────────────────────────────────────────────────────
+
+describe('useGlobalSkills', () => {
+  it('S1: fetches /api/skills/global and returns data on 200 + valid body', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(GLOBAL_SKILLS_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useGlobalSkills(), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(GLOBAL_SKILLS_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/skills/global')
+
+    qc.clear()
+  })
+
+  it('S2: queryKey is [skills, global] (no projectId)', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useGlobalSkills(), { wrapper })
+
+    const keys = qc.getQueryCache().getAll().map((q) => q.queryKey)
+    expect(keys).toContainEqual(['skills', 'global'])
+
+    qc.clear()
+  })
+
+  it('S3: on schema drift body, hook enters error state with schema_drift: prefix', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useGlobalSkills(), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+
+  it('S4: staleTime is 60000 and refetchInterval is 60000', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useGlobalSkills(), { wrapper })
+
+    const cache = qc.getQueryCache()
+    const queries = cache.getAll()
+    const q = queries.find((q) => JSON.stringify(q.queryKey) === JSON.stringify(['skills', 'global']))
+    expect(q).toBeDefined()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts = q?.options as any
+    expect(opts?.staleTime).toBe(60_000)
+    expect(opts?.refetchInterval).toBe(60_000)
+    expect(opts?.refetchIntervalInBackground).toBe(false)
+
+    qc.clear()
+  })
+})
+
+// ── useLocalSkills ─────────────────────────────────────────────────────────────
+
+describe('useLocalSkills', () => {
+  it('S5: fetches /api/projects/acme/skills/local and returns data on success', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(LOCAL_SKILLS_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLocalSkills('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(LOCAL_SKILLS_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/skills/local')
+
+    qc.clear()
+  })
+
+  it('S6: cross-project cache isolation — useLocalSkills("acme") and useLocalSkills("beta") produce distinct entries', async () => {
+    const acmeBody = { scope: 'local', skills: [{ name: 'skill-a', dir: '/acme/.claude/skills/skill-a', scope: 'local', description: 'A' }] }
+    const betaBody = { scope: 'local', skills: [{ name: 'skill-b', dir: '/beta/.claude/skills/skill-b', scope: 'local', description: 'B' }] }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useLocalSkills('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useLocalSkills('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['skills', 'local', 'acme'])
+    const betaCacheData = qc.getQueryData(['skills', 'local', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('S7: on schema drift body, hook enters error state with schema_drift: prefix', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLocalSkills('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+
+  it('S8: when id is null, hook is idle', () => {
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLocalSkills(null), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    qc.clear()
+  })
+})
+
+// ── useAgentLinter ─────────────────────────────────────────────────────────────
+
+describe('useAgentLinter', () => {
+  it('S9: fetches /api/projects/acme/agentlinter and returns data on success', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(AGENTLINTER_OK_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAgentLinter('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(AGENTLINTER_OK_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/agentlinter')
+
+    qc.clear()
+  })
+
+  it('S10: cross-project cache isolation — useAgentLinter("acme") and useAgentLinter("beta") produce distinct entries', async () => {
+    const acmeBody = { kind: 'not-installed' }
+    const betaBody = { kind: 'timeout' }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useAgentLinter('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useAgentLinter('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['agentlinter', 'acme'])
+    const betaCacheData = qc.getQueryData(['agentlinter', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('S11: on schema drift body, hook enters error state with schema_drift: prefix', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAgentLinter('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+
+  it('S12: when id is null, hook is idle', () => {
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAgentLinter(null), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    qc.clear()
+  })
+
+  it('S13: staleTime is 3_600_000 (1h), no refetchInterval set', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useAgentLinter('acme'), { wrapper })
+
+    const cache = qc.getQueryCache()
+    const queries = cache.getAll()
+    const q = queries.find((q) => JSON.stringify(q.queryKey) === JSON.stringify(['agentlinter', 'acme']))
+    expect(q).toBeDefined()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts = q?.options as any
+    expect(opts?.staleTime).toBe(3_600_000)
+    // useAgentLinter must NOT have a refetchInterval — manual retry only
+    expect(opts?.refetchInterval).toBeUndefined()
+    expect(opts?.refetchIntervalInBackground).toBe(false)
+
+    qc.clear()
+  })
+})
+
+// ── Fixtures for Plan 05 health hooks ────────────────────────────────────────
+
+const OBSERVABILITY_BODY = {
+  sentry: {
+    detected: true,
+    signals: [
+      { signal: 'sentry-sdk-dep', evidence: '@sentry/node@10.52.0' },
+      { signal: 'sentryclirc', evidence: '.sentryclirc' },
+    ],
+  },
+  spotlight: {
+    detected: false,
+    signals: [],
+  },
+  sentryCli: {
+    detected: true,
+    signals: [
+      { signal: 'sentry-cli-binary', evidence: '/usr/local/bin/sentry-cli' },
+    ],
+  },
+}
+
+const SECRETS_VALID_BODY = {
+  state: 'present-valid',
+  workspaceId: 'ws-123',
+  defaultEnvironment: 'prod',
+}
+
+const INTEGRATIONS_BODY = {
+  sentry: 'configured',
+  linear: 'not-detected',
+  infisical: 'present-but-not-configured',
+}
+
+// ── useObservability ──────────────────────────────────────────────────────────
+
+describe('useObservability', () => {
+  it('O1: fetches /api/projects/acme/observability and returns data on 200 + valid body', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(OBSERVABILITY_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useObservability('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(OBSERVABILITY_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/observability')
+
+    qc.clear()
+  })
+
+  it('O2: cross-project cache isolation — useObservability("acme") and useObservability("beta") produce distinct entries', async () => {
+    const acmeBody = { sentry: { detected: true, signals: [{ signal: 'sentry-sdk-dep', evidence: '@sentry/node' }] }, spotlight: { detected: false, signals: [] }, sentryCli: { detected: false, signals: [] } }
+    const betaBody = { sentry: { detected: false, signals: [] }, spotlight: { detected: true, signals: [{ signal: 'spotlight-dep', evidence: '@spotlightjs/core' }] }, sentryCli: { detected: false, signals: [] } }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useObservability('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useObservability('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['observability', 'acme'])
+    const betaCacheData = qc.getQueryData(['observability', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('O3: on schema drift body, hook enters error state with schema_drift: prefix', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useObservability('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+})
+
+// ── useSecrets ────────────────────────────────────────────────────────────────
+
+describe('useSecrets', () => {
+  it('SC1: fetches /api/projects/acme/secrets and returns data on 200 + valid body', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(SECRETS_VALID_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSecrets('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(SECRETS_VALID_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/secrets')
+
+    qc.clear()
+  })
+
+  it('SC2: cross-project cache isolation — useSecrets("acme") and useSecrets("beta") produce distinct entries', async () => {
+    const acmeBody = { state: 'present-valid', workspaceId: 'ws-acme' }
+    const betaBody = { state: 'absent' }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useSecrets('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useSecrets('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['secrets', 'acme'])
+    const betaCacheData = qc.getQueryData(['secrets', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('SC3: on schema drift body, hook enters error state with schema_drift: prefix', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSecrets('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+})
+
+// ── useIntegrations ───────────────────────────────────────────────────────────
+
+describe('useIntegrations', () => {
+  it('I1: fetches /api/projects/acme/integrations and returns data on 200 + valid body', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(INTEGRATIONS_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useIntegrations('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(INTEGRATIONS_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/integrations')
+
+    qc.clear()
+  })
+
+  it('I2: cross-project cache isolation — useIntegrations("acme") and useIntegrations("beta") produce distinct entries', async () => {
+    const acmeBody = { sentry: 'configured', linear: 'not-detected', infisical: 'not-detected' }
+    const betaBody = { sentry: 'not-detected', linear: 'configured', infisical: 'present-but-not-configured' }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useIntegrations('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useIntegrations('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['integrations', 'acme'])
+    const betaCacheData = qc.getQueryData(['integrations', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('I3: on schema drift body, hook enters error state with schema_drift: prefix', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useIntegrations('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
 
     qc.clear()
   })

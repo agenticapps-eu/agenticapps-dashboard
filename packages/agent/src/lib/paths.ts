@@ -1,5 +1,5 @@
 import { realpath } from 'node:fs/promises'
-import { resolve, isAbsolute, sep } from 'node:path'
+import { resolve, isAbsolute, sep, basename } from 'node:path'
 
 export const ALLOWED_SUBDIRS = ['.planning', '.claude'] as const
 
@@ -62,6 +62,75 @@ export async function resolveAllowed(
   )
   if (!isAllowed) {
     throw new PathViolation('path outside allowed directories')
+  }
+
+  return real
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveAllowedNamed — name-restricted variant per D-5-13
+// Used for top-level metadata reads (package.json, .infisical.json, .sentryclirc)
+// and CI YAML files (.github/workflows/*.yml).
+// The existing resolveAllowed / ALLOWED_SUBDIRS are UNTOUCHED.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ResolveAllowedNamedOpts {
+  /** Allowed root directories (each will be realpath'd). */
+  roots: string[]
+  /** Permitted basenames. Mutually exclusive with extension. */
+  allowedNames?: string[]
+  /** Permitted file extension (e.g. '.yml'). Mutually exclusive with allowedNames. */
+  extension?: string
+}
+
+/**
+ * Resolve an absolute candidate path asserting:
+ *  1. Its realpath falls under one of opts.roots (prevents symlink escape + traversal).
+ *  2. Its basename is in opts.allowedNames OR ends with opts.extension.
+ *
+ * opts.allowedNames and opts.extension are mutually exclusive — providing both throws PathViolation.
+ * Providing neither also throws PathViolation.
+ *
+ * Callers pass absolute paths (e.g. join(projectRoot, 'package.json')) — they are NOT
+ * user-supplied path segments and therefore absolute-path rejection does not apply here.
+ */
+export async function resolveAllowedNamed(
+  candidatePath: string,
+  opts: ResolveAllowedNamedOpts,
+): Promise<string> {
+  if (opts.allowedNames && opts.extension) {
+    throw new PathViolation('opts.allowedNames and opts.extension are mutually exclusive')
+  }
+  if (!opts.allowedNames && !opts.extension) {
+    throw new PathViolation('one of opts.allowedNames or opts.extension is required')
+  }
+
+  let real: string
+  try {
+    real = await realpath(candidatePath)
+  } catch {
+    throw new PathViolation('not accessible')
+  }
+
+  const realRoots = await Promise.all(
+    opts.roots.map(async (r) => {
+      try {
+        return await realpath(r)
+      } catch {
+        return resolve(r)
+      }
+    }),
+  )
+
+  const inRoot = realRoots.some((root) => real === root || real.startsWith(root + sep))
+  if (!inRoot) throw new PathViolation('outside allowed roots')
+
+  const name = basename(real)
+  if (opts.allowedNames && !opts.allowedNames.includes(name)) {
+    throw new PathViolation(`name not in allow-list: ${name}`)
+  }
+  if (opts.extension && !name.endsWith(opts.extension)) {
+    throw new PathViolation(`extension not allowed: ${name}`)
   }
 
   return real

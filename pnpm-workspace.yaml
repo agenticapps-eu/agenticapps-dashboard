@@ -1,5 +1,6 @@
 packages:
   - 'packages/*'
+  - 'packages/meta-observer'
 
 catalog:
   # Cross-cutting (used by ≥2 packages)

@@ -1,0 +1,24 @@
+{
+  "name": "@agenticapps/dashboard-meta-observer",
+  "version": "0.0.0-private",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./lib/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && cp dist/lib/*.js lib/",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "e2e": "node test/end-to-end.mjs"
+  },
+  "dependencies": {
+    "@agenticapps/dashboard-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@agenticapps/dashboard-agent": "workspace:*",
+    "@types/node": "^20.19.39",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
