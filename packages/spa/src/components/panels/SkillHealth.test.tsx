@@ -11,7 +11,7 @@
  * SH7:  Esc on expanded row → collapses + aria-expanded flips back
  * SH8:  Severity glyph mapping: error→🔴, warning→🟠, info→⚪ all render
  * SH9:  0 findings renders '0 findings' text explicitly
- * SH10: kind:'not-installed' → renders CodeBlock with npm install -g agentlinter
+ * SH10: kind:'not-installed' → renders missing-binary copy + reinstall CodeBlock (D-5-21)
  * SH11: kind:'timeout' → renders timeout copy + Retry scan button
  * SH12: Retry button click → calls apiFetch with ?bypassCache=1
  * SH13: kind:'error' → renders stderr in <pre> + Exit code label
@@ -196,13 +196,13 @@ describe('SkillHealth', () => {
     expect(screen.getByText('0 findings')).toBeDefined()
   })
 
-  it('SH10: kind:not-installed → renders AgentLinter not installed copy + CodeBlock', () => {
+  it('SH10: kind:not-installed → renders missing-binary copy + reinstall CodeBlock (D-5-21)', () => {
     mockQuery({ data: { kind: 'not-installed' } })
     const { wrapper } = makeWrapper()
     render(<SkillHealth projectId="proj-1" />, { wrapper })
-    expect(screen.getByText(/AgentLinter not installed\./)).toBeDefined()
-    // CodeBlock renders the command as text
-    expect(screen.getByText('npm install -g agentlinter')).toBeDefined()
+    expect(screen.getByText(/AgentLinter binary missing from the daemon install\./)).toBeDefined()
+    // CodeBlock renders the reinstall command as text
+    expect(screen.getByText('pnpm install --frozen-lockfile')).toBeDefined()
   })
 
   it('SH11: kind:timeout → renders timeout copy + Retry scan button', () => {

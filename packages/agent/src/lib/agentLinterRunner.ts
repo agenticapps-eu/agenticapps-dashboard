@@ -1,9 +1,17 @@
 /**
- * agentLinterRunner.ts — Spawns `npx agentlinter --local --json <projectRoot>`
+ * agentLinterRunner.ts — Spawns the bundled `@agenticapps/agentlinter` binary
  * and classifies the outcome into 5 discriminated `kind` values.
  *
+ * SUPPLY CHAIN INVARIANT (D-5-21 / 2026-05-08 security review):
+ * The spawn target is the LOCAL bin from `@agenticapps/agentlinter`, resolved
+ * via createRequire at call time. This package is the team-controlled fork of
+ * upstream agentlinter (owner: simonkim). Pinning via pnpm-lock means every
+ * version on disk has been reviewed; no bare `npx` against the open registry.
+ * Test #1 asserts the spawn cmd is `node` and arg[0] is a path under
+ * `@agenticapps/agentlinter`.
+ *
  * PRIVACY INVARIANT (T-05-02-AgentLinter-Local):
- * The `--local` flag MUST be present in every spawn. Without it, the daemon
+ * The `--local` flag MUST be present in every spawn. Without it, the binary
  * would upload CLAUDE.md content to the AgentLinter cloud, breaking
  * "no cloud-side data storage". This is codified in the test.
  *
@@ -16,11 +24,14 @@
  *
  * D-5-15: 5 failure classes:
  *   - ok            — exit 0 + valid JSON
- *   - not-installed — npx E404 / spawn failure
+ *   - not-installed — package not resolvable / spawn failure
  *   - timeout       — proc.timedOut
  *   - error         — non-zero exit, parseable or unparseable stderr
  *   - unparseable   — exit 0, stdout not valid JSON
  */
+import { createRequire } from 'node:module'
+import { dirname, resolve as resolvePath } from 'node:path'
+
 import { execa } from 'execa'
 
 import type { AgentLinterReport } from '@agenticapps/dashboard-shared'
@@ -29,6 +40,9 @@ export type { AgentLinterReport }
 
 /** D-5-15 timeout threshold. */
 const TIMEOUT_MS = 30_000
+
+/** D-5-21 spawn target package — team-controlled fork. */
+const AGENTLINTER_PACKAGE = '@agenticapps/agentlinter'
 
 /**
  * Discriminated union of all possible AgentLinter invocation outcomes.
@@ -42,18 +56,51 @@ export type AgentLinterResult =
   | { kind: 'unparseable'; exitCode: number; rawStdout: string }
 
 /**
- * Run `npx --yes agentlinter --local --json <projectRoot>` and classify the
- * outcome. NEVER throws — all failure modes are surfaced as discriminated kinds.
- *
- * Privacy invariant: `--local` is ALWAYS in the argv array. This prevents
- * AgentLinter from uploading CLAUDE.md content to the cloud (T-05-02-AgentLinter-Local).
+ * Resolve the absolute path to the bundled agentlinter binary at call time.
+ * Lazy so unit tests that mock execa never touch the filesystem, and a missing
+ * package degrades to `kind: 'not-installed'` instead of crashing module load.
  */
-export async function runAgentLinter(projectRoot: string): Promise<AgentLinterResult> {
+function resolveBinPath(): string | null {
+  try {
+    const require = createRequire(import.meta.url)
+    const pkgJsonPath = require.resolve(`${AGENTLINTER_PACKAGE}/package.json`)
+    const pkg = require(`${AGENTLINTER_PACKAGE}/package.json`) as {
+      bin?: string | Record<string, string>
+    }
+    const binEntry =
+      typeof pkg.bin === 'string' ? pkg.bin : (pkg.bin?.agentlinter ?? null)
+    if (!binEntry) return null
+    return resolvePath(dirname(pkgJsonPath), binEntry)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Run the bundled agentlinter binary and classify the outcome.
+ * NEVER throws — all failure modes are surfaced as discriminated kinds.
+ *
+ * Privacy invariant: `--local` is ALWAYS in the argv array.
+ * Supply chain invariant: spawn target is `node <resolved-bin-from-fork>`,
+ * never bare `npx <name>` against the open registry.
+ *
+ * `opts.binPath` is a test seam — production callers omit it and the bin path
+ * resolves via createRequire from the bundled `@agenticapps/agentlinter` dep.
+ * Tests pass a synthetic path so they exercise the spawn shape without
+ * requiring the package to be installed in node_modules.
+ */
+export async function runAgentLinter(
+  projectRoot: string,
+  opts?: { binPath?: string },
+): Promise<AgentLinterResult> {
+  const binPath = opts?.binPath ?? resolveBinPath()
+  if (binPath === null) return { kind: 'not-installed' }
+
   let proc
   try {
     proc = await execa(
-      'npx',
-      ['--yes', 'agentlinter', '--local', '--json', projectRoot],
+      'node',
+      [binPath, '--local', '--json', projectRoot],
       {
         timeout: TIMEOUT_MS,
         reject: false,
@@ -61,14 +108,11 @@ export async function runAgentLinter(projectRoot: string): Promise<AgentLinterRe
       },
     )
   } catch (e: unknown) {
-    // execa throws when timedOut (when reject:true or when timeout fires as rejection)
     const err = e as { timedOut?: boolean }
     if (err?.timedOut) return { kind: 'timeout' }
-    // Any other throw means npx couldn't spawn at all
     return { kind: 'not-installed' }
   }
 
-  // When reject:false, timedOut is a property on the result
   if ((proc as unknown as { timedOut?: boolean }).timedOut) return { kind: 'timeout' }
 
   const exitCode = proc.exitCode ?? -1
@@ -76,8 +120,6 @@ export async function runAgentLinter(projectRoot: string): Promise<AgentLinterRe
   const stdout = proc.stdout ?? ''
 
   if (exitCode !== 0) {
-    // "npm error 404 Not Found" or "not found" → agentlinter not installed
-    if (/E404|not found/i.test(stderr)) return { kind: 'not-installed' }
     // Some agentlinter versions emit valid JSON even on non-zero exit
     try {
       const parsed = JSON.parse(stdout) as AgentLinterReport

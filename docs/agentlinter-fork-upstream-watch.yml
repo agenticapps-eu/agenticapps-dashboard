@@ -1,0 +1,141 @@
+# Upstream-watch action for the @agenticapps/agentlinter FORK repo.
+#
+# Drop this file into `.github/workflows/upstream-watch.yml` of the
+# `agenticapps-eu/agentlinter` fork repo. It runs weekly, detects new upstream
+# commits AND new npm publishes from the upstream package, and opens (or
+# updates) a single tracking issue labeled `upstream-sync`.
+#
+# Why this lives in the dashboard repo: this is the source-of-truth template.
+# When the fork repo is created, copy this file into it and commit. Phase 5
+# decision D-5-21 explains the supply-chain reasoning.
+#
+# Bootstrapping (one-time, in the fork repo):
+#   1. Add `https://github.com/seojoonkim/agentlinter` as the upstream remote.
+#   2. Create label `upstream-sync` (color: #fbca04 yellow recommended).
+#   3. Commit `.upstream-sync.cfg` with: [sync]\n\tlastCommit = <fork-base-sha>
+#   4. Drop this file into `.github/workflows/`.
+#   5. Verify the action has `issues: write` permission (already in `permissions:` below).
+
+name: upstream-watch
+
+on:
+  schedule:
+    # Mondays 09:00 UTC. Adjust to your timezone preference.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream + fetch
+        run: |
+          git remote add upstream https://github.com/seojoonkim/agentlinter
+          git fetch upstream main --tags --quiet
+
+      - name: Compute commit diff since last sync
+        id: gitdiff
+        run: |
+          if [ -f .upstream-sync.cfg ]; then
+            LAST_SYNC=$(git config --file .upstream-sync.cfg sync.lastCommit || echo "")
+          else
+            LAST_SYNC=""
+          fi
+          if [ -z "$LAST_SYNC" ]; then
+            LAST_SYNC=$(git merge-base main upstream/main)
+          fi
+          COMMITS=$(git log --oneline "$LAST_SYNC..upstream/main" || echo "")
+          {
+            echo "last_sync=$LAST_SYNC"
+            echo "commits<<EOF"
+            echo "$COMMITS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Compute npm version diff
+        id: npmdiff
+        run: |
+          UPSTREAM=$(npm view agentlinter version 2>/dev/null || echo "unknown")
+          OURS=$(npm view @agenticapps/agentlinter version 2>/dev/null || echo "unpublished")
+          {
+            echo "upstream=$UPSTREAM"
+            echo "ours=$OURS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open or update tracking issue
+        if: steps.gitdiff.outputs.commits != '' || steps.npmdiff.outputs.upstream != steps.npmdiff.outputs.ours
+        uses: actions/github-script@v7
+        env:
+          COMMITS: ${{ steps.gitdiff.outputs.commits }}
+          LAST_SYNC: ${{ steps.gitdiff.outputs.last_sync }}
+          UPSTREAM_NPM: ${{ steps.npmdiff.outputs.upstream }}
+          OURS_NPM: ${{ steps.npmdiff.outputs.ours }}
+        with:
+          script: |
+            const { COMMITS, LAST_SYNC, UPSTREAM_NPM, OURS_NPM } = process.env
+
+            const npmDelta =
+              UPSTREAM_NPM !== OURS_NPM
+                ? `**npm:** upstream \`${UPSTREAM_NPM}\` vs ours \`${OURS_NPM}\` — version drift`
+                : `**npm:** upstream \`${UPSTREAM_NPM}\` matches ours`
+
+            const commitsBlock = COMMITS && COMMITS.trim().length > 0
+              ? '```\n' + COMMITS + '\n```'
+              : '_No new commits since last sync._'
+
+            const body = [
+              `### Upstream activity since last sync`,
+              ``,
+              npmDelta,
+              ``,
+              `**git commits since \`${LAST_SYNC.slice(0, 7)}\`:**`,
+              commitsBlock,
+              ``,
+              `### What to do`,
+              ``,
+              `1. Review each commit. Decide cherry-pick / skip / reverse-port.`,
+              `2. Audit the diff for new network calls, new install scripts, new \`exec\`/\`spawn\` sites, telemetry endpoints, or sensitive file reads.`,
+              `3. After cherry-picks land on the fork's \`main\`, update the marker:`,
+              `   \`\`\`bash`,
+              `   git config --file .upstream-sync.cfg sync.lastCommit "$(git rev-parse upstream/main)"`,
+              `   git commit .upstream-sync.cfg -m "chore: advance upstream-sync marker"`,
+              `   \`\`\``,
+              `4. If picks were applied, bump the package version, \`npm publish\`, then close this issue.`,
+              `5. If nothing's worth picking, just advance the marker and close.`,
+              ``,
+              `_This issue is updated weekly with new activity and reused across runs._`,
+            ].join('\n')
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'upstream-sync',
+              state: 'open',
+            })
+
+            if (issues.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body,
+              })
+              core.notice(`Updated existing issue #${issues[0].number}`)
+            } else {
+              const { data: created } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Upstream sync: agentlinter has new activity',
+                body,
+                labels: ['upstream-sync'],
+              })
+              core.notice(`Opened issue #${created.number}`)
+            }

@@ -81,15 +81,17 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
 
   const data: AgentLinterResponse = query.data
 
-  // kind: 'not-installed'
+  // kind: 'not-installed' — bundled @agenticapps/agentlinter dep failed to resolve.
+  // Should be unreachable in normal installs (D-5-21); fires only on broken
+  // node_modules or a partial pnpm install. Recovery is to reinstall the daemon.
   if (data.kind === 'not-installed') {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
         <p className="text-sm text-[--text]">
-          AgentLinter not installed. Install with
+          AgentLinter binary missing from the daemon install. Reinstall with
         </p>
-        <CodeBlock command="npm install -g agentlinter" copyLabel="Copy install command" />
-        <p className="text-sm text-[--text]">to enable scoring.</p>
+        <CodeBlock command="pnpm install --frozen-lockfile" copyLabel="Copy reinstall command" />
+        <p className="text-sm text-[--text]">to restore scoring.</p>
       </PanelContainer>
     )
   }
