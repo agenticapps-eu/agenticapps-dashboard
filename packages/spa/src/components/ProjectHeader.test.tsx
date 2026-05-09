@@ -223,7 +223,7 @@ describe('ProjectHeader', () => {
     render(<ProjectHeader projectId="acme" />)
 
     const link = screen.getByRole('link', { name: /All Projects/ })
-    expect(link.className).toContain('focus-visible:ring-[--ring]')
+    expect(link.className).toContain('focus-visible:ring-accent')
   })
 
   it('H9: separator dots have aria-hidden="true" and text-[--text-muted] class', () => {
@@ -246,7 +246,7 @@ describe('ProjectHeader', () => {
     )
     expect(dotSeparators.length).toBeGreaterThan(0)
     for (const sep of dotSeparators) {
-      expect(sep.className).toContain('text-[--text-muted]')
+      expect(sep.className).toContain('text-text-secondary')
     }
   })
 })

@@ -142,7 +142,7 @@ describe('SingleProjectView', () => {
     expect(document.title).toBe('my-project — AgenticApps Dashboard')
   })
 
-  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-4', () => {
+  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-6 (Pitfall 8 — 24px rhythm)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const grid = screen.getByTestId('single-project-grid')
@@ -151,12 +151,12 @@ describe('SingleProjectView', () => {
     const disciplineCol = screen.getByTestId('discipline-column')
     expect(disciplineCol.className).toContain('flex')
     expect(disciplineCol.className).toContain('flex-col')
-    expect(disciplineCol.className).toContain('gap-4')
+    expect(disciplineCol.className).toContain('gap-6')
 
     const phaseCol = screen.getByTestId('phase-progress-column')
     expect(phaseCol.className).toContain('flex')
     expect(phaseCol.className).toContain('flex-col')
-    expect(phaseCol.className).toContain('gap-4')
+    expect(phaseCol.className).toContain('gap-6')
   })
 
   it('SV8: health-column has correct aria-label="Health" attribute', () => {
@@ -200,12 +200,37 @@ describe('SingleProjectView', () => {
     expect(integrationsIdx).toBeLessThan(installedIdx)
   })
 
-  it('SV11: health-column has flex flex-col gap-4 class', () => {
+  it('SV11: health-column has flex flex-col gap-6 class (Pitfall 8 — gap normalized to 24px)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const healthCol = screen.getByTestId('health-column')
     expect(healthCol.className).toContain('flex')
     expect(healthCol.className).toContain('flex-col')
-    expect(healthCol.className).toContain('gap-4')
+    expect(healthCol.className).toContain('gap-6')
+  })
+})
+
+describe('SingleProjectView — VITE_APPSHELL_V2 mode', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    cleanup()
+  })
+
+  it('SV12: when VITE_APPSHELL_V2=1, PageHeader renders with title equal to projectId', () => {
+    vi.stubEnv('VITE_APPSHELL_V2', '1')
+    render(<SingleProjectView projectId="my-project" />, { wrapper: makeWrapper() })
+
+    // PageHeader renders an <h1> with the project ID as the title
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).toBeDefined()
+    expect(heading.textContent).toBe('my-project')
+  })
+
+  it('SV13: when VITE_APPSHELL_V2=1, ProjectHeader (legacy breadcrumb) is suppressed', () => {
+    vi.stubEnv('VITE_APPSHELL_V2', '1')
+    render(<SingleProjectView projectId="my-project" />, { wrapper: makeWrapper() })
+
+    // The legacy project-header test-id should not be present in V2 mode
+    expect(screen.queryByTestId('project-header')).toBeNull()
   })
 })
