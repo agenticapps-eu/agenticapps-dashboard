@@ -39,13 +39,11 @@ describe('Phase 5.1 anti-orange invariant (AC-04)', () => {
     expect(offenders).toEqual([])
   })
 
-  it('the only #d97706 literal allowed is the legacy --warning alias (Wave 5 deletes)', () => {
-    // Sanity check: confirm the alias block is the sole d97706 location.
-    // After Wave 5, this test's allow-list shrinks to zero.
+  it('no #d97706 (legacy orange-ish warning) remains anywhere — alias layer deleted in Wave 5', () => {
     const offenders: string[] = []
     for (const f of files) {
       const content = readFileSync(f, 'utf8')
-      if (/#d97706/i.test(content) && !f.endsWith('global.css')) offenders.push(f)
+      if (/#d97706/i.test(content)) offenders.push(f)
     }
     expect(offenders).toEqual([])
   })

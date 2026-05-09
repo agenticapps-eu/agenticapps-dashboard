@@ -1,58 +1,13 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* D-02 / Pattern 4: class-based dark mode. Activates `dark:*` utilities when html.dark is set. */
+/* Preserved for future Phase 6 dark-mode tokens — does nothing without a .dark{} block. */
 @custom-variant dark (&:where(.dark, .dark *));
-
-/* Phase 5.1 Wave 0 — backwards-compat aliases mapping legacy token names to new --color-* tokens. */
-/* RESEARCH key finding #5: keeps existing 13 panels rendering during Waves 1-4 panel migration. */
-/* Wave 5 (plan 05.1-06) deletes these aliases — at that point every consumer has moved to namespaced tokens. */
-:root {
-  --bg: var(--color-app-bg);
-  --surface: var(--color-card-bg);
-  --surface-elevated: var(--color-card-bg-hover);
-  --border: var(--color-border-subtle);
-  --border-strong: var(--color-border-subtle);
-  --text: var(--color-text-primary);
-  --text-muted: var(--color-text-secondary);
-  --text-subtle: var(--color-text-tertiary);
-  --accent: var(--color-accent);
-  --accent-hover: var(--color-accent-hover);
-  --accent-fg: #FFFFFF;
-  --danger: var(--color-status-error);
-  --danger-surface: rgb(181 61 61 / 0.06);
-  --warning: var(--color-status-warning);
-  --warning-surface: rgb(194 128 43 / 0.06);
-  --success: var(--color-status-success);
-  --ring: var(--color-accent);
-}
-
-/* Dark theme tokens — preserved verbatim from prior phase (RESEARCH OQ-5). */
-/* Dark-mode users see the legacy palette until Phase 6 ships dark tokens. */
-.dark {
-  --bg: #0a0a0a;
-  --surface: #171717;
-  --surface-elevated: #262626;
-  --border: #262626;
-  --border-strong: #404040;
-  --text: #fafafa;
-  --text-muted: #a3a3a3;
-  --text-subtle: #737373;
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-fg: #ffffff;
-  --danger: #ef4444;
-  --danger-surface: rgb(239 68 68 / 0.08);
-  --warning: #f59e0b;
-  --warning-surface: rgb(245 158 11 / 0.08);
-  --success: #10b981;
-  --ring: #3b82f6;
-}
 
 html, body, #root { height: 100%; }
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--color-app-bg);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
