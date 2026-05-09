@@ -4,6 +4,7 @@ import {
   createRoute,
   createRouter,
   redirect,
+  Outlet,
   type AnyRoute,
 } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -11,33 +12,16 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
 
 import { AppShell } from './components/AppShell.js'
+import { AppShellV2 } from './components/AppShellV2.js'
 import { getPairing } from './lib/pairing.js'
 import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
 
-/** Root route renders the persistent AppShell. */
-const rootRoute = createRootRoute({
-  component: AppShell,
-})
-
 /**
- * SPA-03: visiting `/` without a pairing redirects to `/onboarding`.
- * beforeLoad runs synchronously before the lazy component is even fetched.
+ * Feature flag — STRICT equality (RESEARCH Pitfall 4: 'false' is truthy).
+ * Read once at module scope before route construction.
+ * Production CI builds without this flag → legacy tree ships.
  */
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  beforeLoad: () => {
-    const pairing = getPairing()
-    if (!pairing) {
-      throw redirect({ to: '/onboarding' })
-    }
-  },
-}).lazy(() => import('./routes/index.lazy.js').then((m) => m.Route))
-
-const onboardingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/onboarding',
-}).lazy(() => import('./routes/onboarding.lazy.js').then((m) => m.Route))
+const useV2 = import.meta.env.VITE_APPSHELL_V2 === '1'
 
 /**
  * PairSearchSchema validates the required /pair?agent=&token= search params.
@@ -76,47 +60,141 @@ export function pairErrorComponent({
   return <RouteError error={error} reset={reset} />
 }
 
-const pairRoute = createRoute({
-  getParentRoute: () => rootRoute,
+// ── Legacy route tree (declared at module scope so TypeScript infers register types) ──
+
+const legacyRootRoute = createRootRoute({ component: AppShell })
+
+const legacyIndexRoute = createRoute({
+  getParentRoute: () => legacyRootRoute,
+  path: '/',
+  beforeLoad: () => {
+    const pairing = getPairing()
+    if (!pairing) { throw redirect({ to: '/onboarding' }) }
+  },
+}).lazy(() => import('./routes/index.lazy.js').then((m) => m.Route))
+
+const legacyOnboardingRoute = createRoute({
+  getParentRoute: () => legacyRootRoute,
+  path: '/onboarding',
+}).lazy(() => import('./routes/onboarding.lazy.js').then((m) => m.Route))
+
+const legacyPairRoute = createRoute({
+  getParentRoute: () => legacyRootRoute,
   path: '/pair',
   validateSearch: zodValidator(PairSearchSchema),
   errorComponent: pairErrorComponent,
 }).lazy(() => import('./routes/pair.lazy.js').then((m) => m.Route))
 
-const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+const legacySettingsRoute = createRoute({
+  getParentRoute: () => legacyRootRoute,
   path: '/settings',
 }).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
 
-const helpRoute = createRoute({
-  getParentRoute: () => rootRoute,
+const legacyHelpRoute = createRoute({
+  getParentRoute: () => legacyRootRoute,
   path: '/help',
 }).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
 
-/**
- * D-37 (Phase 3): Placeholder route for /projects/$projectId.
- * Phase 3 ships the route stub so card click-through resolves cleanly.
- * Phase 4 replaces the body with Discipline + Phase columns.
- */
-const projectsIdRoute = createRoute({
-  getParentRoute: () => rootRoute,
+const legacyProjectsIdRoute = createRoute({
+  getParentRoute: () => legacyRootRoute,
   path: '/projects/$projectId',
 }).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
 
-const routeTree = rootRoute.addChildren([
-  indexRoute,
-  onboardingRoute,
-  pairRoute,
-  settingsRoute,
-  helpRoute,
-  projectsIdRoute,
+const legacyRouteTree = legacyRootRoute.addChildren([
+  legacyIndexRoute,
+  legacyOnboardingRoute,
+  legacyPairRoute,
+  legacySettingsRoute,
+  legacyHelpRoute,
+  legacyProjectsIdRoute,
 ] as AnyRoute[])
 
-export const router = createRouter({ routeTree })
+/**
+ * Typed reference used ONLY for the `Register` interface below.
+ * This is always the legacy router so TypeScript knows all route paths.
+ */
+const legacyRouter = createRouter({ routeTree: legacyRouteTree })
+
+// ── Runtime router: conditionally builds the active variant ──────────────────
+// Two separate rootRoute instances so addChildren calls never collide.
+// The legacyRootRoute/legacyRouter above provide TypeScript types.
+// The actual runtime router is built here based on the flag.
+
+let router: typeof legacyRouter
+
+if (useV2) {
+  // ── V2 tree: pathless layout wraps the 4 paired routes (RESEARCH Pattern 3) ──
+  const v2RootRoute = createRootRoute({ component: () => <Outlet /> })
+
+  /**
+   * Pathless layout route — id='_appshell' is the TanStack Router code-based
+   * pattern for layout routes without a path segment (verified v1.169).
+   * /onboarding and /pair stay at v2RootRoute → NO shell (D-5.1-03).
+   */
+  const appShellLayoutRoute = createRoute({
+    getParentRoute: () => v2RootRoute,
+    id: '_appshell',
+    component: AppShellV2,
+  })
+
+  const indexRouteV2 = createRoute({
+    getParentRoute: () => appShellLayoutRoute,
+    path: '/',
+    beforeLoad: () => {
+      const pairing = getPairing()
+      if (!pairing) { throw redirect({ to: '/onboarding' }) }
+    },
+  }).lazy(() => import('./routes/index.lazy.js').then((m) => m.Route))
+
+  const settingsRouteV2 = createRoute({
+    getParentRoute: () => appShellLayoutRoute,
+    path: '/settings',
+  }).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
+
+  const helpRouteV2 = createRoute({
+    getParentRoute: () => appShellLayoutRoute,
+    path: '/help',
+  }).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
+
+  const projectsIdRouteV2 = createRoute({
+    getParentRoute: () => appShellLayoutRoute,
+    path: '/projects/$projectId',
+  }).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
+
+  // /onboarding and /pair stay at rootRoute in V2 mode (no shell — D-5.1-03)
+  const onboardingRouteV2 = createRoute({
+    getParentRoute: () => v2RootRoute,
+    path: '/onboarding',
+  }).lazy(() => import('./routes/onboarding.lazy.js').then((m) => m.Route))
+
+  const pairRouteV2 = createRoute({
+    getParentRoute: () => v2RootRoute,
+    path: '/pair',
+    validateSearch: zodValidator(PairSearchSchema),
+    errorComponent: pairErrorComponent,
+  }).lazy(() => import('./routes/pair.lazy.js').then((m) => m.Route))
+
+  const v2RouteTree = v2RootRoute.addChildren([
+    appShellLayoutRoute.addChildren([
+      indexRouteV2,
+      settingsRouteV2,
+      helpRouteV2,
+      projectsIdRouteV2,
+    ] as AnyRoute[]),
+    onboardingRouteV2,
+    pairRouteV2,
+  ] as AnyRoute[])
+
+  router = createRouter({ routeTree: v2RouteTree }) as unknown as typeof legacyRouter
+} else {
+  router = legacyRouter
+}
+
+export { router }
 
 /** Type registration so useNavigate / Link infer the route tree. */
 declare module '@tanstack/react-router' {
   interface Register {
-    router: typeof router
+    router: typeof legacyRouter
   }
 }
