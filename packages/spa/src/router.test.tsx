@@ -1,26 +1,18 @@
 /**
- * router.test.tsx — TDD tests for VITE_APPSHELL_V2 flag in router.tsx (Plan 05.1-02 Task 2).
+ * router.test.tsx — Tests for the single AppShellV2 route tree (Plan 05.1-06 Task 1).
  *
- * RT1: flag undefined/empty → rootRoute uses AppShell component (legacy mode)
- * RT2: flag = '1' → rootRoute uses bare Outlet (V2 mode); _appshell layout exists
- * RT3: flag = 'false' (string) → rootRoute uses AppShell (Pitfall 4 strict equality)
- * RT4: pairErrorComponent is still exported and handles VALIDATE_SEARCH errors
+ * After flag removal, there is ONE route tree. Tests verify structure without any env stub.
  *
- * Implementation note: Both route trees share a single `rootRoute` instance.
- * `addChildren` mutates rootRoute and returns the same object, so `routesById`
- * always reflects the last `addChildren` call (the V2 tree, declared last at
- * module scope). The observable contract for the flag is therefore the
- * rootRoute's component, not routesById — the component switches between
- * AppShell (legacy) and a bare Outlet wrapper (V2).
+ * RT1: route tree contains the `_appshell` pathless layout with indexRoute, settingsRoute,
+ *      helpRoute, projectsIdRoute as children
+ * RT2: onboardingRoute and pairRoute are direct children of rootRoute (no shell wrap — D-5.1-03)
+ * RT3: no VITE_APPSHELL_V2 env stub needed — always V2, _appshell always present
+ * RT4: pairErrorComponent still exported and handles VALIDATE_SEARCH error
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
 
-// Mock AppShell and AppShellV2 so the router module can be dynamically imported
-// without a full React/jsdom environment. Both mocks export named functions so
-// the identity check (component === AppShell) works across module resets.
-vi.mock('./components/AppShell.js', () => ({
-  AppShell: function AppShell() { return null },
-}))
+// Mock AppShellV2 so the router module can be dynamically imported
+// without a full React/jsdom environment.
 vi.mock('./components/AppShellV2.js', () => ({
   AppShellV2: function AppShellV2() { return null },
 }))
@@ -30,50 +22,44 @@ vi.mock('./routes/pair-error.js', () => ({
   RouteError: function RouteError() { return null },
 }))
 
-describe('router VITE_APPSHELL_V2 flag', () => {
+describe('router — single AppShellV2 route tree', () => {
   afterEach(() => {
-    vi.unstubAllEnvs()
     vi.resetModules()
   })
 
-  it('RT1: flag undefined/empty → rootRoute component is AppShell (legacy mode)', async () => {
-    vi.stubEnv('VITE_APPSHELL_V2', '')
-    vi.resetModules()
+  it('RT1: route tree contains _appshell pathless layout with 4 paired routes as children', async () => {
     const { router } = await import('./router.js')
-    // In legacy mode the rootRoute component is the AppShell function (not Outlet wrapper)
-    const rootComponent = router.routesById['__root__']?.options.component
-    // rootComponent is NOT the bare Outlet passthrough — it's a named component
-    expect(rootComponent).toBeDefined()
-    expect(rootComponent?.name).not.toBe('')  // has a name (AppShell), not anonymous
-    // The strict equality test: flag must be exactly '1'
-    expect(import.meta.env.VITE_APPSHELL_V2 === '1').toBe(false)
+    const ids = Object.keys(router.routesById ?? {})
+    // The pathless layout route must exist (TanStack Router prefixes children with /_appshell)
+    expect(ids.some((id) => id.includes('_appshell'))).toBe(true)
+    // All 4 paired route paths must be in the tree (under /_appshell prefix)
+    expect(ids.some((id) => id === '/_appshell/')).toBe(true)
+    expect(ids.some((id) => id === '/_appshell/settings')).toBe(true)
+    expect(ids.some((id) => id === '/_appshell/help')).toBe(true)
+    expect(ids.some((id) => id.includes('$projectId'))).toBe(true)
   })
 
-  it('RT2: flag = "1" → rootRoute component is bare Outlet; _appshell route exists', async () => {
-    vi.stubEnv('VITE_APPSHELL_V2', '1')
-    vi.resetModules()
+  it('RT2: onboardingRoute and pairRoute are direct children of rootRoute (no shell wrap)', async () => {
     const { router } = await import('./router.js')
-    // In V2 mode, rootRoute uses an anonymous () => <Outlet /> wrapper
+    const ids = Object.keys(router.routesById ?? {})
+    // Both pre-paired routes must be in the tree at root level (no /_appshell prefix)
+    expect(ids.some((id) => id === '/onboarding')).toBe(true)
+    expect(ids.some((id) => id === '/pair')).toBe(true)
+    // rootRoute component is a bare Outlet wrapper (V2 always)
     const rootComponent = router.routesById['__root__']?.options.component
     expect(rootComponent).toBeDefined()
-    // _appshell is in the route registry
+  })
+
+  it('RT3: no VITE_APPSHELL_V2 env stub needed — _appshell always present', async () => {
+    const { router } = await import('./router.js')
+    // The router is importable without any env stub — always V2
+    expect(router).toBeDefined()
+    // _appshell must always be present (no flag check)
     const ids = Object.keys(router.routesById ?? {})
     expect(ids.some((id) => id.includes('_appshell'))).toBe(true)
   })
 
-  it('RT3: flag = "false" string → legacy mode (Pitfall 4: strict equality === "1")', async () => {
-    vi.stubEnv('VITE_APPSHELL_V2', 'false')
-    vi.resetModules()
-    // The key invariant: 'false' !== '1', so useV2 must be false
-    // This is tested by verifying the flag comparison directly
-    expect(import.meta.env.VITE_APPSHELL_V2 === '1').toBe(false)
-    // And that the router can be imported without error
-    const { router } = await import('./router.js')
-    expect(router).toBeDefined()
-  })
-
   it('RT4: pairErrorComponent is still exported and handles VALIDATE_SEARCH error', async () => {
-    vi.resetModules()
     const { pairErrorComponent } = await import('./router.js')
     expect(typeof pairErrorComponent).toBe('function')
 

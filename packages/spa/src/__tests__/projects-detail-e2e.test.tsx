@@ -43,10 +43,12 @@ const REGISTRY_RESPONSE = [
   {
     id: 'acme',
     name: 'ACME Project',
-    path: '/tmp/acme',
+    root: '/tmp/acme',
     client: null,
     tags: [],
     addedAt: '2026-05-06T00:00:00Z',
+    // Wave 5: AppShellV2 Sidebar reads status.reachable + status.currentPhase for all registered projects.
+    status: { reachable: true, currentPhase: '04-single-project-view', lastCommitAt: '2026-05-06T00:00:00Z' },
   },
 ]
 
@@ -236,13 +238,13 @@ afterEach(() => {
 })
 
 describe('Phase 4 e2e: /projects/:id detail route', () => {
-  it('E2E1 (ROADMAP criterion 1): renders Project breadcrumb navigation header', async () => {
+  it('E2E1 (ROADMAP criterion 1): renders project PageHeader with projectId as title (Wave 5: ProjectHeader deleted)', async () => {
     await renderProjectDetail()
 
-    // ProjectHeader renders <nav aria-label="Project breadcrumb">
+    // Wave 5 (Plan 05.1-06): ProjectHeader deleted; PageHeader renders an <h1> with projectId
     await waitFor(
       () => {
-        expect(screen.getByRole('navigation', { name: 'Project breadcrumb' })).toBeDefined()
+        expect(screen.getByRole('heading', { level: 1, name: 'acme' })).toBeDefined()
       },
       { timeout: 5000 },
     )

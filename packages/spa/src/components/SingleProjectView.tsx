@@ -8,16 +8,14 @@
  *   - Plan 04 (Phase 4) filled left + center columns.
  *   - Plan 05/06 (Phase 5) filled the right column with HEALTH-01..05 panels.
  *
- * Wave 3 (Plan 05.1-04):
- *   - V2-mode: wraps content in PageHeader (title=projectId); ProjectHeader suppressed.
- *   - Legacy mode: ProjectHeader renders as before (breadcrumb back-nav).
+ * Wave 5 (Plan 05.1-06):
+ *   - V2 is the only mode. PageHeader renders unconditionally. ProjectHeader deleted.
  *   - Column gap normalized gap-4 → gap-6 (Pitfall 8 — consistent 24px rhythm).
  *
  * document.title is set here (not in ProjectLayout — layout is generic; title is per-page).
  */
 import React, { useEffect } from 'react'
 
-import { ProjectHeader } from './ProjectHeader.js'
 import { PageHeader } from './ui/PageHeader.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
 import { ExecutionTimeline } from './panels/ExecutionTimeline.js'
@@ -36,16 +34,13 @@ import { VerificationStatus } from './panels/VerificationStatus.js'
 export type SingleProjectViewProps = { projectId: string }
 
 export function SingleProjectView({ projectId }: SingleProjectViewProps): React.JSX.Element {
-  const useV2 = import.meta.env.VITE_APPSHELL_V2 === '1'
-
   useEffect(() => {
     document.title = `${projectId} — AgenticApps Dashboard`
   }, [projectId])
 
   return (
     <div>
-      {!useV2 && <ProjectHeader projectId={projectId} />}
-      {useV2 && <PageHeader title={projectId} />}
+      <PageHeader title={projectId} />
       <div
         data-testid="single-project-grid"
         className="grid grid-cols-[1fr_1.5fr_1fr] items-start gap-6"

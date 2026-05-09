@@ -7,7 +7,6 @@ import { useLastRefresh } from '../lib/lastRefresh.js'
 import { CardContextMenu, type ContextMenuAnchor } from './CardContextMenu.js'
 import { DaemonUnreachableState } from './DaemonUnreachableState.js'
 import { EditTagsDialog, RenameDialog } from './RenameTagsForms.js'
-import { HomeLayout } from './HomeLayout.js'
 import { HomeToolbar } from './HomeToolbar.js'
 import { ProjectCard } from './ProjectCard.js'
 import { RegisterButtonCard } from './RegisterButtonCard.js'
@@ -18,7 +17,6 @@ import { PageHeader } from './ui/PageHeader.js'
 export function MultiProjectHome(): React.JSX.Element {
   const list = useRegistryList()
 
-  const useV2 = import.meta.env.VITE_APPSHELL_V2 === '1'
   const lastRefresh = useLastRefresh()
   const headerHelper =
     lastRefresh.count !== null
@@ -77,22 +75,22 @@ export function MultiProjectHome(): React.JSX.Element {
   if (list.isError) {
     if (list.error?.message?.startsWith('schema_drift:')) {
       return (
-        <HomeLayout>
+        <div>
           <SchemaDriftState
             firstIssue={{ path: '(root)', expected: 'RegistryListResponse', got: 'unknown' }}
             fullIssues={[]}
             onRetry={() => void list.refetch()}
           />
-        </HomeLayout>
+        </div>
       )
     }
     return (
-      <HomeLayout>
+      <div>
         <DaemonUnreachableState
           agentUrl="http://127.0.0.1:5193"
           onRetry={() => void list.refetch()}
         />
-      </HomeLayout>
+      </div>
     )
   }
 
@@ -101,9 +99,9 @@ export function MultiProjectHome(): React.JSX.Element {
   const existingTags = Array.from(new Set(items.flatMap((i) => i.tags))).sort()
 
   return (
-    <HomeLayout>
-      {useV2 && <PageHeader title="Projects" helper={headerHelper} />}
-      <div className={useV2 ? '' : 'px-6 py-8 md:px-8'}>
+    <div>
+      <PageHeader title="Projects" helper={headerHelper} />
+      <div>
         <HomeToolbar
           items={items}
           selectedChips={selectedChips}
@@ -175,6 +173,6 @@ export function MultiProjectHome(): React.JSX.Element {
         existingTags={existingTags}
         onClose={() => setTagsItem(null)}
       />
-    </HomeLayout>
+    </div>
   )
 }

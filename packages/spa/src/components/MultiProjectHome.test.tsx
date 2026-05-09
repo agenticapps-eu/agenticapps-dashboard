@@ -277,9 +277,8 @@ describe('MultiProjectHome — register confirmed focus (D-29)', () => {
   })
 })
 
-describe('MultiProjectHome — VITE_APPSHELL_V2 mode', () => {
+describe('MultiProjectHome — PageHeader (unconditional — Wave 5 flag removed)', () => {
   beforeEach(() => {
-    vi.stubEnv('VITE_APPSHELL_V2', '1')
     mockUseLastRefresh.mockReturnValue({ count: 3, refreshLabel: 'refreshed 4s ago' })
     mockUseRegistryList.mockReturnValue({
       data: [item1, item2, item3],
@@ -291,11 +290,7 @@ describe('MultiProjectHome — VITE_APPSHELL_V2 mode', () => {
     mockFilterAndSort.mockImplementation((items: RegistryListItem[]) => items)
   })
 
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
-  it('renders PageHeader with title "Projects" when VITE_APPSHELL_V2=1', () => {
+  it('renders PageHeader with title "Projects"', () => {
     renderHome()
     expect(screen.getByRole('heading', { level: 1, name: /^Projects$/ })).toBeInTheDocument()
   })
@@ -303,19 +298,6 @@ describe('MultiProjectHome — VITE_APPSHELL_V2 mode', () => {
   it('renders PageHeader helper with "3 projects · refreshed 4s ago"', () => {
     renderHome()
     expect(screen.getByText('3 projects · refreshed 4s ago')).toBeInTheDocument()
-  })
-
-  it('does NOT render PageHeader when VITE_APPSHELL_V2 is not set (legacy mode)', () => {
-    vi.unstubAllEnvs()
-    mockUseRegistryList.mockReturnValue({
-      data: [item1, item2, item3],
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    })
-    renderHome()
-    expect(screen.queryByRole('heading', { level: 1, name: /^Projects$/ })).not.toBeInTheDocument()
   })
 })
 
