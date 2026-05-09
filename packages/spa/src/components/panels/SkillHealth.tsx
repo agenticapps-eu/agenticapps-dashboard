@@ -116,7 +116,7 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
           type="button"
           onClick={() => void onRetry()}
           aria-label="Retry agentlinter scan, bypassing cache"
-          className="mt-2 border border-border-subtle rounded px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-accent min-w-[44px] min-h-[44px]"
+          className="mt-2 rounded border border-border-subtle px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-accent min-w-[44px] min-h-[44px]"
         >
           Retry scan
         </button>

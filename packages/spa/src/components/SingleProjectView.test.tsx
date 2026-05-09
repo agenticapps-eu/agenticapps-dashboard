@@ -16,11 +16,13 @@
  * SV4: phase-progress-column renders all 5 real panel regions (Plan 06 filled these)
  * SV5: health-column IS present (Phase 5 filled it)  (UPDATED from "absent")
  * SV6: document.title updates on mount
- * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-4 on columns)
+ * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-6 on columns)
  * SV8: health-column has data-testid="health-column" and aria-label="Health"
  * SV9: all 5 Phase 5 panel headings render inside health-column
  * SV10: panel DOM order matches UI-SPEC: InstalledSkills → SkillHealth → Observability → Secrets → Integrations
- * SV11: health-column has flex flex-col gap-4 class
+ * SV11: health-column has flex flex-col gap-6 class
+ * SV12: when VITE_APPSHELL_V2=1, PageHeader renders with title equal to projectId
+ * SV13: when VITE_APPSHELL_V2=1, ProjectHeader (legacy breadcrumb) is suppressed
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
