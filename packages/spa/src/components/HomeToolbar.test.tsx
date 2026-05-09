@@ -150,7 +150,7 @@ describe('HomeToolbar', () => {
     expect(onSortChange).toHaveBeenCalledWith('lastCommit')
   })
 
-  it('selected chip has bg-[--accent] class; unselected has bg-[--surface-elevated]', () => {
+  it('selected chip has bg-accent class; unselected has bg-card-bg', () => {
     render(
       <HomeToolbar
         {...defaultProps}
@@ -159,8 +159,8 @@ describe('HomeToolbar', () => {
     )
     const allChip = screen.getByRole('button', { name: 'all' })
     const activeChip = screen.getByRole('button', { name: 'active' })
-    expect(allChip.className).toContain('bg-[--accent]')
-    expect(activeChip.className).toContain('bg-[--surface-elevated]')
+    expect(allChip.className).toContain('bg-accent')
+    expect(activeChip.className).toContain('bg-card-bg')
   })
 
   it('focus ring class present on chip buttons', () => {
