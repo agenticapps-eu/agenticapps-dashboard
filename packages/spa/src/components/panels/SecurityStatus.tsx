@@ -10,6 +10,8 @@
  *
  * Content is clamped to max-h-32 (128px) per UI-SPEC to prevent SecurityStatus
  * dominating the column when CSO reports are verbose.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -47,7 +49,7 @@ export function SecurityStatus({ projectId }: SecurityStatusProps): React.JSX.El
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="security-status" title="Security Status">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -57,7 +59,7 @@ export function SecurityStatus({ projectId }: SecurityStatusProps): React.JSX.El
   if (cso === null && dbSentinel === null) {
     return (
       <PanelContainer panelId="security-status" title="Security Status">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No /cso audit yet for this phase.
         </p>
       </PanelContainer>
@@ -67,25 +69,25 @@ export function SecurityStatus({ projectId }: SecurityStatusProps): React.JSX.El
   return (
     <PanelContainer panelId="security-status" title="Security Status">
       <section className="flex flex-col gap-1">
-        <h3 className="text-sm font-semibold text-[--text]">
+        <h3 className="text-sm font-semibold text-text-primary">
           /cso audit{cso ? ` (${cso.fileName})` : ''}
         </h3>
         {cso ? (
-          <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-[--surface-elevated] p-3 font-mono text-xs leading-relaxed text-[--text-muted]">
+          <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-card-bg-hover p-3 font-mono text-xs leading-relaxed text-text-secondary">
             {cso.content}
           </pre>
         ) : (
-          <p className="text-sm text-[--text-muted]">not detected</p>
+          <p className="text-sm text-text-secondary">not detected</p>
         )}
       </section>
       <section className="flex flex-col gap-1">
-        <h3 className="text-sm font-semibold text-[--text]">Database Sentinel</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Database Sentinel</h3>
         {dbSentinel ? (
-          <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-[--surface-elevated] p-3 font-mono text-xs leading-relaxed text-[--text-muted]">
+          <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-card-bg-hover p-3 font-mono text-xs leading-relaxed text-text-secondary">
             {dbSentinel.content}
           </pre>
         ) : (
-          <p className="text-sm text-[--text-muted]">not detected</p>
+          <p className="text-sm text-text-secondary">not detected</p>
         )}
       </section>
     </PanelContainer>

@@ -121,12 +121,12 @@ describe('PhaseProgress', () => {
     expect(screen.getByText('rel:2026-05-06T10:00:00Z')).toBeDefined()
   })
 
-  it('PP3: missing rows show filename in text-muted and NO mtime', () => {
+  it('PP3: missing rows show filename in text-text-secondary and NO mtime (Wave 3 repalette)', () => {
     mockQuery({ data: SAMPLE_DATA })
     render(<PhaseProgress projectId="proj-1" />)
 
     const missingFilename = screen.getByText('UI-SPEC.md')
-    expect(missingFilename.className).toContain('text-[--text-muted]')
+    expect(missingFilename.className).toContain('text-text-secondary')
 
     // Should not show mtime for missing file
     expect(screen.queryByText('rel:null')).toBeNull()

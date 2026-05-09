@@ -4,7 +4,9 @@
  * Renders the must_haves count vs evidence count and per-item rows.
  * Data source: usePhaseProgress(projectId) — reads .verification.
  *
- * When all must-haves are evidenced, the summary line turns green (text-[--success]).
+ * When all must-haves are evidenced, the summary line turns green (text-status-success).
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import { CheckCircle2, Minus } from 'lucide-react'
 import React from 'react'
@@ -43,7 +45,7 @@ export function VerificationStatus({ projectId }: VerificationStatusProps): Reac
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="verification-status" title="Verification Status">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -53,7 +55,7 @@ export function VerificationStatus({ projectId }: VerificationStatusProps): Reac
   if (mustHavesTotal === 0) {
     return (
       <PanelContainer panelId="verification-status" title="Verification Status">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No verification run yet — try /gsd-verify-work.
         </p>
       </PanelContainer>
@@ -62,8 +64,8 @@ export function VerificationStatus({ projectId }: VerificationStatusProps): Reac
 
   const allEvidenced = mustHavesEvidenced === mustHavesTotal
   const summaryClass = allEvidenced
-    ? 'text-sm font-semibold text-[--success]'
-    : 'text-sm text-[--text]'
+    ? 'text-sm font-semibold text-status-success'
+    : 'text-sm text-text-primary'
 
   return (
     <PanelContainer panelId="verification-status" title="Verification Status">
@@ -74,11 +76,11 @@ export function VerificationStatus({ projectId }: VerificationStatusProps): Reac
         {items.map((item, i) => (
           <li key={`${item.text}-${i}`} className="flex items-baseline gap-2">
             {item.evidenced ? (
-              <CheckCircle2 size={14} aria-hidden="true" className="text-[--success]" />
+              <CheckCircle2 size={14} aria-hidden="true" className="text-status-success" />
             ) : (
-              <Minus size={14} aria-hidden="true" className="text-[--text-subtle]" />
+              <Minus size={14} aria-hidden="true" className="text-text-tertiary" />
             )}
-            <span className={`text-sm ${item.evidenced ? 'text-[--text]' : 'text-[--text-muted]'}`}>
+            <span className={`text-sm ${item.evidenced ? 'text-text-primary' : 'text-text-secondary'}`}>
               {item.text}
             </span>
           </li>

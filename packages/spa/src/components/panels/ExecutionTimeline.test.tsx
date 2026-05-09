@@ -115,7 +115,7 @@ describe('ExecutionTimeline', () => {
     expect(times.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('ET3: incomplete pair (greenCommit null) renders RED row with text-muted subject', () => {
+  it('ET3: incomplete pair (greenCommit null) renders RED row with text-text-secondary subject (Wave 3 repalette)', () => {
     mockQuery({
       data: {
         ...BASE_DATA,
@@ -134,8 +134,8 @@ describe('ExecutionTimeline', () => {
     render(<ExecutionTimeline projectId="proj-1" />)
 
     const subject = screen.getByText(/test\(04-02\): failing tests/)
-    // Pending/incomplete row should use text-muted class
-    expect(subject.className).toContain('text-[--text-muted]')
+    // Pending/incomplete row should use text-text-secondary (namespaced token)
+    expect(subject.className).toContain('text-text-secondary')
   })
 
   it('ET5: dot is aria-hidden and row has sr-only label for RED/GREEN', () => {

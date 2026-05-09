@@ -123,20 +123,20 @@ describe('VerificationStatus', () => {
     expect(screen.getByText('HUMAN-UAT.md complete')).toBeDefined()
   })
 
-  it('VS2: unevidenced item text is styled text-[--text-muted]', () => {
+  it('VS2: unevidenced item text is styled text-text-secondary (Wave 3 repalette)', () => {
     mockQuery({ data: PARTIAL_DATA })
     render(<VerificationStatus projectId="proj-1" />)
 
     const unevidenced = screen.getByText('HUMAN-UAT.md complete')
-    expect(unevidenced.className).toContain('text-[--text-muted]')
+    expect(unevidenced.className).toContain('text-text-secondary')
   })
 
-  it('VS3: when all evidenced, summary has success style', () => {
+  it('VS3: when all evidenced, summary has text-status-success font-semibold (Wave 3 repalette)', () => {
     mockQuery({ data: ALL_EVIDENCED_DATA })
     render(<VerificationStatus projectId="proj-1" />)
 
     const summary = screen.getByText('3 / 3 must-haves evidenced')
-    expect(summary.className).toContain('text-[--success]')
+    expect(summary.className).toContain('text-status-success')
     expect(summary.className).toContain('font-semibold')
   })
 })

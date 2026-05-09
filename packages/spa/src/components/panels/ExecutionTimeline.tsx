@@ -6,6 +6,8 @@
  *
  * Threat model T-04-06-02: commit subjects are React text children — auto-escaped.
  * T-04-06-05: phase prefix filter bounds timeline to ~100 tasks.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -44,7 +46,7 @@ export function ExecutionTimeline({ projectId }: ExecutionTimelineProps): React.
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="execution-timeline" title="Execution Timeline">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -54,7 +56,7 @@ export function ExecutionTimeline({ projectId }: ExecutionTimelineProps): React.
   if (timeline.length === 0) {
     return (
       <PanelContainer panelId="execution-timeline" title="Execution Timeline">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No TDD commits yet for this phase.
         </p>
       </PanelContainer>
@@ -66,7 +68,7 @@ export function ExecutionTimeline({ projectId }: ExecutionTimelineProps): React.
       <ol className="flex flex-col gap-3">
         {timeline.map((t) => (
           <li key={t.taskId} className="flex flex-col gap-1">
-            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-text-secondary">
               Task {t.taskId}
             </p>
             {t.redCommit && (
@@ -107,10 +109,10 @@ function CommitRow({
   isoDate: string
   pending: boolean
 }): React.JSX.Element {
-  const dotClass = kind === 'RED' ? 'text-[--danger]' : 'text-[--success]'
+  const dotClass = kind === 'RED' ? 'text-status-error' : 'text-status-success'
   const subjectClass = pending
-    ? 'font-mono text-sm text-[--text-muted]'
-    : 'font-mono text-sm text-[--text]'
+    ? 'font-mono text-sm text-text-secondary'
+    : 'font-mono text-sm text-text-primary'
   return (
     <div className="flex items-baseline gap-2 pl-3">
       <span aria-hidden="true" className={dotClass}>
@@ -120,7 +122,7 @@ function CommitRow({
       <code className={subjectClass} title={sha}>
         {subject}
       </code>
-      <time dateTime={isoDate} className="font-mono text-xs text-[--text-muted]">
+      <time dateTime={isoDate} className="font-mono text-xs text-text-secondary">
         {formatRelativeTime(isoDate)}
       </time>
     </div>

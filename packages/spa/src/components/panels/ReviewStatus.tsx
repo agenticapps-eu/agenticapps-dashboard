@@ -8,6 +8,8 @@
  *   critical → 🔴, high → 🟠, medium → 🟡, low → ⚪
  *
  * Glyphs are aria-hidden; the parent element carries aria-label for screen readers.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 import type { ReviewFindingCounts, ReviewStatusPayload } from '@agenticapps/dashboard-shared'
@@ -53,7 +55,7 @@ export function ReviewStatus({ projectId }: ReviewStatusProps): React.JSX.Elemen
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="review-status" title="Review Status">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -63,7 +65,7 @@ export function ReviewStatus({ projectId }: ReviewStatusProps): React.JSX.Elemen
   if (stage1 === null && stage2 === null) {
     return (
       <PanelContainer panelId="review-status" title="Review Status">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No review run yet — try /review or /gsd-code-review.
         </p>
       </PanelContainer>
@@ -88,8 +90,8 @@ function StageRow({
   if (stage === null) {
     return (
       <div className="flex items-baseline gap-3">
-        <span className="text-sm font-semibold text-[--text]">{label}</span>
-        <span className="text-sm text-[--text-muted]">not run</span>
+        <span className="text-sm font-semibold text-text-primary">{label}</span>
+        <span className="text-sm text-text-secondary">not run</span>
       </div>
     )
   }
@@ -99,13 +101,13 @@ function StageRow({
 
   return (
     <div className="flex flex-wrap items-baseline gap-3">
-      <span className="text-sm font-semibold text-[--text]">{label}</span>
-      <span className="text-sm text-[--text-muted]">present</span>
+      <span className="text-sm font-semibold text-text-primary">{label}</span>
+      <span className="text-sm text-text-secondary">present</span>
       <span aria-label={ariaLabel} className="inline-flex items-baseline gap-2 font-mono text-sm">
         {(['critical', 'high', 'medium', 'low'] as const).map((sev) => (
           <span key={sev} className="inline-flex items-baseline gap-1">
             <span aria-hidden="true">{SEVERITY_GLYPH[sev]}</span>
-            <span className="text-[--text]">{f[sev]}</span>
+            <span className="text-text-primary">{f[sev]}</span>
           </span>
         ))}
       </span>
