@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 05.1 (ui-redesign-cloudflare-inspired-sidebar-dashboard-shell) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
+Plan: 5 of 6
+Status: Wave 5 complete (alias migration done) — Wave 6 next (flag flip + cutover)
 Last activity: 2026-05-09
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
