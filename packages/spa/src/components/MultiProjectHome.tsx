@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RegistryListItem } from '@agenticapps/dashboard-shared'
 
 import { filterAndSort, useRegistryList, type SortKey } from '../lib/registry.js'
+import { useLastRefresh } from '../lib/lastRefresh.js'
 
 import { CardContextMenu, type ContextMenuAnchor } from './CardContextMenu.js'
 import { DaemonUnreachableState } from './DaemonUnreachableState.js'
@@ -12,9 +13,17 @@ import { ProjectCard } from './ProjectCard.js'
 import { RegisterButtonCard } from './RegisterButtonCard.js'
 import { RegisterModal } from './RegisterModal.js'
 import { SchemaDriftState } from './SchemaDriftState.js'
+import { PageHeader } from './ui/PageHeader.js'
 
 export function MultiProjectHome(): React.JSX.Element {
   const list = useRegistryList()
+
+  const useV2 = import.meta.env.VITE_APPSHELL_V2 === '1'
+  const lastRefresh = useLastRefresh()
+  const headerHelper =
+    lastRefresh.count !== null
+      ? `${lastRefresh.count} ${lastRefresh.count === 1 ? 'project' : 'projects'} · ${lastRefresh.refreshLabel ?? ''}`
+      : ''
 
   const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set(['all']))
   const [searchText, setSearchText] = useState('')
@@ -93,7 +102,8 @@ export function MultiProjectHome(): React.JSX.Element {
 
   return (
     <HomeLayout>
-      <div className="px-6 py-8 md:px-8">
+      {useV2 && <PageHeader title="Projects" helper={headerHelper} />}
+      <div className={useV2 ? '' : 'px-6 py-8 md:px-8'}>
         <HomeToolbar
           items={items}
           selectedChips={selectedChips}
@@ -106,9 +116,9 @@ export function MultiProjectHome(): React.JSX.Element {
 
         {/* Empty state */}
         {items.length === 0 && !list.isLoading ? (
-          <div className="mt-6 rounded-md border border-[--border] bg-[--surface] p-6 text-center">
-            <h2 className="text-xl font-semibold text-[--text]">No projects registered yet.</h2>
-            <p className="mt-2 text-base text-[--text-muted]">
+          <div className="mt-6 rounded-card border border-border-subtle bg-card-bg p-6 text-center shadow-card">
+            <h2 className="text-lg font-semibold text-text-primary">No projects registered yet.</h2>
+            <p className="mt-2 text-base text-text-secondary">
               Run{' '}
               <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>{' '}
               to add one, or use the button above.
