@@ -28,7 +28,7 @@ describe('PanelContainer', () => {
     expect(section.getAttribute('aria-labelledby')).toBe('test-panel-title')
   })
 
-  it('PC2: renders <h2> with spec class string including text-xl font-semibold leading-snug text-[--text]', () => {
+  it('PC2: renders <h2> with spec class string including text-lg font-semibold leading-snug text-text-primary (Wave 3 repalette)', () => {
     render(
       <PanelContainer panelId="commitment" title="Commitment">
         <p>content</p>
@@ -37,22 +37,22 @@ describe('PanelContainer', () => {
     const heading = screen.getByRole('heading', { level: 2, name: 'Commitment' })
     expect(heading).toBeDefined()
     expect(heading.id).toBe('commitment-title')
-    expect(heading.className).toContain('text-xl')
+    expect(heading.className).toContain('text-lg')
     expect(heading.className).toContain('font-semibold')
     expect(heading.className).toContain('leading-snug')
-    expect(heading.className).toContain('text-[--text]')
+    expect(heading.className).toContain('text-text-primary')
   })
 
-  it('PC3: <section> has spec class string rounded-md border border-[--border] bg-[--surface] p-6 flex flex-col gap-4', () => {
+  it('PC3: <section> has new card chrome — rounded-card bg-card-bg shadow-card p-6 flex flex-col gap-4 (Wave 3 repalette, no border)', () => {
     render(
       <PanelContainer panelId="hook-firings" title="Hook Firings">
         <p>content</p>
       </PanelContainer>,
     )
     const section = screen.getByRole('region', { name: 'Hook Firings' })
-    expect(section.className).toContain('rounded-md')
-    expect(section.className).toContain('border-[--border]')
-    expect(section.className).toContain('bg-[--surface]')
+    expect(section.className).toContain('rounded-card')
+    expect(section.className).toContain('bg-card-bg')
+    expect(section.className).toContain('shadow-card')
     expect(section.className).toContain('p-6')
     expect(section.className).toContain('flex')
     expect(section.className).toContain('flex-col')

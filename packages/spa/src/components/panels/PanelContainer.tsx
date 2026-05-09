@@ -1,7 +1,8 @@
 /**
  * PanelContainer — shared <section> wrapper used by all 8 Phase 4 panels.
  *
- * UI-SPEC §"Panel container": rounded-md border, bg-[--surface], p-6, flex flex-col gap-4.
+ * UI-SPEC §8 Card Anatomy: rounded-card (12px), bg-card-bg (white), shadow-card, p-6.
+ * No border — shadow + radius do the visual work (UI-SPEC §8 "no border").
  * Always-expanded (D-4-13): no max-height, no disclosure widget, no animation.
  *
  * Props:
@@ -11,7 +12,7 @@
  *   unreachable — shows an inline 'Agent unreachable — retrying...' row below the title.
  *   children   — panel body content.
  *
- * Note: --warning-surface token is defined in global.css (both light and dark themes).
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import { AlertTriangle } from 'lucide-react'
 import React from 'react'
@@ -36,23 +37,23 @@ export function PanelContainer({
   return (
     <section
       aria-labelledby={`${panelId}-title`}
-      className="flex flex-col gap-4 rounded-md border border-[--border] bg-[--surface] p-6"
+      className="flex flex-col gap-4 rounded-card bg-card-bg p-6 shadow-card"
     >
       <header className="flex items-center justify-between">
         <h2
           id={`${panelId}-title`}
-          className="text-xl font-semibold leading-snug text-[--text]"
+          className="text-lg font-semibold leading-snug text-text-primary"
         >
           {title}
         </h2>
         {stale && (
-          <span className="rounded bg-[--warning-surface] px-2 py-0.5 text-xs font-semibold text-[--warning]">
+          <span className="rounded-md bg-card-bg-hover px-2 py-0.5 text-xs font-semibold text-status-warning">
             Stale
           </span>
         )}
       </header>
       {unreachable && (
-        <div className="flex items-center gap-2 text-sm text-[--warning]">
+        <div className="flex items-center gap-2 text-sm text-status-warning">
           <AlertTriangle size={14} aria-hidden="true" />
           Agent unreachable — retrying...
         </div>

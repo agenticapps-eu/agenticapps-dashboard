@@ -103,7 +103,7 @@ describe('RationalizationFires', () => {
     expect(screen.getByText('No rationalization rows found in SKILL.md.')).toBeDefined()
   })
 
-  it('RF4: nonzero fires uses text-[--text], zero fires uses text-[--text-muted]', () => {
+  it('RF4: nonzero fires uses text-text-primary, zero fires uses text-text-secondary (Wave 3 repalette)', () => {
     mockQuery({
       data: {
         rationalization: {
@@ -118,10 +118,10 @@ describe('RationalizationFires', () => {
     render(<RationalizationFires projectId="proj-1" />)
 
     const nonzeroFires = screen.getByText('5 fires')
-    expect(nonzeroFires.className).toContain('text-[--text]')
+    expect(nonzeroFires.className).toContain('text-text-primary')
 
     const zeroFires = screen.getByText('0 fires')
-    expect(zeroFires.className).toContain('text-[--text-muted]')
+    expect(zeroFires.className).toContain('text-text-secondary')
   })
 
   it('RF6b: schema_drift error → inline drift state with path visible', () => {

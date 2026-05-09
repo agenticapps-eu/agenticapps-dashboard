@@ -15,6 +15,8 @@
  *   4. skillInstalled false → install-hint (DISC-04)
  *   5. skillInstalled true, entries empty → empty-state copy
  *   6. skillInstalled true, entries present → row list
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -60,7 +62,7 @@ export function HookFirings({ projectId }: HookFiringsProps): React.JSX.Element 
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="hook-firings" title="Hook Firings">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -70,7 +72,7 @@ export function HookFirings({ projectId }: HookFiringsProps): React.JSX.Element 
   if (!skillInstalled) {
     return (
       <PanelContainer panelId="hook-firings" title="Hook Firings">
-        <p className="text-sm text-[--text]">
+        <p className="text-sm text-text-primary">
           The meta-observer skill is not installed in this project.
         </p>
         <CodeBlock command={META_OBSERVER_INSTALL_CMD} copyLabel="Copy install command" />
@@ -81,7 +83,7 @@ export function HookFirings({ projectId }: HookFiringsProps): React.JSX.Element 
   if (entries.length === 0) {
     return (
       <PanelContainer panelId="hook-firings" title="Hook Firings">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No hook firings yet — try running /review or /cso.
         </p>
       </PanelContainer>
@@ -90,19 +92,19 @@ export function HookFirings({ projectId }: HookFiringsProps): React.JSX.Element 
 
   return (
     <PanelContainer panelId="hook-firings" title="Hook Firings">
-      <p className="-mt-2 text-xs text-[--text-muted]">{entries.length} recent firings</p>
+      <p className="-mt-2 text-xs text-text-secondary">{entries.length} recent firings</p>
       <div className="max-h-[420px] overflow-y-auto">
-        <ol className="flex flex-col divide-y divide-[--border]">
+        <ol className="flex flex-col divide-y divide-border-subtle">
           {entries.map((e, i) => (
             <li key={`${e.ts}-${i}`} className="flex items-baseline gap-3 py-2">
               <time
                 dateTime={e.ts}
-                className="shrink-0 font-mono text-xs tabular-nums text-[--text-muted]"
+                className="shrink-0 font-mono text-xs tabular-nums text-text-secondary"
               >
                 {formatRelativeTime(e.ts)}
               </time>
-              <span className="truncate text-sm font-semibold text-[--text]">{e.skill}</span>
-              <span className="ml-auto shrink-0 rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide text-[--text-muted]">
+              <span className="truncate text-sm font-semibold text-text-primary">{e.skill}</span>
+              <span className="ml-auto shrink-0 rounded bg-card-bg-hover px-1.5 py-0.5 text-xs uppercase tracking-wide text-text-secondary">
                 {e.hook}
               </span>
             </li>
@@ -112,4 +114,3 @@ export function HookFirings({ projectId }: HookFiringsProps): React.JSX.Element 
     </PanelContainer>
   )
 }
-

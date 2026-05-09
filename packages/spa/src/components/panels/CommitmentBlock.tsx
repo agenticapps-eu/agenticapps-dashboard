@@ -13,6 +13,8 @@
  *   3. isLoading / no data → 'Loading...'
  *   4. markdown null → empty-state copy (verbatim from UI-SPEC Copywriting Contract)
  *   5. markdown present → <pre> + Source line
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -50,7 +52,7 @@ export function CommitmentBlock({ projectId }: CommitmentBlockProps): React.JSX.
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="commitment" title="Commitment">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -60,7 +62,7 @@ export function CommitmentBlock({ projectId }: CommitmentBlockProps): React.JSX.
   if (markdown === null) {
     return (
       <PanelContainer panelId="commitment" title="Commitment">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No commitment block found. The latest session may not have emitted one yet.
         </p>
       </PanelContainer>
@@ -69,13 +71,12 @@ export function CommitmentBlock({ projectId }: CommitmentBlockProps): React.JSX.
 
   return (
     <PanelContainer panelId="commitment" title="Commitment">
-      <pre className="whitespace-pre-wrap rounded bg-[--surface-elevated] p-4 font-mono text-sm leading-relaxed text-[--text]">
+      <pre className="whitespace-pre-wrap rounded bg-card-bg-hover p-4 font-mono text-sm leading-relaxed text-text-primary">
         {markdown}
       </pre>
       {sourceFile !== null && (
-        <p className="font-mono text-xs text-[--text-subtle]">Source: {sourceFile}</p>
+        <p className="font-mono text-xs text-text-tertiary">Source: {sourceFile}</p>
       )}
     </PanelContainer>
   )
 }
-

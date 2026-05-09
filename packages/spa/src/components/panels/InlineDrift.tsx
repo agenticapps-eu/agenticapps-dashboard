@@ -9,6 +9,8 @@
  *
  * Extracted from CommitmentBlock / HookFirings / RationalizationFires in Plan 06
  * (Plan 05 kept 3 copies deliberately until Plan 06 landed).
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import { AlertTriangle } from 'lucide-react'
 import React from 'react'
@@ -26,14 +28,14 @@ export function InlineDrift({ panelId, title, path, onRetry }: InlineDriftProps)
   return (
     <PanelContainer panelId={panelId} title={`Schema drift — ${title}`}>
       <div className="flex items-start gap-2 text-sm">
-        <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 text-[--danger]" />
+        <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 text-status-error" />
         <div>
-          <p className="text-[--text]">The agent and dashboard disagree on the response shape.</p>
-          <p className="mt-1 font-mono text-xs text-[--text-muted]">field: {path}</p>
+          <p className="text-text-primary">The agent and dashboard disagree on the response shape.</p>
+          <p className="mt-1 font-mono text-xs text-text-secondary">field: {path}</p>
           <button
             type="button"
             onClick={onRetry}
-            className="mt-2 rounded border border-[--border-strong] bg-[--surface-elevated] px-3 py-1 text-xs font-semibold hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+            className="mt-2 rounded border border-border-subtle bg-card-bg-hover px-3 py-1 text-xs font-semibold hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Retry
           </button>

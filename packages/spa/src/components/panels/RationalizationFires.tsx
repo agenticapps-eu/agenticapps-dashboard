@@ -18,6 +18,8 @@
  * Note on install command: UI-SPEC defers the exact canonical command to Phase 6 polish
  * (D-4-15 deferred note for agenticapps-workflow skill specifically). v1 ships this
  * placeholder; Phase 6 confirms the canonical command.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -61,7 +63,7 @@ export function RationalizationFires({ projectId }: RationalizationFiresProps): 
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="rationalization-fires" title="Rationalization Fires">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -71,7 +73,7 @@ export function RationalizationFires({ projectId }: RationalizationFiresProps): 
   if (!skillInstalled) {
     return (
       <PanelContainer panelId="rationalization-fires" title="Rationalization Fires">
-        <p className="text-sm text-[--text]">
+        <p className="text-sm text-text-primary">
           agentic-apps-workflow skill not installed in this project.
         </p>
         <CodeBlock command={WORKFLOW_INSTALL_CMD} copyLabel="Copy install command" />
@@ -82,7 +84,7 @@ export function RationalizationFires({ projectId }: RationalizationFiresProps): 
   if (rows.length === 0) {
     return (
       <PanelContainer panelId="rationalization-fires" title="Rationalization Fires">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No rationalization rows found in SKILL.md.
         </p>
       </PanelContainer>
@@ -94,9 +96,9 @@ export function RationalizationFires({ projectId }: RationalizationFiresProps): 
       <ul className="flex flex-col gap-2">
         {rows.map((r, i) => (
           <li key={`${r.label}-${i}`} className="flex items-baseline justify-between gap-4">
-            <span className="text-sm text-[--text]">{r.label}</span>
+            <span className="text-sm text-text-primary">{r.label}</span>
             <span
-              className={`font-mono text-sm ${r.fires > 0 ? 'text-[--text]' : 'text-[--text-muted]'}`}
+              className={`font-mono text-sm ${r.fires > 0 ? 'text-text-primary' : 'text-text-secondary'}`}
             >
               {r.fires} {r.fires === 1 ? 'fire' : 'fires'}
             </span>
@@ -106,4 +108,3 @@ export function RationalizationFires({ projectId }: RationalizationFiresProps): 
     </PanelContainer>
   )
 }
-

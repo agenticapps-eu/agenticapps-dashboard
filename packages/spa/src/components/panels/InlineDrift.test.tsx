@@ -44,15 +44,15 @@ describe('InlineDrift', () => {
     expect(onRetry).toHaveBeenCalledOnce()
   })
 
-  it('ID4: AlertTriangle icon is aria-hidden and styled with text-[--danger]', () => {
+  it('ID4: AlertTriangle icon is aria-hidden and styled with text-status-error (Wave 3 repalette)', () => {
     render(<InlineDrift panelId="x" title="Foo" path="bar" onRetry={vi.fn()} />)
 
     // The svg from lucide-react gets aria-hidden="true"
     const svgs = document.querySelectorAll('svg[aria-hidden="true"]')
     expect(svgs.length).toBeGreaterThan(0)
 
-    // The AlertTriangle wrapper span/container gets text-[--danger]
-    const dangerEl = document.querySelector('.text-\\[--danger\\]')
-    expect(dangerEl).not.toBeNull()
+    // The AlertTriangle wrapper gets text-status-error (namespaced token)
+    const errorEl = document.querySelector('.text-status-error')
+    expect(errorEl).not.toBeNull()
   })
 })
