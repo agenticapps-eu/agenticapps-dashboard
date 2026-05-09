@@ -208,7 +208,7 @@ describe('ProjectHeader', () => {
     expect(screen.getByText('acme')).toBeDefined()
   })
 
-  it('H8: back link has focus-visible:ring-[--ring] class', () => {
+  it('H8: back link has focus-visible:ring-accent class', () => {
     mockUseRegistryList.mockReturnValue({
       data: [makeRegistryItem()],
       isLoading: false,
@@ -226,7 +226,7 @@ describe('ProjectHeader', () => {
     expect(link.className).toContain('focus-visible:ring-accent')
   })
 
-  it('H9: separator dots have aria-hidden="true" and text-[--text-muted] class', () => {
+  it('H9: separator dots have aria-hidden="true" and text-text-secondary class', () => {
     mockUseRegistryList.mockReturnValue({
       data: [makeRegistryItem()],
       isLoading: false,

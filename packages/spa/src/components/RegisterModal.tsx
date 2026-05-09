@@ -269,21 +269,21 @@ export function RegisterModal({
   return (
     <dialog
       ref={dialogRef}
-      className="bg-[--surface] border border-[--border-strong] rounded-lg p-0 max-w-md w-full mx-4 dark:shadow-none shadow-lg backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg p-0 max-w-md w-full mx-4 dark:shadow-none shadow-card backdrop:bg-black/60"
       onCancel={handleEscape}
       onClick={handleBackdropClick}
     >
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
-          <h2 className="text-xl font-semibold leading-snug text-[--text]">
+          <h2 className="text-xl font-semibold leading-snug text-text-primary">
             {mode === 'step1' ? 'Register a project' : 'Confirm registration'}
           </h2>
           <button
             type="button"
             aria-label="Close registration dialog"
             onClick={handleClose}
-            className="h-8 w-8 flex items-center justify-center rounded-md text-[--text-muted] hover:bg-[--surface-elevated] hover:text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+            className="h-8 w-8 flex items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             ×
           </button>
@@ -292,7 +292,7 @@ export function RegisterModal({
         {/* Step 1 */}
         {mode === 'step1' && (
           <div>
-            <label className="block text-sm font-semibold text-[--text] mb-1">
+            <label className="block text-sm font-semibold text-text-primary mb-1">
               Project path
             </label>
             <input
@@ -304,15 +304,15 @@ export function RegisterModal({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handlePreview()
               }}
-              className="w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 font-mono text-sm text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+              className="w-full bg-card-bg-hover border border-border-subtle rounded-md px-3 py-2 font-mono text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               placeholder="/Users/you/Sourcecode/my-project"
             />
-            <p className="mt-1 text-sm text-[--text-muted]">
+            <p className="mt-1 text-sm text-text-secondary">
               Full path to the project root.
             </p>
 
             {networkError && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-[--text-muted]">
+              <div className="mt-3 flex items-center gap-2 text-sm text-text-secondary">
                 <span>Couldn&apos;t reach the daemon.</span>
                 <button
                   type="button"
@@ -320,7 +320,7 @@ export function RegisterModal({
                     setNetworkError(false)
                     handlePreview()
                   }}
-                  className="underline text-[--accent] hover:text-[--accent-hover] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                  className="underline text-accent hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Retry preview
                 </button>
@@ -332,7 +332,7 @@ export function RegisterModal({
                 type="button"
                 onClick={handlePreview}
                 disabled={prepare.isPending}
-                className="bg-[--surface-elevated] border border-[--border-strong] text-[--text] px-4 py-2 text-sm font-semibold rounded-md hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-card-bg-hover border border-border-subtle text-text-primary px-4 py-2 text-sm font-semibold rounded-md hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {prepare.isPending ? 'Previewing…' : 'Preview path'}
               </button>
@@ -358,17 +358,17 @@ export function RegisterModal({
           <div>
             {/* Resolved path */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-[--text] mb-1">
+              <label className="block text-sm font-semibold text-text-primary mb-1">
                 Resolved path
               </label>
-              <div className="font-mono text-sm text-[--text] bg-[--surface-elevated] px-3 py-2 rounded-md">
+              <div className="font-mono text-sm text-text-primary bg-card-bg-hover px-3 py-2 rounded-md">
                 {(prepareData as AllowedResponse).canonicalRoot}
               </div>
             </div>
 
             {/* Name */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-[--text] mb-1">
+              <label className="block text-sm font-semibold text-text-primary mb-1">
                 Name
               </label>
               <input
@@ -378,26 +378,26 @@ export function RegisterModal({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleConfirm()
                 }}
-                className="w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 text-sm text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                className="w-full bg-card-bg-hover border border-border-subtle rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
             </div>
 
             {/* Client */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-[--text] mb-1">
+              <label className="block text-sm font-semibold text-text-primary mb-1">
                 Client (optional)
               </label>
               <input
                 type="text"
                 value={client}
                 onChange={(e) => setClient(e.target.value)}
-                className="w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 text-sm text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                className="w-full bg-card-bg-hover border border-border-subtle rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
             </div>
 
             {/* Tags */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-[--text] mb-1">
+              <label className="block text-sm font-semibold text-text-primary mb-1">
                 Tags
               </label>
               <div className="flex flex-wrap gap-2 mb-2">
@@ -406,7 +406,7 @@ export function RegisterModal({
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
-                    className="bg-[--accent] text-[--accent-fg] border border-[--accent] text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                    className="bg-accent text-white border border-accent text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {tag}
                   </button>
@@ -423,13 +423,13 @@ export function RegisterModal({
                   }
                 }}
                 placeholder="Add tag…"
-                className="w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 text-sm text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                className="w-full bg-card-bg-hover border border-border-subtle rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
             </div>
 
             {/* No-markers hint */}
             {showNoMarkersHint() && (
-              <div className="mb-4 text-sm text-[--text-muted] flex items-start gap-2">
+              <div className="mb-4 text-sm text-text-secondary flex items-start gap-2">
                 <span aria-hidden="true">ⓘ</span>
                 <span>No git repo or .planning/.claude found here. Cards may show empty data.</span>
               </div>
@@ -437,12 +437,12 @@ export function RegisterModal({
 
             {/* Refreshing indicator for 410 auto-re-prepare */}
             {refreshing && (
-              <div className="mb-4 text-sm text-[--text-muted]">refreshing…</div>
+              <div className="mb-4 text-sm text-text-secondary">refreshing…</div>
             )}
 
             {/* Network error in step 2 */}
             {networkError && (
-              <div className="mb-4 text-sm text-[--text-muted]">
+              <div className="mb-4 text-sm text-text-secondary">
                 Couldn&apos;t reach the daemon.
               </div>
             )}
@@ -455,7 +455,7 @@ export function RegisterModal({
                   setMode('step1')
                   setPrepareData(null)
                 }}
-                className="bg-[--surface-elevated] border border-[--border-strong] text-[--text] px-4 py-2 text-sm font-semibold rounded-md hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                className="bg-card-bg-hover border border-border-subtle text-text-primary px-4 py-2 text-sm font-semibold rounded-md hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 Back
               </button>
@@ -463,7 +463,7 @@ export function RegisterModal({
                 type="button"
                 onClick={() => void handleConfirm()}
                 disabled={confirm.isPending || refreshing}
-                className="bg-[--accent] text-[--accent-fg] px-4 py-2 text-sm font-semibold rounded-md hover:bg-[--accent-hover] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-accent text-white px-4 py-2 text-sm font-semibold rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {confirm.isPending || refreshing ? 'Registering…' : 'Confirm registration'}
               </button>
@@ -476,16 +476,16 @@ export function RegisterModal({
           <div>
             {/* Resolved path */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-[--text] mb-1">
+              <label className="block text-sm font-semibold text-text-primary mb-1">
                 Resolved path
               </label>
-              <div className="font-mono text-sm text-[--text] bg-[--surface-elevated] px-3 py-2 rounded-md">
+              <div className="font-mono text-sm text-text-primary bg-card-bg-hover px-3 py-2 rounded-md">
                 {(prepareData as BlockedResponse).canonicalRoot}
               </div>
             </div>
 
             {/* Blocked banner */}
-            <div className="mb-4 bg-[--danger-surface] border-l-2 border-l-[--danger] px-4 py-3 rounded-md text-sm text-[--text]">
+            <div className="mb-4 bg-card-bg-hover border-l-2 border-l-status-error px-4 py-3 rounded-md text-sm text-text-primary">
               Blocked: {(prepareData as BlockedResponse).blockedReason}
             </div>
 
@@ -497,14 +497,14 @@ export function RegisterModal({
                   setMode('step1')
                   setPrepareData(null)
                 }}
-                className="bg-[--surface-elevated] border border-[--border-strong] text-[--text] px-4 py-2 text-sm font-semibold rounded-md hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                className="bg-card-bg-hover border border-border-subtle text-text-primary px-4 py-2 text-sm font-semibold rounded-md hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 Back
               </button>
               <button
                 type="button"
                 disabled
-                className="bg-[--accent] text-[--accent-fg] px-4 py-2 text-sm font-semibold rounded-md opacity-50 cursor-not-allowed"
+                className="bg-accent text-white px-4 py-2 text-sm font-semibold rounded-md opacity-50 cursor-not-allowed"
               >
                 Confirm registration
               </button>
@@ -517,17 +517,17 @@ export function RegisterModal({
           <div>
             {/* Resolved path */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-[--text] mb-1">
+              <label className="block text-sm font-semibold text-text-primary mb-1">
                 Resolved path
               </label>
-              <div className="font-mono text-sm text-[--text] bg-[--surface-elevated] px-3 py-2 rounded-md">
+              <div className="font-mono text-sm text-text-primary bg-card-bg-hover px-3 py-2 rounded-md">
                 {(prepareData as AlreadyRegisteredResponse).canonicalRoot}
               </div>
             </div>
 
             {/* Already-registered banner */}
-            <div className="mb-4 bg-[--surface-elevated] border border-[--border] px-4 py-3 rounded-md">
-              <p className="text-sm text-[--text] mb-3">
+            <div className="mb-4 bg-card-bg-hover border border-border-subtle px-4 py-3 rounded-md">
+              <p className="text-sm text-text-primary mb-3">
                 Already registered as {(prepareData as AlreadyRegisteredResponse).existingEntry.id} since{' '}
                 {new Date((prepareData as AlreadyRegisteredResponse).existingEntry.addedAt).toLocaleDateString()}.
               </p>
@@ -543,14 +543,14 @@ export function RegisterModal({
                     })
                     onClose()
                   }}
-                  className="bg-[--accent] text-[--accent-fg] px-3 py-2 text-sm font-semibold rounded-md hover:bg-[--accent-hover] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                  className="bg-accent text-white px-3 py-2 text-sm font-semibold rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Open project
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="bg-[--surface-elevated] border border-[--border] text-[--text] px-3 py-2 text-sm rounded-md hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+                  className="bg-card-bg-hover border border-border-subtle text-text-primary px-3 py-2 text-sm rounded-md hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Close
                 </button>
@@ -562,13 +562,13 @@ export function RegisterModal({
 
       {/* Dirty-state discard banner */}
       {dirtyDiscardOpen && (
-        <div className="border-t border-[--border] bg-[--surface-elevated] px-6 py-3 flex items-center justify-between gap-2">
-          <span className="text-sm text-[--text-muted]">Discard changes?</span>
+        <div className="border-t border-border-subtle bg-card-bg-hover px-6 py-3 flex items-center justify-between gap-2">
+          <span className="text-sm text-text-secondary">Discard changes?</span>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setDirtyDiscardOpen(false)}
-              className="bg-[--surface] border border-[--border] text-sm px-3 py-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+              className="bg-card-bg border border-border-subtle text-sm px-3 py-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Keep editing
             </button>
@@ -578,7 +578,7 @@ export function RegisterModal({
                 setDirtyDiscardOpen(false)
                 onClose()
               }}
-              className="bg-[--danger] text-white text-sm px-3 py-2 rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+              className="bg-status-error text-white text-sm px-3 py-2 rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Discard
             </button>

@@ -39,10 +39,10 @@ function computePosition(anchor: ContextMenuAnchor): { top: number; left: number
 }
 
 const ITEM_CLASS =
-  'flex items-center gap-2 px-4 py-2 text-sm text-[--text] w-full text-left hover:bg-[--surface-elevated] focus-visible:bg-[--surface-elevated] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[--ring]'
+  'flex items-center gap-2 px-4 py-2 text-sm text-text-primary w-full text-left hover:bg-card-bg-hover focus-visible:bg-card-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent'
 
 const ITEM_DANGER_CLASS =
-  'flex items-center gap-2 px-4 py-2 text-sm text-[--danger] w-full text-left hover:bg-[--danger-surface] focus-visible:bg-[--danger-surface] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[--ring]'
+  'flex items-center gap-2 px-4 py-2 text-sm text-status-error w-full text-left hover:bg-card-bg-hover focus-visible:bg-card-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent'
 
 export function CardContextMenu({
   anchor,
@@ -114,7 +114,7 @@ export function CardContextMenu({
       ref={containerRef}
       role="menu"
       style={containerStyle}
-      className="bg-[--surface] border border-[--border-strong] rounded-md shadow-md py-1 min-w-[160px]"
+      className="bg-card-bg border border-border-subtle rounded-md shadow-card py-1 min-w-[160px]"
       onKeyDown={handleKeyDown}
     >
       {mode === 'menu' ? (
@@ -155,23 +155,23 @@ export function CardContextMenu({
         </>
       ) : (
         <>
-          <div className="px-4 py-2 text-sm font-semibold text-[--text]">
+          <div className="px-4 py-2 text-sm font-semibold text-text-primary">
             Unregister {item.name}?
           </div>
-          <div className="px-4 pb-2 text-sm text-[--text-muted]">
+          <div className="px-4 pb-2 text-sm text-text-secondary">
             This only removes it from the dashboard. No files are deleted.
           </div>
           <div className="px-4 py-2 flex gap-2">
             <button
               type="button"
-              className="bg-[--surface-elevated] border border-[--border] text-sm px-3 py-2 rounded-md text-[--text] hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+              className="bg-card-bg-hover border border-border-subtle text-sm px-3 py-2 rounded-md text-text-primary hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               onClick={() => setMode('menu')}
             >
               Cancel
             </button>
             <button
               type="button"
-              className="bg-[--danger] text-white text-sm px-3 py-2 rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+              className="bg-status-error text-white text-sm px-3 py-2 rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               onClick={() => {
                 unregister.mutate()
                 onClose()

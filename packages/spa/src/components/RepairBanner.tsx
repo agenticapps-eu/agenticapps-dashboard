@@ -27,16 +27,16 @@ export function RepairBanner(): React.JSX.Element | null {
   return (
     <div
       role="status"
-      className="flex items-center gap-3 border-b border-[--border] border-l-2 border-l-[--danger] bg-[--danger-surface] px-6 py-3 motion-safe:animate-[slideInDown_150ms_ease-out]"
+      className="flex items-center gap-3 border-b border-border-subtle border-l-2 border-l-status-error bg-card-bg-hover px-6 py-3"
     >
-      <AlertTriangle size={16} aria-hidden="true" className="text-[--danger]" />
-      <span className="text-sm font-semibold text-[--text]">Agent token rejected.</span>
+      <AlertTriangle size={16} aria-hidden="true" className="text-status-error" />
+      <span className="text-sm font-semibold text-text-primary">Agent token rejected.</span>
       <span className="flex-1" aria-hidden="true" />
       <button
         type="button"
         onClick={onRepair}
         aria-label="Re-pair (open onboarding)"
-        className="rounded-md border border-[--accent] px-3 py-1 text-sm font-semibold text-[--accent] hover:bg-[--accent] hover:text-[--accent-fg] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+        className="rounded-md border border-accent px-3 py-1 text-sm font-semibold text-accent hover:bg-accent hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
       >
         Re-pair
       </button>
@@ -44,7 +44,7 @@ export function RepairBanner(): React.JSX.Element | null {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss banner (will return on next 401)"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md p-2 text-[--text-muted] hover:bg-[--surface-elevated] hover:text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md p-2 text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
       >
         <X size={16} aria-hidden="true" />
       </button>

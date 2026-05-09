@@ -82,7 +82,7 @@ export function PairFlow() {
   if (status.kind === 'pairing') {
     return (
       <div className="mx-auto max-w-3xl px-6 py-12 md:px-8">
-        <p role="status" className="text-base text-[--text-muted]">
+        <p role="status" className="text-base text-text-secondary">
           Connecting to agent&hellip;
         </p>
       </div>
@@ -119,9 +119,9 @@ export function PairFlow() {
   // status.kind === 'failed'
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 md:px-8">
-      <section role="status" className="rounded-md border border-[--border] bg-[--surface] p-6">
-        <h2 className="text-xl font-semibold leading-snug text-[--text]">{status.heading}</h2>
-        <p className="mt-3 text-base leading-relaxed text-[--text-muted]">{status.body}</p>
+      <section role="status" className="rounded-md border border-border-subtle bg-card-bg p-6">
+        <h2 className="text-xl font-semibold leading-snug text-text-primary">{status.heading}</h2>
+        <p className="mt-3 text-base leading-relaxed text-text-secondary">{status.body}</p>
       </section>
     </div>
   )

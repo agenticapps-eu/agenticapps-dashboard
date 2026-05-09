@@ -9,10 +9,10 @@ import { RepairBanner } from './RepairBanner.js'
 export function AppShell(): React.JSX.Element {
   const mainWidth = useAppShellWidth()
   return (
-    <div className="flex min-h-screen flex-col bg-[--bg] text-[--text]">
+    <div className="flex min-h-screen flex-col bg-app-bg text-text-primary">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[--accent] focus:px-3 focus:py-2 focus:text-[--accent-fg]"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-white"
       >
         Skip to main content
       </a>

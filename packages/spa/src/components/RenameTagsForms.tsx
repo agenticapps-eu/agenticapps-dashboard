@@ -57,10 +57,10 @@ export function RenameDialog({ isOpen, item, onClose }: RenameDialogProps): Reac
         e.preventDefault()
         onClose()
       }}
-      className="bg-[--surface] border border-[--border-strong] rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-black/60"
     >
-      <h2 className="text-xl font-semibold leading-snug text-[--text]">Rename project</h2>
-      <label className="block text-sm font-semibold text-[--text] mt-4">Name</label>
+      <h2 className="text-xl font-semibold leading-snug text-text-primary">Rename project</h2>
+      <label className="block text-sm font-semibold text-text-primary mt-4">Name</label>
       <input
         type="text"
         value={name}
@@ -71,14 +71,14 @@ export function RenameDialog({ isOpen, item, onClose }: RenameDialogProps): Reac
             void handleSave()
           }
         }}
-        className="w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 text-sm text-[--text] mt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+        className="w-full bg-card-bg-hover border border-border-subtle rounded-md px-3 py-2 text-sm text-text-primary mt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         autoFocus
       />
       <div className="flex justify-end gap-2 mt-4">
         <button
           type="button"
           onClick={onClose}
-          className="bg-[--surface-elevated] border border-[--border] text-sm px-3 py-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+          className="bg-card-bg-hover border border-border-subtle text-sm px-3 py-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           Cancel
         </button>
@@ -86,7 +86,7 @@ export function RenameDialog({ isOpen, item, onClose }: RenameDialogProps): Reac
           type="button"
           onClick={() => void handleSave()}
           disabled={rename.isPending}
-          className="bg-[--accent] text-[--accent-fg] text-sm px-3 py-2 rounded-md hover:bg-[--accent-hover] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-accent text-white text-sm px-3 py-2 rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {rename.isPending ? 'Saving…' : 'Save'}
         </button>
@@ -166,9 +166,9 @@ export function EditTagsDialog({
         e.preventDefault()
         onClose()
       }}
-      className="bg-[--surface] border border-[--border-strong] rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-black/60"
     >
-      <h2 className="text-xl font-semibold leading-snug text-[--text]">Edit tags</h2>
+      <h2 className="text-xl font-semibold leading-snug text-text-primary">Edit tags</h2>
       <div className="flex flex-wrap gap-2 mt-4">
         {allChips.map((t) => (
           <button
@@ -178,8 +178,8 @@ export function EditTagsDialog({
             aria-pressed={tags.includes(t)}
             className={
               tags.includes(t)
-                ? 'bg-[--accent] text-[--accent-fg] border border-[--accent] text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]'
-                : 'bg-[--surface-elevated] border border-[--border] text-[--text] text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]'
+                ? 'bg-accent text-white border border-accent text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+                : 'bg-card-bg-hover border border-border-subtle text-text-primary text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
             }
           >
             {t}
@@ -198,13 +198,13 @@ export function EditTagsDialog({
         }}
         placeholder="Add tag…"
         aria-label="Add tag"
-        className="w-full bg-[--surface-elevated] border border-[--border-strong] rounded-md px-3 py-2 text-sm text-[--text] mt-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+        className="w-full bg-card-bg-hover border border-border-subtle rounded-md px-3 py-2 text-sm text-text-primary mt-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       />
       <div className="flex justify-end gap-2 mt-4">
         <button
           type="button"
           onClick={onClose}
-          className="bg-[--surface-elevated] border border-[--border] text-sm px-3 py-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+          className="bg-card-bg-hover border border-border-subtle text-sm px-3 py-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           Cancel
         </button>
@@ -212,7 +212,7 @@ export function EditTagsDialog({
           type="button"
           onClick={() => void handleSave()}
           disabled={setTagsMutation.isPending}
-          className="bg-[--accent] text-[--accent-fg] text-sm px-3 py-2 rounded-md hover:bg-[--accent-hover] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-accent text-white text-sm px-3 py-2 rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {setTagsMutation.isPending ? 'Saving…' : 'Save'}
         </button>
