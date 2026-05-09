@@ -152,13 +152,26 @@ Plans:
 
 ### Phase 05.1: UI redesign Cloudflare-inspired sidebar dashboard shell (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 5
-**Plans:** 0 plans
+**Goal**: Replace the current top-header-only navigation with a sidebar-driven shell inspired by Cloudflare dashboard surfaces. Apply the locked design tokens (warm paper bg, purple accent, Inter typography, soft card shadows) across all paired routes. Establish the design-system primitive layer. Migrate every Phase 5 panel to use the new Card primitive. ZERO functional regressions — every panel that exists today must still exist after 5.1, with the same data and behavior. The 1117-test suite must continue to pass. Drives toward Phase 6 POLISH-04 impeccable >= 90 gate.
+**Depends on**: Phase 5
+**Requirements**: None (internal UI quality work; ties to POLISH-04 in Phase 6)
+**Success Criteria**:
+  1. All paired routes (`/`, `/projects/:id`, `/settings`, `/help`) render under AppShellV2 with locked tokens (UI-SPEC AC-01).
+  2. `/onboarding` and `/pair` keep their standalone presentation (UI-SPEC AC-02).
+  3. Every Phase 5 panel still works — 1117-test baseline holds (UI-SPEC AC-03).
+  4. No orange anywhere; tokens.css is the single source of truth (UI-SPEC AC-04, AC-05).
+  5. `impeccable:critique` >= 90 on `/` and `/projects/:id` at 1440x900 (UI-SPEC AC-06; preview gate, Phase 6 enforces).
+  6. New UI primitive component tests pass (UI-SPEC AC-07).
+  7. Visual smoke screenshot committed at refs/after-shell.png (UI-SPEC AC-08).
+**Plans**: 6 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 05.1 to break down)
+- [ ] 05.1-01-PLAN.md — Wave 1: tokens.css + 7 UI primitives (Card, CardHeader, EmptyState, Pill, StatusPill, MetricNumeric, KbdHint) + Inter font + alias layer + noOrange invariant
+- [ ] 05.1-02-PLAN.md — Wave 2: shell components (Sidebar*, TopBar, Breadcrumb, PageHeader) + AppShellV2 + VITE_APPSHELL_V2 flag + pathless layout fixing /onboarding+/pair leak
+- [ ] 05.1-03-PLAN.md — Wave 3: migrate `/` (MultiProjectHome PageHeader + repalette HomeToolbar/ProjectCard/RegisterButtonCard)
+- [ ] 05.1-04-PLAN.md — Wave 4: migrate `/projects/:id` (PanelContainer + InlineDrift + 13 panels + SingleProjectView PageHeader + grid gap normalization)
+- [ ] 05.1-05-PLAN.md — Wave 5: migrate `/settings`+`/help` + repalette remaining shell-adjacent components (RepairBanner, CommandPalette, modals, Header, etc.) — alias-free precondition for Wave 6
+- [ ] 05.1-06-PLAN.md — Wave 6: flag flip + delete legacy AppShell/Header/HomeLayout/ProjectLayout/appShellWidth/ProjectHeader + delete alias :root block + legacy .dark block; capture refs/after-shell.png; run /impeccable:critique closure ritual
 
 ### Phase 6: Polish + Service Install + Acceptance
 **Goal**: Production-ready dashboard — keyboard shortcuts, LaunchAgent / systemd installers, impeccable-critique gate, two-stage review, README with FAQ + troubleshooting, CF Access policy applied (already done pre-flight).
