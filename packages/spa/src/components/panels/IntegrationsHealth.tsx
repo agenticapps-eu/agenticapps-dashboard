@@ -99,9 +99,9 @@ const PILL_LABEL = {
 } as const
 
 const PILL_CLASS = {
-  configured: 'text-[--success]',
-  'present-but-not-configured': 'text-[--warning]',
-  'not-detected': 'text-[--text-muted]',
+  configured: 'text-status-success',
+  'present-but-not-configured': 'text-status-warning',
+  'not-detected': 'text-text-secondary',
 } as const
 
 export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): React.JSX.Element {
@@ -124,7 +124,7 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
   if (query.isLoading) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -149,18 +149,18 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
           const pillClass = PILL_CLASS[state]
           return (
             <React.Fragment key={key}>
-              <span className="text-sm font-semibold text-[--text]">{label}</span>
+              <span className="text-sm font-semibold text-text-primary">{label}</span>
               <div className="flex flex-col gap-1">
                 <span
-                  className={`inline-flex items-center self-start rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide ${pillClass}`}
+                  className={`inline-flex items-center self-start rounded bg-card-bg-hover px-1.5 py-0.5 text-xs uppercase tracking-wide ${pillClass}`}
                 >
                   {pillLabel}
                 </span>
                 {state === 'present-but-not-configured' && (
-                  <span className="text-sm text-[--text-muted]">{nudge}</span>
+                  <span className="text-sm text-text-secondary">{nudge}</span>
                 )}
                 {state === 'not-detected' && (
-                  <span className="text-base leading-relaxed text-[--text-muted]">{paragraph}</span>
+                  <span className="text-base leading-relaxed text-text-secondary">{paragraph}</span>
                 )}
               </div>
             </React.Fragment>

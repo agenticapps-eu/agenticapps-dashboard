@@ -22,6 +22,8 @@
  *   T-05-04-Markdown-Injection: all daemon strings rendered as React text children.
  *   T-05-04-Cache-Bypass-Privacy: retry calls /api/projects/:id/agentlinter?bypassCache=1
  *     which still runs with --local; bypass is to the cache, not the privacy flag.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React, { useState, useId } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -65,7 +67,7 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   if (query.isLoading) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -87,11 +89,11 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   if (data.kind === 'not-installed') {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text]">
+        <p className="text-sm text-text-primary">
           AgentLinter binary missing from the daemon install. Reinstall with
         </p>
         <CodeBlock command="pnpm install --frozen-lockfile" copyLabel="Copy reinstall command" />
-        <p className="text-sm text-[--text]">to restore scoring.</p>
+        <p className="text-sm text-text-primary">to restore scoring.</p>
       </PanelContainer>
     )
   }
@@ -109,12 +111,12 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
     }
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text]">Lint scan timed out after 30 seconds.</p>
+        <p className="text-sm text-text-primary">Lint scan timed out after 30 seconds.</p>
         <button
           type="button"
           onClick={() => void onRetry()}
           aria-label="Retry agentlinter scan, bypassing cache"
-          className="mt-2 border border-[--border] rounded px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-[--ring] min-w-[44px] min-h-[44px]"
+          className="mt-2 rounded border border-border-subtle px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-accent min-w-[44px] min-h-[44px]"
         >
           Retry scan
         </button>
@@ -126,11 +128,11 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   if (data.kind === 'error') {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text]">Lint scan failed.</p>
-        <pre className="whitespace-pre-wrap rounded bg-[--surface-elevated] p-3 font-mono text-xs text-[--text-muted]">
+        <p className="text-sm text-text-primary">Lint scan failed.</p>
+        <pre className="whitespace-pre-wrap rounded bg-card-bg-hover p-3 font-mono text-xs text-text-secondary">
           {data.stderr}
         </pre>
-        <p className="mt-2 font-mono text-xs text-[--text-subtle]">Exit code: {data.exitCode}</p>
+        <p className="mt-2 font-mono text-xs text-text-tertiary">Exit code: {data.exitCode}</p>
       </PanelContainer>
     )
   }
@@ -139,7 +141,7 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   if (data.kind === 'unparseable') {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text]">
+        <p className="text-sm text-text-primary">
           Lint scan failed (exit {data.exitCode}) — see daemon log.
         </p>
       </PanelContainer>
@@ -150,10 +152,10 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   const { report } = data
   const scoreColor =
     report.score >= 90
-      ? 'text-[--success]'
+      ? 'text-status-success'
       : report.score < 60
-        ? 'text-[--warning]'
-        : 'text-[--text]'
+        ? 'text-status-warning'
+        : 'text-text-primary'
 
   // Collect unique file names from report.files + diagnostic file references
   const fileNames = [
@@ -175,7 +177,7 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   return (
     <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
       <div className={`mb-3 font-mono text-sm tabular-nums ${scoreColor}`}>{report.score}/100</div>
-      <ul className="divide-y divide-[--border]">
+      <ul className="divide-y divide-border-subtle">
         {fileNames.map((file) => {
           const diagnostics = report.diagnostics.filter((d) => d.file === file)
           const counts = { error: 0, warning: 0, info: 0 }
@@ -198,10 +200,10 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
                 onKeyDown={(e) => {
                   if (e.key === 'Escape' && isOpen) toggle(file)
                 }}
-                className="w-full flex items-center gap-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-[--ring]"
+                className="w-full flex items-center gap-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-accent"
               >
-                <span className="font-mono text-sm text-[--text] flex-1">{file}</span>
-                <span className="font-mono text-xs tabular-nums text-[--text-muted]">
+                <span className="font-mono text-sm text-text-primary flex-1">{file}</span>
+                <span className="font-mono text-xs tabular-nums text-text-secondary">
                   {diagnostics.length} findings
                 </span>
                 {diagnostics.length > 0 && (
@@ -231,13 +233,13 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
                 <div
                   role="region"
                   id={detailRegionId}
-                  className="mt-2 rounded bg-[--surface-elevated] p-3 flex flex-col gap-2"
+                  className="mt-2 rounded bg-card-bg-hover p-3 flex flex-col gap-2"
                 >
                   {diagnostics.map((d, i) => (
                     <div key={i} className="flex items-baseline gap-2 text-sm">
                       <span aria-hidden="true">{GLYPH[d.severity]}</span>
-                      <span className="font-mono text-xs text-[--text-muted]">[{d.rule}]</span>
-                      <span className="text-sm text-[--text]">{d.message}</span>
+                      <span className="font-mono text-xs text-text-secondary">[{d.rule}]</span>
+                      <span className="text-sm text-text-primary">{d.message}</span>
                     </div>
                   ))}
                 </div>

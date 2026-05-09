@@ -16,11 +16,13 @@
  * SV4: phase-progress-column renders all 5 real panel regions (Plan 06 filled these)
  * SV5: health-column IS present (Phase 5 filled it)  (UPDATED from "absent")
  * SV6: document.title updates on mount
- * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-4 on columns)
+ * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-6 on columns)
  * SV8: health-column has data-testid="health-column" and aria-label="Health"
  * SV9: all 5 Phase 5 panel headings render inside health-column
  * SV10: panel DOM order matches UI-SPEC: InstalledSkills → SkillHealth → Observability → Secrets → Integrations
- * SV11: health-column has flex flex-col gap-4 class
+ * SV11: health-column has flex flex-col gap-6 class
+ * SV12: when VITE_APPSHELL_V2=1, PageHeader renders with title equal to projectId
+ * SV13: when VITE_APPSHELL_V2=1, ProjectHeader (legacy breadcrumb) is suppressed
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
@@ -142,7 +144,7 @@ describe('SingleProjectView', () => {
     expect(document.title).toBe('my-project — AgenticApps Dashboard')
   })
 
-  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-4', () => {
+  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-6', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const grid = screen.getByTestId('single-project-grid')
@@ -151,12 +153,12 @@ describe('SingleProjectView', () => {
     const disciplineCol = screen.getByTestId('discipline-column')
     expect(disciplineCol.className).toContain('flex')
     expect(disciplineCol.className).toContain('flex-col')
-    expect(disciplineCol.className).toContain('gap-4')
+    expect(disciplineCol.className).toContain('gap-6')
 
     const phaseCol = screen.getByTestId('phase-progress-column')
     expect(phaseCol.className).toContain('flex')
     expect(phaseCol.className).toContain('flex-col')
-    expect(phaseCol.className).toContain('gap-4')
+    expect(phaseCol.className).toContain('gap-6')
   })
 
   it('SV8: health-column has correct aria-label="Health" attribute', () => {
@@ -200,12 +202,29 @@ describe('SingleProjectView', () => {
     expect(integrationsIdx).toBeLessThan(installedIdx)
   })
 
-  it('SV11: health-column has flex flex-col gap-4 class', () => {
+  it('SV11: health-column has flex flex-col gap-6 class', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const healthCol = screen.getByTestId('health-column')
     expect(healthCol.className).toContain('flex')
     expect(healthCol.className).toContain('flex-col')
-    expect(healthCol.className).toContain('gap-4')
+    expect(healthCol.className).toContain('gap-6')
+  })
+})
+
+describe('SingleProjectView — VITE_APPSHELL_V2 mode', () => {
+  it('SV12: when VITE_APPSHELL_V2=1, PageHeader renders with title equal to projectId', () => {
+    vi.stubEnv('VITE_APPSHELL_V2', '1')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+    // PageHeader renders an h1 with the project id as title
+    expect(screen.getByRole('heading', { level: 1, name: 'acme' })).toBeDefined()
+    vi.unstubAllEnvs()
+  })
+
+  it('SV13: when VITE_APPSHELL_V2=1, ProjectHeader (legacy breadcrumb) is suppressed', () => {
+    vi.stubEnv('VITE_APPSHELL_V2', '1')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+    expect(screen.queryByTestId('project-header')).toBeNull()
+    vi.unstubAllEnvs()
   })
 })

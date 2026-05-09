@@ -15,6 +15,8 @@
  * Threat mitigations:
  *   T-05-05-Cross-Project-Cache: useObservability(projectId) includes projectId in key.
  *   T-05-05-Schema-Drift: error.message.startsWith('schema_drift:') → InlineDrift.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -48,7 +50,7 @@ export function ObservabilityHealth({ projectId }: ObservabilityHealthProps): Re
   if (query.isLoading) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -77,7 +79,7 @@ export function ObservabilityHealth({ projectId }: ObservabilityHealthProps): Re
   if (allEmpty) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No observability tooling detected. (Configure to enable.)
         </p>
       </PanelContainer>
@@ -90,16 +92,16 @@ export function ObservabilityHealth({ projectId }: ObservabilityHealthProps): Re
       <div className="grid grid-cols-[8rem_1fr] gap-3">
         {tools.map(([name, tool]) => (
           <React.Fragment key={name}>
-            <span className="text-sm font-semibold text-[--text]">{name}</span>
+            <span className="text-sm font-semibold text-text-primary">{name}</span>
             {tool.detected ? (
               <span>
-                <span className="text-sm text-[--text-muted]">detected via </span>
-                <span className="text-sm text-[--text]">
+                <span className="text-sm text-text-secondary">detected via </span>
+                <span className="text-sm text-text-primary">
                   {tool.signals.map((s) => s.evidence).join(' + ')}
                 </span>
               </span>
             ) : (
-              <span className="text-sm italic text-[--text-muted]">not detected</span>
+              <span className="text-sm italic text-text-secondary">not detected</span>
             )}
           </React.Fragment>
         ))}
