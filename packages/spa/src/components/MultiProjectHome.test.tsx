@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RegistryListItem, RegistryListResponse } from '@agenticapps/dashboard-shared'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -44,6 +44,12 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
+// Mock lastRefresh
+const mockUseLastRefresh = vi.fn()
+vi.mock('../lib/lastRefresh.js', () => ({
+  useLastRefresh: () => mockUseLastRefresh(),
+}))
+
 // Mock api.js
 vi.mock('../lib/api.js', () => {
   class ApiError extends Error {
@@ -73,6 +79,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   // Default: filterAndSort returns the full items list
   mockFilterAndSort.mockImplementation((items: RegistryListItem[]) => items)
+  // Default: useLastRefresh returns null count (no cache data)
+  mockUseLastRefresh.mockReturnValue({ count: null, refreshLabel: null })
 })
 
 import { MultiProjectHome } from './MultiProjectHome.js'
@@ -266,6 +274,48 @@ describe('MultiProjectHome — register confirmed focus (D-29)', () => {
     // The card data-card-id wrapper has tabIndex=-1 and can receive focus
     const card = screen.getByTestId(`project-card-${newId}`)
     expect(card.closest('[data-card-id]')).toBeInTheDocument()
+  })
+})
+
+describe('MultiProjectHome — VITE_APPSHELL_V2 mode', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_APPSHELL_V2', '1')
+    mockUseLastRefresh.mockReturnValue({ count: 3, refreshLabel: 'refreshed 4s ago' })
+    mockUseRegistryList.mockReturnValue({
+      data: [item1, item2, item3],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+    mockFilterAndSort.mockImplementation((items: RegistryListItem[]) => items)
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('renders PageHeader with title "Projects" when VITE_APPSHELL_V2=1', () => {
+    renderHome()
+    expect(screen.getByRole('heading', { level: 1, name: /^Projects$/ })).toBeInTheDocument()
+  })
+
+  it('renders PageHeader helper with "3 projects · refreshed 4s ago"', () => {
+    renderHome()
+    expect(screen.getByText('3 projects · refreshed 4s ago')).toBeInTheDocument()
+  })
+
+  it('does NOT render PageHeader when VITE_APPSHELL_V2 is not set (legacy mode)', () => {
+    vi.unstubAllEnvs()
+    mockUseRegistryList.mockReturnValue({
+      data: [item1, item2, item3],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+    renderHome()
+    expect(screen.queryByRole('heading', { level: 1, name: /^Projects$/ })).not.toBeInTheDocument()
   })
 })
 
