@@ -22,18 +22,18 @@ export function CodeBlock({ command, copyLabel }: CodeBlockProps) {
 
   const Icon = state === 'copied' ? Check : Copy
   const iconColor =
-    state === 'copied' ? 'text-[--success]' : 'text-[--text-muted] group-hover:text-[--text]'
+    state === 'copied' ? 'text-status-success' : 'text-text-secondary group-hover:text-text-primary'
 
   return (
     <div className="flex items-stretch gap-2">
-      <div className="flex-1 overflow-x-auto whitespace-nowrap rounded-md border border-[--border-strong] bg-[--surface-elevated] px-3 py-2 font-mono text-sm text-[--text]">
+      <div className="flex-1 overflow-x-auto whitespace-nowrap rounded-md border border-border-subtle bg-card-bg-hover px-3 py-2 font-mono text-sm text-text-primary">
         {command}
       </div>
       <button
         type="button"
         onClick={onCopy}
         aria-label={copyLabel}
-        className="group inline-flex h-9 w-9 items-center justify-center rounded-md border border-[--border-strong] bg-[--surface-elevated] hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+        className="group inline-flex h-9 w-9 items-center justify-center rounded-md border border-border-subtle bg-card-bg-hover hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
       >
         <Icon size={14} aria-hidden="true" className={iconColor} />
       </button>

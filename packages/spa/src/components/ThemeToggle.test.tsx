@@ -59,7 +59,7 @@ describe('ThemeToggle', () => {
     render(<ThemeToggle />)
     // Dark is selected by default — its label should have the accent border class
     const darkLabel = screen.getByRole('radio', { name: 'Dark' }).closest('label')
-    expect(darkLabel?.className).toContain('border-l-[--accent]')
+    expect(darkLabel?.className).toContain('border-l-accent')
   })
 
   it('non-selected options have transparent left border class', () => {

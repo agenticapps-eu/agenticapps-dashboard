@@ -18,7 +18,7 @@ export function ThemeChip() {
       onClick={() => setChoice(next)}
       aria-label={`Switch theme (current: ${choice}; next: ${next})`}
       title={`Switch theme (current: ${choice}; next: ${next})`}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-md p-2 text-[--text-muted] hover:bg-[--surface-elevated] hover:text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md p-2 text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
     >
       <Icon size={16} aria-hidden="true" />
     </button>
