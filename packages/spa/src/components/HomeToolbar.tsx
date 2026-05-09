@@ -18,10 +18,10 @@ export interface HomeToolbarProps {
 const FIXED_CHIPS = ['all', 'active', 'client', 'internal'] as const
 
 const CHIP_SELECTED =
-  'bg-[--accent] text-[--accent-fg] border border-[--accent] px-3 py-2 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]'
+  'bg-accent text-white border border-accent px-3 py-2 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 const CHIP_UNSELECTED =
-  'bg-[--surface-elevated] text-[--text] border border-[--border] px-3 py-2 rounded-md text-sm font-semibold hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]'
+  'bg-card-bg text-text-primary border border-border-subtle px-3 py-2 rounded-md text-sm font-semibold hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 export function HomeToolbar({
   items,
@@ -82,7 +82,7 @@ export function HomeToolbar({
               onClick={() => handleChipClick(tag)}
             >
               {tag}{' '}
-              <span className="text-[--text-muted]">({count})</span>
+              <span className="text-text-tertiary">({count})</span>
             </button>
           )
         })}
@@ -92,13 +92,13 @@ export function HomeToolbar({
         <Search
           size={14}
           aria-hidden="true"
-          className="absolute left-3 text-[--text-muted] pointer-events-none"
+          className="absolute left-3 text-text-secondary pointer-events-none"
         />
         <input
           type="search"
           aria-label="Search projects"
           placeholder="Search projects…"
-          className="w-48 md:w-64 bg-[--surface-elevated] border border-[--border-strong] rounded-md pl-8 pr-3 py-2 text-sm text-[--text] placeholder:text-[--text-subtle] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+          className="w-48 md:w-64 bg-card-bg-hover border border-border-subtle rounded-md pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           value={searchText}
           onChange={(e) => onSearchChange(e.target.value)}
           onKeyDown={(e) => {
@@ -113,7 +113,7 @@ export function HomeToolbar({
         </label>
         <select
           id="sort-select"
-          className="bg-[--surface-elevated] border border-[--border-strong] rounded-md pl-3 pr-8 py-2 text-sm text-[--text] appearance-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]"
+          className="bg-card-bg-hover border border-border-subtle rounded-md pl-3 pr-8 py-2 text-sm text-text-primary appearance-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           value={sortKey}
           onChange={(e) => onSortChange(e.target.value as SortKey)}
         >
@@ -126,7 +126,7 @@ export function HomeToolbar({
         <ChevronDown
           size={12}
           aria-hidden="true"
-          className="absolute right-3 text-[--text-muted] pointer-events-none"
+          className="absolute right-3 text-text-secondary pointer-events-none"
         />
       </div>
     </div>
