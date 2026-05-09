@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Working dashboard
 status: executing
-stopped_at: Completed Phase 05 Plan 05 (ObservabilityHealth + SecretsHealth + IntegrationsHealth panels)
-last_updated: "2026-05-09T19:21:04.941Z"
-last_activity: 2026-05-09 -- Phase 05.1 execution started
+stopped_at: Completed 05.1-05-PLAN.md — alias elimination complete, Wave 5 precondition met
+last_updated: "2026-05-09T21:31:08.187Z"
+last_activity: 2026-05-09
 progress:
   total_phases: 10
   completed_phases: 5
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 05.1 (ui-redesign-cloudflare-inspired-sidebar-dashboard-shell) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 05.1
-Last activity: 2026-05-09 -- Phase 05.1 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-05-09
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P03 | 80 | 3 tasks | 13 files |
 | Phase 05 P04 | 9 | 3 tasks | 6 files |
 | Phase 05 P05 | 10 | 3 tasks | 8 files |
+| Phase 05.1 P05 | resumed multi-session | 2 tasks | 47 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Severity glyph 3-of-4: AgentLinter emits info/warning/error only; yellow-circle glyph unused — honest reflection of 3-value severity vocab (UI-SPEC §OQ3 resolved)
 - [Phase 05]: SecretsHealth renders only { state } from query.data — workspaceId and defaultEnvironment never extracted or rendered (T-05-05-NoSecretRead-SPA privacy invariant)
 - [Phase 05]: INTEGRATIONS table stores nudges+paragraphs as React JSX literals — no daemon content interpolation in configure-to-enable guides (T-05-05-Static-Copy-Trust)
+- [Phase 05.1]: Batch-migrated 24 additional pre-05.1-state files to achieve zero legacy alias coverage; worktree discrepancy treated as sub-task per plan NOTE
+- [Phase 05.1]: Wave 5 precondition met: zero [--*] alias patterns remain in packages/spa/src/ after plans 01-05
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T13:45:37.759Z
-Stopped at: Completed Phase 05 Plan 05 (ObservabilityHealth + SecretsHealth + IntegrationsHealth panels)
+Last session: 2026-05-09T21:31:08.184Z
+Stopped at: Completed 05.1-05-PLAN.md — alias elimination complete, Wave 5 precondition met
 Resume file: None
