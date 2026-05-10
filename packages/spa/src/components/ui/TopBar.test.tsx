@@ -11,13 +11,19 @@
  * TB8: when useRegistryList is loading or has no match, renders without crashing
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { RegistryListItem } from '@agenticapps/dashboard-shared'
 
 // Mock useRegistryList
 vi.mock('../../lib/registry.js', () => ({
   useRegistryList: vi.fn(),
+}))
+
+// Mock useFirstRunHint — default: hint already shown (shouldShow=false) so overlay
+// does not auto-appear, keeping existing TB1-TB8 assertions stable.
+vi.mock('../../lib/firstRunHint.js', () => ({
+  useFirstRunHint: () => ({ shouldShow: false, dismiss: vi.fn() }),
 }))
 
 // Mock ThemeChip
@@ -157,5 +163,26 @@ describe('TopBar', () => {
     } as unknown as ReturnType<typeof useRegistryList>)
 
     expect(() => render(<TopBar />)).not.toThrow()
+  })
+
+  it('TB9: renders a button with aria-label="Keyboard shortcuts"', () => {
+    render(<TopBar />)
+    const btn = screen.getByRole('button', { name: /keyboard shortcuts/i })
+    expect(btn).toBeDefined()
+  })
+
+  it('TB10: clicking the Keyboard shortcuts button toggles the HelpOverlay (independent of useFirstRunHint)', () => {
+    // On first click: HelpOverlay appears
+    // On click of "Got it" inside overlay: overlay dismisses
+    render(<TopBar />)
+    const btn = screen.getByRole('button', { name: /keyboard shortcuts/i })
+    // Before click: overlay should not be visible
+    expect(screen.queryByRole('status')).toBeNull()
+    // After click: overlay should appear
+    fireEvent.click(btn)
+    expect(screen.getByRole('status')).toBeDefined()
+    // Click "Got it" to dismiss
+    fireEvent.click(screen.getByRole('button', { name: /got it/i }))
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })
