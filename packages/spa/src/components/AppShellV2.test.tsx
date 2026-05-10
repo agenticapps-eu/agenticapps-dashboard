@@ -139,11 +139,12 @@ describe('AppShellV2', () => {
 
   it('AV5: RepairBanner appears below TopBar when setNeedsRepair(true)', () => {
     const { getHook } = renderAppShellV2()
-    expect(screen.queryByRole('status')).toBeNull()
+    // TopBar has an always-present role="status" aria-live region (D-6.1-04);
+    // assert RepairBanner specifically by its content rather than role-only.
+    expect(screen.queryByText('Agent token rejected.')).toBeNull()
     act(() => {
       getHook().setNeedsRepair(true)
     })
-    expect(screen.getByRole('status')).toBeDefined()
     expect(screen.getByText('Agent token rejected.')).toBeDefined()
   })
 
