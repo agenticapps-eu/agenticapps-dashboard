@@ -27,7 +27,7 @@ export function RepairBanner(): React.JSX.Element | null {
   return (
     <div
       role="status"
-      className="flex items-center gap-3 border-b border-border-subtle border-l-2 border-l-status-error bg-card-bg-hover px-6 py-3"
+      className="flex items-center gap-3 border-b border-border-subtle bg-status-error/8 px-6 py-3"
     >
       <AlertTriangle size={16} aria-hidden="true" className="text-status-error" />
       <span className="text-sm font-semibold text-text-primary">Agent token rejected.</span>
