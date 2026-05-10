@@ -51,9 +51,8 @@ const INTEGRATIONS = [
     paragraph: (
       <>
         Sentry surfaces recent errors and unhandled rejections inline. Install{' '}
-        <code className="font-mono">@sentry/node</code> (or your framework SDK), set{' '}
+        <code className="font-mono">@sentry/node</code>, set{' '}
         <code className="font-mono">SENTRY_AUTH_TOKEN</code> on the daemon, and restart.
-        Recent errors appear in the right column without code changes here.
       </>
     ),
   },
@@ -69,9 +68,8 @@ const INTEGRATIONS = [
     paragraph: (
       <>
         Linear links commits and PRs to issue IDs. Set{' '}
-        <code className="font-mono">LINEAR_API_KEY</code> on the daemon and use a branch name like{' '}
-        <code className="font-mono">donald/abc-123-fix-foo</code> — issue title and status surface
-        in the project header.
+        <code className="font-mono">LINEAR_API_KEY</code> on the daemon and use a branch like{' '}
+        <code className="font-mono">donald/abc-123-fix-foo</code>.
       </>
     ),
   },
@@ -87,8 +85,8 @@ const INTEGRATIONS = [
     paragraph: (
       <>
         Infisical loads secrets from a Universal Auth project at runtime. Run{' '}
-        <code className="font-mono">infisical run --env=prod -- agentic-dashboard start</code> and
-        the daemon reads its env from Infisical. No env var lives inside the dashboard.
+        <code className="font-mono">infisical run --env=prod -- agentic-dashboard start</code> to
+        load secrets at daemon startup.
       </>
     ),
   },
