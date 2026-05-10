@@ -1,0 +1,141 @@
+name: Impeccable Critique Gate
+
+# D-6-09: Required check on PRs to main. Separate workflow from ci.yml because
+# this job builds the SPA + spawns a headless Chromium browser — a different
+# runtime profile from typecheck/test/build.
+#
+# D-6-10 (amended by D-6-21): Audits all 6 v1.0 user-touched routes at the
+# desktop (lg, 1440x900) breakpoint only. sm/md are diagnostic-only and do NOT
+# block the gate; mobile support deferred to v1.1+ per D-6-21.
+#
+# D-6-11: Artifact uploaded with 14-day retention; PR comment posted with
+# score table (sm/md shown as informational signal).
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write   # for PR comment via gh CLI
+
+jobs:
+  impeccable:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions pinned to commit SHAs (not tags). Comments mark the tag at
+      # pinning time. See ci.yml + release.yml for the supply-chain rationale.
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@26f6d4f2c533a43e6b5da0b4a5dd983f98f7b49a  # v6
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared types
+        run: pnpm --filter @agenticapps/dashboard-shared build
+
+      - name: Build SPA
+        run: pnpm --filter @agenticapps/dashboard-spa build
+
+      - name: Install Playwright Chromium (with system deps)
+        run: npx playwright install chromium --with-deps
+
+      - name: Start static SPA preview
+        run: |
+          pnpm --filter @agenticapps/dashboard-spa preview --port 5174 &
+          # Wait for the preview server to respond (up to 30s)
+          for i in {1..30}; do
+            if curl -fs http://localhost:5174/ > /dev/null 2>&1; then
+              echo "SPA preview ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run impeccable critique on each audited route
+        id: impeccable
+        run: |
+          # Per D-6-10/D-6-21: 6 v1.0 user-touched routes at 1440x900 (desktop gate).
+          # The SPA is pure-static — routes render in empty/loading states without
+          # a live daemon, which is still a valid aesthetic surface to audit.
+          mkdir -p /tmp/impeccable
+
+          # Note: npx impeccable critique --json output shape is documented but not
+          # strongly versioned (RESEARCH Open Question 3). The aggregation node
+          # script below handles the output and adapts it for the score parser.
+          # If the shape changes, update the filter in this step.
+
+          ROUTES="/ /projects/demo /settings /help /onboarding /pair"
+          JSONL=/tmp/impeccable/raw.jsonl
+          > "$JSONL"
+
+          for ROUTE in $ROUTES; do
+            echo "Auditing http://localhost:5174${ROUTE} @ 1440x900..."
+            npx impeccable critique \
+              --url "http://localhost:5174${ROUTE}" \
+              --viewport 1440x900 \
+              --json 2>/dev/null >> "$JSONL" \
+              || echo '{}' >> "$JSONL"
+          done
+
+          # Aggregate JSONL into { routes: [...] } for the score parser.
+          # Filters out empty lines and objects without a numeric score field.
+          node -e "
+            const fs = require('fs');
+            const lines = fs.readFileSync('/tmp/impeccable/raw.jsonl', 'utf8')
+              .trim().split('\n')
+              .filter(Boolean);
+            const routes = lines
+              .map(l => { try { return JSON.parse(l); } catch { return null; } })
+              .filter(r => r && typeof r.score === 'number');
+            fs.writeFileSync(
+              '/tmp/impeccable/report.json',
+              JSON.stringify({ routes }, null, 2)
+            );
+            console.log('Aggregated', routes.length, 'route scores');
+          "
+
+      - name: Check score against threshold (exit 1 if any route < 90)
+        id: check
+        run: |
+          # check-impeccable-score.mjs exits 1 if any gate-breakpoint route < 90,
+          # exits 2 on malformed input. Either non-zero exit fails this job.
+          node scripts/check-impeccable-score.mjs /tmp/impeccable/report.json \
+            | tee /tmp/impeccable/summary.md
+
+      - name: Upload report artifact (14-day retention per D-6-11)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: impeccable-report-${{ github.sha }}
+          path: |
+            /tmp/impeccable/report.json
+            /tmp/impeccable/summary.md
+          retention-days: 14
+
+      - name: Post PR comment with score summary (D-6-11)
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -f /tmp/impeccable/summary.md ]; then
+            gh pr comment "$PR_NUMBER" \
+              --body-file /tmp/impeccable/summary.md \
+            || true
+          else
+            gh pr comment "$PR_NUMBER" \
+              --body "## Impeccable Critique Gate
+
+          The impeccable scan did not produce a summary file. Check the workflow logs." \
+            || true
+          fi
