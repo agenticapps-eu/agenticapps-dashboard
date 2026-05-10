@@ -60,17 +60,18 @@ export function TopBar(): React.JSX.Element {
     >
       <Breadcrumb />
 
-      {isProjectRoute && tags.length > 0 && (
-        <div className="flex items-center gap-2" aria-label="Project tags">
-          {tags.map((t) => (
-            <Pill key={t} variant="neutral">{t}</Pill>
-          ))}
-        </div>
-      )}
-
-      {isProjectRoute && phaseNumber && (
-        <StatusPill label="Phase" value={phaseNumber} />
-      )}
+      <div role="status" aria-live="polite" className="flex items-center gap-2">
+        {isProjectRoute && tags.length > 0 && (
+          <div className="flex items-center gap-2" aria-label="Project tags">
+            {tags.map((t) => (
+              <Pill key={t} variant="neutral">{t}</Pill>
+            ))}
+          </div>
+        )}
+        {isProjectRoute && phaseNumber && (
+          <StatusPill label="Phase" value={phaseNumber} />
+        )}
+      </div>
 
       <span className="flex-1" aria-hidden="true" />
 

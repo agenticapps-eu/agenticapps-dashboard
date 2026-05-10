@@ -196,8 +196,9 @@ describe('D-6.1-04 aria-live status region', () => {
     const { container } = render(<TopBar />)
     const liveRegions = container.querySelectorAll('[aria-live]')
     expect(liveRegions).toHaveLength(1)
-    expect(liveRegions[0].getAttribute('aria-live')).toBe('polite')
-    expect(liveRegions[0].getAttribute('role')).toBe('status')
+    const first = liveRegions[0]!
+    expect(first.getAttribute('aria-live')).toBe('polite')
+    expect(first.getAttribute('role')).toBe('status')
   })
 
   it('aria-live region wraps the project status surface (StatusPill area)', () => {
