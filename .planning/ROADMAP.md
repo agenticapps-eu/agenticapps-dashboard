@@ -199,7 +199,7 @@ Plans:
 **Goal:** Lift Typography (82 → ≥ 90) and Layout (88 → ≥ 90) sub-scores on `/`; bring all 6 v1.0 user-touched routes' composite scores to ≥ 90 at desktop (lg, 1440x900) per D-6-21. Closes the impeccable gate gap so Phase 6's 06-07 closing-ritual PR clears the gate. UX architecture work (line-length policy, integration-panel progressive disclosure, token masking on /settings, ARIA on Sidebar/TopBar, numbered-steps empty canvas on /pair) — not visual polish.
 **Requirements**: None (decimal sub-phase tracked via D-6.1-01..04 instead of REQ-IDs)
 **Depends on:** Phase 6
-**Plans:** 6/6 plans complete
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 06.1-01-PLAN.md — Wave 1: D-6.1-01 max-w-[75ch] on /help + /onboarding prose (TDD; 2 tasks)
