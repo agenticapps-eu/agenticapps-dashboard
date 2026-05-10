@@ -14,7 +14,7 @@ export function OnboardingHero() {
 
       <ol className="mt-12 space-y-8" role="list">
         <li className="grid grid-cols-[40px_1fr] gap-4">
-          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-card-bg-hover text-sm font-semibold text-text-primary">
+          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
             1
           </div>
           <div className="space-y-3">
@@ -27,7 +27,7 @@ export function OnboardingHero() {
         </li>
 
         <li className="grid grid-cols-[40px_1fr] gap-4">
-          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-card-bg-hover text-sm font-semibold text-text-primary">
+          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
             2
           </div>
           <div className="space-y-3">
@@ -43,7 +43,7 @@ export function OnboardingHero() {
         </li>
 
         <li className="grid grid-cols-[40px_1fr] gap-4">
-          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-card-bg-hover text-sm font-semibold text-text-primary">
+          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
             3
           </div>
           <div className="space-y-3">
