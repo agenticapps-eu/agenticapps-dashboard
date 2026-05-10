@@ -55,19 +55,23 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('radio', { name: 'Light' })).toBeChecked()
   })
 
-  it('selected option has accent left border class', () => {
+  it('selected option has accent background tint class (no border-l-2 per anti-slop rule)', () => {
     render(<ThemeToggle />)
-    // Dark is selected by default — its label should have the accent border class
+    // Dark is selected by default — its label should use accent/10 background tint
+    // (border-l-2 accent is an absolute ban per impeccable D-43 anti-AI-slop discipline)
     const darkLabel = screen.getByRole('radio', { name: 'Dark' }).closest('label')
-    expect(darkLabel?.className).toContain('border-l-accent')
+    expect(darkLabel?.className).toContain('bg-accent/10')
+    expect(darkLabel?.className).not.toContain('border-l-2')
   })
 
-  it('non-selected options have transparent left border class', () => {
+  it('non-selected options use hover background, no accent tint', () => {
     render(<ThemeToggle />)
-    // Light and Match system are not selected — their labels should have transparent border
+    // Light and Match system are not selected — they use hover class, not accent tint
     const lightLabel = screen.getByRole('radio', { name: 'Light' }).closest('label')
-    expect(lightLabel?.className).toContain('border-l-transparent')
+    expect(lightLabel?.className).toContain('hover:bg-card-bg-hover')
+    expect(lightLabel?.className).not.toContain('border-l-2')
     const systemLabel = screen.getByRole('radio', { name: 'Match system' }).closest('label')
-    expect(systemLabel?.className).toContain('border-l-transparent')
+    expect(systemLabel?.className).toContain('hover:bg-card-bg-hover')
+    expect(systemLabel?.className).not.toContain('border-l-2')
   })
 })

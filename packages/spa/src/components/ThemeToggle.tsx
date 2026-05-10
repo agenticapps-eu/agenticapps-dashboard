@@ -19,10 +19,10 @@ export function ThemeToggle() {
             <label
               key={value}
               className={[
-                'flex cursor-pointer items-center gap-3 rounded-md border-l-2 px-3 py-2',
+                'flex cursor-pointer items-center gap-3 rounded-md px-3 py-2',
                 selected
-                  ? 'border-l-accent bg-card-bg-hover'
-                  : 'border-l-transparent hover:bg-card-bg-hover',
+                  ? 'bg-accent/10 ring-1 ring-accent/30'
+                  : 'hover:bg-card-bg-hover',
               ].join(' ')}
             >
               <input
