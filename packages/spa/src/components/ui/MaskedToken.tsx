@@ -7,7 +7,7 @@
  * while masked — copy without reveal is the safer pattern).
  *
  * Constraints (D-43 / D-5.1-10): INSTANT state changes only — no motion CSS,
- * no fade, no animation classes anywhere in the rendered DOM.
+ * no fade, no motion classes anywhere in the rendered DOM.
  *
  * Constraints (D-5.1-10): NO cn()/clsx/CVA, no motion utility classes.
  */
