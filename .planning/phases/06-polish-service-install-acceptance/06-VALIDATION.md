@@ -1,8 +1,8 @@
 ---
 phase: 06
 slug: polish-service-install-acceptance
-status: draft
-nyquist_compliant: false
+status: locked
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-10
 ---
