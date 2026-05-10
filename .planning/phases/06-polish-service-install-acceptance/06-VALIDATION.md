@@ -38,21 +38,24 @@ created: 2026-05-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | Status |
 |---------|------|------|-------------|-----------|-------------------|--------|
-| 06-01-01 | 01 | 0 | POLISH-04 (preflight) | manual | `npx impeccable --json --route /` (capture baseline before any chrome work) | ⬜ pending |
-| 06-02-01 | 02 | 1 | POLISH-01 (R refresh) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run useGlobalShortcuts.test.ts` | ⬜ pending |
-| 06-02-02 | 02 | 1 | POLISH-01 (R focus guard — typing in search must NOT refresh) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run useGlobalShortcuts.test.ts -t "focus guard"` | ⬜ pending |
-| 06-02-03 | 02 | 1 | POLISH-01 (? help overlay) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run HelpOverlay.test.tsx` | ⬜ pending |
-| 06-02-04 | 02 | 1 | POLISH-01 (`/` focuses search) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run useGlobalShortcuts.test.ts -t "slash"` | ⬜ pending |
-| 06-03-01 | 03 | 1 | POLISH-02 (install-launchd) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run cli/install-launchd.test.ts` | ⬜ pending |
-| 06-03-02 | 03 | 1 | POLISH-02 (plist EnvironmentVariables.PATH) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run -t "PATH includes /opt/homebrew/bin"` | ⬜ pending |
-| 06-03-03 | 03 | 1 | POLISH-03 (install-systemd) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run cli/install-systemd.test.ts` | ⬜ pending |
-| 06-04-01 | 04 | 2 | POLISH-04 (impeccable ≥ 90 / home) | manual | `npx impeccable --json --route /` ≥ 90 | ⬜ pending |
-| 06-04-02 | 04 | 2 | POLISH-04 (impeccable ≥ 90 / project) | manual | `npx impeccable --json --route /projects/<id>` ≥ 90 | ⬜ pending |
-| 06-04-03 | 04 | 2 | POLISH-04 (after-shell.png re-capture) | manual | `node packages/spa/scripts/screenshot.mjs /projects/<id>` produces sidebar-shell PNG | ⬜ pending |
-| 06-05-01 | 05 | 2 | POLISH-06 (README install/pair/FAQ/troubleshooting) | unit | `pnpm exec vitest run docs/readme-structure.test.ts` (asserts H2 anchors present) | ⬜ pending |
-| 06-05-02 | 05 | 2 | POLISH-06 (README screenshots resolve) | manual | Visual review of README on GitHub preview | ⬜ pending |
-| 06-06-01 | 06 | 3 | POLISH-05 (two-stage REVIEW.md) | manual | PR REVIEW.md contains `## Stage 1` + `## Stage 2` + `<finding severity=>` blocks | ⬜ pending |
-| 06-06-02 | 06 | 3 | POLISH-04 (closure ritual passes) | manual | All Phase 5.1 deferred HUMAN-UAT items resolved | ⬜ pending |
+| 06-01-01 | 01 | 0 | POLISH-04 (screenshot.mjs param baseline) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run scripts/screenshot.test.mjs` | ⬜ pending |
+| 06-01-02 | 01 | 0 | POLISH-04 / Phase 5.1 AC-08 (after-shell.png recapture) | manual | `node packages/spa/scripts/screenshot.mjs --route /projects/<id> --viewport 1440x900` produces sidebar-shell PNG | ⬜ pending |
+| 06-02-01 | 02 | 0 | POLISH-04 / AUTH-01 (rate-limit on rename/tag/unregister) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run routes/registry-rate-limit.test.ts` | ⬜ pending |
+| 06-02-02 | 02 | 0 | POLISH-04 / REG-05 (schema bounds: name max 200, tag max 20, tag-list max 50) | unit | `pnpm --filter @agenticapps/dashboard-shared exec vitest run schemas/registry.test.ts` | ⬜ pending |
+| 06-03-01 | 03 | 1 | POLISH-01 (R refresh) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run useGlobalShortcuts.test.ts` | ⬜ pending |
+| 06-03-02 | 03 | 1 | POLISH-01 (R focus guard — typing in search must NOT refresh) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run useGlobalShortcuts.test.ts -t "focus guard"` | ⬜ pending |
+| 06-03-03 | 03 | 1 | POLISH-01 (? help overlay) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run HelpOverlay.test.tsx` | ⬜ pending |
+| 06-03-04 | 03 | 1 | POLISH-01 (`/` focuses search) | unit | `pnpm --filter @agenticapps/dashboard-spa exec vitest run useGlobalShortcuts.test.ts -t "slash"` | ⬜ pending |
+| 06-04-01 | 04 | 1 | POLISH-02 (install-launchd) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run cli/installLaunchd.test.ts` | ⬜ pending |
+| 06-04-02 | 04 | 1 | POLISH-02 (plist EnvironmentVariables.PATH) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run -t "PATH includes /opt/homebrew/bin"` | ⬜ pending |
+| 06-05-01 | 05 | 1 | POLISH-03 (install-systemd) | unit | `pnpm --filter @agenticapps/dashboard-agent exec vitest run cli/installSystemd.test.ts` | ⬜ pending |
+| 06-06-01 | 06 | 2 | POLISH-04 (impeccable ≥ 90 / home) | manual | `npx impeccable --json --route /` ≥ 90 | ⬜ pending |
+| 06-06-02 | 06 | 2 | POLISH-04 (impeccable ≥ 90 / project) | manual | `npx impeccable --json --route /projects/<id>` ≥ 90 | ⬜ pending |
+| 06-06-03 | 06 | 2 | POLISH-04 (CI gate enforces score) | unit | `pnpm exec vitest run scripts/check-impeccable-score.test.mjs` | ⬜ pending |
+| 06-07-01 | 07 | 3 | POLISH-06 (README install/pair/FAQ/troubleshooting) | unit | `pnpm exec vitest run tests/docs/readme-structure.test.ts` (asserts H2 anchors present) | ⬜ pending |
+| 06-07-02 | 07 | 3 | POLISH-06 (README screenshots resolve) | manual | Visual review of README on GitHub preview | ⬜ pending |
+| 06-07-03 | 07 | 3 | POLISH-05 (two-stage REVIEW.md / PR description) | manual | PR description contains `## Stage 1` + `## Stage 2` + `<finding severity=>` blocks | ⬜ pending |
+| 06-07-04 | 07 | 3 | POLISH-04 (closure ritual passes) | manual | All Phase 5.1 deferred HUMAN-UAT items resolved | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -60,13 +63,16 @@ created: 2026-05-10
 
 ## Wave 0 Requirements
 
-- [ ] `packages/spa/src/lib/useGlobalShortcuts.test.ts` — unit tests for R / ? / `/` keyboard shortcut hook + focus guard
-- [ ] `packages/spa/src/components/HelpOverlay.test.tsx` — overlay rendering, KbdHint usage, escape-to-close
-- [ ] `packages/agent/src/cli/install-launchd.test.ts` — plist generation + load/unload + EnvironmentVariables.PATH assertion
-- [ ] `packages/agent/src/cli/install-systemd.test.ts` — service file generation + systemctl --user enable assertion (Linux only)
-- [ ] `tests/docs/readme-structure.test.ts` — assert README H2 sections (`## Install`, `## Pair`, `## FAQ`, `## Troubleshooting`)
+- [ ] `packages/spa/scripts/screenshot.test.mjs` — parameterized `--route` / `--viewport` parser tests (Plan 01)
+- [ ] `packages/shared/src/schemas/registry.test.ts` extension — `.max(200)` name + `.max(20)` tag + `.max(50)` tag-list bounds (Plan 02 RED)
+- [ ] `packages/agent/src/routes/registry-rate-limit.test.ts` — 429 + Retry-After:1 on rename/tag/unregister (Plan 02 RED)
 
-*Existing infrastructure covers everything else.*
+Wave 1+ test files (created in their respective plans, not Wave 0 preconditions):
+- Plan 03 → `useGlobalShortcuts.test.ts`, `HelpOverlay.test.tsx`, `firstRunHint.test.ts`
+- Plan 04 → `installLaunchd.test.ts`, `install-launchd.subprocess.test.ts`
+- Plan 05 → `installSystemd.test.ts`, `install-systemd.subprocess.test.ts`
+- Plan 06 → `check-impeccable-score.test.mjs`
+- Plan 07 → `tests/docs/readme-structure.test.ts`
 
 ---
 
