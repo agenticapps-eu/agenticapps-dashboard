@@ -32,6 +32,7 @@ export function SidebarItem({ to, params, icon, label }: SidebarItemProps): Reac
     <Link
       to={to}
       params={params}
+      aria-current={isActive ? 'page' : undefined}
       className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium ${stateClasses} focus:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
     >
       <span aria-hidden="true" className="shrink-0">{icon}</span>
@@ -51,6 +52,7 @@ export function SidebarItemDisabled({ icon, label }: SidebarItemDisabledProps): 
       type="button"
       disabled
       aria-disabled="true"
+      aria-label={`${label} section, available in Phase 6`}
       title="Available in Phase 6"
       className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-tertiary cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
