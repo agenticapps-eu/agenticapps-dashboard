@@ -5,15 +5,21 @@
  * Project-route conditional: tags (as Pill) + phase (as StatusPill) shown ONLY on /projects/:projectId.
  * Data source: useRegistryList() — same hook as Sidebar; TanStack Query cache, no extra poll.
  *
+ * POLISH-01 D-6-03: Keyboard icon button always-available for manual HelpOverlay re-show.
+ * First-run auto-show gated on useFirstRunHint (localStorage 'shortcuts_hint_shown').
+ *
  * Constraints (D-5.1-10):
  * - NO transition utilities
  * - NO cn()/clsx/CVA (RESEARCH Pattern 5)
  */
-import React from 'react'
+import { useState } from 'react'
+import type React from 'react'
 import { Link, useMatches } from '@tanstack/react-router'
-import { Cog, Search } from 'lucide-react'
+import { Cog, Keyboard, Search } from 'lucide-react'
 
+import { useFirstRunHint } from '../../lib/firstRunHint.js'
 import { useRegistryList } from '../../lib/registry.js'
+import { HelpOverlay } from '../HelpOverlay.js'
 import { ThemeChip } from '../ThemeChip.js'
 
 import { Breadcrumb } from './Breadcrumb.js'
@@ -27,6 +33,11 @@ export function TopBar(): React.JSX.Element {
     const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
     window.dispatchEvent(event)
   }
+
+  // Keyboard shortcuts overlay state (manual toggle — independent of first-run flag).
+  const [manualOpen, setManualOpen] = useState(false)
+  const { shouldShow, dismiss } = useFirstRunHint()
+  const showOverlay = manualOpen || shouldShow
 
   // Project-route detection: the deepest match's params include projectId when on /projects/:projectId.
   const matches = useMatches()
@@ -73,6 +84,25 @@ export function TopBar(): React.JSX.Element {
         <span>Search…</span>
         <KbdHint />
       </button>
+
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setManualOpen((o) => !o)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <Keyboard size={16} aria-hidden="true" />
+        </button>
+        {showOverlay && (
+          <HelpOverlay
+            onDismiss={() => {
+              setManualOpen(false)
+              dismiss()
+            }}
+          />
+        )}
+      </div>
 
       <ThemeChip />
 

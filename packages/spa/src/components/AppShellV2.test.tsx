@@ -28,6 +28,12 @@ vi.mock('../lib/registry.js', () => ({
   useRegistryList: () => ({ data: [], isLoading: false, isError: false }),
 }))
 
+// Mock useFirstRunHint — hint already shown so HelpOverlay does not auto-appear
+// (prevents false-positive role="status" hits in AV5 which checks RepairBanner)
+vi.mock('../lib/firstRunHint.js', () => ({
+  useFirstRunHint: () => ({ shouldShow: false, dismiss: vi.fn() }),
+}))
+
 // HTMLDialogElement polyfill for jsdom
 beforeEach(() => {
   if (!HTMLDialogElement.prototype.showModal) {
@@ -56,6 +62,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useNavigate: () => mockNavigate,
     useMatchRoute: () => () => false,
     useMatches: () => [{ id: '__root__', fullPath: '/', params: {} }],
+    useRouterState: () => ({ location: { pathname: '/' } }),
   }
 })
 
