@@ -25,7 +25,9 @@ function SettingsPage(): React.JSX.Element {
         </p>
       </div>
       <ManualPairForm />
-      <ThemeToggle />
+      <section className="rounded-card border border-border-subtle bg-card-bg p-6">
+        <ThemeToggle />
+      </section>
     </div>
   )
 }
