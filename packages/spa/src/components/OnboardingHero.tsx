@@ -7,7 +7,7 @@ export function OnboardingHero() {
         <h1 className="text-3xl font-semibold leading-tight tracking-tight text-text-primary">
           One local daemon. Every device.
         </h1>
-        <p className="mt-2 text-base leading-relaxed text-text-secondary">
+        <p className="mt-2 max-w-[75ch] text-base leading-relaxed text-text-secondary">
           Nothing leaves your machine.
         </p>
       </header>
@@ -48,7 +48,7 @@ export function OnboardingHero() {
           </div>
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-text-primary">Click the pair URL</h2>
-            <p className="text-base leading-relaxed text-text-secondary">
+            <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
               When the agent prints a pair URL like{' '}
               <code className="break-all font-mono text-sm">
                 https://agenticapps-dashboard.pages.dev/pair?...
@@ -59,11 +59,11 @@ export function OnboardingHero() {
         </li>
       </ol>
 
-      <details className="mt-12 max-w-prose">
+      <details className="mt-12">
         <summary className="cursor-pointer text-sm text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg">
           Why local-only →
         </summary>
-        <p className="mt-3 text-base leading-relaxed text-text-secondary">
+        <p className="mt-3 max-w-[75ch] text-base leading-relaxed text-text-secondary">
           Your <code className="font-mono text-sm">.planning/</code>,{' '}
           <code className="font-mono text-sm">.claude/</code>, and git history are sensitive.
           This dashboard never uploads them. The agent runs on your machine, reads project files
