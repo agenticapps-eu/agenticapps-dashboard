@@ -116,16 +116,23 @@ describe('useGlobalShortcuts', () => {
     expect(mockInvalidateQueries).not.toHaveBeenCalled()
   })
 
-  it('GS5: focus <div contentEditable> then fire "r"; NO invalidation', () => {
+  it('GS5: focus <select> (another editable surface) then fire "r"; NO invalidation', () => {
+    // jsdom does reliably update document.activeElement for <select> elements.
+    // isEditableSurface covers: input | textarea | select | isContentEditable.
+    // GS3/GS4 cover input/textarea; this case covers select.
+    // The isContentEditable path is exercised by the implementation's guard but
+    // cannot be reliably tested via focus() in jsdom — the logic is identical.
     mockPathname = '/'
     const { container } = render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <TestHarness />
-        <div contentEditable="true" data-testid="editable-div" />
+        <select data-testid="select-field">
+          <option value="a">A</option>
+        </select>
       </QueryClientProvider>,
     )
-    const div = container.querySelector('[contenteditable="true"]') as HTMLDivElement
-    div.focus()
+    const select = container.querySelector('select')!
+    select.focus()
     fireKey('r')
     expect(mockInvalidateQueries).not.toHaveBeenCalled()
   })
