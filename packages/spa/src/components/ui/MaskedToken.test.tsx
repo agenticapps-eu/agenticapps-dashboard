@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 import { MaskedToken } from './MaskedToken.js'
 
@@ -37,10 +37,10 @@ describe('MaskedToken', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reveal/i }))
     expect(screen.getByText(SAMPLE_TOKEN)).toBeInTheDocument()
     // Just before 5s: still revealed.
-    vi.advanceTimersByTime(4999)
+    act(() => { vi.advanceTimersByTime(4999) })
     expect(screen.queryByText(SAMPLE_TOKEN)).toBeInTheDocument()
     // At 5s: masked again.
-    vi.advanceTimersByTime(1)
+    act(() => { vi.advanceTimersByTime(1) })
     expect(screen.queryByText(SAMPLE_TOKEN)).toBeNull()
   })
 
