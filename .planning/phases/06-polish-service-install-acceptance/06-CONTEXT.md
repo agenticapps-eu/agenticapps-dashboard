@@ -117,6 +117,24 @@ Plus three carry-forwards explicitly handed from prior phases (see Phase 5 defer
   - **Why:** These are PR follow-ups deferred from Phase 3 review. They affect the registration endpoint pair which is part of v1.0.
   - **How to apply:** Planner pulls the original `<finding>` text from Phase 3 review artifacts and converts to plan tasks with TDD.
 
+--
+
+- **D-6-21:** v1.0 dashboard targets desktop only. The impeccable CI gate (D-6-09/10) enforces ≥ 90 at the **lg breakpoint (1440x900)** only — sm (390x844) and md (768x1024) are captured for diagnostic purposes but are NOT part of the gate. Mobile responsive support (sidebar collapse, hamburger toggle, narrow-viewport layouts) is deferred to v1.1+ or a future mobile-app track.
+  - **Why:** Phase 6 Wave 0 baseline (06-01) measured `/` @ 390x844 at composite 51 — the AppShellV2 sidebar is fixed at 240px with no collapse, leaving only ~150px for content on mobile. Fixing this properly requires a focused responsive plan (CSS breakpoint + hamburger toggle component + responsive tests), which is out of scope for v1.0 ship. Desktop is the actual usage surface today. Mobile-app via React Native or similar is a more honest path than retrofitting responsive CSS.
+  - **How to apply:** 06-06's score parser must filter for `breakpoint === '1440x900'` when computing pass/fail. The sm/md scores still appear in the PR comment summary as informational signal. README documents desktop-only positioning.
+
+--
+
+- **D-6-22:** Defer the launchd reboot UAT (Plan 06-04 manual acceptance) to user discretion. Plan 06-04 ships the install code + subprocess tests against a temp dir + temp label (safe, CI-runnable). The actual reboot test on the developer's real Mac (load `~/Library/LaunchAgents/eu.agenticapps.dashboard.plist`, reboot, verify `launchctl list` + daemon reachability) is opt-in.
+  - **Why:** During Wave 0 close-out the developer's Mac was mid-task; rebooting wasn't acceptable. The install plist is well-scoped (one user-mode LaunchAgent, `--uninstall` flag exists for symmetry) and the unit + subprocess tests cover all logic. The "survives reboot" promise can be validated any time before v1.0 closure (Plan 06-07).
+  - **How to apply:** Phase 6 verifier creates a HUMAN-UAT entry for the reboot validation; it's tracked but not required for Wave 1 to ship. Resolve before Plan 06-07's PR (or carry as a Phase 6.x post-ship UAT item).
+
+--
+
+- **D-6-23:** Phase 5.1 RepairBanner visual check is deferred. The cherry-picked components from Phase 5.1's recovery commit (`31310d2`) — CommandPalette (Cmd+K) and RegisterModal — were visually verified by the developer during Wave 0 close. RepairBanner only renders on daemon-unreachable state (kill the agent process), and the developer didn't have time to force that state-flip during the session.
+  - **Why:** Low-risk component (it's a styled error banner — minimal logic), and the daemon-unreachable code path is exercised by `DaemonUnreachableState.test.tsx`. Visual confirmation is a polish-grade verification, not a correctness gate.
+  - **How to apply:** Append to Phase 5.1 HUMAN-UAT.md as a deferred test item; resolve any time before v1.0 closure (or accept as a known-untested visual surface).
+
 ### Claude's Discretion
 
 - **Exact Playwright config + viewport sizes for impeccable + screenshot capture.** Planner picks; defaults to Chromium 1440×900 desktop + 768×1024 tablet + 390×844 mobile.
@@ -218,7 +236,7 @@ Plus three carry-forwards explicitly handed from prior phases (see Phase 5 defer
 - **Multi-collaborator CF Access allowlist** — Phase 8 (when/if repo flips public).
 - **Header line 2** (Linear badge, ADR-touched, settings link) — Phase 7 (Linear integration).
 - **Cross-phase ReviewStatus aggregation** — Phase 4 D-4-16 deferred; revisit only if dogfooding flags the phase-scoped view as insufficient.
-- **3-col responsive break-out at narrow widths** — desktop-first remains the v1 stance. If the impeccable gate catches narrow-width issues, address inline as a polish task; otherwise defer.
+- **Mobile/tablet responsive support** — locked to desktop-only for v1.0 per D-6-21. If revisited, evaluate two paths: (a) responsive web (CSS breakpoints + sidebar collapse + hamburger toggle on AppShellV2) for v1.1; (b) native mobile app (React Native / SwiftUI / etc.) as a separate track that connects to the same daemon via Tailscale. (b) is more honest than retrofitting (a) given how much screen real estate the panel-grid layouts assume.
 - **Cached-stale-fallback for AgentLinter** — Phase 5 explicitly rejected; not revisiting.
 - **`/api/skills/global` on-disk cache persistence** — Phase 5 deferred; revisit if dogfooding shows daemon-restart cost is annoying.
 - **A finding-aggregator service** for `<finding>` XML — D-6-14 explicitly rejects; the two skills produce findings already.
