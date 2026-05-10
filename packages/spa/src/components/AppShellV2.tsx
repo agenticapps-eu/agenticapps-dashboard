@@ -18,12 +18,15 @@
 import React from 'react'
 import { Outlet } from '@tanstack/react-router'
 
+import { useGlobalShortcuts } from '../lib/useGlobalShortcuts.js'
 import { CommandPalette } from './CommandPalette.js'
 import { RepairBanner } from './RepairBanner.js'
 import { Sidebar } from './ui/Sidebar.js'
 import { TopBar } from './ui/TopBar.js'
 
 export function AppShellV2(): React.JSX.Element {
+  // POLISH-01 D-6-01..03 — single keydown listener with focus-guard
+  useGlobalShortcuts()
   return (
     <div
       data-testid="app-shell-v2"
