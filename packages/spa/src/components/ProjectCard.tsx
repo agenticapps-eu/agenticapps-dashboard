@@ -206,7 +206,7 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
       {!unreachable && !isDrift ? (
         <>
           {item.status.currentPhase === null ? (
-            <span className="text-sm">
+            <span className="block max-w-[60ch] text-sm">
               <span className="text-text-secondary">no .planning/</span>
               {' '}
               <a

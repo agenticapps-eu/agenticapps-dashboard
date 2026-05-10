@@ -116,7 +116,7 @@ export function MultiProjectHome(): React.JSX.Element {
         {items.length === 0 && !list.isLoading ? (
           <div className="mt-6 rounded-card border border-border-subtle bg-card-bg p-6 text-center shadow-card">
             <h2 className="text-lg font-semibold text-text-primary">No projects registered yet.</h2>
-            <p className="mt-2 text-base text-text-secondary">
+            <p className="mt-2 max-w-[60ch] text-base text-text-secondary">
               Run{' '}
               <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>{' '}
               to add one, or use the button above.
