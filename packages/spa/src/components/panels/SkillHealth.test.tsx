@@ -200,6 +200,8 @@ describe('SkillHealth', () => {
     mockQuery({ data: { kind: 'not-installed' } })
     const { wrapper } = makeWrapper()
     render(<SkillHealth projectId="proj-1" />, { wrapper })
+    // D-6.1-02: not-installed empty/error panel collapses by default — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     expect(screen.getByText(/AgentLinter binary missing from the daemon install\./)).toBeDefined()
     // CodeBlock renders the reinstall command as text
     expect(screen.getByText('pnpm install --frozen-lockfile')).toBeDefined()

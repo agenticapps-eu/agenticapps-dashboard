@@ -14,7 +14,7 @@
  * OH10: tool labels 'Sentry', 'Spotlight', 'sentry-cli' present in happy path
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ObservabilityResponse } from '@agenticapps/dashboard-shared'
@@ -128,6 +128,8 @@ describe('ObservabilityHealth', () => {
   it('OH6: all 3 tools not-detected → empty-state verbatim copy', () => {
     mockObs({ data: ALL_EMPTY })
     render(<ObservabilityHealth projectId="proj-1" />)
+    // D-6.1-02: empty-state panel collapses by default — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     expect(
       screen.getByText('No observability tooling detected. (Configure to enable.)')
     ).toBeDefined()

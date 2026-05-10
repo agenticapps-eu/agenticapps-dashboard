@@ -9,7 +9,7 @@
  * SS5: panel title is "Security Status"; loading + drift + unreachable work
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { SecurityResponse } from '@agenticapps/dashboard-shared'
@@ -70,6 +70,8 @@ describe('SecurityStatus', () => {
   it('SS4: when both null, renders empty-state copy', () => {
     mockQuery({ data: { cso: null, dbSentinel: null } })
     render(<SecurityStatus projectId="proj-1" />)
+    // D-6.1-02: empty-state panel collapses by default — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     expect(screen.getByText('No /cso audit yet for this phase.')).toBeDefined()
   })
 

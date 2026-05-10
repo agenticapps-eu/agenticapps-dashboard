@@ -76,10 +76,11 @@ export function ObservabilityHealth({ projectId }: ObservabilityHealthProps): Re
   const allEmpty = tools.every(([, t]) => !t.detected)
 
   // Empty state: all tools not-detected — verbatim copy per UI-SPEC line 412
+  // D-6.1-02: collapse by default in empty state; D-6.1-01: cap prose at 75ch
   if (allEmpty) {
     return (
-      <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-base leading-relaxed text-text-secondary">
+      <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed>
+        <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
           No observability tooling detected. (Configure to enable.)
         </p>
       </PanelContainer>

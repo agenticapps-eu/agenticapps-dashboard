@@ -141,9 +141,14 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
   }
 
   const data = query.data
+  // D-6.1-02: collapse panel by default when no integrations are configured
+  const isEmpty =
+    data.sentry === 'not-detected' &&
+    data.linear === 'not-detected' &&
+    data.infisical === 'not-detected'
 
   return (
-    <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
+    <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed={isEmpty}>
       <div className="grid grid-cols-[7rem_1fr] gap-3">
         {INTEGRATIONS.map(({ key, label, nudge, paragraph }) => {
           const state = data[key]
@@ -162,7 +167,7 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
                   <span className="text-sm text-text-secondary">{nudge}</span>
                 )}
                 {state === 'not-detected' && (
-                  <span className="text-base leading-relaxed text-text-secondary">{paragraph}</span>
+                  <span className="block max-w-[75ch] text-base leading-relaxed text-text-secondary">{paragraph}</span>
                 )}
               </div>
             </React.Fragment>

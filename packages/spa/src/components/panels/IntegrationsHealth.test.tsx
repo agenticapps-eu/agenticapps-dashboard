@@ -16,7 +16,7 @@
  * IH12: no <a href> anchors in DOM (D-5-20 forbids external doc links)
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { IntegrationsResponse } from '@agenticapps/dashboard-shared'
@@ -124,6 +124,8 @@ describe('IntegrationsHealth', () => {
   it('IH6: all 3 "not-detected" → 3 "not detected" pills + 3 verbatim paragraphs', () => {
     mockIntegrations({ data: ALL_NOT_DETECTED })
     const { container } = render(<IntegrationsHealth projectId="proj-1" />)
+    // D-6.1-02: panel collapses when all integrations not-detected — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     // 3 'not detected' pills
     const pills = screen.getAllByText('not detected')
     expect(pills.length).toBe(3)
@@ -163,6 +165,8 @@ describe('IntegrationsHealth', () => {
   it('IH9: not-detected Sentry paragraph contains SENTRY_AUTH_TOKEN in <code>', () => {
     mockIntegrations({ data: ALL_NOT_DETECTED })
     const { container } = render(<IntegrationsHealth projectId="proj-1" />)
+    // D-6.1-02: panel collapses when all integrations not-detected — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     const codeElements = Array.from(container.querySelectorAll('code'))
     const hasAuthToken = codeElements.some(el => el.textContent === 'SENTRY_AUTH_TOKEN')
     expect(hasAuthToken).toBe(true)
@@ -174,6 +178,8 @@ describe('IntegrationsHealth', () => {
   it('IH10: not-detected Linear paragraph contains LINEAR_API_KEY in <code>', () => {
     mockIntegrations({ data: ALL_NOT_DETECTED })
     const { container } = render(<IntegrationsHealth projectId="proj-1" />)
+    // D-6.1-02: panel collapses when all integrations not-detected — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     const codeElements = Array.from(container.querySelectorAll('code'))
     const hasLinearKey = codeElements.some(el => el.textContent === 'LINEAR_API_KEY')
     expect(hasLinearKey).toBe(true)
@@ -184,6 +190,8 @@ describe('IntegrationsHealth', () => {
   it('IH11: not-detected Infisical paragraph contains "infisical run --env=prod" in <code>', () => {
     mockIntegrations({ data: ALL_NOT_DETECTED })
     const { container } = render(<IntegrationsHealth projectId="proj-1" />)
+    // D-6.1-02: panel collapses when all integrations not-detected — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     const codeElements = Array.from(container.querySelectorAll('code'))
     const hasInfisicalRun = codeElements.some(el =>
       el.textContent?.includes('infisical run --env=prod -- agentic-dashboard start')
@@ -194,6 +202,8 @@ describe('IntegrationsHealth', () => {
   it('IH12: no <a href> anchors in rendered DOM (D-5-20 forbids external doc links)', () => {
     mockIntegrations({ data: ALL_NOT_DETECTED })
     const { container } = render(<IntegrationsHealth projectId="proj-1" />)
+    // D-6.1-02: panel collapses when all integrations not-detected — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     const anchors = container.querySelectorAll('a[href]')
     expect(anchors.length).toBe(0)
   })

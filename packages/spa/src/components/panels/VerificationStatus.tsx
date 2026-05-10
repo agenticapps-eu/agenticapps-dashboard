@@ -53,9 +53,10 @@ export function VerificationStatus({ projectId }: VerificationStatusProps): Reac
   const { mustHavesTotal, mustHavesEvidenced, items } = query.data.verification
 
   if (mustHavesTotal === 0) {
+    // D-6.1-02: collapse by default in empty state; D-6.1-01: cap prose at 75ch
     return (
-      <PanelContainer panelId="verification-status" title="Verification Status">
-        <p className="text-base leading-relaxed text-text-secondary">
+      <PanelContainer panelId="verification-status" title="Verification Status" defaultCollapsed>
+        <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
           No verification run yet — try /gsd-verify-work.
         </p>
       </PanelContainer>

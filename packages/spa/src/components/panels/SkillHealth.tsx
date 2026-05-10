@@ -87,13 +87,14 @@ export function SkillHealth({ projectId }: SkillHealthProps): React.JSX.Element 
   // Should be unreachable in normal installs (D-5-21); fires only on broken
   // node_modules or a partial pnpm install. Recovery is to reinstall the daemon.
   if (data.kind === 'not-installed') {
+    // D-6.1-02: collapse by default in empty/error state; D-6.1-01: cap prose at 75ch
     return (
-      <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-text-primary">
+      <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed>
+        <p className="max-w-[75ch] text-sm text-text-primary">
           AgentLinter binary missing from the daemon install. Reinstall with
         </p>
         <CodeBlock command="pnpm install --frozen-lockfile" copyLabel="Copy reinstall command" />
-        <p className="text-sm text-text-primary">to restore scoring.</p>
+        <p className="max-w-[75ch] text-sm text-text-primary">to restore scoring.</p>
       </PanelContainer>
     )
   }

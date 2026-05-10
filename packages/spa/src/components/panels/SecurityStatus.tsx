@@ -57,9 +57,10 @@ export function SecurityStatus({ projectId }: SecurityStatusProps): React.JSX.El
   const { cso, dbSentinel } = query.data
 
   if (cso === null && dbSentinel === null) {
+    // D-6.1-02: collapse by default in empty state; D-6.1-01: cap prose at 75ch
     return (
-      <PanelContainer panelId="security-status" title="Security Status">
-        <p className="text-base leading-relaxed text-text-secondary">
+      <PanelContainer panelId="security-status" title="Security Status" defaultCollapsed>
+        <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
           No /cso audit yet for this phase.
         </p>
       </PanelContainer>

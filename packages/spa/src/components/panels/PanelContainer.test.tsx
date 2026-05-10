@@ -10,8 +10,8 @@
  * PC6: unreachable prop renders AlertTriangle + 'Agent unreachable — retrying...'
  * PC7: neither flag → no extra elements
  */
-import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 
 import { PanelContainer } from './PanelContainer.js'
@@ -101,5 +101,99 @@ describe('PanelContainer', () => {
     )
     expect(screen.queryByText('Stale')).toBeNull()
     expect(screen.queryByText('Agent unreachable — retrying...')).toBeNull()
+  })
+})
+
+describe('D-6.1-02 progressive disclosure', () => {
+  it('D6102-a: renders body immediately when defaultCollapsed is omitted (back-compat default)', () => {
+    render(
+      <PanelContainer panelId="p1" title="X">
+        <p>body</p>
+      </PanelContainer>,
+    )
+    expect(screen.getByText('body')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('D6102-b: renders body immediately when defaultCollapsed=false', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed={false}>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    expect(screen.getByText('body')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('D6102-c: hides body when defaultCollapsed=true on initial mount', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    expect(screen.queryByText('body')).toBeNull()
+    expect(screen.getByRole('button', { name: /X/ })).toBeInTheDocument()
+  })
+
+  it('D6102-d: expands body when the disclosure header button is clicked', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('body')).toBeInTheDocument()
+  })
+
+  it('D6102-e: header button carries correct aria-expanded and aria-controls', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-expanded', 'false')
+    expect(btn).toHaveAttribute('aria-controls', 'p1-body')
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('D6102-f: does NOT read or write localStorage', () => {
+    const getSpy = vi.spyOn(Storage.prototype, 'getItem')
+    const setSpy = vi.spyOn(Storage.prototype, 'setItem')
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    fireEvent.click(screen.getByRole('button'))
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(setSpy).not.toHaveBeenCalled()
+    getSpy.mockRestore()
+    setSpy.mockRestore()
+  })
+
+  it('D6102-g: Stale pill remains visible when collapsed', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed stale>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    expect(screen.getByText('Stale')).toBeInTheDocument()
+  })
+
+  it('D6102-h: chevron icon uses no transition or rotation utilities (anti-AI-slop)', () => {
+    const { container } = render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    // Inspect classes on every svg in the disclosure header (chevron is the only one)
+    const svgs = Array.from(container.querySelectorAll('svg'))
+    expect(svgs.length).toBeGreaterThan(0)
+    svgs.forEach((svg) => {
+      const c = svg.getAttribute('class') ?? ''
+      expect(c).not.toMatch(/transition|rotate|animate-|motion-/)
+    })
   })
 })
