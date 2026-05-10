@@ -51,6 +51,15 @@ function HelpPage(): React.JSX.Element {
           </tbody>
         </table>
       </section>
+      <section className="rounded-card bg-card-bg p-6 shadow-card">
+        <h2 className="text-xl font-semibold text-text-primary mb-3">Common tasks</h2>
+        <ul className="max-w-[75ch] space-y-2 text-base text-text-secondary">
+          <li>Pair a new device — Settings → Manual pair</li>
+          <li>Refresh project state — press <KbdHint keys="R" /></li>
+          <li>View keyboard shortcuts — press <KbdHint keys="?" /></li>
+          <li>Open command palette — press <KbdHint keys="Cmd" /> + <KbdHint keys="K" /></li>
+        </ul>
+      </section>
     </div>
   )
 }
