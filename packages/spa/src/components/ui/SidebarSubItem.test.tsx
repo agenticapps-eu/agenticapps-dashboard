@@ -14,8 +14,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
-    Link: ({ children, to, className }: { children: React.ReactNode; to: string; className?: string }) => (
-      <a href={to} className={className}>{children}</a>
+    Link: ({ children, to, className, 'aria-current': ariaCurrent }: { children: React.ReactNode; to: string; className?: string; 'aria-current'?: React.AriaAttributes['aria-current'] }) => (
+      <a href={to} className={className} aria-current={ariaCurrent}>{children}</a>
     ),
     useMatchRoute: () => mockMatchRoute,
   }
@@ -82,5 +82,25 @@ describe('SidebarSubItem', () => {
       <SidebarSubItem to="/projects/$projectId" params={{ projectId: 'my-project' }} label="my-project" />,
     )
     expect(screen.getByText('my-project')).toBeDefined()
+  })
+})
+
+describe('D-6.1-04 ARIA additions', () => {
+  it('SidebarSubItem on active route carries aria-current="page"', () => {
+    mockMatchRoute.mockReturnValue({ projectId: 'project-1' })
+    const { container } = render(
+      <SidebarSubItem to="/projects/$projectId" params={{ projectId: 'project-1' }} label="project-1" />,
+    )
+    const link = container.querySelector('a')!
+    expect(link.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('SidebarSubItem on inactive route does NOT carry aria-current', () => {
+    mockMatchRoute.mockReturnValue(false)
+    const { container } = render(
+      <SidebarSubItem to="/projects/$projectId" params={{ projectId: 'project-1' }} label="project-1" />,
+    )
+    const link = container.querySelector('a')!
+    expect(link.getAttribute('aria-current')).toBeNull()
   })
 })

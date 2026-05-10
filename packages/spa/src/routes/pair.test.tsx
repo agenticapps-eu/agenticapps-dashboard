@@ -117,6 +117,50 @@ describe('PairFlow', () => {
   })
 })
 
+describe('D-6.1-04 pairing empty canvas', () => {
+  // Each test here keeps apiFetch pending so the component stays in pairing state.
+  // This ensures svg-absence and other assertions are scoped to the pairing branch only.
+
+  it('renders an h1 "Pairing in progress" during the pairing status', () => {
+    mockApiFetch.mockReturnValue(new Promise(() => {}))
+    render(<PairFlow />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pairing in progress')
+  })
+
+  it('renders a 3-item ordered list with the canonical step copy', () => {
+    mockApiFetch.mockReturnValue(new Promise(() => {}))
+    const { container } = render(<PairFlow />)
+    const list = container.querySelector('ol')!
+    expect(list).not.toBeNull()
+    expect(list.tagName).toBe('OL')
+    expect(list.children).toHaveLength(3)
+    expect(list.children[0]!.textContent).toMatch(/Open the printed pair URL/i)
+    expect(list.children[1]!.textContent).toMatch(/Approve the pairing in your terminal/i)
+    expect(list.children[2]!.textContent).toMatch(/Wait for the dashboard to populate/i)
+  })
+
+  it('keeps the role="status" + aria-live="polite" connecting message present', () => {
+    mockApiFetch.mockReturnValue(new Promise(() => {}))
+    render(<PairFlow />)
+    const statusEl = screen.getByRole('status')
+    expect(statusEl).toBeInTheDocument()
+    expect(statusEl.getAttribute('aria-live')).toBe('polite')
+    expect(statusEl.textContent).toMatch(/Connecting to agent/i)
+  })
+
+  it('does NOT render any decorative <img>, <svg>, or <details> in the pairing canvas', () => {
+    // apiFetch never resolves → component stays in pairing branch
+    mockApiFetch.mockReturnValue(new Promise(() => {}))
+    const { container } = render(<PairFlow />)
+    // Verify we are in the pairing branch (h1 must be present)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pairing in progress')
+    // No decorative imagery in the pairing canvas
+    expect(container.querySelector('img')).toBeNull()
+    expect(container.querySelector('svg')).toBeNull()
+    expect(container.querySelector('details')).toBeNull()
+  })
+})
+
 describe('MalformedPairUrl', () => {
   it("renders verbatim heading \"This pair URL doesn't look right\"", () => {
     render(<MalformedPairUrl />)

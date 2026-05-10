@@ -36,6 +36,7 @@ export function SidebarSubItem({ to, params, label, statusDot }: SidebarSubItemP
     <Link
       to={to}
       params={params}
+      aria-current={isActive ? 'page' : undefined}
       className={`flex items-center gap-3 rounded-md pl-9 pr-3 py-2 text-sm font-medium ${stateClasses} focus:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
     >
       <span className="truncate flex-1">{label}</span>

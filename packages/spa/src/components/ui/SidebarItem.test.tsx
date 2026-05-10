@@ -18,8 +18,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
-    Link: ({ children, to, className }: { children: React.ReactNode; to: string; className?: string }) => (
-      <a href={to} className={className}>{children}</a>
+    Link: ({ children, to, className, 'aria-current': ariaCurrent }: { children: React.ReactNode; to: string; className?: string; 'aria-current'?: React.AriaAttributes['aria-current'] }) => (
+      <a href={to} className={className} aria-current={ariaCurrent}>{children}</a>
     ),
     useMatchRoute: () => mockMatchRoute,
   }
@@ -93,5 +93,32 @@ describe('SidebarItemDisabled', () => {
   it('SI6b: SidebarItemDisabled renders the label text', () => {
     render(<SidebarItemDisabled icon={<span>icon</span>} label="Reviews" />)
     expect(screen.getByText('Reviews')).toBeDefined()
+  })
+})
+
+describe('D-6.1-04 ARIA additions', () => {
+  it('SidebarItem on active route carries aria-current="page"', () => {
+    mockMatchRoute.mockReturnValue({ matched: true })
+    const { container } = render(
+      <SidebarItem to="/" icon={<span>icon</span>} label="Projects" />,
+    )
+    const link = container.querySelector('a')!
+    expect(link.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('SidebarItem on inactive route does NOT carry aria-current', () => {
+    mockMatchRoute.mockReturnValue(false)
+    const { container } = render(
+      <SidebarItem to="/settings" icon={<span>icon</span>} label="Settings" />,
+    )
+    const link = container.querySelector('a')!
+    expect(link.getAttribute('aria-current')).toBeNull()
+  })
+
+  it('SidebarItemDisabled carries aria-label suffixed with "section, available in Phase 6"', () => {
+    render(<SidebarItemDisabled icon={<span />} label="Skills" />)
+    expect(
+      screen.getByRole('button', { name: /Skills section, available in Phase 6/i }),
+    ).toBeInTheDocument()
   })
 })

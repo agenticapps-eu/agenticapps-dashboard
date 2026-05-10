@@ -172,17 +172,58 @@ describe('TopBar', () => {
   })
 
   it('TB10: clicking the Keyboard shortcuts button toggles the HelpOverlay (independent of useFirstRunHint)', () => {
-    // On first click: HelpOverlay appears
-    // On click of "Got it" inside overlay: overlay dismisses
-    render(<TopBar />)
+    // On first click: HelpOverlay appears (adds a second role="status" region)
+    // On click of "Got it" inside overlay: overlay dismisses (back to one role="status")
+    // Note: the TopBar wrapper div[role="status"] is always present (D-6.1-04 aria-live region).
+    // We test HelpOverlay appearance by checking for the "Got it" button.
+    const { container } = render(<TopBar />)
     const btn = screen.getByRole('button', { name: /keyboard shortcuts/i })
-    // Before click: overlay should not be visible
-    expect(screen.queryByRole('status')).toBeNull()
+    // Before click: HelpOverlay is not visible — no "Got it" button
+    expect(screen.queryByRole('button', { name: /got it/i })).toBeNull()
     // After click: overlay should appear
     fireEvent.click(btn)
-    expect(screen.getByRole('status')).toBeDefined()
+    expect(screen.getByRole('button', { name: /got it/i })).toBeDefined()
+    // The overlay adds aria-live content; at least one live region present
+    expect(container.querySelectorAll('[aria-live]').length).toBeGreaterThanOrEqual(1)
     // Click "Got it" to dismiss
     fireEvent.click(screen.getByRole('button', { name: /got it/i }))
-    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByRole('button', { name: /got it/i })).toBeNull()
+  })
+})
+
+describe('D-6.1-04 aria-live status region', () => {
+  it('renders a single aria-live="polite" region in the TopBar (when overlay is closed)', () => {
+    const { container } = render(<TopBar />)
+    const liveRegions = container.querySelectorAll('[aria-live]')
+    expect(liveRegions).toHaveLength(1)
+    const first = liveRegions[0]!
+    expect(first.getAttribute('aria-live')).toBe('polite')
+    expect(first.getAttribute('role')).toBe('status')
+  })
+
+  it('aria-live region wraps the project status surface (StatusPill area)', () => {
+    mockUseMatches.mockReturnValue([
+      { id: '__root__', fullPath: '/', params: {} },
+      { id: '_appshell', fullPath: '/', params: {} },
+      { id: '/projects/$projectId', fullPath: '/projects/$projectId', params: { projectId: 'proj-1' } },
+    ])
+    mockUseRegistryList.mockReturnValue({
+      data: [makeProject('proj-1', [], 'Phase 5')],
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useRegistryList>)
+
+    render(<TopBar />)
+    const liveRegion = screen.getByRole('status')
+    // The phase StatusPill should be inside the live region.
+    expect(liveRegion.textContent).toMatch(/Phase/)
+  })
+
+  it('aria-live is polite (NOT assertive)', () => {
+    const { container } = render(<TopBar />)
+    const liveRegions = container.querySelectorAll('[aria-live]')
+    liveRegions.forEach((r) => {
+      expect(r.getAttribute('aria-live')).not.toBe('assertive')
+    })
   })
 })
