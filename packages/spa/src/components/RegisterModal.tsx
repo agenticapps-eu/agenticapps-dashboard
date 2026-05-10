@@ -269,7 +269,7 @@ export function RegisterModal({
   return (
     <dialog
       ref={dialogRef}
-      className="bg-card-bg border border-border-subtle rounded-lg p-0 max-w-md w-full mx-4 dark:shadow-none shadow-card backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg p-0 max-w-md w-full mx-4 dark:shadow-none shadow-card backdrop:bg-text-primary/50"
       onCancel={handleEscape}
       onClick={handleBackdropClick}
     >
@@ -485,7 +485,7 @@ export function RegisterModal({
             </div>
 
             {/* Blocked banner */}
-            <div className="mb-4 bg-card-bg-hover border-l-2 border-l-status-error px-4 py-3 rounded-md text-sm text-text-primary">
+            <div className="mb-4 bg-status-error/8 border border-status-error/40 px-4 py-3 rounded-md text-sm text-text-primary">
               Blocked: {(prepareData as BlockedResponse).blockedReason}
             </div>
 
