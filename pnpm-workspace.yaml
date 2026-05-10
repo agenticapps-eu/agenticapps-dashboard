@@ -44,3 +44,5 @@ catalog:
   # Agent stack (consumed by Plan 02)
   commander: ^14.0.0
   tsx: ^4.20.0
+  # Testing infrastructure
+  '@playwright/test': ^1.59.1

@@ -9,6 +9,9 @@ catalogs:
     '@fontsource-variable/inter':
       specifier: ^5.2.8
       version: 5.2.8
+    '@playwright/test':
+      specifier: ^1.59.1
+      version: 1.59.1
     '@tailwindcss/vite':
       specifier: ^4.2.4
       version: 4.2.4
@@ -252,6 +255,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.59.1
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.2.4(vite@8.0.10(@types/node@20.19.39)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0))
@@ -707,6 +713,11 @@ packages:
 
   '@oxc-project/types@0.127.0':
     resolution: {integrity: sha512-aIYXQBo4lCbO4z0R3FHeucQHpF46l2LbMdxRvqvuRuW2OxdnSkcng5B8+K12spgLDj93rtN3+J2Vac/TIO+ciQ==}
+
+  '@playwright/test@1.59.1':
+    resolution: {integrity: sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@rolldown/binding-android-arm64@1.0.0-rc.17':
     resolution: {integrity: sha512-s70pVGhw4zqGeFnXWvAzJDlvxhlRollagdCCKRgOsgUOH3N1l0LIxf83AtGzmb5SiVM4Hjl5HyarMRfdfj3DaQ==}
@@ -3282,6 +3293,10 @@ snapshots:
     optional: true
 
   '@oxc-project/types@0.127.0': {}
+
+  '@playwright/test@1.59.1':
+    dependencies:
+      playwright: 1.59.1
 
   '@rolldown/binding-android-arm64@1.0.0-rc.17':
     optional: true

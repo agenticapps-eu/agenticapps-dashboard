@@ -57,7 +57,7 @@ export function RenameDialog({ isOpen, item, onClose }: RenameDialogProps): Reac
         e.preventDefault()
         onClose()
       }}
-      className="bg-card-bg border border-border-subtle rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-text-primary/50"
     >
       <h2 className="text-xl font-semibold leading-snug text-text-primary">Rename project</h2>
       <label className="block text-sm font-semibold text-text-primary mt-4">Name</label>
@@ -166,7 +166,7 @@ export function EditTagsDialog({
         e.preventDefault()
         onClose()
       }}
-      className="bg-card-bg border border-border-subtle rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg p-6 max-w-md w-full mx-4 backdrop:bg-text-primary/50"
     >
       <h2 className="text-xl font-semibold leading-snug text-text-primary">Edit tags</h2>
       <div className="flex flex-wrap gap-2 mt-4">

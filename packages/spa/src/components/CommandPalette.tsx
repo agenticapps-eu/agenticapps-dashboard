@@ -90,7 +90,7 @@ export function CommandPalette(): React.JSX.Element {
         closeAndRestore()
       }}
       onClose={() => setIsOpen(false)}
-      className="bg-card-bg border border-border-subtle rounded-lg overflow-hidden p-0 max-w-lg w-full mt-[20vh] mx-auto backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg overflow-hidden p-0 max-w-lg w-full mt-[20vh] mx-auto backdrop:bg-text-primary/50"
     >
       <div className="flex flex-col" onKeyDown={handleKeyDown}>
         {/* Input row */}

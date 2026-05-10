@@ -210,7 +210,7 @@ export function ManualPairForm() {
         {status.kind === 'error' && (
           <div
             role="alert"
-            className="mt-4 rounded-md border-l-2 border-l-status-warning bg-card-bg-hover p-4"
+            className="mt-4 rounded-md border border-status-warning/40 bg-status-warning/8 p-4"
           >
             <h3 className="text-sm font-semibold text-text-primary">{status.heading}</h3>
             <p className="mt-1 text-sm text-text-secondary">{status.body}</p>
@@ -219,7 +219,7 @@ export function ManualPairForm() {
         {status.kind === 'success' && (
           <div
             role="alert"
-            className="mt-4 rounded-md border-l-2 border-l-status-success bg-card-bg-hover p-4"
+            className="mt-4 rounded-md border border-status-success/40 bg-status-success/8 p-4"
           >
             <h3 className="text-sm font-semibold text-text-primary">Connected.</h3>
             <p className="mt-1 text-sm text-text-secondary">Redirecting&hellip;</p>
