@@ -186,8 +186,8 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Wave 0: baseline impeccable capture + screenshot.mjs --route/--viewport extension; closes Phase 5.1 HUMAN-UAT AC-08 (after-shell.png re-capture)
-- [ ] 06-02-PLAN.md — Wave 0: A-01 rate-limit on /rename + /tags + /register-confirm; A-02 schema bounds (.max(200)/.max(20)/.max(50)) — Phase 3 carry-forward (D-6-20)
+- [x] 06-01-PLAN.md — Wave 0: baseline impeccable capture + screenshot.mjs --route/--viewport extension; closes Phase 5.1 HUMAN-UAT AC-08 (after-shell.png re-capture)
+- [x] 06-02-PLAN.md — Wave 0: A-01 rate-limit on /rename + /tags + /register-confirm; A-02 schema bounds (.max(200)/.max(20)/.max(50)) — Phase 3 carry-forward (D-6-20)
 - [ ] 06-03-PLAN.md — Wave 1: useGlobalShortcuts + HelpOverlay + KbdHint chips on /help (POLISH-01 D-6-01..03)
 - [ ] 06-04-PLAN.md — Wave 1: install-launchd command + makePlist + 14 unit tests + 3 subprocess tests (POLISH-02 D-6-04..07)
 - [ ] 06-05-PLAN.md — Wave 1: install-systemd command + makeSystemdUnit + 15 unit tests + 3 subprocess tests (POLISH-03 D-6-04..07)
