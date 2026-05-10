@@ -199,7 +199,7 @@ Plans:
 **Goal:** Lift Typography (82 → ≥ 90) and Layout (88 → ≥ 90) sub-scores on `/`; bring all 6 v1.0 user-touched routes' composite scores to ≥ 90 at desktop (lg, 1440x900) per D-6-21. Closes the impeccable gate gap so Phase 6's 06-07 closing-ritual PR clears the gate. UX architecture work (line-length policy, integration-panel progressive disclosure, token masking on /settings, ARIA on Sidebar/TopBar, numbered-steps empty canvas on /pair) — not visual polish.
 **Requirements**: None (decimal sub-phase tracked via D-6.1-01..04 instead of REQ-IDs)
 **Depends on:** Phase 6
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 06.1-01-PLAN.md — Wave 1: D-6.1-01 max-w-[75ch] on /help + /onboarding prose (TDD; 2 tasks)
@@ -207,7 +207,7 @@ Plans:
 - [x] 06.1-03-PLAN.md — Wave 2: D-6.1-02 PanelContainer disclosure + 5 panel updates + panel-prose max-w-[75ch] (depends_on: [01]; 2 tasks)
 - [x] 06.1-04-PLAN.md — Wave 1: D-6.1-04 ARIA (aria-current/aria-label on Sidebar; aria-live="polite" on TopBar) + /pair numbered-steps empty canvas (3 tasks)
 - [x] 06.1-05-PLAN.md — Wave 3: D-6.1-03 MaskedToken integration in ManualPairForm + /settings page-prose cap (depends_on: [02]; 2 tasks)
-- [ ] 06.1-06-PLAN.md — Wave 4: re-measure impeccable on all 6 routes; verify gate ≥ 90; commit refs/post-061-impeccable.md (autonomous: false; checkpoint:human-verify + checkpoint:decision; depends_on: [01,02,03,04,05]; 4 tasks)
+- [x] 06.1-06-PLAN.md — Wave 4: re-measure impeccable on all 6 routes; verify gate ≥ 90; commit refs/post-061-impeccable.md (autonomous: false; checkpoint:human-verify + checkpoint:decision; depends_on: [01,02,03,04,05]; 4 tasks)
 
 ### Phase 7: Optional Integrations (held)
 **Goal**: Wire Sentry, Linear, and Infisical-aware env loading one sub-phase at a time, only when upstream tooling is set up. Each is fully optional and the dashboard MUST continue to work without them.
