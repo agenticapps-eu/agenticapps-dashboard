@@ -194,6 +194,16 @@ Plans:
 - [x] 06-06-PLAN.md — Wave 2: impeccable CI gate (.github/workflows/impeccable.yml) + check-impeccable-score.mjs parser + Playwright workspace dep + targeted polish for any sub-90 deltas (POLISH-04 D-6-09..11; closes D-6-19 + Phase 5.1 AC-06)
 - [ ] 06-07-PLAN.md — Wave 3: review protocol doc + CF Access doc (D-6-18) + README rewrite (D-6-15..17) + closure ritual with two-stage review on Phase 6's own PR (POLISH-05 + POLISH-06)
 
+### Phase 06.1: typography-layout-impeccable-lift (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 6
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 06.1 to break down)
+
 ### Phase 7: Optional Integrations (held)
 **Goal**: Wire Sentry, Linear, and Infisical-aware env loading one sub-phase at a time, only when upstream tooling is set up. Each is fully optional and the dashboard MUST continue to work without them.
 **Depends on**: Phase 6
