@@ -16,7 +16,14 @@ function SettingsPage(): React.JSX.Element {
   }, [])
   return (
     <div className="space-y-12">
-      <PageHeader title="Settings" helper="Pair the daemon and configure the dashboard." />
+      <div>
+        <PageHeader title="Settings" />
+        {/* D-6.1-01: helper prose rendered separately so we can cap at 75ch.
+            PageHeader.helper accepts string only and renders without max-w. */}
+        <p className="mt-2 max-w-[75ch] text-base text-text-secondary">
+          Pair the daemon and configure the dashboard.
+        </p>
+      </div>
       <ManualPairForm />
       <ThemeToggle />
     </div>
