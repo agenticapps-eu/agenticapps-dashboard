@@ -90,7 +90,7 @@ export function PairFlow() {
             Hold tight while the dashboard contacts the agent.
           </p>
         </header>
-        <ol className="mt-8 list-decimal space-y-3 pl-6 text-base leading-relaxed text-text-primary">
+        <ol className="mx-auto mt-8 max-w-[60ch] list-decimal space-y-3 pl-6 text-base leading-relaxed text-text-primary">
           <li className="max-w-[75ch]">Open the printed pair URL in this browser.</li>
           <li className="max-w-[75ch]">Approve the pairing in your terminal.</li>
           <li className="max-w-[75ch]">Wait for the dashboard to populate.</li>
