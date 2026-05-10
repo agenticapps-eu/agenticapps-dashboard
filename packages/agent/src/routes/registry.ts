@@ -214,6 +214,19 @@ registryRoute.post(
   }),
   (c) => {
     const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+
+    // A-01: rate limit (per token hash, sliding 10s window, cap 10)
+    const token = tokenFromAuthHeader(c)
+    const tokHash = token ? tokenHashOf(token) : 'no-token'
+    const rl = rlConsume(tokHash)
+    if (!rl.allowed) {
+      return c.json(
+        { ok: false, error: 'rate_limited', requestId },
+        429,
+        { 'Retry-After': String(rl.retryAfter) },
+      )
+    }
+
     const body = c.req.valid('json')
 
     // D-09 / D-18: consume the nonce (single-use; returns null for unknown OR expired)
@@ -264,6 +277,20 @@ registryRoute.post(
     if (!result.success) return validationError(c)
   }),
   (c) => {
+    const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+
+    // A-01: rate limit (per token hash, sliding 10s window, cap 10)
+    const token = tokenFromAuthHeader(c)
+    const tokHash = token ? tokenHashOf(token) : 'no-token'
+    const rl = rlConsume(tokHash)
+    if (!rl.allowed) {
+      return c.json(
+        { ok: false, error: 'rate_limited', requestId },
+        429,
+        { 'Retry-After': String(rl.retryAfter) },
+      )
+    }
+
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
@@ -287,6 +314,20 @@ registryRoute.post(
     if (!result.success) return validationError(c)
   }),
   (c) => {
+    const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+
+    // A-01: rate limit (per token hash, sliding 10s window, cap 10)
+    const token = tokenFromAuthHeader(c)
+    const tokHash = token ? tokenHashOf(token) : 'no-token'
+    const rl = rlConsume(tokHash)
+    if (!rl.allowed) {
+      return c.json(
+        { ok: false, error: 'rate_limited', requestId },
+        429,
+        { 'Retry-After': String(rl.retryAfter) },
+      )
+    }
+
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined

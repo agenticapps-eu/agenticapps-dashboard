@@ -110,11 +110,11 @@ export type RegisterConfirmResponse = z.infer<typeof RegisterConfirmResponseSche
 // ── Phase 3: rename + tags mutation schemas (D-24) ───────────────────────────
 
 export const RenameRequestSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(200),
 })
 export type RenameRequest = z.infer<typeof RenameRequestSchema>
 
 export const TagsRequestSchema = z.object({
-  tags: z.array(z.string()),
+  tags: z.array(z.string().max(50)).max(20),
 })
 export type TagsRequest = z.infer<typeof TagsRequestSchema>
