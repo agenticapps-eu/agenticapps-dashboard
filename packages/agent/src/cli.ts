@@ -122,4 +122,12 @@ program
     await (await import('./cli/installLaunchd.js')).runInstallLaunchd(opts)
   })
 
+program
+  .command('install-systemd')
+  .description('Install a systemd user unit for the dashboard daemon (does NOT auto-enable)')
+  .option('--uninstall', 'remove the systemd unit file')
+  .action(async (opts) => {
+    await (await import('./cli/installSystemd.js')).runInstallSystemd(opts)
+  })
+
 program.parse()
