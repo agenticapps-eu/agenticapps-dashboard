@@ -223,7 +223,8 @@ describe('ManualPairForm', () => {
 })
 
 describe('D-6.1-03 MaskedToken integration', () => {
-  const SAMPLE_TOKEN = 'a1b2c3d4-e5f6-7890-1234-5678-abcd-ef01-2345-6789-aaaa-bbbb-cccc-dddd-eeee-ffff'
+  // TokenSchema requires 8 hex octets dash-separated (71 chars total)
+  const SAMPLE_TOKEN = 'aabbccdd-11223344-aabbccdd-11223344-aabbccdd-11223344-aabbccdd-11223344'
 
   beforeEach(() => {
     // Pre-populate localStorage so getPairing() returns a token on mount.
