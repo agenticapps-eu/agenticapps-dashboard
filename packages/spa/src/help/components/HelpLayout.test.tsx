@@ -63,15 +63,18 @@ describe('HelpLayout', () => {
     render(<HelpLayout />)
     const shortcuts = screen.getAllByRole('link', { name: /keyboard shortcuts/i })
     expect(shortcuts.length).toBeGreaterThan(0)
-    expect(shortcuts[0]).toHaveAttribute('data-to', '/help/reference/shortcuts')
+    const firstShortcut = shortcuts[0]
+    if (!firstShortcut) throw new Error('expected at least one Keyboard shortcuts link')
+    expect(firstShortcut).toHaveAttribute('data-to', '/help/reference/shortcuts')
     // "ready" entries do NOT render "(soon)"
-    expect(within(shortcuts[0]).queryByText(/\(soon\)/i)).not.toBeInTheDocument()
+    expect(within(firstShortcut).queryByText(/\(soon\)/i)).not.toBeInTheDocument()
   })
 
   it('stub entries render "(soon)" label', () => {
     currentPathname = '/help'
     render(<HelpLayout />)
     const stub = screen.getAllByRole('link', { name: /rationalization table/i })[0]
+    if (!stub) throw new Error('expected a rationalization table link')
     expect(within(stub).getByText(/\(soon\)/i)).toBeInTheDocument()
   })
 
@@ -79,6 +82,7 @@ describe('HelpLayout', () => {
     currentPathname = '/help/workflow/overview'
     render(<HelpLayout />)
     const link = screen.getAllByRole('link', { name: /^overview$/i })[0]
+    if (!link) throw new Error('expected an Overview link')
     expect(link.className).toMatch(/(text-accent|font-medium|bg-accent-bg)/)
   })
 
