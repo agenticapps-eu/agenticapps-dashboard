@@ -11,28 +11,30 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 
 // Mock all 8 widget stubs that HelpWidget imports lazily.
-vi.mock('../widgets/RepoTopologyMap.stub', () => ({
+// Specifier must MATCH the source's import path verbatim — including the .js
+// suffix used by the dashboard's NodeNext ESM convention.
+vi.mock('../widgets/RepoTopologyMap.stub.js', () => ({
   default: () => <div data-testid="stub-RepoTopologyMap">RepoTopologyMap stub</div>,
 }))
-vi.mock('../widgets/WorkflowStateMachine.stub', () => ({
+vi.mock('../widgets/WorkflowStateMachine.stub.js', () => ({
   default: () => <div data-testid="stub-WorkflowStateMachine">WorkflowStateMachine stub</div>,
 }))
-vi.mock('../widgets/GatePicker.stub', () => ({
+vi.mock('../widgets/GatePicker.stub.js', () => ({
   default: () => <div data-testid="stub-GatePicker">GatePicker stub</div>,
 }))
-vi.mock('../widgets/TraceVisualizer.stub', () => ({
+vi.mock('../widgets/TraceVisualizer.stub.js', () => ({
   default: () => <div data-testid="stub-TraceVisualizer">TraceVisualizer stub</div>,
 }))
-vi.mock('../widgets/ScanReportPlayground.stub', () => ({
+vi.mock('../widgets/ScanReportPlayground.stub.js', () => ({
   default: () => <div data-testid="stub-ScanReportPlayground">ScanReportPlayground stub</div>,
 }))
-vi.mock('../widgets/ApplyConsentSimulator.stub', () => ({
+vi.mock('../widgets/ApplyConsentSimulator.stub.js', () => ({
   default: () => <div data-testid="stub-ApplyConsentSimulator">ApplyConsentSimulator stub</div>,
 }))
-vi.mock('../widgets/MigrationDryRun.stub', () => ({
+vi.mock('../widgets/MigrationDryRun.stub.js', () => ({
   default: () => <div data-testid="stub-MigrationDryRun">MigrationDryRun stub</div>,
 }))
-vi.mock('../widgets/SlashCommandCatalog.stub', () => ({
+vi.mock('../widgets/SlashCommandCatalog.stub.js', () => ({
   default: () => <div data-testid="stub-SlashCommandCatalog">SlashCommandCatalog stub</div>,
 }))
 
