@@ -2,21 +2,22 @@
 
 ## Overview
 
-A nine-phase journey from empty repo to a working multi-project pipeline dashboard. Phases 0–6 deliver a complete, useful dashboard with zero third-party service dependencies. Phase 7 adds optional integrations (Sentry, Linear, Infisical-aware env loading) one at a time as upstream tooling lands. Phase 8 prepares for an eventual flip to public open-source.
+A ten-phase journey from empty repo to a working multi-project pipeline dashboard with first-party `/help` docs. Phases 0–6 delivered the v1.0 dashboard (shipped as PR #15, tagged `v1.0.0`). Phase 7 — **added post-v1.0 ship** — lands the v1.0 `/help` docs site (5 anchor MDX pages + ~25 stub pages + shell components + 8 widget stubs). Phase 8 (was Phase 7) adds optional integrations (Sentry, Linear, Infisical-aware env loading) one at a time as upstream tooling lands. Phase 9 (was Phase 8) prepares for an eventual flip to public open-source.
 
-**Source spec:** `docs/spec/dashboard-prompt.md` — every phase here is derived from spec §"Implementation phasing" and §"Acceptance criteria".
+**Source spec:** `docs/spec/dashboard-prompt.md` — every phase here is derived from spec §"Implementation phasing" and §"Acceptance criteria". Phase 7's migration spec lives outside the repo at `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/MIGRATION-INSTRUCTIONS.md`.
 
 ## Milestones
 
-- ✅ **v1.0 Working dashboard** — Phases 0–6 complete (PR #15 pending Stage 2 review + merge)
-- 📋 **v1.1 Optional integrations** — Phase 7 (planned, gated on upstream tooling)
-- 📋 **v1.2 Open-source readiness** — Phase 8 (planned, much later)
+- ✅ **v1.0 Working dashboard** — Phases 0–6 complete; merged via PR #15 + tagged `v1.0.0`
+- 🚧 **v1.0 /help docs site (post-ship)** — Phase 7 (in-flight on `feat/help-docs-v1`)
+- 📋 **v1.1 Optional integrations** — Phase 8 (planned, gated on upstream tooling)
+- 📋 **v1.2 Open-source readiness** — Phase 9 (planned, much later)
 
 ## Phases
 
 **Phase Numbering:**
 - Integer phases (0, 1, 2): Planned milestone work
-- Decimal phases (7.1, 7.2): Sub-phases within Phase 7's optional-integrations milestone
+- Decimal phases (5.1, 6.1, 8.1): Sub-phases within their parent phase
 
 - [ ] **Phase 0: Bootstrap** — pnpm workspace, Cloudflare Pages preview, npm placeholder, CI green
 - [ ] **Phase 1: Daemon + Registry + Pairing** — Hono server, registry CRUD, bearer-token auth, path allow-list
@@ -25,8 +26,9 @@ A nine-phase journey from empty repo to a working multi-project pipeline dashboa
 - [ ] **Phase 4: Single-project View — Discipline + Phase Progress** — left + center columns
 - [ ] **Phase 5: Skills + Health Panels** — right column, AgentLinter integration, observability/secrets/integrations detection
 - [ ] **Phase 6: Polish + Service Install + Acceptance** — keyboard shortcuts, install-launchd/systemd, impeccable critique gate, two-stage review
-- [ ] **Phase 7: Optional Integrations (held)** — Sentry / Linear / Infisical wiring, gated on upstream tooling
-- [ ] **Phase 8: Open-source Readiness (much later)** — LICENSE, CONTRIBUTING, optional public landing
+- [ ] **Phase 7: Help docs v1.0** — MDX `/help` docs site (5 anchor pages + 25 stub pages + shell + 8 widget stubs); replaces existing `/help` shortcut page, folds shortcuts into docs
+- [ ] **Phase 8: Optional Integrations (held)** — Sentry / Linear / Infisical wiring, gated on upstream tooling
+- [ ] **Phase 9: Open-source Readiness (much later)** — LICENSE, CONTRIBUTING, optional public landing
 
 ## Phase Details
 
@@ -209,19 +211,35 @@ Plans:
 - [x] 06.1-05-PLAN.md — Wave 3: D-6.1-03 MaskedToken integration in ManualPairForm + /settings page-prose cap (depends_on: [02]; 2 tasks)
 - [x] 06.1-06-PLAN.md — Wave 4: re-measure impeccable on all 6 routes; verify gate ≥ 90; commit refs/post-061-impeccable.md (autonomous: false; checkpoint:human-verify + checkpoint:decision; depends_on: [01,02,03,04,05]; 4 tasks)
 
-### Phase 7: Optional Integrations (held)
+### Phase 7: Help docs v1.0
+**Goal**: Ship the v1.0 `/help` docs site as a separate feature branch (`feat/help-docs-v1`) off `origin/main` — MDX-driven, mounted under `/help/*` in the existing TanStack Router. Replaces the current `/help` keyboard-shortcuts page; folds shortcuts into `/help/reference/shortcuts`. Five anchor pages (landing, workflow/overview, repos/overview, observability/overview, operations/install) plus ~25 stub pages rendering `ComingSoon`. Shell components: HelpLayout (sidebar + main + sticky TOC, mobile drawer), HelpWidget (lazy dispatch), HelpHook (in-page deep link), ComingSoon. Eight named widget stubs (RepoTopologyMap, WorkflowStateMachine, GatePicker, TraceVisualizer, ScanReportPlayground, ApplyConsentSimulator, MigrationDryRun, SlashCommandCatalog) — real implementations land in v1.2. PR targets `main`, ships independently of any future redesign work.
+**Canonical refs:** `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/MIGRATION-INSTRUCTIONS.md` (the migration spec — 12 steps), `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/HelpRoutes.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/HelpLayout.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/components/{HelpWidget,HelpHook,ComingSoon}.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/widgets/_stub-pattern.tsx`, source MDX content at `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/{landing,workflow/overview,repos/overview,observability/overview,operations/install}.md`.
+**Depends on**: Phase 6 (v1.0 ship — branched off `origin/main` `26e78c7`)
+**Requirements**: HELP-01 (5 anchor MDX pages render with frontmatter + GFM + Mermaid), HELP-02 (~25 stub routes render `ComingSoon` without crash), HELP-03 (HelpLayout sidebar collapses on mobile, sticky on desktop; no console errors), HELP-04 (HelpWidget dispatches the 8 stubs via React.lazy; unknown widget renders bordered error), HELP-05 (HelpHook deep-link component ships but is not yet wired into dashboard pages — v1.1 wires usages), HELP-06 (existing `/help` keyboard shortcuts move into `/help/reference/shortcuts` MDX page; `?` shortcut still routes to `/help` landing).
+**Success Criteria**:
+  1. `pnpm --filter @agenticapps/dashboard-spa dev` boots SPA on `:5174`; visiting `/help` renders the landing MDX (three navigation cards + intro paragraph + Mermaid diagram).
+  2. All 5 anchor pages render with their embedded Mermaid diagrams (verified via `/browse` screenshot — no console errors).
+  3. Each of the ~25 stub paths (e.g. `/help/workflow/gates`, `/help/reference/glossary`) renders `ComingSoon` with the correct section + title + back-link.
+  4. `/help/workflow`, `/help/repos`, `/help/observability` redirect to their `/overview` page; `/help/operations` redirects to `/help/operations/install`.
+  5. `<HelpWidget name="RepoTopologyMap" />` (in `repos/overview.mdx`), `<HelpWidget name="ScanReportPlayground" />` (in `observability/overview.mdx`), and `<HelpWidget name="MigrationDryRun" />` (in `operations/install.mdx`) render the corresponding `*Stub` widgets via `React.lazy`.
+  6. `?` keyboard shortcut still pushes `/help` (lands on docs landing). Keyboard shortcuts content from old `/help` lives at `/help/reference/shortcuts` with the same `KbdHint` rendering.
+  7. Dark mode renders correctly on every help route (prose-invert applied via Tailwind v4 typography plugin).
+  8. `pnpm -r typecheck && pnpm -r test && pnpm lint` all green; SPA build emits the help MDX chunks; PR opens against `main` (NOT the redesign branch) with two-stage review + impeccable critique ≥ 90 on `/help` (lg, 1440x900).
+**Plans**: TBD (capture in `07-CONTEXT.md` + `07-NN-PLAN.md` files)
+
+### Phase 8: Optional Integrations (held) — was Phase 7
 **Goal**: Wire Sentry, Linear, and Infisical-aware env loading one sub-phase at a time, only when upstream tooling is set up. Each is fully optional and the dashboard MUST continue to work without them.
-**Depends on**: Phase 6
+**Depends on**: Phase 7
 **Requirements**: SENTRY-01–03, LINEAR-01–03, INFI-01–02 (all v2)
 **Success Criteria** (per sub-phase):
-  - 7a (Sentry): With `SENTRY_AUTH_TOKEN` set, recent errors render in the right column; without it, panel still renders with "configure" copy.
-  - 7b (Linear): With `LINEAR_API_KEY` set, branch-to-issue linking surfaces issue title/status in the header; without it, no panel error.
-  - 7c (Infisical): `infisical run -- agentic-dashboard start` works with no daemon code change.
+  - 8a (Sentry): With `SENTRY_AUTH_TOKEN` set, recent errors render in the right column; without it, panel still renders with "configure" copy.
+  - 8b (Linear): With `LINEAR_API_KEY` set, branch-to-issue linking surfaces issue title/status in the header; without it, no panel error.
+  - 8c (Infisical): `infisical run -- agentic-dashboard start` works with no daemon code change.
 **Plans**: TBD per sub-phase
 
-### Phase 8: Open-source Readiness (much later)
+### Phase 9: Open-source Readiness (much later) — was Phase 8
 **Goal**: LICENSE (MIT), CONTRIBUTING.md, and the optional flip of CF Access to public landing once the dashboard has soaked privately.
-**Depends on**: Phase 7 (held until user opts in)
+**Depends on**: Phase 8 (held until user opts in)
 **Requirements**: OSS-01, OSS-02, OSS-03
 **Success Criteria**:
   1. `LICENSE` and `CONTRIBUTING.md` at repo root match conventions in the rest of the Claude Code skill ecosystem.
@@ -231,7 +249,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -242,5 +260,6 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 →
 | 4. Single-project View — Disc + Phase | 0/TBD | Not started | - |
 | 5. Skills + Health Panels | 5/6 | In Progress|  |
 | 6. Polish + Service Install + Acceptance | 0/TBD | Not started | - |
-| 7. Optional Integrations | 0/TBD | Deferred (held until upstream tooling) | - |
-| 8. Open-source Readiness | 0/TBD | Deferred (much later) | - |
+| 7. Help docs v1.0 | 0/TBD | In Progress (`feat/help-docs-v1`) | - |
+| 8. Optional Integrations | 0/TBD | Deferred (held until upstream tooling) | - |
+| 9. Open-source Readiness | 0/TBD | Deferred (much later) | - |
