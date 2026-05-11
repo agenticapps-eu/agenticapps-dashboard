@@ -43,7 +43,8 @@ function extractMermaidBlocks(mdxSource: string): string[] {
   const re = /<MermaidBlock\s+code=\{`([\s\S]*?)`\}\s*\/>/g
   let m: RegExpExecArray | null
   while ((m = re.exec(mdxSource)) !== null) {
-    blocks.push(m[1])
+    const code = m[1]
+    if (typeof code === 'string') blocks.push(code)
   }
   return blocks
 }
