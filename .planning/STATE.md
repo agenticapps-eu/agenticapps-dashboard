@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: /help docs site (post-ship)
 status: executing
-stopped_at: Completed 07-04 Wave 2 page content (5 anchor MDX + reference/shortcuts MDX) — 6 MDX files + 4 tests, 22 new vitest cases, all green
-last_updated: "2026-05-11T19:11:06.665Z"
+stopped_at: Completed 07-05 T1-T8 (route wiring + Playwright spec + preflight green) — STOPPED at T9 checkpoint per orchestrator scope
+last_updated: "2026-05-11T19:34:16.608Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 12
@@ -111,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T19:10:53.656Z
-Stopped at: Completed 07-04 Wave 2 page content (5 anchor MDX + reference/shortcuts MDX) — 6 MDX files + 4 tests, 22 new vitest cases, all green
+Last session: 2026-05-11T19:34:16.605Z
+Stopped at: Completed 07-05 T1-T8 (route wiring + Playwright spec + preflight green) — STOPPED at T9 checkpoint per orchestrator scope
 Resume file: None
