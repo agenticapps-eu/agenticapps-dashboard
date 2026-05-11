@@ -1,21 +1,65 @@
 import { useEffect } from 'react'
+import type React from 'react'
 import { createLazyRoute } from '@tanstack/react-router'
+
+import { KbdHint } from '../components/ui/KbdHint.js'
+import { PageHeader } from '../components/ui/PageHeader.js'
 
 export const Route = createLazyRoute('/help')({
   component: HelpPage,
 })
 
-function HelpPage() {
+function HelpPage(): React.JSX.Element {
   useEffect(() => {
     document.title = 'AgenticApps Dashboard — Help'
   }, [])
   return (
-    <section className="rounded-md border border-[--border] bg-[--surface] p-6">
-      <h2 className="text-xl font-semibold leading-snug text-[--text]">Help</h2>
-      <p className="mt-3 text-base leading-relaxed text-[--text-muted]">
-        Detailed help arrives in Phase 6. For now, see the README at{' '}
-        <code className="font-mono text-sm">github.com/agenticapps-eu/agenticapps-dashboard</code>.
-      </p>
-    </section>
+    <div className="space-y-6">
+      <PageHeader title="Help" helper="Reference and troubleshooting." />
+      <section className="rounded-card bg-card-bg p-6 shadow-card">
+        <h2 className="text-lg font-semibold leading-snug text-text-primary">Help</h2>
+        <p className="mt-3 max-w-[75ch] text-base leading-relaxed text-text-secondary">
+          See the README at{' '}
+          <code className="font-mono text-sm">github.com/agenticapps-eu/agenticapps-dashboard</code>{' '}
+          for full documentation.
+        </p>
+      </section>
+      <section className="rounded-card bg-card-bg p-6 shadow-card">
+        <h2 className="text-xl font-semibold text-text-primary mb-3">Keyboard shortcuts</h2>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-b border-border-subtle">
+              <td className="py-2 w-24"><KbdHint keys="R" /></td>
+              <td className="py-2 max-w-[75ch] text-text-secondary">Refresh the current view&rsquo;s data</td>
+            </tr>
+            <tr className="border-b border-border-subtle">
+              <td className="py-2"><KbdHint keys="?" /></td>
+              <td className="py-2 max-w-[75ch] text-text-secondary">Open this help page</td>
+            </tr>
+            <tr className="border-b border-border-subtle">
+              <td className="py-2"><KbdHint keys="/" /></td>
+              <td className="py-2 max-w-[75ch] text-text-secondary">Focus the search box (home only)</td>
+            </tr>
+            <tr>
+              <td className="py-2">
+                <span className="inline-flex items-center gap-1">
+                  <KbdHint keys="Cmd" /> <span className="text-text-secondary">+</span> <KbdHint keys="K" />
+                </span>
+              </td>
+              <td className="py-2 max-w-[75ch] text-text-secondary">Open the command palette</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section className="rounded-card bg-card-bg p-6 shadow-card">
+        <h2 className="text-xl font-semibold text-text-primary mb-3">Common tasks</h2>
+        <ul className="max-w-[75ch] space-y-2 text-base text-text-secondary">
+          <li>Pair a new device — Settings → Manual pair</li>
+          <li>Refresh project state — press <KbdHint keys="R" /></li>
+          <li>View keyboard shortcuts — press <KbdHint keys="?" /></li>
+          <li>Open command palette — press <KbdHint keys="Cmd" /> + <KbdHint keys="K" /></li>
+        </ul>
+      </section>
+    </div>
   )
 }

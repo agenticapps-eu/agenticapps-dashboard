@@ -4,21 +4,21 @@ export function OnboardingHero() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 md:px-8 md:pt-16">
       <header>
-        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-[--text]">
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-text-primary">
           One local daemon. Every device.
         </h1>
-        <p className="mt-2 text-base leading-relaxed text-[--text-muted]">
+        <p className="mt-2 max-w-[75ch] text-base leading-relaxed text-text-secondary">
           Nothing leaves your machine.
         </p>
       </header>
 
       <ol className="mt-12 space-y-8" role="list">
         <li className="grid grid-cols-[40px_1fr] gap-4">
-          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-[--surface-elevated] text-sm font-semibold text-[--text]">
+          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
             1
           </div>
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-[--text]">Install the agent</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Install the agent</h2>
             <CodeBlock
               command="npx @agenticapps/dashboard-agent"
               copyLabel="Copy install command"
@@ -27,11 +27,11 @@ export function OnboardingHero() {
         </li>
 
         <li className="grid grid-cols-[40px_1fr] gap-4">
-          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-[--surface-elevated] text-sm font-semibold text-[--text]">
+          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
             2
           </div>
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-[--text]">Register and start</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Register and start</h2>
             <div className="space-y-2">
               <CodeBlock
                 command="agentic-dashboard register ~/Sourcecode/your-project"
@@ -43,12 +43,12 @@ export function OnboardingHero() {
         </li>
 
         <li className="grid grid-cols-[40px_1fr] gap-4">
-          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-[--surface-elevated] text-sm font-semibold text-[--text]">
+          <div className="flex aspect-square w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
             3
           </div>
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-[--text]">Click the pair URL</h2>
-            <p className="text-base leading-relaxed text-[--text-muted]">
+            <h2 className="text-sm font-semibold text-text-primary">Click the pair URL</h2>
+            <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
               When the agent prints a pair URL like{' '}
               <code className="break-all font-mono text-sm">
                 https://agenticapps-dashboard.pages.dev/pair?...
@@ -59,11 +59,11 @@ export function OnboardingHero() {
         </li>
       </ol>
 
-      <details className="mt-12 max-w-prose">
-        <summary className="cursor-pointer text-sm text-[--accent] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]">
+      <details className="mt-12">
+        <summary className="cursor-pointer text-sm text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg">
           Why local-only →
         </summary>
-        <p className="mt-3 text-base leading-relaxed text-[--text-muted]">
+        <p className="mt-3 max-w-[75ch] text-base leading-relaxed text-text-secondary">
           Your <code className="font-mono text-sm">.planning/</code>,{' '}
           <code className="font-mono text-sm">.claude/</code>, and git history are sensitive.
           This dashboard never uploads them. The agent runs on your machine, reads project files

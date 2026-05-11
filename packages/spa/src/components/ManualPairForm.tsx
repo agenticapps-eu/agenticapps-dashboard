@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import {
@@ -9,6 +9,7 @@ import {
 
 import { apiFetch, ApiError } from '../lib/api.js'
 import { setPairing, clearPairing, getPairing } from '../lib/pairing.js'
+import { MaskedToken } from './ui/MaskedToken.js'
 
 type FormStatus =
   | { kind: 'idle' }
@@ -24,19 +25,28 @@ export function ManualPairForm() {
   const [agentUrlError, setAgentUrlError] = useState<string | null>(null)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const [status, setStatus] = useState<FormStatus>({ kind: 'idle' })
+  // D-6.1-03: when token was pre-populated on mount, render <MaskedToken>
+  // until the user explicitly clicks Edit. Clipboard copy still works while masked.
+  const [tokenEditMode, setTokenEditMode] = useState(false)
+  const tokenInputRef = useRef<HTMLInputElement | null>(null)
+  // Capture the pre-populated token at mount; if user types something else,
+  // the masked view doesn't apply (we're showing what they typed).
+  const [initialToken] = useState<string | null>(() => existing?.token ?? null)
+  const showMaskedToken =
+    initialToken !== null && !tokenEditMode && token === initialToken
 
   const validateAgentUrl = (v: string): string | null => {
     const r = AgentUrlSchema.safeParse(v)
     return r.success
       ? null
-      : 'This doesn’t look like an agent URL. Use `http://127.0.0.1:5193` or your Tailscale `*.ts.net` host.'
+      : "This doesn’t look like an agent URL. Use `http://127.0.0.1:5193` or your Tailscale `*.ts.net` host."
   }
 
   const validateToken = (v: string): string | null => {
     const r = TokenSchema.safeParse(v)
     return r.success
       ? null
-      : 'Token format doesn’t match. Copy it again from the agent’s startup banner.'
+      : "Token format doesn’t match. Copy it again from the agent’s startup banner."
   }
 
   const canSubmit =
@@ -88,12 +98,12 @@ export function ManualPairForm() {
         setStatus({
           kind: 'error',
           heading: 'Token rejected',
-          body: 'Re-check the token in the agent’s startup banner.',
+          body: "Re-check the token in the agent’s startup banner.",
         })
       } else if (err instanceof TypeError) {
         setStatus({
           kind: 'error',
-          heading: 'Couldn’t reach the agent',
+          heading: "Couldn’t reach the agent",
           body: 'Try `agentic-dashboard status` in your terminal.',
         })
       } else {
@@ -114,13 +124,20 @@ export function ManualPairForm() {
     return () => window.clearTimeout(t)
   }, [status, navigate])
 
+  // Auto-focus the token input when user clicks Edit on the masked display.
+  useEffect(() => {
+    if (tokenEditMode && tokenInputRef.current) {
+      tokenInputRef.current.focus()
+    }
+  }, [tokenEditMode])
+
   return (
-    <section className="rounded-md border border-[--border] bg-[--surface] p-6">
-      <h2 className="mb-6 text-xl font-semibold leading-snug text-[--text]">Manual pair</h2>
+    <section className="rounded-card border border-border-subtle bg-card-bg p-6">
+      <h2 className="mb-6 text-xl font-semibold leading-snug text-text-primary">Manual pair</h2>
       <form onSubmit={onSubmit} className="space-y-6" noValidate>
         {/* Agent URL field */}
         <div className="space-y-2">
-          <label htmlFor="agent-url" className="text-sm font-semibold text-[--text]">
+          <label htmlFor="agent-url" className="text-sm font-semibold text-text-primary">
             Agent URL
           </label>
           <input
@@ -136,14 +153,14 @@ export function ManualPairForm() {
             aria-invalid={agentUrlError !== null}
             aria-describedby="agent-url-helper"
             placeholder="http://127.0.0.1:5193"
-            className="w-full rounded-md border border-[--border-strong] bg-[--surface-elevated] px-3 py-2 font-mono text-sm text-[--text] placeholder:text-[--text-subtle] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+            className="w-full rounded-md border border-border-subtle bg-card-bg-hover px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
           />
           <p
             id="agent-url-helper"
             className={
               agentUrlError
-                ? 'flex items-center gap-1 text-sm text-[--danger]'
-                : 'text-sm text-[--text-muted]'
+                ? 'flex items-center gap-1 max-w-[75ch] text-sm text-status-error'
+                : 'max-w-[75ch] text-sm text-text-secondary'
             }
           >
             {agentUrlError && <AlertTriangle size={14} aria-hidden="true" />}
@@ -153,34 +170,50 @@ export function ManualPairForm() {
 
         {/* Token field */}
         <div className="space-y-2">
-          <label htmlFor="token" className="text-sm font-semibold text-[--text]">
+          <label htmlFor="token" className="text-sm font-semibold text-text-primary">
             Token
           </label>
-          <input
-            id="token"
-            type="text"
-            value={token}
-            onChange={(e) => {
-              setToken(e.target.value)
-              if (tokenError) setTokenError(null)
-            }}
-            onBlur={() => setTokenError(validateToken(token))}
-            readOnly={status.kind === 'submitting'}
-            aria-invalid={tokenError !== null}
-            aria-describedby="token-helper"
-            placeholder="a1b2c3d4-…-z9y8x7w6"
-            className="w-full rounded-md border border-[--border-strong] bg-[--surface-elevated] px-3 py-2 font-mono text-sm text-[--text] placeholder:text-[--text-subtle] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
-          />
+          {showMaskedToken ? (
+            <div className="flex items-center gap-2">
+              <MaskedToken value={token} label="Bearer token" />
+              <button
+                type="button"
+                onClick={() => setTokenEditMode(true)}
+                className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Edit
+              </button>
+            </div>
+          ) : (
+            <input
+              ref={tokenInputRef}
+              id="token"
+              type="text"
+              value={token}
+              onChange={(e) => {
+                setToken(e.target.value)
+                if (tokenError) setTokenError(null)
+              }}
+              onBlur={() => setTokenError(validateToken(token))}
+              readOnly={status.kind === 'submitting'}
+              aria-invalid={tokenError !== null}
+              aria-describedby="token-helper"
+              placeholder="a1b2c3d4-…-z9y8x7w6"
+              className="w-full rounded-md border border-border-subtle bg-card-bg-hover px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+            />
+          )}
           <p
             id="token-helper"
             className={
               tokenError
-                ? 'flex items-center gap-1 text-sm text-[--danger]'
-                : 'text-sm text-[--text-muted]'
+                ? 'flex items-center gap-1 max-w-[75ch] text-sm text-status-error'
+                : 'max-w-[75ch] text-sm text-text-secondary'
             }
           >
             {tokenError && <AlertTriangle size={14} aria-hidden="true" />}
-            {tokenError ?? '71 characters, dash-separated. Find it in the agent’s startup banner.'}
+            {tokenError ?? (showMaskedToken
+              ? 'Token is masked. Click Reveal to see it, or Copy to copy without revealing. Click Edit to enter a new token.'
+              : "71 characters, dash-separated. Find it in the agent’s startup banner.")}
           </p>
         </div>
 
@@ -190,10 +223,10 @@ export function ManualPairForm() {
           disabled={!canSubmit || status.kind === 'submitting'}
           aria-disabled={!canSubmit || status.kind === 'submitting'}
           className={[
-            'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]',
+            'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg',
             canSubmit && status.kind !== 'submitting'
-              ? 'bg-[--accent] text-[--accent-fg] hover:bg-[--accent-hover]'
-              : 'cursor-not-allowed bg-[--surface-elevated] text-[--text-subtle] opacity-50',
+              ? 'bg-accent text-white hover:bg-accent-hover'
+              : 'cursor-not-allowed bg-card-bg-hover text-text-tertiary opacity-50',
           ].join(' ')}
         >
           {status.kind === 'submitting' && (
@@ -210,19 +243,19 @@ export function ManualPairForm() {
         {status.kind === 'error' && (
           <div
             role="alert"
-            className="mt-4 rounded-md border-l-2 border-[--warning] bg-[--warning-surface] p-4"
+            className="mt-4 rounded-md border border-status-warning/40 bg-status-warning/8 p-4"
           >
-            <h3 className="text-sm font-semibold text-[--text]">{status.heading}</h3>
-            <p className="mt-1 text-sm text-[--text-muted]">{status.body}</p>
+            <h3 className="text-sm font-semibold text-text-primary">{status.heading}</h3>
+            <p className="mt-1 text-sm text-text-secondary">{status.body}</p>
           </div>
         )}
         {status.kind === 'success' && (
           <div
             role="alert"
-            className="mt-4 rounded-md border-l-2 border-[--success] bg-[--surface-elevated] p-4"
+            className="mt-4 rounded-md border border-status-success/40 bg-status-success/8 p-4"
           >
-            <h3 className="text-sm font-semibold text-[--text]">Connected.</h3>
-            <p className="mt-1 text-sm text-[--text-muted]">Redirecting&hellip;</p>
+            <h3 className="text-sm font-semibold text-text-primary">Connected.</h3>
+            <p className="mt-1 text-sm text-text-secondary">Redirecting&hellip;</p>
           </div>
         )}
       </form>

@@ -16,6 +16,8 @@
  *   T-05-04-Cross-Project-Cache: useLocalSkills(projectId) includes projectId in key.
  *   T-05-04-Schema-Drift: error.message.startsWith('schema_drift:') → InlineDrift.
  *   T-05-04-Markdown-Injection: all daemon strings rendered as React text children.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -55,7 +57,7 @@ export function InstalledSkills({ projectId }: InstalledSkillsProps): React.JSX.
   if (globalQ.isLoading || localQ.isLoading) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -77,7 +79,7 @@ export function InstalledSkills({ projectId }: InstalledSkillsProps): React.JSX.
   if (merged.length === 0) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No skills installed. Install with{' '}
           <code className="font-mono">claude skill install &lt;name&gt;</code>
           {' '}or place a SKILL.md under{' '}
@@ -89,19 +91,19 @@ export function InstalledSkills({ projectId }: InstalledSkillsProps): React.JSX.
 
   return (
     <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-      <p className="-mt-2 text-xs text-[--text-muted]">{merged.length} skills</p>
+      <p className="-mt-2 text-xs text-text-secondary">{merged.length} skills</p>
       <div className="max-h-[480px] overflow-y-auto">
-        <ul className="divide-y divide-[--border]">
+        <ul className="divide-y divide-border-subtle">
           {merged.map((s) => {
             const firstLine =
               (s.description ?? '').split('\n').find((l) => l.trim().length > 0) ?? ''
             return (
               <li key={`${s.scope}:${s.dir}`} className="flex min-w-0 items-center gap-2 py-2">
-                <span className="inline-flex shrink-0 items-center rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide text-[--text-muted]">
+                <span className="inline-flex shrink-0 items-center rounded bg-card-bg-hover px-1.5 py-0.5 text-xs uppercase tracking-wide text-text-secondary">
                   {s.scope}
                 </span>
-                <span className="shrink-0 font-mono text-sm text-[--text]">{s.name}</span>
-                <span className="min-w-0 flex-1 truncate text-sm text-[--text-muted]">{firstLine}</span>
+                <span className="shrink-0 font-mono text-sm text-text-primary">{s.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{firstLine}</span>
               </li>
             )
           })}

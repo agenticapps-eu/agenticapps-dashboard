@@ -9,6 +9,8 @@
  *
  * Threat model T-04-06-01/02: filenames are React text children, auto-escaped.
  * T-04-06-04: no virtualisation — daemon-side bounded to < 30 files.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import { CheckCircle2, Minus } from 'lucide-react'
 import React from 'react'
@@ -48,7 +50,7 @@ export function PhaseProgress({ projectId }: PhaseProgressProps): React.JSX.Elem
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="phase-progress" title="Phase Progress">
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -58,7 +60,7 @@ export function PhaseProgress({ projectId }: PhaseProgressProps): React.JSX.Elem
   if (phase === null && files.length === 0) {
     return (
       <PanelContainer panelId="phase-progress" title="Phase Progress">
-        <p className="text-base leading-relaxed text-[--text-muted]">
+        <p className="text-base leading-relaxed text-text-secondary">
           No phase work yet. Run /gsd-discuss-phase or /gsd-plan-phase to start.
         </p>
       </PanelContainer>
@@ -68,7 +70,7 @@ export function PhaseProgress({ projectId }: PhaseProgressProps): React.JSX.Elem
   return (
     <PanelContainer panelId="phase-progress" title="Phase Progress">
       {phase && (
-        <p className="font-mono text-xs uppercase tracking-wide text-[--text-muted]">
+        <p className="font-mono text-xs uppercase tracking-wide text-text-secondary">
           Phase {paddedPhase ?? '??'} — {phase}
         </p>
       )}
@@ -76,17 +78,17 @@ export function PhaseProgress({ projectId }: PhaseProgressProps): React.JSX.Elem
         {files.map((f) => (
           <li key={f.name} className="flex items-baseline gap-3">
             {f.present ? (
-              <CheckCircle2 size={14} aria-hidden="true" className="text-[--success]" />
+              <CheckCircle2 size={14} aria-hidden="true" className="text-status-success" />
             ) : (
-              <Minus size={14} aria-hidden="true" className="text-[--text-subtle]" />
+              <Minus size={14} aria-hidden="true" className="text-text-tertiary" />
             )}
             <code
-              className={`font-mono text-sm ${f.present ? 'text-[--text]' : 'text-[--text-muted]'}`}
+              className={`font-mono text-sm ${f.present ? 'text-text-primary' : 'text-text-secondary'}`}
             >
               {f.name}
             </code>
             {f.present && f.mtimeIso && (
-              <time dateTime={f.mtimeIso} className="font-mono text-xs text-[--text-muted]">
+              <time dateTime={f.mtimeIso} className="font-mono text-xs text-text-secondary">
                 {formatRelativeTime(f.mtimeIso)}
               </time>
             )}

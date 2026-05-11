@@ -1,6 +1,5 @@
 import { createLazyRoute, useParams } from '@tanstack/react-router'
 
-import { ProjectLayout } from '../components/ProjectLayout.js'
 import { SingleProjectView } from '../components/SingleProjectView.js'
 
 export const Route = createLazyRoute('/projects/$projectId')({
@@ -8,10 +7,6 @@ export const Route = createLazyRoute('/projects/$projectId')({
 })
 
 function ProjectIdPage(): React.JSX.Element {
-  const { projectId } = useParams({ from: '/projects/$projectId' })
-  return (
-    <ProjectLayout>
-      <SingleProjectView projectId={projectId} />
-    </ProjectLayout>
-  )
+  const { projectId } = useParams({ strict: false })
+  return <SingleProjectView projectId={projectId ?? ''} />
 }

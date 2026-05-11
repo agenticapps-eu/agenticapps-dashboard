@@ -95,6 +95,12 @@ export const RegisterPrepareResponseSchema = z.union([
 ])
 export type RegisterPrepareResponse = z.infer<typeof RegisterPrepareResponseSchema>
 
+// F-008: export individual variant types so consumers can narrow the union
+// via type predicates instead of `as unknown as` casts.
+export type RegisterPrepareAllowed = z.infer<typeof RegisterPrepareAllowedSchema>
+export type RegisterPrepareBlocked = z.infer<typeof RegisterPrepareBlockedSchema>
+export type RegisterPrepareAlreadyRegistered = z.infer<typeof RegisterPrepareAlreadyRegisteredSchema>
+
 export const RegisterConfirmRequestSchema = z.object({
   nonce: NonceHexSchema,
   name: z.string().min(1).optional(),
@@ -110,11 +116,11 @@ export type RegisterConfirmResponse = z.infer<typeof RegisterConfirmResponseSche
 // ── Phase 3: rename + tags mutation schemas (D-24) ───────────────────────────
 
 export const RenameRequestSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(200),
 })
 export type RenameRequest = z.infer<typeof RenameRequestSchema>
 
 export const TagsRequestSchema = z.object({
-  tags: z.array(z.string()),
+  tags: z.array(z.string().max(50)).max(20),
 })
 export type TagsRequest = z.infer<typeof TagsRequestSchema>

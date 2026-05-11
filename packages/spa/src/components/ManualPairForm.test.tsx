@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { ApiError , apiFetch } from '../lib/api.js'
@@ -219,5 +219,75 @@ describe('ManualPairForm', () => {
       },
       { timeout: 2000 },
     )
+  })
+})
+
+describe('D-6.1-03 MaskedToken integration', () => {
+  // TokenSchema requires 8 hex octets dash-separated (71 chars total)
+  const SAMPLE_TOKEN = 'aabbccdd-11223344-aabbccdd-11223344-aabbccdd-11223344-aabbccdd-11223344'
+
+  beforeEach(() => {
+    // Pre-populate localStorage so getPairing() returns a token on mount.
+    window.localStorage.setItem(
+      'agentic-dashboard:pairing',
+      JSON.stringify({
+        agentUrl: 'http://127.0.0.1:5193',
+        token: SAMPLE_TOKEN,
+        pairedAt: '2026-05-10T00:00:00.000Z',
+      }),
+    )
+    // Stub clipboard for "copy without reveal" test
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    })
+  })
+
+  afterEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('renders MaskedToken (not an <input>) for the pre-populated token on mount', () => {
+    render(<ManualPairForm />)
+    expect(screen.queryByLabelText('Token')).toBeNull()
+    expect(screen.getByLabelText(/Bearer token, masked/i)).toBeInTheDocument()
+    // Actual token text MUST NOT be in the DOM on mount
+    const html = document.body.innerHTML
+    expect(html.includes(SAMPLE_TOKEN)).toBe(false)
+  })
+
+  it('clicking Edit switches the field to a standard <input> with the current value', () => {
+    render(<ManualPairForm />)
+    fireEvent.click(screen.getByRole('button', { name: /Edit/ }))
+    const input = screen.getByLabelText('Token') as HTMLInputElement
+    expect(input).toBeInTheDocument()
+    expect(input.value).toBe(SAMPLE_TOKEN)
+  })
+
+  it("Copy button copies the actual token while masked (no reveal needed)", () => {
+    render(<ManualPairForm />)
+    fireEvent.click(screen.getByRole('button', { name: /Copy Bearer token/i }))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SAMPLE_TOKEN)
+  })
+
+  it('does NOT show MaskedToken when there is NO pre-populated token (fresh /settings visit)', () => {
+    window.localStorage.removeItem('agentic-dashboard:pairing')
+    render(<ManualPairForm />)
+    expect(screen.getByLabelText('Token')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Bearer token, masked/i)).toBeNull()
+  })
+
+  it('helper text under masked token has max-w-[75ch] applied (D-6.1-01)', () => {
+    render(<ManualPairForm />)
+    const helper = document.getElementById('token-helper')
+    expect(helper).not.toBeNull()
+    expect(helper?.className.includes('max-w-[75ch]')).toBe(true)
+  })
+
+  it('agent-url helper has max-w-[75ch] applied (D-6.1-01)', () => {
+    render(<ManualPairForm />)
+    const helper = document.getElementById('agent-url-helper')
+    expect(helper).not.toBeNull()
+    expect(helper?.className.includes('max-w-[75ch]')).toBe(true)
   })
 })

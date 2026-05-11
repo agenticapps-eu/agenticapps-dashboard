@@ -4,40 +4,16 @@ import {
   createRoute,
   createRouter,
   redirect,
+  Outlet,
   type AnyRoute,
 } from '@tanstack/react-router'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
 
-import { AppShell } from './components/AppShell.js'
+import { AppShellV2 } from './components/AppShellV2.js'
 import { getPairing } from './lib/pairing.js'
 import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
-
-/** Root route renders the persistent AppShell. */
-const rootRoute = createRootRoute({
-  component: AppShell,
-})
-
-/**
- * SPA-03: visiting `/` without a pairing redirects to `/onboarding`.
- * beforeLoad runs synchronously before the lazy component is even fetched.
- */
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  beforeLoad: () => {
-    const pairing = getPairing()
-    if (!pairing) {
-      throw redirect({ to: '/onboarding' })
-    }
-  },
-}).lazy(() => import('./routes/index.lazy.js').then((m) => m.Route))
-
-const onboardingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/onboarding',
-}).lazy(() => import('./routes/onboarding.lazy.js').then((m) => m.Route))
 
 /**
  * PairSearchSchema validates the required /pair?agent=&token= search params.
@@ -76,6 +52,53 @@ export function pairErrorComponent({
   return <RouteError error={error} reset={reset} />
 }
 
+// ── Single route tree: AppShellV2 is the only shell (Plan 05.1-06 Wave 5) ────
+
+const rootRoute = createRootRoute({
+  component: () => <Outlet />,
+})
+
+/**
+ * Pathless layout route — id='_appshell' is the TanStack Router code-based
+ * pattern for layout routes without a path segment (verified v1.169).
+ * /onboarding and /pair stay at rootRoute → NO shell (D-5.1-03).
+ */
+const appShellLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_appshell',
+  component: AppShellV2,
+})
+
+const indexRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/',
+  beforeLoad: () => {
+    const pairing = getPairing()
+    if (!pairing) { throw redirect({ to: '/onboarding' }) }
+  },
+}).lazy(() => import('./routes/index.lazy.js').then((m) => m.Route))
+
+const settingsRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/settings',
+}).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
+
+const helpRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/help',
+}).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
+
+const projectsIdRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/projects/$projectId',
+}).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
+
+// /onboarding and /pair stay at rootRoute (no shell — D-5.1-03)
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/onboarding',
+}).lazy(() => import('./routes/onboarding.lazy.js').then((m) => m.Route))
+
 const pairRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/pair',
@@ -83,33 +106,15 @@ const pairRoute = createRoute({
   errorComponent: pairErrorComponent,
 }).lazy(() => import('./routes/pair.lazy.js').then((m) => m.Route))
 
-const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/settings',
-}).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
-
-const helpRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/help',
-}).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
-
-/**
- * D-37 (Phase 3): Placeholder route for /projects/$projectId.
- * Phase 3 ships the route stub so card click-through resolves cleanly.
- * Phase 4 replaces the body with Discipline + Phase columns.
- */
-const projectsIdRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/projects/$projectId',
-}).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
-
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  appShellLayoutRoute.addChildren([
+    indexRoute,
+    settingsRoute,
+    helpRoute,
+    projectsIdRoute,
+  ] as AnyRoute[]),
   onboardingRoute,
   pairRoute,
-  settingsRoute,
-  helpRoute,
-  projectsIdRoute,
 ] as AnyRoute[])
 
 export const router = createRouter({ routeTree })

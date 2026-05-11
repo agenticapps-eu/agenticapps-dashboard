@@ -8,7 +8,7 @@ A nine-phase journey from empty repo to a working multi-project pipeline dashboa
 
 ## Milestones
 
-- 🚧 **v1.0 Working dashboard** — Phases 0–6 (in progress)
+- ✅ **v1.0 Working dashboard** — Phases 0–6 complete (PR #15 pending Stage 2 review + merge)
 - 📋 **v1.1 Optional integrations** — Phase 7 (planned, gated on upstream tooling)
 - 📋 **v1.2 Open-source readiness** — Phase 8 (planned, much later)
 
@@ -150,6 +150,29 @@ Plans:
 - [x] 05-05-PLAN.md — Wave 2: 3 TanStack Query hooks (useObservability/useSecrets/useIntegrations) + ObservabilityHealth (HEALTH-03 multi-signal provenance) + SecretsHealth (HEALTH-04 3-state) + IntegrationsHealth (HEALTH-05 3-state with verbatim configure-to-enable paragraphs)
 - [x] 05-06-PLAN.md — Wave 3: SingleProjectView 3-col grid widening (D-5-01 / D-4-09 staged) + meta-observer end-to-end script + D-5-10 closure gate (real Claude session populates CommitmentBlock + HookFirings) + final regression
 
+### Phase 05.1: UI redesign Cloudflare-inspired sidebar dashboard shell (INSERTED)
+
+**Goal**: Replace the current top-header-only navigation with a sidebar-driven shell inspired by Cloudflare dashboard surfaces. Apply the locked design tokens (warm paper bg, purple accent, Inter typography, soft card shadows) across all paired routes. Establish the design-system primitive layer. Migrate every Phase 5 panel to use the new Card primitive. ZERO functional regressions — every panel that exists today must still exist after 5.1, with the same data and behavior. The 1117-test suite must continue to pass. Drives toward Phase 6 POLISH-04 impeccable >= 90 gate.
+**Depends on**: Phase 5
+**Requirements**: None (internal UI quality work; ties to POLISH-04 in Phase 6)
+**Success Criteria**:
+  1. All paired routes (`/`, `/projects/:id`, `/settings`, `/help`) render under AppShellV2 with locked tokens (UI-SPEC AC-01).
+  2. `/onboarding` and `/pair` keep their standalone presentation (UI-SPEC AC-02).
+  3. Every Phase 5 panel still works — 1117-test baseline holds (UI-SPEC AC-03).
+  4. No orange anywhere; tokens.css is the single source of truth (UI-SPEC AC-04, AC-05).
+  5. `impeccable:critique` >= 90 on `/` and `/projects/:id` at 1440x900 (UI-SPEC AC-06; preview gate, Phase 6 enforces).
+  6. New UI primitive component tests pass (UI-SPEC AC-07).
+  7. Visual smoke screenshot committed at refs/after-shell.png (UI-SPEC AC-08).
+**Plans**: 6 plans
+
+Plans:
+- [x] 05.1-01-PLAN.md — Wave 1: tokens.css + 7 UI primitives (Card, CardHeader, EmptyState, Pill, StatusPill, MetricNumeric, KbdHint) + Inter font + alias layer + noOrange invariant
+- [x] 05.1-02-PLAN.md — Wave 2: shell components (Sidebar*, TopBar, Breadcrumb, PageHeader) + AppShellV2 + VITE_APPSHELL_V2 flag + pathless layout fixing /onboarding+/pair leak
+- [x] 05.1-03-PLAN.md — Wave 3: migrate `/` (MultiProjectHome PageHeader + repalette HomeToolbar/ProjectCard/RegisterButtonCard)
+- [x] 05.1-04-PLAN.md — Wave 4: migrate `/projects/:id` (PanelContainer + InlineDrift + 13 panels + SingleProjectView PageHeader + grid gap normalization)
+- [x] 05.1-05-PLAN.md — Wave 5: migrate `/settings`+`/help` + repalette remaining shell-adjacent components (RepairBanner, CommandPalette, modals, Header, etc.) — alias-free precondition for Wave 6
+- [x] 05.1-06-PLAN.md — Wave 6: flag flip + delete legacy AppShell/Header/HomeLayout/ProjectLayout/appShellWidth/ProjectHeader + delete alias :root block + legacy .dark block; capture refs/after-shell.png; run /impeccable:critique closure ritual
+
 ### Phase 6: Polish + Service Install + Acceptance
 **Goal**: Production-ready dashboard — keyboard shortcuts, LaunchAgent / systemd installers, impeccable-critique gate, two-stage review, README with FAQ + troubleshooting, CF Access policy applied (already done pre-flight).
 **Depends on**: Phase 5
@@ -160,7 +183,31 @@ Plans:
   3. `impeccable:critique` against the dashboard's own UI scores ≥ 90.
   4. PR closing v1.0 has Stage 1 (`/review`) AND Stage 2 (`superpowers:requesting-code-review`) sections in REVIEW.md, with `<finding severity="...">` blocks.
   5. README has install / pair / FAQ / troubleshooting sections.
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [x] 06-01-PLAN.md — Wave 0: baseline impeccable capture + screenshot.mjs --route/--viewport extension; closes Phase 5.1 HUMAN-UAT AC-08 (after-shell.png re-capture)
+- [x] 06-02-PLAN.md — Wave 0: A-01 rate-limit on /rename + /tags + /register-confirm; A-02 schema bounds (.max(200)/.max(20)/.max(50)) — Phase 3 carry-forward (D-6-20)
+- [x] 06-03-PLAN.md — Wave 1: useGlobalShortcuts + HelpOverlay + KbdHint chips on /help (POLISH-01 D-6-01..03)
+- [x] 06-04-PLAN.md — Wave 1: install-launchd command + makePlist + 14 unit tests + 3 subprocess tests (POLISH-02 D-6-04..07)
+- [x] 06-05-PLAN.md — Wave 1: install-systemd command + makeSystemdUnit + 15 unit tests + 3 subprocess tests (POLISH-03 D-6-04..07)
+- [x] 06-06-PLAN.md — Wave 2: impeccable CI gate (.github/workflows/impeccable.yml) + check-impeccable-score.mjs parser + Playwright workspace dep + targeted polish for any sub-90 deltas (POLISH-04 D-6-09..11; closes D-6-19 + Phase 5.1 AC-06)
+- [x] 06-07-PLAN.md — Wave 3: review protocol doc + CF Access doc (D-6-18) + README rewrite (D-6-15..17) + closure ritual with two-stage review on Phase 6's own PR (POLISH-05 + POLISH-06)
+
+### Phase 06.1: typography-layout-impeccable-lift (INSERTED)
+
+**Goal:** Lift Typography (82 → ≥ 90) and Layout (88 → ≥ 90) sub-scores on `/`; bring all 6 v1.0 user-touched routes' composite scores to ≥ 90 at desktop (lg, 1440x900) per D-6-21. Closes the impeccable gate gap so Phase 6's 06-07 closing-ritual PR clears the gate. UX architecture work (line-length policy, integration-panel progressive disclosure, token masking on /settings, ARIA on Sidebar/TopBar, numbered-steps empty canvas on /pair) — not visual polish.
+**Requirements**: None (decimal sub-phase tracked via D-6.1-01..04 instead of REQ-IDs)
+**Depends on:** Phase 6
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] 06.1-01-PLAN.md — Wave 1: D-6.1-01 max-w-[75ch] on /help + /onboarding prose (TDD; 2 tasks)
+- [x] 06.1-02-PLAN.md — Wave 1: D-6.1-03 MaskedToken primitive (RED→GREEN; 2 tasks)
+- [x] 06.1-03-PLAN.md — Wave 2: D-6.1-02 PanelContainer disclosure + 5 panel updates + panel-prose max-w-[75ch] (depends_on: [01]; 2 tasks)
+- [x] 06.1-04-PLAN.md — Wave 1: D-6.1-04 ARIA (aria-current/aria-label on Sidebar; aria-live="polite" on TopBar) + /pair numbered-steps empty canvas (3 tasks)
+- [x] 06.1-05-PLAN.md — Wave 3: D-6.1-03 MaskedToken integration in ManualPairForm + /settings page-prose cap (depends_on: [02]; 2 tasks)
+- [x] 06.1-06-PLAN.md — Wave 4: re-measure impeccable on all 6 routes; verify gate ≥ 90; commit refs/post-061-impeccable.md (autonomous: false; checkpoint:human-verify + checkpoint:decision; depends_on: [01,02,03,04,05]; 4 tasks)
 
 ### Phase 7: Optional Integrations (held)
 **Goal**: Wire Sentry, Linear, and Infisical-aware env loading one sub-phase at a time, only when upstream tooling is set up. Each is fully optional and the dashboard MUST continue to work without them.

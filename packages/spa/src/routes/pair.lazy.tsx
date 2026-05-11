@@ -82,7 +82,24 @@ export function PairFlow() {
   if (status.kind === 'pairing') {
     return (
       <div className="mx-auto max-w-3xl px-6 py-12 md:px-8">
-        <p role="status" className="text-base text-[--text-muted]">
+        <header>
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-text-primary">
+            Pairing in progress
+          </h1>
+          <p className="mt-2 max-w-[75ch] text-base leading-relaxed text-text-secondary">
+            Hold tight while the dashboard contacts the agent.
+          </p>
+        </header>
+        <ol className="mx-auto mt-8 max-w-[60ch] list-decimal space-y-3 pl-6 text-base leading-relaxed text-text-primary">
+          <li className="max-w-[75ch]">Open the printed pair URL in this browser.</li>
+          <li className="max-w-[75ch]">Approve the pairing in your terminal.</li>
+          <li className="max-w-[75ch]">Wait for the dashboard to populate.</li>
+        </ol>
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-8 text-sm text-text-secondary"
+        >
           Connecting to agent&hellip;
         </p>
       </div>
@@ -119,9 +136,9 @@ export function PairFlow() {
   // status.kind === 'failed'
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 md:px-8">
-      <section role="status" className="rounded-md border border-[--border] bg-[--surface] p-6">
-        <h2 className="text-xl font-semibold leading-snug text-[--text]">{status.heading}</h2>
-        <p className="mt-3 text-base leading-relaxed text-[--text-muted]">{status.body}</p>
+      <section role="status" className="rounded-md border border-border-subtle bg-card-bg p-6">
+        <h2 className="text-xl font-semibold leading-snug text-text-primary">{status.heading}</h2>
+        <p className="mt-3 max-w-[75ch] text-base leading-relaxed text-text-secondary">{status.body}</p>
       </section>
     </div>
   )

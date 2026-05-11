@@ -77,10 +77,10 @@ function FindingRow({
   const ariaLabel = `${red} critical, ${yellow} medium, ${green} low`
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="text-[--text-muted] font-semibold">{label}</span>
+      <span className="text-text-secondary font-semibold">{label}</span>
       <span
         aria-label={ariaLabel}
-        className="inline-flex items-center gap-2 font-mono text-[--text]"
+        className="inline-flex items-center gap-2 font-mono text-text-primary"
       >
         <GlyphGroup glyph="🔴" count={red} />
         <GlyphGroup glyph="🟡" count={yellow} />
@@ -117,9 +117,9 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
   }
 
   const containerClass = [
-    'group relative flex flex-col gap-2 bg-[--surface] border border-[--border] rounded-md p-4 text-left w-full',
-    'hover:bg-[--surface-elevated] hover:border-[--border-strong]',
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]',
+    'group relative flex flex-col gap-2 bg-card-bg border border-border-subtle rounded-card p-4 text-left w-full shadow-card',
+    'hover:bg-card-bg-hover hover:border-border-subtle',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg',
     'transition-colors duration-100 ease-out',
     unreachable ? 'opacity-60' : '',
   ]
@@ -155,7 +155,7 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
         data-kebab
         aria-label={`Project options for ${item.name}`}
         aria-haspopup="menu"
-        className="absolute top-3 right-3 h-8 w-8 p-2 text-[--text-muted] rounded-md hover:bg-[--surface-elevated] hover:text-[--text] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] z-10"
+        className="absolute top-3 right-3 h-8 w-8 p-2 text-text-secondary rounded-md hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent z-10"
         onClick={(e) => {
           e.stopPropagation()
           onContextMenu({ type: 'element', el: e.currentTarget }, item)
@@ -165,10 +165,10 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
       </button>
 
       {/* Card name (Heading — 20px/600) */}
-      <span className="text-xl font-semibold leading-snug text-[--text] pr-8">{item.name}</span>
+      <span className="text-xl font-semibold leading-snug text-text-primary pr-8">{item.name}</span>
 
       {/* Subtitle: client · tags */}
-      <span className="text-sm text-[--text-muted]">
+      <span className="text-sm text-text-secondary">
         {[item.client, ...item.tags].filter(Boolean).join(' · ')}
       </span>
 
@@ -184,13 +184,13 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
       {/* Unreachable state */}
       {unreachable && !isDrift ? (
         <>
-          <span className="text-[--danger] text-sm font-mono">
+          <span className="text-status-error text-sm font-mono">
             unreachable: {item.root}
           </span>
           <button
             type="button"
             aria-label={`Unregister ${item.name}`}
-            className="text-[--danger] text-sm underline self-start"
+            className="text-status-error text-sm underline self-start"
             onClick={(e) => {
               e.stopPropagation()
               const kebab = cardRef.current?.querySelector<HTMLElement>('button[data-kebab]')
@@ -206,21 +206,21 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
       {!unreachable && !isDrift ? (
         <>
           {item.status.currentPhase === null ? (
-            <span className="text-sm">
-              <span className="text-[--text-muted]">no .planning/</span>
+            <span className="block max-w-[60ch] text-sm">
+              <span className="text-text-secondary">no .planning/</span>
               {' '}
               <a
                 href="https://github.com/agenticapps/workflow"
-                className="text-[--accent] text-sm underline"
+                className="text-accent text-sm underline"
                 onClick={(e) => e.stopPropagation()}
               >
                 install workflow skill &rarr;
               </a>
             </span>
           ) : isLoading ? (
-            <span className="text-[--text-muted] text-sm">—</span>
+            <span className="text-text-secondary text-sm">—</span>
           ) : isError ? null : overview.data ? (
-            <span className="text-sm font-semibold text-[--text]">
+            <span className="text-sm font-semibold text-text-primary">
               Phase {extractPhaseNum(item.status.currentPhase)} · {overview.data.phaseStatus}
             </span>
           ) : null}
@@ -254,8 +254,8 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
                 {/* DB-AUDIT row (expanded only) */}
                 {overview.data.dbAudit ? (
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-[--text-muted] font-semibold">DB-AUDIT:</span>
-                    <span className="text-[--text]">
+                    <span className="text-text-secondary font-semibold">DB-AUDIT:</span>
+                    <span className="text-text-primary">
                       {overview.data.dbAudit.findings.critical} critical
                       {' · '}
                       {overview.data.dbAudit.findings.high} high
@@ -270,8 +270,8 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
                 {/* TDD pairs row (expanded only) */}
                 {overview.data.tdd ? (
                   <div className="text-sm">
-                    <span className="text-[--text-muted] font-semibold">TDD pairs: </span>
-                    <span className="text-[--text]">
+                    <span className="text-text-secondary font-semibold">TDD pairs: </span>
+                    <span className="text-text-primary">
                       {overview.data.tdd.greenPairs}/{overview.data.tdd.totalTasks}
                     </span>
                   </div>
@@ -280,8 +280,8 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
                 {/* Verification row (expanded only) */}
                 {overview.data.verification ? (
                   <div className="text-sm">
-                    <span className="text-[--text-muted] font-semibold">Verification: </span>
-                    <span className="text-[--text]">
+                    <span className="text-text-secondary font-semibold">Verification: </span>
+                    <span className="text-text-primary">
                       {overview.data.verification.evidence}/{overview.data.verification.mustHaves}
                     </span>
                   </div>
@@ -290,8 +290,8 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
                 {/* Branch row (expanded only) */}
                 {overview.data.branch ? (
                   <div className="text-sm">
-                    <span className="text-[--text-muted] font-semibold">Branch: </span>
-                    <span className="text-[--text] font-mono">{overview.data.branch}</span>
+                    <span className="text-text-secondary font-semibold">Branch: </span>
+                    <span className="text-text-primary font-mono">{overview.data.branch}</span>
                   </div>
                 ) : null}
               </div>
@@ -300,12 +300,12 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
 
           {/* Footer: last commit OR error footer */}
           {isError ? (
-            <div role="status" className="flex items-center gap-1 text-sm text-[--text-muted]">
-              <AlertTriangle size={12} aria-hidden="true" className="text-[--warning]" />
+            <div role="status" className="flex items-center gap-1 text-sm text-text-secondary">
+              <AlertTriangle size={12} aria-hidden="true" className="text-status-warning" />
               overview unavailable · retrying
             </div>
           ) : (
-            <span className="text-sm text-[--text-muted]">
+            <span className="text-sm text-text-secondary">
               last commit {relativeTime(item.status.lastCommitAt)}
             </span>
           )}

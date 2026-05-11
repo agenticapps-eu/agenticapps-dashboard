@@ -49,16 +49,16 @@ describe('CommitmentBlock', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Commitment' })).toBeDefined()
   })
 
-  it('CB4: while loading shows "Loading..." in text-sm text-[--text-muted]', () => {
+  it('CB4: while loading shows "Loading..." in text-sm text-text-secondary (Wave 3 repalette)', () => {
     mockQuery({ isLoading: true, data: undefined })
     render(<CommitmentBlock projectId="proj-1" />)
     const loading = screen.getByText('Loading...')
     expect(loading).toBeDefined()
     expect(loading.className).toContain('text-sm')
-    expect(loading.className).toContain('text-[--text-muted]')
+    expect(loading.className).toContain('text-text-secondary')
   })
 
-  it('CB1: renders markdown verbatim in <pre> with spec classes', () => {
+  it('CB1: renders markdown verbatim in <pre> with spec classes (Wave 3 repalette)', () => {
     mockQuery({
       data: {
         markdown: '## Workflow commitment\n- foo\n- bar',
@@ -72,12 +72,12 @@ describe('CommitmentBlock', () => {
     expect(pre.className).toContain('whitespace-pre-wrap')
     expect(pre.className).toContain('font-mono')
     expect(pre.className).toContain('text-sm')
-    expect(pre.className).toContain('text-[--text]')
+    expect(pre.className).toContain('text-text-primary')
     expect(pre.className).toContain('leading-relaxed')
     expect(pre.textContent).toBe('## Workflow commitment\n- foo\n- bar')
   })
 
-  it('CB2: renders "Source: {filename}" line with spec classes', () => {
+  it('CB2: renders "Source: {filename}" line with spec classes (Wave 3 repalette)', () => {
     mockQuery({
       data: {
         markdown: '## Workflow commitment\n- foo',
@@ -90,7 +90,7 @@ describe('CommitmentBlock', () => {
     expect(source).toBeDefined()
     expect(source.className).toContain('font-mono')
     expect(source.className).toContain('text-xs')
-    expect(source.className).toContain('text-[--text-subtle]')
+    expect(source.className).toContain('text-text-tertiary')
   })
 
   it('CB3: when markdown is null, renders empty-state copy verbatim', () => {

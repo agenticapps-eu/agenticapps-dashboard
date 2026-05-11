@@ -18,9 +18,11 @@
  *   6. absent → Minus icon + body + NO pill (quiet empty state)
  *
  * Icon colors per UI-SPEC §Color:
- *   present-valid: text-[--success]
- *   present-invalid: text-[--danger]
- *   absent: text-[--text-subtle]
+ *   present-valid: text-status-success
+ *   present-invalid: text-status-error
+ *   absent: text-text-tertiary
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 import { CheckCircle2, AlertTriangle, Minus } from 'lucide-react'
@@ -55,7 +57,7 @@ export function SecretsHealth({ projectId }: SecretsHealthProps): React.JSX.Elem
   if (query.isLoading) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -77,30 +79,30 @@ export function SecretsHealth({ projectId }: SecretsHealthProps): React.JSX.Elem
     <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
       {state === 'present-valid' && (
         <div className="flex items-center gap-2">
-          <CheckCircle2 size={16} className="text-[--success]" aria-hidden="true" />
-          <span className="text-sm text-[--text]">
+          <CheckCircle2 size={16} className="text-status-success" aria-hidden="true" />
+          <span className="text-sm text-text-primary">
             <code className="font-mono">.infisical.json</code> present and valid.
           </span>
-          <span className="ml-auto inline-flex items-center rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide text-[--success]">
+          <span className="ml-auto inline-flex items-center rounded bg-card-bg-hover px-1.5 py-0.5 text-xs uppercase tracking-wide text-status-success">
             valid
           </span>
         </div>
       )}
       {state === 'present-invalid' && (
         <div className="flex items-center gap-2">
-          <AlertTriangle size={16} className="text-[--danger]" aria-hidden="true" />
-          <span className="text-sm text-[--text]">
+          <AlertTriangle size={16} className="text-status-error" aria-hidden="true" />
+          <span className="text-sm text-text-primary">
             <code className="font-mono">.infisical.json</code> found but not parseable.
           </span>
-          <span className="ml-auto inline-flex items-center rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide text-[--danger]">
+          <span className="ml-auto inline-flex items-center rounded bg-card-bg-hover px-1.5 py-0.5 text-xs uppercase tracking-wide text-status-error">
             invalid
           </span>
         </div>
       )}
       {state === 'absent' && (
         <div className="flex items-center gap-2">
-          <Minus size={16} className="text-[--text-subtle]" aria-hidden="true" />
-          <span className="text-sm text-[--text-muted]">
+          <Minus size={16} className="text-text-tertiary" aria-hidden="true" />
+          <span className="text-sm text-text-secondary">
             No <code className="font-mono">.infisical.json</code> detected.
           </span>
         </div>

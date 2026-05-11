@@ -1,0 +1,62 @@
+/*
+ * Phase 5.1 design tokens — single source of truth.
+ * UI-SPEC §2-4 verbatim (renamed for Tailwind 4 namespace conventions).
+ * AC-04 (no orange), AC-05 (single source of truth).
+ *
+ * CRITICAL: hex literals live ONLY here. The tokenSourceOfTruth.test.ts invariant
+ * scans packages/spa/src/components/** and fails if any hex appears there.
+ */
+
+@theme {
+  /* Backgrounds — warm paper */
+  --color-app-bg:          #FAFAF7;
+  --color-sidebar-bg:      #F8F6F3;
+  --color-card-bg:         #FFFFFF;
+  --color-card-bg-hover:   #FAFAF7;
+
+  /* Text */
+  --color-text-primary:    #1F1B2E;
+  --color-text-secondary:  #6B6478;
+  --color-text-tertiary:   #9C95A8;
+
+  /* Accent — purple, used sparingly */
+  --color-accent:           #6B46C1;
+  --color-accent-hover:     #5B3BA8;
+  --color-accent-bg:        #F2EBFA;
+  --color-accent-bg-strong: #6B46C1;
+
+  /* Borders */
+  --color-border-subtle: #E8E5E0;
+
+  /* Status — semantic colors, used in panel data not chrome */
+  --color-status-success: #2E7D5B;
+  --color-status-warning: #C2802B;
+  --color-status-error:   #B53D3D;
+  --color-status-info:    #5B6FA8;
+
+  /* Card material */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
+  --radius-card: 12px;
+
+  /* Typography — Pitfall 3: family name is 'Inter Variable' WITH space */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Type scale — UI-SPEC §3 */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   16px;
+  --text-xl:   20px;
+  --text-2xl:  24px;
+  --text-3xl:  32px;
+}
+
+/* Z-index ladder — outside @theme (not utility-class generators) */
+:root {
+  --z-base:    0;
+  --z-sticky:  10;
+  --z-overlay: 100;
+  --z-modal:   1000;
+  --z-toast:   2000;
+}

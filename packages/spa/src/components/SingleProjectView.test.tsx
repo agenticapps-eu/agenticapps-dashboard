@@ -1,42 +1,32 @@
 /**
  * SingleProjectView.test.tsx — TDD tests for SingleProjectView component.
  *
- * Updated by Plan 06 Task 1 (Phase 5): 3-col grid + health-column added.
- * - SV2 updated: now asserts grid-cols-[1fr_1.5fr_1fr] (3-col)
- * - SV5 updated: health-column IS present (was absent in Phase 4)
- * - SV8: health-column has correct attributes and class
- * - SV9: all 5 Phase 5 panel headings render inside health-column
- * - SV10: panel DOM order in health-column matches UI-SPEC (InstalledSkills first, IntegrationsHealth last)
- * - SV11: health-column has flex flex-col gap-4 classes
+ * Updated by Plan 05.1-06 Task 1 (Wave 5): ProjectHeader deleted, PageHeader unconditional.
+ * - SV1 updated: no longer tests ProjectHeader (deleted in Wave 5)
+ * - SV2: renders 3-column grid with grid-cols-[1fr_1.5fr_1fr]
+ * - SV12: PageHeader unconditional (no flag needed)
+ * - SV13: removed (ProjectHeader no longer exists)
  *
- * Tests SV1–SV11:
- * SV1: renders ProjectHeader
- * SV2: renders 3-column grid with grid-cols-[1fr_1.5fr_1fr]  (UPDATED from 2-col)
+ * Tests SV1–SV12:
+ * SV1: PageHeader renders with projectId as title (Wave 5: unconditional)
+ * SV2: renders 3-column grid with grid-cols-[1fr_1.5fr_1fr]
  * SV3: discipline-column renders CommitmentBlock + HookFirings + RationalizationFires panel regions
  * SV4: phase-progress-column renders all 5 real panel regions (Plan 06 filled these)
- * SV5: health-column IS present (Phase 5 filled it)  (UPDATED from "absent")
+ * SV5: health-column IS present (Phase 5 filled it)
  * SV6: document.title updates on mount
- * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-4 on columns)
+ * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-6 on columns)
  * SV8: health-column has data-testid="health-column" and aria-label="Health"
  * SV9: all 5 Phase 5 panel headings render inside health-column
- * SV10: panel DOM order matches UI-SPEC: InstalledSkills → SkillHealth → Observability → Secrets → Integrations
- * SV11: health-column has flex flex-col gap-4 class
+ * SV10: panel DOM order matches UI-SPEC: SkillHealth → Observability → Secrets → Integrations → InstalledSkills
+ * SV11: health-column has flex flex-col gap-6 class
+ * SV12: PageHeader always renders (no env stub needed — Wave 5 removed the flag)
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-// Mock ProjectHeader to isolate SingleProjectView tests
-vi.mock('./ProjectHeader.js', () => ({
-  ProjectHeader: ({ projectId }: { projectId: string }) => (
-    <div data-testid="project-header" data-project-id={projectId}>
-      ProjectHeader({projectId})
-    </div>
-  ),
-}))
-
-// Mock registry (ProjectHeader might transitively need it in other tests, but we're mocking the component directly)
+// Mock registry
 vi.mock('../lib/registry.js', () => ({
   useRegistryList: () => ({ data: undefined, isLoading: true }),
   useProjectOverview: () => ({ data: undefined, isLoading: true }),
@@ -77,12 +67,12 @@ afterEach(() => {
 })
 
 describe('SingleProjectView', () => {
-  it('SV1: renders ProjectHeader with correct projectId', () => {
+  it('SV1: renders PageHeader with projectId as title (Wave 5 — unconditional)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
-    const header = screen.getByTestId('project-header')
-    expect(header).toBeDefined()
-    expect(header.getAttribute('data-project-id')).toBe('acme')
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).toBeDefined()
+    expect(heading.textContent).toBe('acme')
   })
 
   it('SV2: renders a 3-column grid with grid-cols-[1fr_1.5fr_1fr]', () => {
@@ -142,7 +132,7 @@ describe('SingleProjectView', () => {
     expect(document.title).toBe('my-project — AgenticApps Dashboard')
   })
 
-  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-4', () => {
+  it('SV7: grid has gap-6 class; all 3 columns have flex flex-col gap-6 (Pitfall 8 — 24px rhythm)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const grid = screen.getByTestId('single-project-grid')
@@ -151,12 +141,12 @@ describe('SingleProjectView', () => {
     const disciplineCol = screen.getByTestId('discipline-column')
     expect(disciplineCol.className).toContain('flex')
     expect(disciplineCol.className).toContain('flex-col')
-    expect(disciplineCol.className).toContain('gap-4')
+    expect(disciplineCol.className).toContain('gap-6')
 
     const phaseCol = screen.getByTestId('phase-progress-column')
     expect(phaseCol.className).toContain('flex')
     expect(phaseCol.className).toContain('flex-col')
-    expect(phaseCol.className).toContain('gap-4')
+    expect(phaseCol.className).toContain('gap-6')
   })
 
   it('SV8: health-column has correct aria-label="Health" attribute', () => {
@@ -200,12 +190,27 @@ describe('SingleProjectView', () => {
     expect(integrationsIdx).toBeLessThan(installedIdx)
   })
 
-  it('SV11: health-column has flex flex-col gap-4 class', () => {
+  it('SV11: health-column has flex flex-col gap-6 class (Pitfall 8 — gap normalized to 24px)', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     const healthCol = screen.getByTestId('health-column')
     expect(healthCol.className).toContain('flex')
     expect(healthCol.className).toContain('flex-col')
-    expect(healthCol.className).toContain('gap-4')
+    expect(healthCol.className).toContain('gap-6')
+  })
+})
+
+describe('SingleProjectView — PageHeader always renders (Wave 5 — flag removed)', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('SV12: PageHeader renders with title equal to projectId (no env stub needed)', () => {
+    render(<SingleProjectView projectId="my-project" />, { wrapper: makeWrapper() })
+
+    // PageHeader renders an <h1> with the project ID as the title — always, no flag
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).toBeDefined()
+    expect(heading.textContent).toBe('my-project')
   })
 })

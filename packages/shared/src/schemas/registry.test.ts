@@ -133,6 +133,15 @@ describe('RenameRequestSchema', () => {
   it('rejects empty string name', () => {
     expect(() => RenameRequestSchema.parse({ name: '' })).toThrow()
   })
+
+  // A-02 boundary tests
+  it('accepts name exactly 200 chars (boundary inclusive)', () => {
+    expect(RenameRequestSchema.safeParse({ name: 'a'.repeat(200) }).success).toBe(true)
+  })
+
+  it('rejects name of 201 chars (boundary exclusive)', () => {
+    expect(RenameRequestSchema.safeParse({ name: 'a'.repeat(201) }).success).toBe(false)
+  })
 })
 
 describe('TagsRequestSchema', () => {
@@ -142,5 +151,26 @@ describe('TagsRequestSchema', () => {
 
   it('rejects non-array tags', () => {
     expect(() => TagsRequestSchema.parse({ tags: 'not-an-array' })).toThrow()
+  })
+
+  // A-02 boundary tests
+  it('accepts array of exactly 20 tags (boundary inclusive)', () => {
+    expect(TagsRequestSchema.safeParse({ tags: Array(20).fill('x') }).success).toBe(true)
+  })
+
+  it('rejects array of 21 tags (boundary exclusive)', () => {
+    expect(TagsRequestSchema.safeParse({ tags: Array(21).fill('x') }).success).toBe(false)
+  })
+
+  it('accepts single tag of exactly 50 chars (boundary inclusive)', () => {
+    expect(TagsRequestSchema.safeParse({ tags: ['a'.repeat(50)] }).success).toBe(true)
+  })
+
+  it('rejects single tag of 51 chars (boundary exclusive)', () => {
+    expect(TagsRequestSchema.safeParse({ tags: ['a'.repeat(51)] }).success).toBe(false)
+  })
+
+  it('accepts empty array (clear-tags use case)', () => {
+    expect(TagsRequestSchema.safeParse({ tags: [] }).success).toBe(true)
   })
 })

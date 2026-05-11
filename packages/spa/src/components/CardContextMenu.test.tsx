@@ -141,10 +141,10 @@ describe('CardContextMenu', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('Unregister item has text-[--danger] color class', () => {
+  it('Unregister item has text-status-error color class', () => {
     render(<CardContextMenu {...defaultProps} />, { wrapper })
     const unregisterBtn = screen.getByRole('menuitem', { name: /Unregister/ })
-    expect(unregisterBtn.className).toContain('text-[--danger]')
+    expect(unregisterBtn.className).toContain('text-status-error')
   })
 
   it('clicking outside the menu calls onClose', () => {

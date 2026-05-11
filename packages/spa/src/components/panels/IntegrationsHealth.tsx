@@ -20,6 +20,8 @@
  *   T-05-05-Cross-Project-Cache: useIntegrations(projectId) includes projectId in key.
  *   T-05-05-Static-Copy-Trust: paragraphs are React JSX literals — no daemon content interpolated.
  *   T-05-05-No-Read-More-Link: no <a href> anchors; D-5-20 inline copy IS the documentation.
+ *
+ * Wave 3 (Plan 05.1-04): repaletted from legacy [--*] aliases to Tailwind-4 namespaced tokens.
  */
 import React from 'react'
 
@@ -49,9 +51,8 @@ const INTEGRATIONS = [
     paragraph: (
       <>
         Sentry surfaces recent errors and unhandled rejections inline. Install{' '}
-        <code className="font-mono">@sentry/node</code> (or your framework SDK), set{' '}
+        <code className="font-mono">@sentry/node</code>, set{' '}
         <code className="font-mono">SENTRY_AUTH_TOKEN</code> on the daemon, and restart.
-        Recent errors appear in the right column without code changes here.
       </>
     ),
   },
@@ -67,9 +68,8 @@ const INTEGRATIONS = [
     paragraph: (
       <>
         Linear links commits and PRs to issue IDs. Set{' '}
-        <code className="font-mono">LINEAR_API_KEY</code> on the daemon and use a branch name like{' '}
-        <code className="font-mono">donald/abc-123-fix-foo</code> — issue title and status surface
-        in the project header.
+        <code className="font-mono">LINEAR_API_KEY</code> on the daemon and use a branch like{' '}
+        <code className="font-mono">donald/abc-123-fix-foo</code>.
       </>
     ),
   },
@@ -85,8 +85,8 @@ const INTEGRATIONS = [
     paragraph: (
       <>
         Infisical loads secrets from a Universal Auth project at runtime. Run{' '}
-        <code className="font-mono">infisical run --env=prod -- agentic-dashboard start</code> and
-        the daemon reads its env from Infisical. No env var lives inside the dashboard.
+        <code className="font-mono">infisical run --env=prod -- agentic-dashboard start</code> to
+        load secrets at daemon startup.
       </>
     ),
   },
@@ -99,9 +99,9 @@ const PILL_LABEL = {
 } as const
 
 const PILL_CLASS = {
-  configured: 'text-[--success]',
-  'present-but-not-configured': 'text-[--warning]',
-  'not-detected': 'text-[--text-muted]',
+  configured: 'text-status-success',
+  'present-but-not-configured': 'text-status-warning',
+  'not-detected': 'text-text-secondary',
 } as const
 
 export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): React.JSX.Element {
@@ -124,7 +124,7 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
   if (query.isLoading) {
     return (
       <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
-        <p className="text-sm text-[--text-muted]">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading...</p>
       </PanelContainer>
     )
   }
@@ -139,9 +139,14 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
   }
 
   const data = query.data
+  // D-6.1-02: collapse panel by default when no integrations are configured
+  const isEmpty =
+    data.sentry === 'not-detected' &&
+    data.linear === 'not-detected' &&
+    data.infisical === 'not-detected'
 
   return (
-    <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
+    <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed={isEmpty}>
       <div className="grid grid-cols-[7rem_1fr] gap-3">
         {INTEGRATIONS.map(({ key, label, nudge, paragraph }) => {
           const state = data[key]
@@ -149,18 +154,18 @@ export function IntegrationsHealth({ projectId }: IntegrationsHealthProps): Reac
           const pillClass = PILL_CLASS[state]
           return (
             <React.Fragment key={key}>
-              <span className="text-sm font-semibold text-[--text]">{label}</span>
+              <span className="text-sm font-semibold text-text-primary">{label}</span>
               <div className="flex flex-col gap-1">
                 <span
-                  className={`inline-flex items-center self-start rounded bg-[--surface-elevated] px-1.5 py-0.5 text-xs uppercase tracking-wide ${pillClass}`}
+                  className={`inline-flex items-center self-start rounded bg-card-bg-hover px-1.5 py-0.5 text-xs uppercase tracking-wide ${pillClass}`}
                 >
                   {pillLabel}
                 </span>
                 {state === 'present-but-not-configured' && (
-                  <span className="text-sm text-[--text-muted]">{nudge}</span>
+                  <span className="text-sm text-text-secondary">{nudge}</span>
                 )}
                 {state === 'not-detected' && (
-                  <span className="text-base leading-relaxed text-[--text-muted]">{paragraph}</span>
+                  <span className="block max-w-[75ch] text-base leading-relaxed text-text-secondary">{paragraph}</span>
                 )}
               </div>
             </React.Fragment>

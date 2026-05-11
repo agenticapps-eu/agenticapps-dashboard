@@ -31,13 +31,13 @@ describe('DaemonUnreachableState', () => {
     expect(btn.textContent).not.toBe('Reload')
   })
 
-  it("icon uses --warning color (not --danger)", () => {
+  it("icon uses status-warning color (not status-error)", () => {
     render(<DaemonUnreachableState agentUrl="http://127.0.0.1:5193" onRetry={vi.fn()} />)
-    // The AlertTriangle SVG is inside the header with className text-[--warning]
+    // The AlertTriangle SVG is inside the header with className text-status-warning
     const header = screen.getByRole('heading', { level: 2 }).closest('header')
-    expect(header?.querySelector('svg')?.parentElement?.className ?? header?.className).not.toContain('--danger')
+    expect(header?.querySelector('svg')?.parentElement?.className ?? header?.className).not.toContain('status-error')
     // Confirm the section element has the warning-colored icon sibling
-    const svgParent = document.querySelector('.text-\\[--warning\\]')
+    const svgParent = document.querySelector('.text-status-warning')
     expect(svgParent).not.toBeNull()
   })
 })

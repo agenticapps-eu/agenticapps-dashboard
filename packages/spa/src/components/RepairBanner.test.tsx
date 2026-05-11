@@ -112,12 +112,12 @@ describe('RepairBanner', () => {
     expect(getHook().dismissed).toBe(false)
   })
 
-  it('icon uses --danger color (not --warning)', () => {
+  it('icon uses status-error color (not status-warning)', () => {
     const getHook = renderBanner()
     act(() => getHook().setNeedsRepair(true))
-    const dangerIcon = document.querySelector('.text-\\[--danger\\]')
+    const dangerIcon = document.querySelector('.text-status-error')
     expect(dangerIcon).not.toBeNull()
-    const warningIcon = document.querySelector('.text-\\[--warning\\]')
+    const warningIcon = document.querySelector('.text-status-warning')
     expect(warningIcon).toBeNull()
   })
 })

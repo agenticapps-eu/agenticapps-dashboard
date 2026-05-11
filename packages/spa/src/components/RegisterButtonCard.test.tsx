@@ -23,10 +23,10 @@ describe('RegisterButtonCard', () => {
     expect(onClick).toHaveBeenCalledOnce()
   })
 
-  it('has dashed accent border class', () => {
+  it('has dashed border-border-subtle class with hover:border-accent', () => {
     render(<RegisterButtonCard onClick={() => {}} />)
     const btn = screen.getByRole('button')
     expect(btn.className).toContain('border-dashed')
-    expect(btn.className).toContain('border-[--accent]')
+    expect(btn.className).toContain('border-border-subtle')
   })
 })

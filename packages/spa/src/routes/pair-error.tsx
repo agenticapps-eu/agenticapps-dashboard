@@ -18,25 +18,25 @@ export function RouteError({ error, reset }: { error: unknown; reset?: () => voi
     <div className="mx-auto max-w-3xl px-6 py-12 md:px-8">
       <section
         role="alert"
-        className="rounded-md border border-[--border] bg-[--surface] p-6"
+        className="rounded-md border border-border-subtle bg-card-bg p-6"
       >
-        <h2 className="text-xl font-semibold leading-snug text-[--text]">
+        <h2 className="text-xl font-semibold leading-snug text-text-primary">
           Pairing failed unexpectedly
         </h2>
-        <p className="mt-3 text-base leading-relaxed text-[--text-muted]">{message}</p>
+        <p className="mt-3 text-base leading-relaxed text-text-secondary">{message}</p>
         <div className="mt-6 flex gap-3">
           {reset && (
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center gap-2 rounded-md bg-[--accent] px-4 py-2 text-sm font-semibold text-[--accent-fg] hover:bg-[--accent-hover] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+              className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
             >
               Try again
             </button>
           )}
           <a
             href="/onboarding"
-            className="inline-flex items-center gap-2 rounded-md border border-[--border-strong] bg-[--surface-elevated] px-4 py-2 text-sm font-semibold text-[--text] hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+            className="inline-flex items-center gap-2 rounded-md border border-border-subtle bg-card-bg-hover px-4 py-2 text-sm font-semibold text-text-primary hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
           >
             Open onboarding
           </a>
@@ -54,21 +54,21 @@ export function RouteError({ error, reset }: { error: unknown; reset?: () => voi
 export function MalformedPairUrl() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 md:px-8">
-      <section role="status" className="rounded-md border border-[--border] bg-[--surface] p-6">
-        <h2 className="text-xl font-semibold leading-snug text-[--text]">
+      <section role="status" className="rounded-md border border-border-subtle bg-card-bg p-6">
+        <h2 className="text-xl font-semibold leading-snug text-text-primary">
           This pair URL doesn&apos;t look right
         </h2>
-        <p className="mt-3 text-base leading-relaxed text-[--text-muted]">
+        <p className="mt-3 text-base leading-relaxed text-text-secondary">
           The <code className="font-mono text-sm">agent</code> or{' '}
           <code className="font-mono text-sm">token</code> parameters didn&apos;t validate. Open{' '}
-          <a href="/onboarding" className="text-[--accent] hover:underline">
+          <a href="/onboarding" className="text-accent hover:underline">
             /onboarding
           </a>{' '}
           and click the pair URL printed by the agent.
         </p>
         <a
           href="/onboarding"
-          className="mt-6 inline-flex items-center gap-2 rounded-md border border-[--border-strong] bg-[--surface-elevated] px-4 py-2 text-sm font-semibold text-[--text] hover:bg-[--border] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 focus-visible:ring-offset-[--bg]"
+          className="mt-6 inline-flex items-center gap-2 rounded-md border border-border-subtle bg-card-bg-hover px-4 py-2 text-sm font-semibold text-text-primary hover:bg-card-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
         >
           Open onboarding
         </a>

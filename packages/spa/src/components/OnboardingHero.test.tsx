@@ -68,3 +68,37 @@ describe('OnboardingHero', () => {
     expect(screen.getByRole('list')).toBeInTheDocument()
   })
 })
+
+describe('D-6.1-01 line-length cap', () => {
+  it('caps subtitle paragraph at 75ch', () => {
+    render(<OnboardingHero />)
+    const p = screen.getByText('Nothing leaves your machine.').closest('p')
+    expect(p?.className.includes('max-w-[75ch]')).toBe(true)
+  })
+
+  it('caps step-3 instruction paragraph at 75ch', () => {
+    render(<OnboardingHero />)
+    const p = screen.getByText(/When the agent prints a pair URL/).closest('p')
+    expect(p?.className.includes('max-w-[75ch]')).toBe(true)
+  })
+
+  it('caps "Why local-only" details body at 75ch', () => {
+    const { container } = render(<OnboardingHero />)
+    // The paragraph contains mixed text/code nodes; query by the <details> ancestor
+    const detailsP = container.querySelector('details p')
+    expect(detailsP).not.toBeNull()
+    expect(detailsP?.className.includes('max-w-[75ch]')).toBe(true)
+  })
+
+  it('does NOT cap the h1 heading', () => {
+    render(<OnboardingHero />)
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1.className.includes('max-w-[75ch]')).toBe(false)
+  })
+
+  it('does NOT cap any h2 heading', () => {
+    render(<OnboardingHero />)
+    const h2s = screen.getAllByRole('heading', { level: 2 })
+    h2s.forEach((h) => expect(h.className.includes('max-w-[75ch]')).toBe(false))
+  })
+})

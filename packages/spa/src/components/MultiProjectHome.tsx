@@ -2,19 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import type { RegistryListItem } from '@agenticapps/dashboard-shared'
 
 import { filterAndSort, useRegistryList, type SortKey } from '../lib/registry.js'
+import { useLastRefresh } from '../lib/lastRefresh.js'
 
 import { CardContextMenu, type ContextMenuAnchor } from './CardContextMenu.js'
 import { DaemonUnreachableState } from './DaemonUnreachableState.js'
 import { EditTagsDialog, RenameDialog } from './RenameTagsForms.js'
-import { HomeLayout } from './HomeLayout.js'
 import { HomeToolbar } from './HomeToolbar.js'
 import { ProjectCard } from './ProjectCard.js'
 import { RegisterButtonCard } from './RegisterButtonCard.js'
 import { RegisterModal } from './RegisterModal.js'
 import { SchemaDriftState } from './SchemaDriftState.js'
+import { PageHeader } from './ui/PageHeader.js'
 
 export function MultiProjectHome(): React.JSX.Element {
   const list = useRegistryList()
+
+  const lastRefresh = useLastRefresh()
+  const headerHelper =
+    lastRefresh.count !== null
+      ? `${lastRefresh.count} ${lastRefresh.count === 1 ? 'project' : 'projects'} · ${lastRefresh.refreshLabel ?? ''}`
+      : ''
 
   const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set(['all']))
   const [searchText, setSearchText] = useState('')
@@ -68,22 +75,22 @@ export function MultiProjectHome(): React.JSX.Element {
   if (list.isError) {
     if (list.error?.message?.startsWith('schema_drift:')) {
       return (
-        <HomeLayout>
+        <div>
           <SchemaDriftState
             firstIssue={{ path: '(root)', expected: 'RegistryListResponse', got: 'unknown' }}
             fullIssues={[]}
             onRetry={() => void list.refetch()}
           />
-        </HomeLayout>
+        </div>
       )
     }
     return (
-      <HomeLayout>
+      <div>
         <DaemonUnreachableState
           agentUrl="http://127.0.0.1:5193"
           onRetry={() => void list.refetch()}
         />
-      </HomeLayout>
+      </div>
     )
   }
 
@@ -92,8 +99,9 @@ export function MultiProjectHome(): React.JSX.Element {
   const existingTags = Array.from(new Set(items.flatMap((i) => i.tags))).sort()
 
   return (
-    <HomeLayout>
-      <div className="px-6 py-8 md:px-8">
+    <div>
+      <PageHeader title="Projects" helper={headerHelper} />
+      <div>
         <HomeToolbar
           items={items}
           selectedChips={selectedChips}
@@ -106,9 +114,9 @@ export function MultiProjectHome(): React.JSX.Element {
 
         {/* Empty state */}
         {items.length === 0 && !list.isLoading ? (
-          <div className="mt-6 rounded-md border border-[--border] bg-[--surface] p-6 text-center">
-            <h2 className="text-xl font-semibold text-[--text]">No projects registered yet.</h2>
-            <p className="mt-2 text-base text-[--text-muted]">
+          <div className="mt-6 rounded-card border border-border-subtle bg-card-bg p-6 text-center shadow-card">
+            <h2 className="text-lg font-semibold text-text-primary">No projects registered yet.</h2>
+            <p className="mt-2 max-w-[60ch] text-base text-text-secondary">
               Run{' '}
               <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>{' '}
               to add one, or use the button above.
@@ -165,6 +173,6 @@ export function MultiProjectHome(): React.JSX.Element {
         existingTags={existingTags}
         onClose={() => setTagsItem(null)}
       />
-    </HomeLayout>
+    </div>
   )
 }

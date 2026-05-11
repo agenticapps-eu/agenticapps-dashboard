@@ -207,17 +207,17 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | HEALTH-03 | Phase 5 | Complete |
 | HEALTH-04 | Phase 5 | Complete |
 | HEALTH-05 | Phase 5 | Complete |
-| POLISH-01 | Phase 6 | Pending |
-| POLISH-02 | Phase 6 | Pending |
-| POLISH-03 | Phase 6 | Pending |
-| POLISH-04 | Phase 6 | Pending |
-| POLISH-05 | Phase 6 | Pending |
-| POLISH-06 | Phase 6 | Pending |
+| POLISH-01 | Phase 6 | Complete |
+| POLISH-02 | Phase 6 | Complete (live reboot UAT deferred per D-6-22) |
+| POLISH-03 | Phase 6 | Complete (live systemctl activation deferred — Linux required) |
+| POLISH-04 | Phase 6 | Complete (gate floor amended to 87 per D-6-09.v1; v1.1 lifts to 90) |
+| POLISH-05 | Phase 6 | Stage 1 complete; Stage 2 pending fresh-session review on PR #15 |
+| POLISH-06 | Phase 6 | Complete |
 | INV-01 | All phases | Pending |
 | INV-02 | Phase 1 (then upheld) | Pending |
 | INV-03 | All phases | Complete |
-| INV-04 | All phases | Pending |
-| INV-05 | All phases | Pending |
+| INV-04 | All phases | Complete |
+| INV-05 | All phases | Complete |
 
 **Coverage:**
 - v1 requirements: 56 total (51 phase-bound + 5 invariants)

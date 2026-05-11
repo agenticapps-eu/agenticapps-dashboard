@@ -90,15 +90,15 @@ export function CommandPalette(): React.JSX.Element {
         closeAndRestore()
       }}
       onClose={() => setIsOpen(false)}
-      className="bg-[--surface] border border-[--border-strong] rounded-lg overflow-hidden p-0 max-w-lg w-full mt-[20vh] mx-auto backdrop:bg-black/60"
+      className="bg-card-bg border border-border-subtle rounded-lg overflow-hidden p-0 max-w-lg w-full mt-[20vh] mx-auto backdrop:bg-text-primary/50"
     >
       <div className="flex flex-col" onKeyDown={handleKeyDown}>
         {/* Input row */}
-        <div className="relative flex items-center border-b border-[--border]">
+        <div className="relative flex items-center border-b border-border-subtle">
           <Search
             size={16}
             aria-hidden="true"
-            className="absolute left-4 text-[--text-muted] pointer-events-none"
+            className="absolute left-4 text-text-secondary pointer-events-none"
           />
           <input
             ref={inputRef}
@@ -112,11 +112,11 @@ export function CommandPalette(): React.JSX.Element {
               setQuery(e.target.value)
               setFocusedIndex(0)
             }}
-            className="w-full bg-transparent border-0 pl-12 pr-16 py-3 text-base text-[--text] placeholder:text-[--text-subtle] focus:outline-none"
+            className="w-full bg-transparent border-0 pl-12 pr-16 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none"
           />
           {/* ⌘K hint chip — visual chrome only */}
           <span
-            className="absolute right-4 bg-[--surface-elevated] border border-[--border] rounded px-2 leading-none flex items-center font-mono text-xs text-[--text-muted]"
+            className="absolute right-4 bg-card-bg-hover border border-border-subtle rounded px-2 leading-none flex items-center font-mono text-xs text-text-secondary"
             aria-hidden="true"
           >
             ⌘K
@@ -131,7 +131,7 @@ export function CommandPalette(): React.JSX.Element {
           className="max-h-72 overflow-y-auto"
         >
           {filtered.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-[--text-muted]">
+            <li className="px-4 py-3 text-sm text-text-secondary">
               No actions found. Try a shorter search.
             </li>
           ) : (
@@ -143,7 +143,7 @@ export function CommandPalette(): React.JSX.Element {
                 aria-selected={i === clampedIndex}
                 onMouseEnter={() => setFocusedIndex(i)}
                 onClick={() => a.run()}
-                className={`flex items-center gap-3 px-4 py-3 text-sm text-[--text] cursor-pointer${i === clampedIndex ? ' bg-[--surface-elevated]' : ''}`}
+                className={`flex items-center gap-3 px-4 py-3 text-sm text-text-primary cursor-pointer${i === clampedIndex ? ' bg-card-bg-hover' : ''}`}
               >
                 {a.label}
               </li>

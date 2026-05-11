@@ -9,7 +9,7 @@
  * VS5: panel title is "Verification Status"
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { PhaseProgressResponse } from '@agenticapps/dashboard-shared'
@@ -105,6 +105,8 @@ describe('VerificationStatus', () => {
   it('VS4: when mustHavesTotal is 0, renders empty-state copy', () => {
     mockQuery({ data: ZERO_DATA })
     render(<VerificationStatus projectId="proj-1" />)
+    // D-6.1-02: empty-state panel collapses by default — expand to inspect body
+    fireEvent.click(screen.getByRole('button'))
     expect(screen.getByText('No verification run yet — try /gsd-verify-work.')).toBeDefined()
   })
 
@@ -123,20 +125,20 @@ describe('VerificationStatus', () => {
     expect(screen.getByText('HUMAN-UAT.md complete')).toBeDefined()
   })
 
-  it('VS2: unevidenced item text is styled text-[--text-muted]', () => {
+  it('VS2: unevidenced item text is styled text-text-secondary (Wave 3 repalette)', () => {
     mockQuery({ data: PARTIAL_DATA })
     render(<VerificationStatus projectId="proj-1" />)
 
     const unevidenced = screen.getByText('HUMAN-UAT.md complete')
-    expect(unevidenced.className).toContain('text-[--text-muted]')
+    expect(unevidenced.className).toContain('text-text-secondary')
   })
 
-  it('VS3: when all evidenced, summary has success style', () => {
+  it('VS3: when all evidenced, summary has text-status-success font-semibold (Wave 3 repalette)', () => {
     mockQuery({ data: ALL_EVIDENCED_DATA })
     render(<VerificationStatus projectId="proj-1" />)
 
     const summary = screen.getByText('3 / 3 must-haves evidenced')
-    expect(summary.className).toContain('text-[--success]')
+    expect(summary.className).toContain('text-status-success')
     expect(summary.className).toContain('font-semibold')
   })
 })
