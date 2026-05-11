@@ -109,10 +109,16 @@ describe('HelpLayout', () => {
     expect(search).toBeDisabled()
   })
 
-  it('main content is wrapped in an article.prose with prose-slate dark:prose-invert max-w-none', () => {
+  it('main content is wrapped in an article.prose with prose-slate max-w-none (no dark:prose-invert — v1.0 light-only docs prose)', () => {
     const { container } = render(<HelpLayout />)
     const article = container.querySelector('article')
     expect(article?.className).toContain('prose')
+    expect(article?.className).toContain('prose-slate')
     expect(article?.className).toContain('max-w-none')
+    // v1.0 explicitly drops dark:prose-invert because the dashboard theme
+    // system adds the `dark` class to <html> by default (lib/theme.ts D-02),
+    // which would make every h1/p render white on warm paper. Dark-mode
+    // prose ships in v1.1 — see HelpLayout.tsx code comment.
+    expect(article?.className).not.toContain('dark:prose-invert')
   })
 })
