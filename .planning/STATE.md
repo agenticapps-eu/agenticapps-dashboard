@@ -1,18 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: Working dashboard
-status: awaiting_merge
-stopped_at: Phase 6 complete — v1.0 ready to merge (PR #15 pending Stage 2 + tag)
-last_updated: "2026-05-11T07:55:00.000Z"
-last_activity: 2026-05-11 -- Phase 06 complete; v1.0 closing PR #15 opened with Stage 1 review
+milestone_name: /help docs site (post-ship)
+status: "PR #15 opened (phase-06-polish-service-install → main); Stage 1 review appended; Stage 2 review pending in fresh session; merge + v1.0 tag pending explicit user approval"
+stopped_at: Phase 7 context gathered
+last_updated: "2026-05-11T17:03:09.496Z"
+last_activity: 2026-05-11 -- Plan 06-07 closure ritual (review-protocol.md + CF Access doc + README rewrite + Stage 1 review)
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 6
   total_plans: 46
   completed_plans: 41
   percent: 89
-  v1_milestone_percent: 100
 ---
 
 # Project State
@@ -104,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-10T13:27:44.784Z
-Stopped at: Phase 06.1 context gathered
-Resume file: .planning/phases/DASH-06.1-typography-layout-impeccable-lift/06.1-CONTEXT.md
+Last session: 2026-05-11T17:03:09.493Z
+Stopped at: Phase 7 context gathered
+Resume file: .planning/phases/07-help-docs-v1-0/07-CONTEXT.md
