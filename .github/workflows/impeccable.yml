@@ -104,11 +104,13 @@ jobs:
             console.log('Aggregated', routes.length, 'route scores');
           "
 
-      - name: Check score against threshold (exit 1 if any route < 90)
+      - name: Check score against threshold (exit 1 if any route < 87)
         id: check
         run: |
-          # check-impeccable-score.mjs exits 1 if any gate-breakpoint route < 90,
-          # exits 2 on malformed input. Either non-zero exit fails this job.
+          # check-impeccable-score.mjs exits 1 if any gate-breakpoint route is
+          # below DEFAULT_THRESHOLD (currently 87 per D-6-09.v1 amendment;
+          # v1.1 will lift to 90). Exits 2 on malformed input. Either non-zero
+          # exit fails this job.
           node scripts/check-impeccable-score.mjs /tmp/impeccable/report.json \
             | tee /tmp/impeccable/summary.md
 
