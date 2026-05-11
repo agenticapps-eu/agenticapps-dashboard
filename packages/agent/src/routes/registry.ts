@@ -79,6 +79,23 @@ registryRoute.post(
     if (!result.success) return validationError(c)
   }),
   (c) => {
+    const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+
+    // F-005: legacy /register was missed by the A-01 sweep that covered
+    // /register-prepare, /register-confirm, /:id/rename, /:id/tags. Apply
+    // the same per-token-hash rate limit (sliding 10s window, cap 10) so
+    // every registry-mutating route is uniformly protected.
+    const token = tokenFromAuthHeader(c)
+    const tokHash = token ? tokenHashOf(token) : 'no-token'
+    const rl = rlConsume(tokHash)
+    if (!rl.allowed) {
+      return c.json(
+        { ok: false, error: 'rate_limited', requestId },
+        429,
+        { 'Retry-After': String(rl.retryAfter) },
+      )
+    }
+
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
     const opts: { name?: string; client?: string | null; tags?: string[] } = {

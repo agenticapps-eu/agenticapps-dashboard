@@ -1,5 +1,6 @@
 /**
- * A-01: Rate-limit tests for POST /:id/rename, POST /:id/tags, POST /register-confirm
+ * A-01: Rate-limit tests for POST /:id/rename, POST /:id/tags, POST /register-confirm,
+ * POST /register (added by F-005 — Stage 2 finding closure).
  *
  * RL1: /rename — first 10 requests succeed; 11th returns 429 + Retry-After: 1
  * RL2: /rename — different bearer tokens have independent buckets
@@ -7,6 +8,8 @@
  * RL4: /tags — different bearer tokens have independent buckets
  * RL5: /register-confirm — first 10 requests succeed; 11th returns 429 + Retry-After: 1
  * RL6: /register-confirm — different bearer tokens have independent buckets
+ * RL7: /register — first 10 requests succeed; 11th returns 429 + Retry-After: 1 (F-005)
+ * RL8: /register — shares the same token bucket as rename/tags/confirm (F-005)
  */
 import { join } from 'node:path'
 
@@ -54,6 +57,11 @@ describe('A-01 Rate limit: POST /api/registry/:id/rename', () => {
     })
     const body = (await regRes.json()) as { id: string }
     projectId = body.id
+    // F-005: /register now consumes a rate-limit slot; reset the bucket
+    // after setup so the test body gets a clean 10-slot window for the
+    // mutation-route assertion. Per-route behavior is exercised in the
+    // F-005 describe-block below.
+    resetRateLimiter()
   })
 
   afterEach(() => {
@@ -163,6 +171,11 @@ describe('A-01 Rate limit: POST /api/registry/:id/tags', () => {
     })
     const body = (await regRes.json()) as { id: string }
     projectId = body.id
+    // F-005: /register now consumes a rate-limit slot; reset the bucket
+    // after setup so the test body gets a clean 10-slot window for the
+    // mutation-route assertion. Per-route behavior is exercised in the
+    // F-005 describe-block below.
+    resetRateLimiter()
   })
 
   afterEach(() => {
@@ -314,5 +327,93 @@ describe('A-01 Rate limit: POST /api/registry/register-confirm', () => {
     expect(res11.status).toBe(429)
     const body11 = (await res11.json()) as { error: string }
     expect(body11.error).toBe('rate_limited')
+  })
+})
+
+// F-005: legacy POST /api/registry/register was missed by the A-01 sweep
+// (rate-limit was applied to prepare/confirm/rename/tags but not the
+// original /register endpoint). This block proves the gap is now closed.
+describe('A-01 Rate limit: POST /api/registry/register (F-005)', () => {
+  let cleanupHome: () => void
+  let cleanupFixture: () => void
+  let token: string
+  let registryFile: string
+  let projectRoot: string
+
+  beforeEach(async () => {
+    resetRateLimiter()
+    const tmp = makeTmpHome()
+    cleanupHome = tmp.cleanup
+    registryFile = join(tmp.configDir, 'registry.json')
+    const authFile = join(tmp.configDir, 'auth.json')
+    const fresh = ensureAuthFile(authFile)
+    setActiveToken(fresh.token)
+    token = fresh.token
+    const fixture = makePhase4Fixture()
+    cleanupFixture = fixture.cleanup
+    projectRoot = fixture.root
+  })
+
+  afterEach(() => {
+    resetRateLimiter()
+    cleanupHome()
+    cleanupFixture()
+  })
+
+  it('RL7: first 10 register requests succeed, 11th returns 429 with rate_limited', async () => {
+    const app = createApp({ registryFile })
+    // Re-registering the same path returns 200 (alreadyRegistered) which
+    // is still non-429 — the rate-limit fires BEFORE the addProject path
+    // resolution, so this exercises the limit purely.
+    for (let i = 0; i < 10; i++) {
+      const res = await app.request('http://127.0.0.1:5193/api/registry/register', {
+        method: 'POST',
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: projectRoot }),
+      })
+      expect(res.status).not.toBe(429)
+    }
+    const res11 = await app.request('http://127.0.0.1:5193/api/registry/register', {
+      method: 'POST',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectRoot }),
+    })
+    expect(res11.status).toBe(429)
+    const body11 = (await res11.json()) as { ok: boolean; error: string }
+    expect(body11.error).toBe('rate_limited')
+    expect(res11.headers.get('Retry-After')).toBe('1')
+  })
+
+  it('RL8: register shares the same token bucket as rename/tags (cross-route exhaustion)', async () => {
+    const app = createApp({ registryFile })
+
+    // Slot 1: one /register to set up a project ID for the rename path.
+    const reg1 = await app.request('http://127.0.0.1:5193/api/registry/register', {
+      method: 'POST',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectRoot }),
+    })
+    expect(reg1.status).not.toBe(429)
+    const { id: projectId } = (await reg1.json()) as { id: string }
+
+    // Slots 2-10: 9 rename requests.
+    for (let i = 0; i < 9; i++) {
+      await app.request(`http://127.0.0.1:5193/api/registry/${projectId}/rename`, {
+        method: 'POST',
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `name-${i}` }),
+      })
+    }
+
+    // Bucket is now at 10. The 11th request — another /register — should
+    // 429 because /register shares the same token-hash bucket.
+    const res11 = await app.request('http://127.0.0.1:5193/api/registry/register', {
+      method: 'POST',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectRoot }),
+    })
+    expect(res11.status).toBe(429)
+    const body = (await res11.json()) as { error: string }
+    expect(body.error).toBe('rate_limited')
   })
 })
