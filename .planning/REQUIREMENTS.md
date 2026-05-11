@@ -99,12 +99,12 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 ### Help docs v1.0 (Phase 7)
 
-- [ ] **HELP-01**: 5 anchor MDX pages (`/help`, `/help/workflow/overview`, `/help/repos/overview`, `/help/observability/overview`, `/help/operations/install`) render with frontmatter (slug/title/order/section), GFM extras (tables, links, fenced code), and embedded Mermaid diagrams
+- [x] **HELP-01**: 5 anchor MDX pages (`/help`, `/help/workflow/overview`, `/help/repos/overview`, `/help/observability/overview`, `/help/operations/install`) render with frontmatter (slug/title/order/section), GFM extras (tables, links, fenced code), and embedded Mermaid diagrams
 - [ ] **HELP-02**: 29 stub paths (workflow ×11 including rationalization-table + red-flags; repos ×6; observability ×7; operations ×4; reference ×4 minus the now-ready `shortcuts`) render `<ComingSoon section title />` with correct back-link without crash
 - [ ] **HELP-03**: `HelpLayout` renders sidebar (collapsed-on-mobile drawer; sticky-on-desktop nav) + main `<article className="prose">` content; zero console errors on any anchor route
 - [ ] **HELP-04**: `<HelpWidget name="..." />` dispatches the 8 named widget stubs (RepoTopologyMap, WorkflowStateMachine, GatePicker, TraceVisualizer, ScanReportPlayground, ApplyConsentSimulator, MigrationDryRun, SlashCommandCatalog) via `React.lazy`; unknown widget renders a bordered error message
 - [ ] **HELP-05**: `<HelpHook topic="..." />` component compiles and exports cleanly; pure `topicToUrl()` returns expected `/help/<segments>` URLs with optional `#anchor` (consumer wiring deferred to v1.1)
-- [ ] **HELP-06**: existing `/help` keyboard-shortcuts page replaced by docs landing; shortcuts content lives at `/help/reference/shortcuts` MDX page rendering the `KbdHint` table; `?` keyboard shortcut still navigates to `/help` landing
+- [x] **HELP-06**: existing `/help` keyboard-shortcuts page replaced by docs landing; shortcuts content lives at `/help/reference/shortcuts` MDX page rendering the `KbdHint` table; `?` keyboard shortcut still navigates to `/help` landing
 
 ### Architectural Invariants (every phase)
 
@@ -227,12 +227,12 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | INV-03 | All phases | Complete |
 | INV-04 | All phases | Complete |
 | INV-05 | All phases | Complete |
-| HELP-01 | Phase 7 | Pending |
+| HELP-01 | Phase 7 | Complete |
 | HELP-02 | Phase 7 | Pending |
 | HELP-03 | Phase 7 | Pending |
 | HELP-04 | Phase 7 | Pending |
 | HELP-05 | Phase 7 | Pending |
-| HELP-06 | Phase 7 | Pending |
+| HELP-06 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 62 total (57 phase-bound + 5 invariants)

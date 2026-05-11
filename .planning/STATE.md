@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: /help docs site (post-ship)
 status: executing
-stopped_at: Completed 07-01 Wave 0 infrastructure — MDX pipeline + Tailwind typography + Playwright + REQUIREMENTS.md
-last_updated: "2026-05-11T18:32:53.672Z"
+stopped_at: Completed 07-04 Wave 2 page content (5 anchor MDX + reference/shortcuts MDX) — 6 MDX files + 4 tests, 22 new vitest cases, all green
+last_updated: "2026-05-11T19:11:06.665Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 51
-  completed_plans: 42
-  percent: 82
+  completed_plans: 45
+  percent: 88
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 07 (help-docs-v1-0) — EXECUTING
-Plan: 2 of 5
+Plan: 5 of 5
 Milestone: v1.0 Working dashboard (Phases 0–6) — 100%
 Status: Ready to execute
 Last activity: 2026-05-11
@@ -66,6 +66,7 @@ Progress: [██████████] 100% of v1.0 milestone
 | Phase 05 P05 | 10 | 3 tasks | 8 files |
 | Phase 05.1 P05 | resumed multi-session | 2 tasks | 47 files |
 | Phase 07 P01 | 10min | 8 tasks | 15 files |
+| Phase 07 P04 | 11min | 7 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Recent decisions affecting current work:
 - [Phase 05.1]: Wave 5 precondition met: zero [--*] alias patterns remain in packages/spa/src/ after plans 01-05
 - [Phase 07]: vitest.config.ts plugin chain must mirror vite.config.ts — discovered when MDX smoke RED→GREEN cycle revealed transform-time .mdx parsing failure
 - [Phase 07]: @types/mdx must be a direct devDep — transitive peer dep of @mdx-js/react is insufficient for tsc to resolve mdx/types
+- [Phase 07]: Plan 07-04: Mermaid-as-JSX in MDX (<MermaidBlock code={...}/>) decouples content from Plan 07-05's pre-mapping wiring
+- [Phase 07]: Plan 07-04: MDX heading anchors require explicit <h2 id> (not kramdown {#anchor}); acorn parses {...} as JS expression
+- [Phase 07]: Plan 07-04: mermaid.parse() syntax test must run in jsdom env; mermaid v11 DOMPurify init needs window
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T18:32:46.856Z
-Stopped at: Completed 07-01 Wave 0 infrastructure — MDX pipeline + Tailwind typography + Playwright + REQUIREMENTS.md
+Last session: 2026-05-11T19:10:53.656Z
+Stopped at: Completed 07-04 Wave 2 page content (5 anchor MDX + reference/shortcuts MDX) — 6 MDX files + 4 tests, 22 new vitest cases, all green
 Resume file: None
