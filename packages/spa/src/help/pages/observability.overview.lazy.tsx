@@ -9,6 +9,6 @@ import { HelpPage } from '../HelpPage.js'
 
 import ObservabilityOverviewMdx, { frontmatter } from './observability/overview.mdx'
 
-export const Route = createLazyRoute('/_helpLayout/observability/overview')({
+export const Route = createLazyRoute('/_helpLayout/help/observability/overview')({
   component: () => <HelpPage FmComponent={ObservabilityOverviewMdx} frontmatter={frontmatter} />,
 })

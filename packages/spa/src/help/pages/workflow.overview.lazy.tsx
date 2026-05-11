@@ -9,6 +9,6 @@ import { HelpPage } from '../HelpPage.js'
 
 import WorkflowOverviewMdx, { frontmatter } from './workflow/overview.mdx'
 
-export const Route = createLazyRoute('/_helpLayout/workflow/overview')({
+export const Route = createLazyRoute('/_helpLayout/help/workflow/overview')({
   component: () => <HelpPage FmComponent={WorkflowOverviewMdx} frontmatter={frontmatter} />,
 })

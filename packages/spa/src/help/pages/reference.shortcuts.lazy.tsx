@@ -10,6 +10,6 @@ import { HelpPage } from '../HelpPage.js'
 
 import ReferenceShortcutsMdx, { frontmatter } from './reference/shortcuts.mdx'
 
-export const Route = createLazyRoute('/_helpLayout/reference/shortcuts')({
+export const Route = createLazyRoute('/_helpLayout/help/reference/shortcuts')({
   component: () => <HelpPage FmComponent={ReferenceShortcutsMdx} frontmatter={frontmatter} />,
 })

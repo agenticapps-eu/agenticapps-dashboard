@@ -9,6 +9,6 @@ import { HelpPage } from '../HelpPage.js'
 
 import OperationsInstallMdx, { frontmatter } from './operations/install.mdx'
 
-export const Route = createLazyRoute('/_helpLayout/operations/install')({
+export const Route = createLazyRoute('/_helpLayout/help/operations/install')({
   component: () => <HelpPage FmComponent={OperationsInstallMdx} frontmatter={frontmatter} />,
 })

@@ -9,6 +9,6 @@ import { HelpPage } from '../HelpPage.js'
 
 import ReposOverviewMdx, { frontmatter } from './repos/overview.mdx'
 
-export const Route = createLazyRoute('/_helpLayout/repos/overview')({
+export const Route = createLazyRoute('/_helpLayout/help/repos/overview')({
   component: () => <HelpPage FmComponent={ReposOverviewMdx} frontmatter={frontmatter} />,
 })
