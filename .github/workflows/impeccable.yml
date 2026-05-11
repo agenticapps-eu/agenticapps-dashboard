@@ -89,15 +89,24 @@ jobs:
 
           for ROUTE in $ROUTES; do
             echo "Auditing http://localhost:5174${ROUTE} @ 1440x900..."
+            # F-009: replace the silent '|| echo {}' fallback with a marker
+            # object that survives the parser's `score: number` filter. The
+            # next step's --expected-routes gate will then fail loudly with
+            # a malformed-report message rather than vacuously passing.
             npx impeccable critique \
               --url "http://localhost:5174${ROUTE}" \
               --viewport 1440x900 \
               --json 2>/dev/null >> "$JSONL" \
-              || echo '{}' >> "$JSONL"
+              || echo "{\"route\":\"${ROUTE}\",\"breakpoint\":\"1440x900\",\"score\":-1,\"error\":\"runner_failed\"}" >> "$JSONL"
           done
 
           # Aggregate JSONL into { routes: [...] } for the score parser.
-          # Filters out empty lines and objects without a numeric score field.
+          # F-009: defensively inject `breakpoint: '1440x900'` on any line
+          # that doesn't include it (the impeccable critique --json output
+          # shape is documented but not strongly versioned — Research Open
+          # Question 3 in 06-06). Without this, the parser's filter on
+          # `breakpoint === '1440x900'` could produce an empty gate set and
+          # pass vacuously.
           node -e "
             const fs = require('fs');
             const lines = fs.readFileSync('/tmp/impeccable/raw.jsonl', 'utf8')
@@ -105,7 +114,8 @@ jobs:
               .filter(Boolean);
             const routes = lines
               .map(l => { try { return JSON.parse(l); } catch { return null; } })
-              .filter(r => r && typeof r.score === 'number');
+              .filter(r => r && typeof r.score === 'number')
+              .map(r => ({ breakpoint: '1440x900', ...r }));
             fs.writeFileSync(
               '/tmp/impeccable/report.json',
               JSON.stringify({ routes }, null, 2)
@@ -120,7 +130,13 @@ jobs:
           # below DEFAULT_THRESHOLD (currently 87 per D-6-09.v1 amendment;
           # v1.1 will lift to 90). Exits 2 on malformed input. Either non-zero
           # exit fails this job.
-          node scripts/check-impeccable-score.mjs /tmp/impeccable/report.json \
+          # F-009: --expected-routes 6 closes the vacuous-pass hole — if the
+          # JSONL aggregation produced fewer routes than the 6 we audited,
+          # the parser exits 2 with a clear "expected 6, got N" message
+          # rather than passing because routes[] happens to be empty.
+          node scripts/check-impeccable-score.mjs \
+            --expected-routes 6 \
+            /tmp/impeccable/report.json \
             | tee /tmp/impeccable/summary.md
 
       - name: Upload report artifact (14-day retention per D-6-11)

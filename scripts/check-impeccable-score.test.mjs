@@ -50,4 +50,33 @@ describe('checkImpeccableScore', () => {
     const r = checkImpeccableScore(oneFailing, 80)
     expect(r.exitCode).toBe(0) // 84 >= 80
   })
+
+  // F-009: defensive gate hardening — without this, a workflow runner crash
+  // that produces an empty routes[] array would silently pass the gate.
+  describe('expectedRoutes vacuous-pass guard (F-009)', () => {
+    it('exitCode 2 when expectedRoutes is set but routes is empty', () => {
+      const r = checkImpeccableScore({ routes: [] }, 87, { expectedRoutes: 6 })
+      expect(r.exitCode).toBe(2)
+      expect(r.summary).toContain('MALFORMED REPORT')
+      expect(r.summary).toMatch(/expected 6.*got 0|got 0.*expected 6/i)
+    })
+    it('exitCode 2 when expectedRoutes mismatches actual count', () => {
+      const r = checkImpeccableScore(allPassing, 87, { expectedRoutes: 6 })
+      // allPassing has 2 routes; expecting 6
+      expect(r.exitCode).toBe(2)
+      expect(r.summary).toContain('MALFORMED REPORT')
+    })
+    it('exitCode 0 when expectedRoutes matches and all routes pass', () => {
+      const r = checkImpeccableScore(allPassing, 87, { expectedRoutes: 2 })
+      expect(r.exitCode).toBe(0)
+    })
+    it('exitCode 1 (not 2) when count matches but score fails', () => {
+      const r = checkImpeccableScore(oneFailing, 87, { expectedRoutes: 2 })
+      expect(r.exitCode).toBe(1) // count is fine; one route's score is low
+    })
+    it('omitting expectedRoutes preserves legacy behavior (no count gate)', () => {
+      const r = checkImpeccableScore(allPassing) // no opts
+      expect(r.exitCode).toBe(0)
+    })
+  })
 })

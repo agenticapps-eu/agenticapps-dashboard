@@ -26,15 +26,34 @@ const GATE_BREAKPOINT = '1440x900'
  * Check impeccable scores against a threshold.
  *
  * @param {object} report  Parsed JSON report object.
- * @param {number} threshold  Score threshold (default 90).
+ * @param {number} threshold  Score threshold (default 87, D-6-09.v1).
+ * @param {{ expectedRoutes?: number }} opts  Optional count-gate (F-009):
+ *   when set, fails with exitCode 2 if report.routes.length !== expectedRoutes.
+ *   Prevents vacuous-pass when the workflow aggregator silently produces fewer
+ *   routes than expected (e.g. Chromium crash + `|| echo '{}'` fallback in YAML).
  * @returns {{ pass: boolean, exitCode: 0|1|2, summary: string, failingRoutes: object[] }}
  */
-export function checkImpeccableScore(report, threshold = DEFAULT_THRESHOLD) {
+export function checkImpeccableScore(report, threshold = DEFAULT_THRESHOLD, opts = {}) {
   if (!report || !Array.isArray(report.routes)) {
     return {
       pass: false,
       exitCode: 2,
       summary: '## Impeccable Critique Gate\n\n**MALFORMED REPORT:** missing `routes` array.\n',
+      failingRoutes: [],
+    }
+  }
+  // F-009: vacuous-pass guard. Check route count BEFORE per-route validation
+  // so an empty/short report fails fast with a clear message about the
+  // expected count rather than vacuously passing with zero failing routes.
+  if (typeof opts.expectedRoutes === 'number' && report.routes.length !== opts.expectedRoutes) {
+    return {
+      pass: false,
+      exitCode: 2,
+      summary:
+        `## Impeccable Critique Gate\n\n` +
+        `**MALFORMED REPORT:** expected ${opts.expectedRoutes} routes, got ${report.routes.length}. ` +
+        `One or more impeccable critique runs may have failed silently. ` +
+        `Check the workflow logs for Chromium errors or per-route 404s.\n`,
       failingRoutes: [],
     }
   }
@@ -101,11 +120,14 @@ export function checkImpeccableScore(report, threshold = DEFAULT_THRESHOLD) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2)
   let threshold = DEFAULT_THRESHOLD
+  let expectedRoutes
   let inputPath = null
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--threshold') {
       threshold = Number(args[++i])
+    } else if (args[i] === '--expected-routes') {
+      expectedRoutes = Number(args[++i])
     } else {
       inputPath = args[i]
     }
@@ -127,7 +149,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(2)
   }
 
-  const result = checkImpeccableScore(report, threshold)
+  const opts = typeof expectedRoutes === 'number' ? { expectedRoutes } : {}
+  const result = checkImpeccableScore(report, threshold, opts)
   console.log(result.summary)
   process.exit(result.exitCode)
 }
