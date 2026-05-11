@@ -78,10 +78,10 @@ filled: 2026-05-11
 | 07-05-T6 | 07-05 | 3 | HELP-01..06 | n/a | impeccable.yml route list (no-op — /help already on line 86 per plan-checker) | infra | `grep -q "/help" .github/workflows/impeccable.yml` | ✅ | ✅ green (no-op) |
 | 07-05-T7 | 07-05 | 3 | HELP-01..06 | n/a | Playwright walking checklist spec authored — 8 tests (312f8e3) | e2e (spec) | `pnpm --filter @agenticapps/dashboard-spa exec playwright test --list \| grep -q "help-walking-checklist"` | ✅ | ✅ green |
 | 07-05-T8 | 07-05 | 3 | HELP-01..06 | n/a | Pre-flight workspace gate (e0fe2e7 fix + f4c6e9e evidence) | infra | `pnpm -r typecheck && pnpm -r test && pnpm lint && pnpm -r build` | ✅ | ✅ green |
-| 07-05-T9 | 07-05 | 3 | HELP-01..06 | n/a | Playwright walking checklist runs green; zero console.error | e2e (run) + checkpoint | `pnpm --filter @agenticapps/dashboard-spa exec playwright test` | ✅ | ❌ red — 9/16 failed (see evidence/playwright.log) |
-| 07-05-T10 | 07-05 | 3 | ROADMAP S8 | n/a | impeccable ≥ 90 on /help lg | visual + checkpoint | `node scripts/check-impeccable-score.mjs --route /help --viewport 1440x900` | ✅ | ⬜ blocked by T9 |
-| 07-05-T11 | 07-05 | 3 | HELP-01..06 | n/a | /browse screenshots committed (6 routes × ≥1 viewport) | manual + automated | `node packages/spa/scripts/screenshot.mjs --route /help --viewport 1440x900 --out ...` | ✅ | ⬜ blocked by T9 |
-| 07-05-T12 | 07-05 | 3 | HELP-01..06 + ROADMAP S1..S8 | n/a | VERIFICATION.md + UAT.md with full evidence map | manual | doc review | ✅ | ⬜ blocked by T9 |
+| 07-05-T9 | 07-05 | 3 | HELP-01..06 | n/a | Playwright walking checklist runs green; zero console.error | e2e (run) + checkpoint | `pnpm --filter @agenticapps/dashboard-spa exec playwright test` | ✅ | ✅ green — 16/16 at HEAD `98c45f6` (see evidence/playwright.log T9 re-run section) |
+| 07-05-T10 | 07-05 | 3 | ROADMAP S8 | n/a | impeccable ≥ 90 on /help lg | visual + checkpoint | `npx impeccable detect "http://localhost:5174/help" --json` (CLI surface drift — see evidence/impeccable.log) | ✅ | ⚠️ tooling-drift — 5 inherited findings, 0 Plan-07-05 findings post `dark:prose-invert` fix (evidence/impeccable.log) |
+| 07-05-T11 | 07-05 | 3 | HELP-01..06 | n/a | /browse screenshots committed (6 routes × ≥1 viewport) | manual + automated | `node packages/spa/scripts/screenshot.mjs --route /help --viewport 1440x900 --out ...` | ✅ | ✅ green — 6 desktop + 1 mobile committed under evidence/help-*.png (post prose-fix) |
+| 07-05-T12 | 07-05 | 3 | HELP-01..06 + ROADMAP S1..S8 | n/a | VERIFICATION.md + UAT.md with full evidence map | manual | doc review | ✅ | ✅ green — 07-VERIFICATION.md + 07-UAT.md drafted; user sign-off pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
