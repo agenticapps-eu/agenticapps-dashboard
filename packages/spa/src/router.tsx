@@ -12,6 +12,8 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
 
 import { AppShellV2 } from './components/AppShellV2.js'
+import { HelpLayout } from './help/components/HelpLayout.js'
+import { buildHelpRoutes } from './help/buildHelpRoutes.js'
 import { getPairing } from './lib/pairing.js'
 import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
 
@@ -83,15 +85,21 @@ const settingsRoute = createRoute({
   path: '/settings',
 }).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
 
-const helpRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/help',
-}).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
-
 const projectsIdRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,
   path: '/projects/$projectId',
 }).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
+
+/**
+ * _helpLayout — pathless peer of _appshell (D-7-12). `/help/*` bypasses
+ * AppShellV2 so the docs site owns its own chrome (sidebar + main).
+ * Children are generated from helpRouteTable via buildHelpRoutes (Plan 07-05).
+ */
+const helpLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_helpLayout',
+  component: HelpLayout,
+})
 
 // /onboarding and /pair stay at rootRoute (no shell — D-5.1-03)
 const onboardingRoute = createRoute({
@@ -110,9 +118,10 @@ const routeTree = rootRoute.addChildren([
   appShellLayoutRoute.addChildren([
     indexRoute,
     settingsRoute,
-    helpRoute,
     projectsIdRoute,
   ] as AnyRoute[]),
+  // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
+  helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),
   onboardingRoute,
   pairRoute,
 ] as AnyRoute[])
