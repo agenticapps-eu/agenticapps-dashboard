@@ -2,16 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Working dashboard
-status: executing
-stopped_at: Phase 06.1 context gathered
-last_updated: "2026-05-11T01:10:37.052Z"
-last_activity: 2026-05-11
+status: awaiting_merge
+stopped_at: Phase 6 complete — v1.0 ready to merge (PR #15 pending Stage 2 + tag)
+last_updated: "2026-05-11T07:55:00.000Z"
+last_activity: 2026-05-11 -- Phase 06 complete; v1.0 closing PR #15 opened with Stage 1 review
 progress:
   total_phases: 11
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 46
-  completed_plans: 40
-  percent: 87
+  completed_plans: 41
+  percent: 89
+  v1_milestone_percent: 100
 ---
 
 # Project State
@@ -21,22 +22,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 06 — polish-service-install-acceptance
+**Current focus:** v1.0 closure — PR #15 awaiting Stage 2 review + merge + tag
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-11
+Phase: 06 — COMPLETE (all 7 plans landed)
+Milestone: v1.0 Working dashboard (Phases 0–6) — 100%
+Status: PR #15 opened (phase-06-polish-service-install → main); Stage 1 review appended; Stage 2 review pending in fresh session; merge + v1.0 tag pending explicit user approval
+Last activity: 2026-05-11 -- Plan 06-07 closure ritual (review-protocol.md + CF Access doc + README rewrite + Stage 1 review)
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100% of v1.0 milestone
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 41
+- Total plans completed: 48
 - Average duration: —
 - Total execution time: 0 h
 
@@ -50,6 +51,7 @@ Progress: [████████░░] 83%
 | 05 | 6 | - | - |
 | 05.1 | 6 | - | - |
 | 06.1 | 7 | - | - |
+| 06 | 7 | - | - |
 
 **Recent Trend:**
 

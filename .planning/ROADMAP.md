@@ -8,7 +8,7 @@ A nine-phase journey from empty repo to a working multi-project pipeline dashboa
 
 ## Milestones
 
-- 🚧 **v1.0 Working dashboard** — Phases 0–6 (in progress)
+- ✅ **v1.0 Working dashboard** — Phases 0–6 complete (PR #15 pending Stage 2 review + merge)
 - 📋 **v1.1 Optional integrations** — Phase 7 (planned, gated on upstream tooling)
 - 📋 **v1.2 Open-source readiness** — Phase 8 (planned, much later)
 
@@ -192,7 +192,7 @@ Plans:
 - [x] 06-04-PLAN.md — Wave 1: install-launchd command + makePlist + 14 unit tests + 3 subprocess tests (POLISH-02 D-6-04..07)
 - [x] 06-05-PLAN.md — Wave 1: install-systemd command + makeSystemdUnit + 15 unit tests + 3 subprocess tests (POLISH-03 D-6-04..07)
 - [x] 06-06-PLAN.md — Wave 2: impeccable CI gate (.github/workflows/impeccable.yml) + check-impeccable-score.mjs parser + Playwright workspace dep + targeted polish for any sub-90 deltas (POLISH-04 D-6-09..11; closes D-6-19 + Phase 5.1 AC-06)
-- [ ] 06-07-PLAN.md — Wave 3: review protocol doc + CF Access doc (D-6-18) + README rewrite (D-6-15..17) + closure ritual with two-stage review on Phase 6's own PR (POLISH-05 + POLISH-06)
+- [x] 06-07-PLAN.md — Wave 3: review protocol doc + CF Access doc (D-6-18) + README rewrite (D-6-15..17) + closure ritual with two-stage review on Phase 6's own PR (POLISH-05 + POLISH-06)
 
 ### Phase 06.1: typography-layout-impeccable-lift (INSERTED)
 
