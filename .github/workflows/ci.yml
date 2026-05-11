@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs when new commits land on the same ref. main pushes
+# do not cancel (each main commit gets its own definitive run); feature
+# branches and PR head-refs do.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
 

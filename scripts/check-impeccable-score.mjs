@@ -69,7 +69,7 @@ export function checkImpeccableScore(report, threshold = DEFAULT_THRESHOLD) {
   ]
   for (const r of allRoutes) {
     const isGate = r.breakpoint === GATE_BREAKPOINT
-    const status = !isGate ? 'INFO' : r.score >= threshold ? 'OK' : 'BELOW 90'
+    const status = !isGate ? 'INFO' : r.score >= threshold ? 'OK' : `BELOW ${threshold}`
     const gateLabel = isGate ? 'gate' : 'info'
     lines.push(`| \`${r.route}\` | ${r.breakpoint} | ${r.score} | ${gateLabel} | ${status} |`)
   }

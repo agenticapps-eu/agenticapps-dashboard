@@ -15,6 +15,13 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs when a PR is force-pushed or new commits land on
+# the same branch. Prevents stacked runs from racing on the PR-comment post
+# and wastes fewer CI minutes on Chromium installs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write   # for PR comment via gh CLI

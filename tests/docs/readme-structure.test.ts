@@ -1,9 +1,14 @@
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, it, expect } from 'vitest'
 
-const readme = readFileSync(resolve(__dirname, '..', '..', 'README.md'), 'utf8')
+// Resolve relative to this file (ESM-safe under workspace vitest, where
+// process.cwd() can be either the repo root or a per-package dir).
+// Symmetry with the 9f28cf3 fix in packages/spa/src/styles/{noOrange,tokenSourceOfTruth}.test.ts.
+const here = dirname(fileURLToPath(import.meta.url))
+const readme = readFileSync(resolve(here, '..', '..', 'README.md'), 'utf8')
 
 describe('README structure (POLISH-06 / D-6-15)', () => {
   const required = [
