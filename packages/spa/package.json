@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:subprocess": "vitest run --config vitest.subprocess.config.ts",
-    "test:scripts": "vitest run --config vitest.scripts.config.ts"
+    "test:scripts": "vitest run --config vitest.scripts.config.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*",
