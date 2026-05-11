@@ -16,11 +16,18 @@
   "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*",
     "@fontsource-variable/inter": "catalog:",
+    "@mdx-js/react": "catalog:",
+    "@mdx-js/rollup": "catalog:",
+    "@tailwindcss/typography": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "lucide-react": "catalog:",
+    "mermaid": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "remark-frontmatter": "catalog:",
+    "remark-gfm": "catalog:",
+    "remark-mdx-frontmatter": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

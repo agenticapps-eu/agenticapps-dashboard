@@ -46,3 +46,11 @@ catalog:
   tsx: ^4.20.0
   # Testing infrastructure
   '@playwright/test': ^1.59.1
+  # Help docs v1.0 (Phase 7)
+  '@mdx-js/react': ^3.1.1
+  '@mdx-js/rollup': ^3.1.1
+  'remark-frontmatter': ^5.0.0
+  'remark-mdx-frontmatter': ^5.2.0
+  'remark-gfm': ^4.0.1
+  '@tailwindcss/typography': ^0.5.19
+  'mermaid': ^11.15.0
