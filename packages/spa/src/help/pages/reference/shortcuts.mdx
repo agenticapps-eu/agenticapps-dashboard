@@ -1,0 +1,34 @@
+---
+slug: /help/reference/shortcuts
+title: Keyboard shortcuts
+order: 0
+section: reference
+---
+
+import { KbdHint } from '../../../components/ui/KbdHint.js'
+
+# Keyboard shortcuts
+
+Reference for every keyboard shortcut wired into the dashboard. The `?` shortcut from anywhere on a paired dashboard route lands you on this docs site's landing page.
+
+## Global shortcuts
+
+| Keys | Action |
+|------|--------|
+| <KbdHint keys="R" /> | Refresh the current view's data |
+| <KbdHint keys="?" /> | Open the docs landing page (`/help`) |
+| <KbdHint keys="/" /> | Focus the search box (home page only) |
+| <KbdHint keys="Cmd" /> + <KbdHint keys="K" /> | Open the command palette |
+
+## Common tasks
+
+- **Pair a new device** — Settings → Manual pair
+- **Refresh project state** — press <KbdHint keys="R" />
+- **View keyboard shortcuts** — press <KbdHint keys="?" /> (lands on docs landing; click "Keyboard shortcuts" in the Reference sidebar)
+- **Open the command palette** — press <KbdHint keys="Cmd" /> + <KbdHint keys="K" />
+
+## When shortcuts don't fire
+
+- **You're inside an input field.** Shortcut hook skips when the focused element is `<input>`, `<textarea>`, `<select>`, or contenteditable — typing "r" in the search box doesn't refresh.
+- **A modifier is held.** Cmd-R / Ctrl-R always reloads the browser; the shortcut hook bails on `metaKey`/`ctrlKey`/`altKey`/`shiftKey`.
+- **You're on `/help/*` itself.** The docs site has its own chrome (separate layout); the global shortcut hook is mounted on the dashboard chrome only. Inside `/help/*`, no global shortcuts fire — use the in-page links instead. (v1.1 may add `?` to scroll-to-top within `/help/*`.)
