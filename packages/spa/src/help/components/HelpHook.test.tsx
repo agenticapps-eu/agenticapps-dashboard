@@ -46,9 +46,13 @@ describe('HelpHook', () => {
     const user = userEvent.setup()
     render(<HelpHook topic="workflow.gates" />)
     const btn = screen.getByRole('button')
-    btn.focus()
+    // Use user.tab() to fire the synthetic React focus event rather than
+    // native btn.focus() — React's onFocus relies on delegation via the
+    // root, which jsdom's native focus does not always satisfy.
+    await user.tab()
+    expect(btn).toHaveFocus()
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
-    await user.tab() // blur
+    await user.tab() // tab again to blur off the button
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
