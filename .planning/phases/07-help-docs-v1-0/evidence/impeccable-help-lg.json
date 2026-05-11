@@ -1,0 +1,218 @@
+[
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "2.8:1 (need 3:1) — text #9c95a8 on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "2.8:1 (need 3:1) — text #9c95a8 on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "2.8:1 (need 3:1) — text #9c95a8 on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "2.8:1 (need 3:1) — text #9c95a8 on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "2.8:1 (need 3:1) — text #9c95a8 on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 4.5:1) — text #ffffff on #fafaf7"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "Low contrast text",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "file": "http://localhost:5174/help",
+    "line": 0,
+    "snippet": "1.0:1 (need 3:1) — text #ffffff on #fafaf7"
+  }
+]
