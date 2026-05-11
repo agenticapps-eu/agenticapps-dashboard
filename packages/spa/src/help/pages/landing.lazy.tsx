@@ -9,6 +9,6 @@ import { HelpPage } from '../HelpPage.js'
 
 import LandingMdx, { frontmatter } from './landing.mdx'
 
-export const Route = createLazyRoute('/_helpLayout/help')({
+export const Route = createLazyRoute('/help/')({
   component: () => <HelpPage FmComponent={LandingMdx} frontmatter={frontmatter} />,
 })

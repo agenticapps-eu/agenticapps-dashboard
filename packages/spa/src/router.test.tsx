@@ -46,24 +46,26 @@ describe('router — single AppShellV2 route tree', () => {
     expect(ids.some((id) => id === '/_appshell/help')).toBe(false)
   })
 
-  it('RT1a: _helpLayout is a PEER of _appshell at rootRoute; /help/* bypasses AppShellV2 chrome (Plan 07-05 D-7-12)', async () => {
+  it('RT1a: helpLayout is a PEER of _appshell at rootRoute; /help/* bypasses AppShellV2 chrome (Plan 07-05 D-7-12)', async () => {
     const { router } = await import('./router.js')
     const ids = Object.keys(router.routesById ?? {})
-    // _helpLayout pathless layout route is present at the same nesting level as _appshell.
-    expect(ids.some((id) => id.includes('_helpLayout'))).toBe(true)
-    // TanStack concatenates parent.id + child.path → IDs look like
-    // /_helpLayout/help, /_helpLayout/help/workflow/overview, etc.
-    // Children: 1 index + 5 anchor + 32 stub + 4 redirect + 1 catchAll = 43 routes.
-    const helpChildren = ids.filter((id) => id.startsWith('/_helpLayout/'))
+    // Help layout route mounts AT `/help` (peer of _appshell, NOT a child) so
+    // its index entry uses `path: '/'` and wins the TanStack tie-breaker
+    // against the `/help/$` catch-all sibling (Plan 07-05 T9 fix — pathless +
+    // absolute child paths caused the wildcard to silently outrank the
+    // index by tree depth in v1.169's `isFrameMoreSpecific`).
+    expect(ids.some((id) => id === '/help')).toBe(true)
+    // Children: 1 index (`/help/`) + 5 anchor + 32 stub + 4 redirect + 1 catchAll = 43 routes.
+    const helpChildren = ids.filter((id) => id.startsWith('/help'))
     expect(helpChildren.length).toBeGreaterThanOrEqual(40)
-    expect(ids.some((id) => id === '/_helpLayout/help')).toBe(true)
-    expect(ids.some((id) => id === '/_helpLayout/help/workflow/overview')).toBe(true)
-    expect(ids.some((id) => id === '/_helpLayout/help/repos/overview')).toBe(true)
-    expect(ids.some((id) => id === '/_helpLayout/help/observability/overview')).toBe(true)
-    expect(ids.some((id) => id === '/_helpLayout/help/operations/install')).toBe(true)
-    expect(ids.some((id) => id === '/_helpLayout/help/reference/shortcuts')).toBe(true)
-    // catchAll is /_helpLayout/help/$
-    expect(ids.some((id) => id === '/_helpLayout/help/$')).toBe(true)
+    expect(ids.some((id) => id === '/help/')).toBe(true) // index entry
+    expect(ids.some((id) => id === '/help/workflow/overview')).toBe(true)
+    expect(ids.some((id) => id === '/help/repos/overview')).toBe(true)
+    expect(ids.some((id) => id === '/help/observability/overview')).toBe(true)
+    expect(ids.some((id) => id === '/help/operations/install')).toBe(true)
+    expect(ids.some((id) => id === '/help/reference/shortcuts')).toBe(true)
+    // catchAll matches `/help/$` (anything under /help/, NOT /help itself).
+    expect(ids.some((id) => id === '/help/$')).toBe(true)
   })
 
   it('RT2: onboardingRoute and pairRoute are direct children of rootRoute (no shell wrap)', async () => {

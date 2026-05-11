@@ -19,18 +19,32 @@ import { ComingSoonRoute } from './ComingSoonRoute.js'
 import { helpRouteTable } from './helpRouteTable.js'
 
 /**
- * Children of the pathless _helpLayout route attach with their ABSOLUTE URL
- * path. Because the parent is pathless (id-only, no URL segment), children
- * inherit no URL prefix — the path written here is matched verbatim against
- * the URL. Hence `/help` for the index, `/help/workflow/overview` for an
- * anchor, and `/help/$` for the catch-all (any path starting with `/help/`).
+ * Children of _helpLayout (mounted at `/help`) use TanStack-canonical relative
+ * paths. The parent's `path: '/help'` contributes the `/help` URL prefix, so:
  *
- * Deviation from plan body: the planned `relativePath` helper (stripping the
- * /help prefix) is incompatible with the D-7-12 PEER layout pattern. With
- * the parent pathless, stripping the prefix would collide with `/_appshell/`
- * (both children would claim path '/'), and the catch-all `$` would match
- * every URL in the app, not just `/help/*`. Rule 1 (auto-fix bug).
+ *   - index entry → `path: '/'` (true INDEX node — outranks wildcard siblings)
+ *   - anchor / stub / redirect entries → relative path with the `/help/` prefix
+ *     stripped (e.g. `/help/workflow/overview` → `workflow/overview`)
+ *   - catch-all → `path: '$'` (matches anything under `/help/`)
+ *
+ * Why the prefix-stripping fix (Rule 1): with the prior pathless `_helpLayout`
+ * and every child carrying an absolute `/help/...` path, the catch-all route
+ * `/help/$` ended up one segment deeper than the static index `/help` in
+ * TanStack's route tree. `isFrameMoreSpecific` (v1.169) prefers deeper frames
+ * when statics/dynamics/index-ness are otherwise equal, so the wildcard
+ * silently outranked the index — `/help` resolved to the catch-all and
+ * rendered an empty `<Outlet/>` while flooding the dev console with
+ * `Generated path … did not match the same route after params.stringify`.
+ * Mounting the layout at `/help` and giving the index `path: '/'` makes it
+ * a true INDEX node, which TanStack always prefers over a sibling wildcard.
  */
+const HELP_PREFIX = '/help/'
+function relPath(absPath: string): string {
+  if (absPath === '/help') return '/'
+  if (absPath.startsWith(HELP_PREFIX)) return absPath.slice(HELP_PREFIX.length)
+  return absPath
+}
+
 export function buildHelpRoutes(parent: AnyRoute): AnyRoute[] {
   const routes: AnyRoute[] = []
 
@@ -38,7 +52,7 @@ export function buildHelpRoutes(parent: AnyRoute): AnyRoute[] {
     if (entry.kind === 'index') {
       const r = createRoute({
         getParentRoute: () => parent,
-        path: '/help',
+        path: '/',
       }).lazy(() =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         import('./pages/landing.lazy.js').then((m) => m.Route as any),
@@ -48,7 +62,7 @@ export function buildHelpRoutes(parent: AnyRoute): AnyRoute[] {
       const anchorEntry = entry
       const r = createRoute({
         getParentRoute: () => parent,
-        path: anchorEntry.path,
+        path: relPath(anchorEntry.path),
       }).lazy(() =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         anchorEntry.lazyImport().then((m: { Route: unknown }) => m.Route as any),
@@ -58,7 +72,7 @@ export function buildHelpRoutes(parent: AnyRoute): AnyRoute[] {
       const stubEntry = entry
       const r = createRoute({
         getParentRoute: () => parent,
-        path: stubEntry.path,
+        path: relPath(stubEntry.path),
         component: () => <ComingSoonRoute section={stubEntry.section} title={stubEntry.title} />,
       }) as unknown as AnyRoute
       routes.push(r)
@@ -66,7 +80,7 @@ export function buildHelpRoutes(parent: AnyRoute): AnyRoute[] {
       const redirectEntry = entry
       const r = createRoute({
         getParentRoute: () => parent,
-        path: redirectEntry.from,
+        path: relPath(redirectEntry.from),
         beforeLoad: () => {
           throw redirect({ to: redirectEntry.to })
         },
@@ -74,11 +88,11 @@ export function buildHelpRoutes(parent: AnyRoute): AnyRoute[] {
       routes.push(r)
     } else if (entry.kind === 'catchAll') {
       const catchEntry = entry
-      // `/help/$` matches anything under /help/ (catchAll within the docs
-      // namespace only — does NOT catch all routes).
+      // path: '$' under parent /help → matches anything under /help/ but does
+      // NOT match `/help` exactly (the INDEX child handles that).
       const r = createRoute({
         getParentRoute: () => parent,
-        path: '/help/$',
+        path: '$',
         beforeLoad: () => {
           throw redirect({ to: catchEntry.to })
         },

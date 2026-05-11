@@ -91,13 +91,25 @@ const projectsIdRoute = createRoute({
 }).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
 
 /**
- * _helpLayout — pathless peer of _appshell (D-7-12). `/help/*` bypasses
+ * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
+ *
+ * Originally registered as a pathless layout (id-only), but that forced every
+ * child to repeat the `/help` prefix in its `path` AND made the catch-all
+ * `path: '/help/$'` outrank the static `path: '/help'` index entry in
+ * TanStack's depth-based tie-breaker — the wildcard `$` lives one segment
+ * deeper than the index, and `isFrameMoreSpecific` prefers deeper frames when
+ * statics/dynamics/index-ness are otherwise equal, so `/help` resolved to the
+ * empty catch-all route and rendered an empty `<Outlet/>`. Rule 1 fix:
+ * mount the layout AT `/help` so children can use the canonical TanStack
+ * shape (`path: '/'` for the index, relative paths for anchors/stubs,
+ * `path: '$'` for the catch-all). The URL surface is unchanged.
+ *
  * Children are generated from helpRouteTable via buildHelpRoutes (Plan 07-05).
  */
 const helpLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: '_helpLayout',
+  path: '/help',
   component: HelpLayout,
 })
 
