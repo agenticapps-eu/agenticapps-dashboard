@@ -1,11 +1,13 @@
 // @vitest-environment node
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, extname, resolve } from 'node:path'
+import { dirname, join, extname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, it, expect } from 'vitest'
 
-// Resolve from package root (spa/) → src/
-const SRC_DIR = resolve(process.cwd(), 'src')
+// Resolve relative to this file (.../packages/spa/src/styles/) so the test works
+// in both per-package vitest (cwd = packages/spa) and workspace vitest (cwd = repo root).
+const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 function walk(dir: string): string[] {
   const entries = readdirSync(dir)

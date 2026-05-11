@@ -13,12 +13,17 @@
  * assertions, so it is excluded by the .test.ts suffix filter).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, extname, resolve } from 'node:path'
+import { dirname, join, extname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, it, expect } from 'vitest'
 
-const COMPONENTS_DIR = resolve(process.cwd(), 'src', 'components')
-const TOKENS_FILE = resolve(process.cwd(), 'src', 'styles', 'tokens.css')
+// Resolve relative to this file (.../packages/spa/src/styles/) so the test
+// works in both per-package vitest (cwd = packages/spa) and workspace vitest
+// (cwd = repo root).
+const STYLES_DIR = dirname(fileURLToPath(import.meta.url))
+const COMPONENTS_DIR = resolve(STYLES_DIR, '..', 'components')
+const TOKENS_FILE = resolve(STYLES_DIR, 'tokens.css')
 
 function walk(dir: string): string[] {
   const out: string[] = []

@@ -47,7 +47,9 @@ jobs:
         run: pnpm --filter @agenticapps/dashboard-spa build
 
       - name: Install Playwright Chromium (with system deps)
-        run: npx playwright install chromium --with-deps
+        # playwright lives in @agenticapps/dashboard-spa (devDep, not hoisted to root).
+        # Run via pnpm filter so the binary resolves through the SPA package's node_modules.
+        run: pnpm --filter @agenticapps/dashboard-spa exec playwright install chromium --with-deps
 
       - name: Start static SPA preview
         run: |
