@@ -3,11 +3,13 @@ import { StrictMode, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { MDXProvider } from '@mdx-js/react'
 
 import { router } from './router.js'
 import { initTheme } from './lib/theme.js'
 import { RepairProvider, useRepair } from './lib/repair.js'
 import { createQueryClient } from './lib/queryClient.js'
+import { mdxComponents } from './help/mdxComponents.js'
 import './styles/global.css'
 
 // Apply theme BEFORE first paint to avoid the dark/light flash (D-02).
@@ -43,7 +45,9 @@ createRoot(rootEl).render(
   <StrictMode>
     <RepairProvider>
       <QueryBridge>
-        <RouterProvider router={router} />
+        <MDXProvider components={mdxComponents}>
+          <RouterProvider router={router} />
+        </MDXProvider>
       </QueryBridge>
     </RepairProvider>
   </StrictMode>,

@@ -49,6 +49,7 @@ catalog:
   # Help docs v1.0 (Phase 7)
   '@mdx-js/react': ^3.1.1
   '@mdx-js/rollup': ^3.1.1
+  '@types/mdx': ^2.0.13
   'remark-frontmatter': ^5.0.0
   'remark-mdx-frontmatter': ^5.2.0
   'remark-gfm': ^4.0.1
