@@ -1,0 +1,174 @@
+---
+slug: /help/repos/overview
+title: Repository Topology
+order: 0
+section: repos
+---
+
+# Repository Topology
+
+*Six repos: one canonical spec, three host implementations, one dashboard, and your client projects.*
+
+AgenticApps is deliberately split across multiple repositories rather than living in a single monorepo. Each repo has a single, focused responsibility, which lets each evolve at its own pace and lets you adopt only the pieces you need.
+
+## Why this matters
+
+Three reasons the split is structural rather than incidental:
+
+**The spec must be portable.** The development workflow needs to work identically across multiple AI agent hosts (Claude Code, pi.dev, Codex). If the spec lived inside any one host's tooling, that host would tacitly become the canonical interpretation, and the others would drift. Putting the spec in a separate repo with a strict markdown-only policy keeps it neutral.
+
+**The dashboard must consume but not author.** The dashboard reads workflow state from your client projects to give you a visual surface, but it must never invent its own conventions or override what the workflow scaffolder produced. Putting it in a separate repo enforces the "read-only consumer" contract architecturally.
+
+**Client projects must be free to diverge.** Once you've installed the workflow into a client project (cparx, fx-signals, your own), that project owns its evolution. It's pinned to a specific workflow version via a migration system; future workflow updates don't auto-reach into the project. The repos sit in separate orgs / paths to make that ownership obvious.
+
+## The six repos
+
+<HelpWidget name="RepoTopologyMap" />
+
+<MermaidBlock code={`flowchart TB
+    subgraph spec["Specification"]
+        Core[("agenticapps-workflow-core<br/>📜 spec only, markdown")]
+    end
+
+    subgraph hosts["Host implementations"]
+        Claude[("claude-workflow<br/>🤖 Claude Code")]
+        Pi[("pi-agentic-apps-workflow<br/>🥧 pi.dev")]
+        Codex[("codex-workflow<br/>🦾 OpenAI Codex CLI")]
+    end
+
+    subgraph consumer["Consumer"]
+        Dash[("agenticapps-dashboard<br/>📊 visual surface")]
+    end
+
+    subgraph projects["Your projects"]
+        Cparx[("cparx<br/>🏢 real-estate DD")]
+        Fx[("fx-signals<br/>📈 trading signals")]
+        Yours[("your-project<br/>✨")]
+    end
+
+    Core -. "spec defines" .-> Claude
+    Core -. "spec defines" .-> Pi
+    Core -. "spec defines" .-> Codex
+
+    Claude -- "scaffolds" --> Cparx
+    Claude -- "scaffolds" --> Fx
+    Claude -- "scaffolds" --> Yours
+    Pi -- "scaffolds (alt host)" --> Yours
+    Codex -- "scaffolds (alt host)" --> Yours
+
+    Dash -- "reads state from" --> Cparx
+    Dash -- "reads state from" --> Fx
+    Dash -- "reads state from" --> Yours
+
+    classDef spec fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    classDef host fill:#e0e7ff,stroke:#6366f1,stroke-width:2px
+    classDef consumer fill:#dcfce7,stroke:#22c55e,stroke-width:2px
+    classDef project fill:#fce7f3,stroke:#ec4899,stroke-width:2px
+
+    class Core spec
+    class Claude,Pi,Codex host
+    class Dash consumer
+    class Cparx,Fx,Yours project`} />
+
+### `agenticapps-workflow-core` — the canonical spec
+
+Markdown-only. No source code beyond a small `drift-report.sh` health check. Contains:
+
+- The commitment-ritual canonical block (host implementations reproduce it verbatim).
+- The 13 red flags and the rationalization table.
+- The hook taxonomy — which gates exist and what each gate's contract is.
+- The evidence-before-completion contract.
+- The two-stage review contract.
+- The migration file format.
+- §10 — the observability contract.
+- Cross-host architecture decision records (ADRs).
+
+The spec uses RFC 2119 keywords (MUST, SHOULD, MAY) for declarative sections and provides verbatim text blocks for canonical-prose sections. Hosts implement it independently and cite the version they conform to.
+
+[Deep dive →](/help/repos/core)
+
+### `claude-workflow` — the Claude Code implementation
+
+Implements the spec for Claude Code (the CLI). Ships:
+
+- The main `agentic-apps-workflow` skill (the orchestrator that invokes other skills at gate boundaries).
+- The `setup-agenticapps-workflow` and `update-agenticapps-workflow` slash commands.
+- Migration files (the upgrade path between workflow versions).
+- The `add-observability` skill (spec §10 generator + auditor).
+- Per-stack templates for the observability skill (Cloudflare Worker, Pages, Supabase Edge, React+Vite, Go+Fly).
+- Glue between gstack, Superpowers, Impeccable, and the GSD framework.
+
+Currently the most mature of the three host implementations.
+
+[Deep dive →](/help/repos/claude)
+
+### `pi-agentic-apps-workflow` — the pi.dev implementation
+
+Mirrors `claude-workflow` for the [pi coding agent](https://pi.dev/) ([badlogic/pi-mono](https://github.com/badlogic/pi-mono)). Same spec, pi-native skill format (`SKILL.md` + AGENTS.md), pi-flavored slash command syntax (`/skill:add-observability`), pi's own runtime extension layer for hook enforcement.
+
+Trails claude-workflow by about one minor version — the spec settles in claude-workflow first, pi-agentic-apps-workflow ports the changes once they're stable.
+
+[Deep dive →](/help/repos/pi)
+
+### `codex-workflow` — the OpenAI Codex CLI implementation
+
+Mirrors the same workflow for [OpenAI Codex CLI](https://openai.com/index/introducing-codex/). Earliest-stage of the three host implementations — full re-author scope, since Codex's skill format and runtime model differ enough from Claude Code's that direct porting isn't sufficient.
+
+[Deep dive →](/help/repos/codex)
+
+### `agenticapps-dashboard` — this app
+
+The visual surface for tracking workflow state across your projects. Pages include:
+
+- Project list — every AgenticApps project you've registered, with current phase, plan, and gate status.
+- Phase view — the current phase's tasks, evidence artifacts, and gate outcomes.
+- Observability scan-report viewer — render `.scan-report.md` files from your projects with confidence-bucket filtering.
+- Migration runner UI — preview and apply pending workflow migrations across multiple projects.
+- This help section.
+
+The dashboard does NOT modify project state — it's a viewer plus a few "trigger an action in another tool" launch points. All authoring happens in your editor / agent host.
+
+[Deep dive →](/help/repos/dashboard)
+
+### Client projects
+
+Things you actually ship. Examples in the AgenticApps fleet:
+
+- **[cparx](https://github.com/agenticapps-eu/cparx)** — AI-powered real estate due diligence platform for capitalPARX AG. Go backend on Fly, React frontend on Cloudflare Pages, Supabase database. The first production AgenticApps project; the testbed for most workflow features.
+- **fx-signals** — trading signal aggregator. Cloudflare Workers + React frontend.
+- **Your project** — anything you scaffold via `claude /setup-agenticapps-workflow`.
+
+[How a client project relates to the workflow →](/help/repos/projects)
+
+## How they version
+
+Each repo versions independently:
+
+| Repo | Versioning |
+|---|---|
+| core | Spec semver. `0.x` until the spec is stable; `1.0.0` post-stability. Patch releases for clarifications, minor for additive sections, major for breaking changes. |
+| claude-workflow | Workflow semver. Each migration bumps minor (`1.4.0 → 1.5.0`). |
+| pi-agentic-apps-workflow | Tracks pi-mono releases plus the spec version it implements. |
+| codex-workflow | Tracks Codex CLI plus the spec version it implements. |
+| agenticapps-dashboard | Standard product semver. |
+| Client projects | Project-specific (e.g. cparx is on `v0.1.0`). |
+
+A host repo's `SKILL.md` declares `implements_spec: X.Y.Z` so you (and the workflow's drift-report tool) can see at a glance whether the host has caught up to the latest spec.
+
+## Common questions
+
+**Where do bugs in the workflow get filed?** Spec bugs in core; host-specific bugs in the relevant host repo; dashboard bugs in dashboard. When in doubt, file in core — maintainers will move it.
+
+**Can I use just one host repo without the others?** Yes. claude-workflow is fully usable standalone. The other hosts only matter if you're using pi or Codex as your agent runtime.
+
+**Is the dashboard required?** No. You can run the entire workflow from a terminal. The dashboard is a UX layer for people who prefer visual tracking; it doesn't add capability, just discoverability.
+
+**Why aren't host implementations forks of each other?** Different agent hosts have genuinely different runtime models — pi.dev has a runtime extension layer for hook enforcement; Codex has its own skill format; Claude Code uses subagents differently. Each host's implementation is idiomatic for that host. They share a spec, not code.
+
+## See also
+
+- [Core repo deep dive](/help/repos/core)
+- [Claude-workflow deep dive](/help/repos/claude)
+- [Dashboard deep dive](/help/repos/dashboard)
+- [What's a "client project"?](/help/repos/projects)
+- [Workflow Overview](/help/workflow/overview) — the discipline these repos enforce

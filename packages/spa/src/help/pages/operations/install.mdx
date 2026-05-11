@@ -1,0 +1,235 @@
+---
+slug: /help/operations/install
+title: Installation Guide
+order: 0
+section: operations
+---
+
+# Installation Guide
+
+*Set up the AgenticApps workflow on a fresh machine in under 15 minutes.*
+
+This page walks you through installing the AgenticApps workflow scaffolder for your chosen agent host, plus the supporting tooling (gstack, Superpowers, Impeccable). After the install, you'll be able to run `/setup-agenticapps-workflow` in any project to bootstrap it.
+
+If you already have a partial install and just want to update, skip to **[Updating →](/help/operations/update)**.
+
+## Prerequisites
+
+Before you start:
+
+- **A supported agent host installed** — one of:
+  - [Claude Code](https://docs.claude.com/en/docs/claude-code) (most mature; recommended for first-time setup)
+  - [pi](https://pi.dev/) ([badlogic/pi-mono](https://github.com/badlogic/pi-mono))
+  - [OpenAI Codex CLI](https://openai.com/index/introducing-codex/)
+- **Git** (any recent version).
+- **Node 20+** (for the dashboard, observability templates, and a few skills).
+- **Optionally: Go 1.22+** (only needed if you're scaffolding Go backends).
+
+The rest is pulled by the install scripts.
+
+## Step 1: Clone the workflow scaffolder
+
+Pick the host repo matching your agent. The instructions below are Claude Code; jump to the [pi](#pi-install) or [Codex](#codex-install) sections if you're using one of those.
+
+```bash
+mkdir -p ~/Sourcecode
+cd ~/Sourcecode
+git clone https://github.com/agenticapps-eu/claude-workflow.git
+cd claude-workflow
+```
+
+Verify the checkout:
+
+```bash
+ls
+# Expected: README.md, install.sh, skill/, setup/, update/, migrations/, add-observability/, ...
+```
+
+## Step 2: Run the installer
+
+The installer copies skills into `~/.claude/skills/` (Claude Code's skill discovery location) and registers them so the slash commands work.
+
+```bash
+./install.sh
+```
+
+You should see something like:
+
+```
+Installing AgenticApps workflow skills...
+✓ agentic-apps-workflow → ~/.claude/skills/agentic-apps-workflow
+✓ setup-agenticapps-workflow → ~/.claude/skills/setup-agenticapps-workflow
+✓ update-agenticapps-workflow → ~/.claude/skills/update-agenticapps-workflow
+✓ add-observability → ~/.claude/skills/add-observability
+Installation complete. Try: claude /setup-agenticapps-workflow
+```
+
+If `install.sh` fails, the most common reason is `~/.claude/skills/` doesn't exist yet (you haven't used Claude Code skills before). Create it:
+
+```bash
+mkdir -p ~/.claude/skills
+./install.sh
+```
+
+## Step 3: Install the supporting skill packs
+
+The workflow depends on three external skill packs. Install each:
+
+```bash
+# Superpowers (the discipline layer)
+git clone https://github.com/obra/superpowers.git ~/.claude/skills/superpowers
+
+# Impeccable (the design-quality gate)
+npx skills add pbakaus/impeccable
+
+# database-sentinel (the database security audit gate)
+git clone https://github.com/Farenhytee/database-sentinel ~/.claude/skills/database-sentinel
+```
+
+Verify:
+
+```bash
+ls ~/.claude/skills/superpowers/SKILL.md \
+   ~/.claude/skills/impeccable/SKILL.md \
+   ~/.claude/skills/database-sentinel/SKILL.md
+# All three files should exist.
+```
+
+## Step 4: Wire your shell
+
+Add these to `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+# So slash commands are discoverable from any directory
+export CLAUDE_WORKFLOW_SOURCE="$HOME/Sourcecode/claude-workflow"
+```
+
+Reload:
+
+```bash
+exec $SHELL
+```
+
+## Step 5: Verify
+
+Open Claude Code in any directory and check the skill is recognized:
+
+```bash
+claude /agentic-apps-workflow
+```
+
+You should see the workflow skill emit its commitment ritual prompt. Ctrl-C to exit if you don't actually want to start a phase.
+
+```bash
+claude /setup-agenticapps-workflow --help
+```
+
+Should print the setup skill's usage. If both work, you're installed.
+
+## Step 6: Bootstrap your first project
+
+Create a test project to verify end-to-end:
+
+```bash
+cd ~/Sourcecode
+mkdir hello-agenticapps && cd hello-agenticapps
+git init
+claude /setup-agenticapps-workflow
+```
+
+Walk through the setup prompts (the skill will ask about the project type, language, etc.). When it finishes:
+
+```bash
+ls
+# Expected: CLAUDE.md, .planning/, .claude/, README.md
+cat .claude/skills/agentic-apps-workflow/SKILL.md | head -3
+# version should show 1.5.0 (or whatever the latest is)
+```
+
+You're ready to start a phase. See **[Workflow Overview](/help/workflow/overview)** for what to do next.
+
+<HelpWidget name="MigrationDryRun" />
+
+The widget above simulates what a migration looks like — useful preview before you run one for real.
+
+---
+
+## Pi install {#pi-install}
+
+For [pi](https://pi.dev/) instead of Claude Code:
+
+```bash
+mkdir -p ~/Sourcecode
+cd ~/Sourcecode
+git clone https://github.com/agenticapps-eu/pi-agentic-apps-workflow.git
+cd pi-agentic-apps-workflow
+./install.sh
+```
+
+Pi's runtime extension layer auto-loads skills from its config; no shell wiring needed beyond what pi-mono already does. Verify:
+
+```bash
+pi /skill:agentic-apps-workflow
+```
+
+The supporting skill packs (Superpowers, Impeccable, database-sentinel) install the same way — pi reads from `~/.pi/skills/` instead of `~/.claude/skills/`.
+
+## Codex install {#codex-install}
+
+For [OpenAI Codex CLI](https://openai.com/index/introducing-codex/):
+
+```bash
+mkdir -p ~/Sourcecode
+cd ~/Sourcecode
+git clone https://github.com/agenticapps-eu/codex-workflow.git
+cd codex-workflow
+./install.sh
+```
+
+Codex's installer follows its native skill format. The workflow exposes the same set of slash commands but invoked per Codex's conventions (described in the codex-workflow README).
+
+---
+
+## Troubleshooting
+
+**`claude /agentic-apps-workflow` says "skill not found".** The skill copy step failed silently. Check `ls ~/.claude/skills/agentic-apps-workflow/`. If empty, re-run `./install.sh` with verbose output: `./install.sh --verbose`.
+
+**Phase fails with "missing skill: superpowers".** You skipped Step 3, or the Superpowers checkout didn't pull the SKILL.md. Re-clone:
+
+```bash
+rm -rf ~/.claude/skills/superpowers
+git clone https://github.com/obra/superpowers.git ~/.claude/skills/superpowers
+```
+
+**Migration runner errors with "version unknown".** Your project's installed version isn't readable. Check:
+
+```bash
+grep -E '^version:' .claude/skills/agentic-apps-workflow/SKILL.md
+```
+
+Should print e.g. `version: 1.4.0`. If missing, the project wasn't set up via `/setup-agenticapps-workflow` — run setup first.
+
+**ImpeccableSkill says "design tokens unset".** Impeccable needs project-specific design tokens to score variants. The first phase that triggers `/design-shotgun` will prompt you to fill these in; subsequent phases reuse them.
+
+**dashboard says "no projects registered".** Dashboard reads from `~/.agenticapps/dashboard/registry.json`. The setup skill writes this entry on `/setup-agenticapps-workflow`; if you bootstrapped manually, add the entry yourself:
+
+```bash
+mkdir -p ~/.agenticapps/dashboard
+echo '{"projects":[{"path":"'$PWD'","tags":["active"]}]}' > ~/.agenticapps/dashboard/registry.json
+```
+
+## Next steps
+
+You're installed. Now:
+
+- **Read the [Workflow Overview](/help/workflow/overview)** if you haven't yet — the discipline layer is what makes the rest worth it.
+- **Run [`/add-observability scan`](/help/observability/scan)** in your test project to see the observability audit in action.
+- **Browse the [Slash command catalog](/help/operations/slash-commands)** for everything the workflow gives you.
+- **Skim [Updating](/help/operations/update)** so you know how to pull the next workflow release without manual surgery.
+
+## See also
+
+- [Updating the workflow](/help/operations/update) — `/update-agenticapps-workflow`, the migration framework
+- [Slash command catalog](/help/operations/slash-commands) — every command you can run
+- [Troubleshooting](/help/operations/troubleshooting) — extended troubleshooting beyond the install-specific items above
+- [Migration runbook](/help/operations/migration-runbook) — what a real migration looks like, step by step

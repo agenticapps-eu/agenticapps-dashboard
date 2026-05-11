@@ -1,0 +1,160 @@
+---
+slug: /help/observability/overview
+title: Observability Overview
+order: 0
+section: observability
+---
+
+# Observability Overview
+
+*Every AgenticApps project emits structured, correlated events from every service surface — by spec.*
+
+If a request enters your system through a Cloudflare frontend, hits a Cloudflare Worker, calls a Go backend on Fly, queries Supabase, and triggers a Supabase Edge Function — and something goes wrong somewhere — observability is the difference between "ten minutes to find the bug" and "two days of guessing." The AgenticApps spec §10 makes that observability a first-class requirement of every conformant project, with one shared contract across all five service surfaces.
+
+## Why this matters
+
+Three problems §10 solves:
+
+**Cross-surface correlation.** Without a shared trace ID propagating end-to-end, you can't tell which Worker call corresponds to which Fly request corresponds to which Supabase query. You're stuck inferring causality from timestamps, which fails the moment you have any concurrency. §10 mandates W3C `traceparent` propagation on every cross-service hop, so every event in every surface carries the same `trace_id` for one user-initiated action.
+
+**Vendor lock-in by accident.** If `@sentry/cloudflare` is imported directly in 30+ call sites, swapping vendors (or even adding a second destination for analytics) becomes a multi-day refactor. §10 mandates that application code calls only a thin wrapper module — a `logEvent` / `captureError` / `startSpan` interface — and the wrapper internally talks to whatever destination you've configured. Swap Sentry for Axiom, or add PostHog, or self-host an OpenTelemetry collector — change one config, not 30 imports.
+
+**Inconsistent coverage.** Without a checklist, "is my project instrumented?" is unanswerable. §10 names exactly four mandatory points: every handler entry, every outbound call, every caught error (with a project-defined trivial-error escape hatch), and every business event. The `add-observability scan` skill walks your code against that checklist and produces a confidence-ranked report.
+
+## How it works
+
+§10 has eight sub-sections, all declarative. The summary:
+
+<MermaidBlock code={`flowchart TB
+    subgraph contract["§10 Contract"]
+        I1["10.1 — Wrapper interface<br/><code>logEvent</code> / <code>captureError</code> / <code>startSpan</code>"]
+        I2["10.2 — Event envelope<br/>trace_id · span_id · service · env · event · severity · attrs"]
+        I3["10.3 — W3C traceparent propagation<br/>edge generates · every hop carries · every handler reads"]
+        I4["10.4 — Mandatory instrumentation points<br/>handler entry · outbound · errors · business events"]
+        I5["10.5 — Operational requirements<br/>non-blocking · fail-safe · PII discipline · sampling rules"]
+        I6["10.6 — Destination independence<br/>vendor is config, not architecture"]
+        I7["10.7 — Generator obligation<br/>every host MUST ship init + scan + scan-apply"]
+        I8["10.8 — Project metadata<br/>YAML block in CLAUDE.md / AGENTS.md"]
+    end`} />
+
+### The wrapper interface (§10.1)
+
+Three functions. That's the only application-code-facing surface:
+
+- **`logEvent(envelope)`** — record a structured event. Non-blocking on the request path. Never throws.
+- **`captureError(err, envelope)`** — record an error with envelope context. Associates the error with the active span.
+- **`startSpan(name, attributes) → span`** — open a span representing a unit of work. Returned span supports attribute attachment, status setting, and explicit completion.
+
+Application code MUST NOT import vendor SDKs (`@sentry/*`, etc.) directly. The wrapper is the only path.
+
+### The envelope (§10.2)
+
+Every event carries seven required fields:
+
+| Field | What it is |
+|---|---|
+| `trace_id` | W3C trace ID (32 hex chars). Same for every event in one user-initiated action. |
+| `span_id` | W3C span ID (16 hex chars). Unique to the current span. |
+| `service` | Identifier of the emitting service (e.g. `cparx-backend`). |
+| `env` | Deployment environment (`dev`, `staging`, `prod`). |
+| `event` | snake_case event name from the project's enumeration (e.g. `user_signup`, `payment_failed`). |
+| `severity` | `debug` / `info` / `warn` / `error` / `fatal`. |
+| `attrs` | Open key-value map of event-specific attributes. |
+
+### Trace context propagation (§10.3)
+
+<MermaidBlock code={`sequenceDiagram
+    participant U as User browser
+    participant CF as Cloudflare frontend
+    participant FLY as Fly backend
+    participant SB as Supabase
+
+    U->>CF: click signup
+    Note over CF: generate traceparent: 4bf92f...
+
+    CF->>FLY: POST /api/auth/signup<br/>traceparent: 4bf92f...
+    Note over FLY: read traceparent, bind to ctx<br/>span_id rolls forward per hop
+
+    FLY->>SB: INSERT INTO users<br/>(traceparent in connection)
+    SB-->>FLY: ok
+
+    FLY-->>CF: 200<br/>traceparent: 4bf92f...
+    CF-->>U: ok
+
+    Note over U,SB: All events from all 4 services share trace_id 4bf92f...`} />
+
+The first service in the chain (typically the frontend) generates a fresh W3C `traceparent` if no inbound one is present. Every outbound HTTP, RPC, queue enqueue, or scheduled-task dispatch carries the active `traceparent`. Every inbound handler reads `traceparent` and binds the trace context to the request scope.
+
+### Mandatory instrumentation points (§10.4)
+
+Four points, every conformant project covers all four:
+
+1. **Handler entry.** Every HTTP handler, edge worker, edge function, scheduled task, and queue consumer opens a span at entry and closes it at exit.
+2. **Outbound calls.** Every fetch, RPC, or cross-service database call wrapped in a child span.
+3. **Caught errors.** Every `try/catch` (or `if err != nil` in Go) calls `captureError` before deciding whether to swallow, rethrow, or recover. Exception: trivial errors listed in the project's `policy.md`.
+4. **Business events.** Signups, payments, key data mutations, permission changes — every state transition with product or compliance significance emits a `logEvent`.
+
+### Destination independence (§10.6)
+
+The destination — Sentry, Axiom, Grafana Cloud, Honeycomb, an OTel collector, an event-sourced Postgres table, or several of these — is a config choice. Switching destinations or adding a second sink is a wrapper-module change, not an application-code change.
+
+The five stack templates default to Sentry because its SDKs are mature across all five runtimes (Cloudflare Workers, browsers, Deno, Go, Pages Functions) and it speaks OTLP-compatible trace format. Swap to Axiom or anything else by editing one block in the wrapper.
+
+### Generator obligation (§10.7)
+
+Every conformant workflow host (claude-workflow, pi-agentic-apps-workflow, codex-workflow) MUST ship a generator that:
+
+1. **Scaffolds** the wrapper module per stack — greenfield init.
+2. **Wires** trace propagation middleware into the request layer — at scaffold time.
+3. **Validates** an existing project against §10.4 — produces `.scan-report.md` with confidence-ranked findings.
+4. **Applies** proposed insertions — only with explicit per-file or per-batch consent in chat. Auto-application without consent is non-conformant.
+
+In claude-workflow, this is the `/add-observability` skill with three subcommands: `init`, `scan`, `scan-apply`.
+
+## Try it
+
+Run a scan against your current project to see what's instrumented and what's not:
+
+```bash
+claude /add-observability scan
+```
+
+This produces `.scan-report.md` at the project root with findings grouped by confidence:
+
+- **High-confidence gaps** — mechanical fixes the scan-apply can write for you.
+- **Medium-confidence findings** — heuristic matches (probable business events by naming pattern). You review.
+- **Low-confidence suggestions** — items deferred to v0.3.0 of the spec or otherwise non-urgent.
+
+If you have high-confidence gaps, apply them with consent:
+
+```bash
+claude /add-observability scan-apply --confidence high
+```
+
+This walks you through each diff, asks per-file or per-batch, and applies via Claude Code's Edit tool (which content-matches against the current file — stale findings are caught, not silently overwritten).
+
+<HelpWidget name="ScanReportPlayground" />
+
+The widget above lets you paste a fake project's source code and see the scan report regenerate live. Highlights detector matches in the source.
+
+## Common questions
+
+**Why mandate W3C `traceparent` instead of vendor-specific headers?** Because `traceparent` is the de-facto cross-vendor correlation primitive — every observability vendor reads and writes it. Mandating it as the primary header guarantees correlation works regardless of vendor mix.
+
+**Does §10 require Sentry?** No. Sentry is the default in the stack templates because of its SDK maturity, but the spec is destination-agnostic. Swap to Axiom, Grafana Cloud, an OTel collector, or self-hosted as a config change.
+
+**What if my stack isn't one of the five?** Spec §10.7.1 says generators MUST resolve target paths against the language module root, but it doesn't constrain which languages are supported. If you're on Python, Rust, Bun, or anything else, you can hand-write a wrapper that satisfies §10.1–10.6 and declare conformance via the project metadata block (§10.8). Or contribute a stack template back to claude-workflow.
+
+**How does this interact with my existing Sentry setup?** If you've already wired Sentry directly in your code, the scan will flag every direct `@sentry/*` import as a gap (§10.1 wrapper-only rule). The `scan-apply --confidence high` walks you through each, replacing direct imports with the wrapper. Your existing Sentry project keeps receiving events.
+
+**Is observability free?** At pre-launch traffic, effectively yes. At scale, the bill is dominated by event storage and trace retention, not the wrapper overhead. Configure sampling rates in `policy.md` to manage cost.
+
+## See also
+
+- [Spec §10 walkthrough](/help/observability/spec-section-10) — verbatim spec, annotated
+- [Stack templates](/help/observability/stacks) — the five supported stacks + how to pick yours
+- [Install: greenfield init](/help/observability/install)
+- [Scan: brownfield audit](/help/observability/scan)
+- [Apply: consent-gated fixes](/help/observability/apply)
+- [Policy: redaction, sampling, trivial errors](/help/observability/policy)
+- [Pi & Codex conformance status](/help/observability/pi-codex-status)

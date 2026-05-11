@@ -1,0 +1,82 @@
+---
+slug: /help
+title: Welcome
+order: 0
+section: landing
+---
+
+# AgenticApps
+
+*A spec-first development system for building software with AI collaborators.*
+
+AgenticApps is a workflow, a set of tools, and a small fleet of repositories that together let you ship software in tight collaboration with AI coding agents — without losing the discipline that makes software safe to deploy. It's used in production by [capitalPARX AG](https://capitalparx.com) and a growing list of indie projects.
+
+## What you get
+
+**Discipline.** Every piece of work goes through a brainstorm → plan → execute → verify → review cycle, with explicit gates that catch drift before it compounds. Agents and humans follow the same checklist.
+
+**Multi-host.** The same workflow runs on Claude Code, [pi.dev](https://pi.dev/), and OpenAI Codex CLI. You pick the agent host you prefer; the development discipline stays identical.
+
+**Observable.** Every project produced by the workflow conforms to the same observability contract — structured events, W3C trace IDs, end-to-end correlation across frontend, backend, edge functions, and database. One scan command tells you whether your project conforms; one apply command fixes the gaps with consent.
+
+<MermaidBlock code={`flowchart LR
+    Idea([💡 Idea]) --> Brainstorm[Brainstorm]
+    Brainstorm --> Plan[Plan]
+    Plan --> Execute[Execute]
+    Execute --> Verify[Verify]
+    Verify --> Review[Review]
+    Review --> Ship([🚀 Ship])
+
+    Brainstorm -.->|gate| G1{{Design critique}}
+    Execute -.->|gate| G2{{TDD}}
+    Verify -.->|gate| G3{{Evidence}}
+    Review -.->|gate| G4{{Two-stage review}}
+
+    classDef phase fill:#e8f4fd,stroke:#3b82f6,stroke-width:2px
+    classDef gate fill:#fef3c7,stroke:#f59e0b
+    class Brainstorm,Plan,Execute,Verify,Review phase
+    class G1,G2,G3,G4 gate`} />
+
+## Pick your starting point
+
+Three paths in, depending on what you want to do:
+
+### I'm new — show me what this is about
+
+Read the **[Workflow Overview](/help/workflow/overview)**. Five minutes. Explains why spec-first development changes the game when AI is part of your team, and what the four core gates do.
+
+### I'm setting up AgenticApps on my machine
+
+Jump to **[Installation](/help/operations/install)**. Ten minutes. Walks you through installing the workflow scaffolder for your chosen host (Claude Code, pi, or Codex), wiring the gates, and running your first phase.
+
+### I'm trying to instrument my project's observability
+
+Start with **[Observability Overview](/help/observability/overview)**. Explains what spec §10 requires of every conformant project and how to use the `add-observability` skill to scaffold it in or audit what you have.
+
+## How the pieces fit together
+
+AgenticApps is six repositories. The diagram below shows how they relate.
+
+<HelpWidget name="RepoTopologyMap" />
+
+In short: **core** is the canonical spec. **claude-workflow**, **pi-agentic-apps-workflow**, and **codex-workflow** are independent implementations of the same spec for three different agent hosts. **agenticapps-dashboard** (this app) gives you a visual surface for tracking workflow state across projects. **Client projects** like [cparx](https://github.com/agenticapps-eu/cparx) (a real-estate due-diligence platform) are the things you actually ship.
+
+For details, see **[Repository Topology](/help/repos/overview)**.
+
+## Common questions
+
+**Do I need to use AI agents to use AgenticApps?** No. The workflow is just disciplined software development — the gates and ADRs and two-stage reviews are valuable whether the implementer is human, AI, or both. The AI integration is what makes it *necessary* discipline rather than nice-to-have.
+
+**Is this open source?** Yes — the spec, the workflow scaffolders, the dashboard, and most client templates are MIT-licensed under [github.com/agenticapps-eu](https://github.com/agenticapps-eu).
+
+**Is it production-ready?** The workflow has been used to ship [cparx v0.1.0](https://github.com/agenticapps-eu/cparx) to capitalPARX AG. The dashboard you're using right now is in active development. Treat the workflow as production-grade and the dashboard as a research preview — both improving rapidly.
+
+**Where do I file bugs / suggestions?** GitHub issues on the relevant repo, or `feedback@agenticapps.eu`. For workflow bugs, use [agenticapps-eu/agenticapps-workflow-core](https://github.com/agenticapps-eu/agenticapps-workflow-core) (the spec) — that's the canonical place even if the bug surfaces in a host implementation.
+
+## See also
+
+- [Workflow Overview](/help/workflow/overview) — the discipline layer
+- [Repository Topology](/help/repos/overview) — what each repo does
+- [Observability Overview](/help/observability/overview) — the data-emission contract
+- [Installation Guide](/help/operations/install) — get set up
+- [Slash command catalog](/help/operations/slash-commands) — every command, what it does
