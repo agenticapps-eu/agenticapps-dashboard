@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: /help docs site (post-ship)
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-05-11T18:19:32.105Z"
-last_activity: 2026-05-11 -- Phase 07 execution started
+stopped_at: Completed 07-01 Wave 0 infrastructure — MDX pipeline + Tailwind typography + Playwright + REQUIREMENTS.md
+last_updated: "2026-05-11T18:32:53.672Z"
+last_activity: 2026-05-11
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 51
-  completed_plans: 41
-  percent: 80
+  completed_plans: 42
+  percent: 82
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 07 (help-docs-v1-0) — EXECUTING
-Plan: 1 of 5
+Plan: 2 of 5
 Milestone: v1.0 Working dashboard (Phases 0–6) — 100%
-Status: Executing Phase 07
-Last activity: 2026-05-11 -- Phase 07 execution started
+Status: Ready to execute
+Last activity: 2026-05-11
 
 Progress: [██████████] 100% of v1.0 milestone
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100% of v1.0 milestone
 | Phase 05 P04 | 9 | 3 tasks | 6 files |
 | Phase 05 P05 | 10 | 3 tasks | 8 files |
 | Phase 05.1 P05 | resumed multi-session | 2 tasks | 47 files |
+| Phase 07 P01 | 10min | 8 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Recent decisions affecting current work:
 - [Phase 05]: INTEGRATIONS table stores nudges+paragraphs as React JSX literals — no daemon content interpolation in configure-to-enable guides (T-05-05-Static-Copy-Trust)
 - [Phase 05.1]: Batch-migrated 24 additional pre-05.1-state files to achieve zero legacy alias coverage; worktree discrepancy treated as sub-task per plan NOTE
 - [Phase 05.1]: Wave 5 precondition met: zero [--*] alias patterns remain in packages/spa/src/ after plans 01-05
+- [Phase 07]: vitest.config.ts plugin chain must mirror vite.config.ts — discovered when MDX smoke RED→GREEN cycle revealed transform-time .mdx parsing failure
+- [Phase 07]: @types/mdx must be a direct devDep — transitive peer dep of @mdx-js/react is insufficient for tsc to resolve mdx/types
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T17:03:09.493Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-help-docs-v1-0/07-CONTEXT.md
+Last session: 2026-05-11T18:32:46.856Z
+Stopped at: Completed 07-01 Wave 0 infrastructure — MDX pipeline + Tailwind typography + Playwright + REQUIREMENTS.md
+Resume file: None

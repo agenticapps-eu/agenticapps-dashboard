@@ -3,7 +3,7 @@ phase: 07
 slug: help-docs-v1-0
 status: ready
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-05-11
 filled: 2026-05-11
 ---
@@ -43,14 +43,14 @@ filled: 2026-05-11
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 07-01-T1 | 07-01 | 0 | HELP-01..06 | T-07-01-01 | pnpm-locked dep versions | infra | `pnpm install && grep -q "@mdx-js/rollup" pnpm-workspace.yaml` | ✅ created in plan | ⬜ pending |
-| 07-01-T2 | 07-01 | 0 | HELP-01 | T-07-01-04 | MDX→JSX before plugin-react Fast Refresh | infra | `pnpm --filter @agenticapps/dashboard-spa build` | ✅ | ⬜ pending |
-| 07-01-T3 | 07-01 | 0 | HELP-01 | n/a | Tailwind v4 plugin registration | infra | `grep -q '@plugin "@tailwindcss/typography"' packages/spa/src/styles/global.css && pnpm --filter @agenticapps/dashboard-spa build` | ✅ | ⬜ pending |
-| 07-01-T4 | 07-01 | 0 | HELP-01 | n/a | Ambient .mdx typing | infra | `pnpm --filter @agenticapps/dashboard-spa typecheck` | ✅ | ⬜ pending |
-| 07-01-T5 | 07-01 | 0 | HELP-01 | T-07-01-02 | MDX pipeline end-to-end | unit (TDD) | `pnpm --filter @agenticapps/dashboard-spa test src/help/__tests__/mdx-smoke.test.tsx` | ✅ | ⬜ pending |
-| 07-01-T6 | 07-01 | 0 | HELP-03 | T-07-01-05 | tokenSourceOfTruth extends to src/help/** | unit | `pnpm --filter @agenticapps/dashboard-spa test src/styles/tokenSourceOfTruth.test.ts` | ✅ | ⬜ pending |
-| 07-01-T7 | 07-01 | 0 | HELP-01..06 | T-07-01-06 | Playwright runner config (1440×900 + 375×800) | infra | `pnpm --filter @agenticapps/dashboard-spa exec playwright test --list` | ✅ | ⬜ pending |
-| 07-01-T8 | 07-01 | 0 | HELP-01..06 | n/a | REQUIREMENTS.md anchors | infra | `grep -c "HELP-0[1-6]" .planning/REQUIREMENTS.md` ≥ 12 | ✅ | ⬜ pending |
+| 07-01-T1 | 07-01 | 0 | HELP-01..06 | T-07-01-01 | pnpm-locked dep versions | infra | `pnpm install && grep -q "@mdx-js/rollup" pnpm-workspace.yaml` | ✅ created in plan | ✅ green |
+| 07-01-T2 | 07-01 | 0 | HELP-01 | T-07-01-04 | MDX→JSX before plugin-react Fast Refresh | infra | `pnpm --filter @agenticapps/dashboard-spa build` | ✅ | ✅ green |
+| 07-01-T3 | 07-01 | 0 | HELP-01 | n/a | Tailwind v4 plugin registration | infra | `grep -q '@plugin "@tailwindcss/typography"' packages/spa/src/styles/global.css && pnpm --filter @agenticapps/dashboard-spa build` | ✅ | ✅ green |
+| 07-01-T4 | 07-01 | 0 | HELP-01 | n/a | Ambient .mdx typing | infra | `pnpm --filter @agenticapps/dashboard-spa typecheck` | ✅ | ✅ green |
+| 07-01-T5 | 07-01 | 0 | HELP-01 | T-07-01-02 | MDX pipeline end-to-end | unit (TDD) | `pnpm --filter @agenticapps/dashboard-spa test src/help/__tests__/mdx-smoke.test.tsx` | ✅ | ✅ green |
+| 07-01-T6 | 07-01 | 0 | HELP-03 | T-07-01-05 | tokenSourceOfTruth extends to src/help/** | unit | `pnpm --filter @agenticapps/dashboard-spa test src/styles/tokenSourceOfTruth.test.ts` | ✅ | ✅ green |
+| 07-01-T7 | 07-01 | 0 | HELP-01..06 | T-07-01-06 | Playwright runner config (1440×900 + 375×800) | infra | `pnpm --filter @agenticapps/dashboard-spa exec playwright test --list` | ✅ | ✅ green |
+| 07-01-T8 | 07-01 | 0 | HELP-01..06 | n/a | REQUIREMENTS.md anchors | infra | `grep -c "HELP-0[1-6]" .planning/REQUIREMENTS.md` ≥ 12 | ✅ | ✅ green |
 | 07-02-T1 | 07-02 | 1 | HELP-05 | T-07-02-04 | Pure topicToUrl URL builder | unit (TDD) | `pnpm --filter @agenticapps/dashboard-spa test src/help/topicToUrl.test.ts` | ✅ | ⬜ pending |
 | 07-02-T2 | 07-02 | 1 | HELP-05 | T-07-02-02, T-07-02-04 | HelpHook tooltip + navigate (TanStack) | unit (TDD) | `pnpm --filter @agenticapps/dashboard-spa test src/help/components/HelpHook.test.tsx` | ✅ | ⬜ pending |
 | 07-02-T3 | 07-02 | 1 | HELP-02 | n/a | ComingSoon section back-link incl. operations special-case | unit (TDD) | `pnpm --filter @agenticapps/dashboard-spa test src/help/components/ComingSoon.test.tsx` | ✅ | ⬜ pending |
