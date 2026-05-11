@@ -124,10 +124,21 @@ Per project memory `feedback_code-review-vs-context.md`, Stage 2 wants a context
 ## Closure tasks remaining
 
 - [x] Stage 1 (gstack /review) — done (1 info F-001 resolved by `5061b71`)
-- [x] Stage 2 (superpowers:requesting-code-review) — done (3 warns + 1 info auto-resolved by `6b26bfd`; 5 warns + 4 infos deferred to v1.1 backlog with explicit rationale)
-- [x] PR Impeccable Critique Gate CI check — green (89/87/90/90/90/88 at 1440x900)
+- [x] Stage 2 (superpowers:requesting-code-review) — done (3 warns + 1 info auto-resolved by `6b26bfd`; 5 warns resolved in atomic fix commits per F-005..F-009; 4 infos deferred to v1.1+ polish)
+- [x] PR Impeccable Critique Gate CI check — green (1440x900 / 87 floor / F-009 hardening in place)
 - [x] PR CI workflow (lint + typecheck + build + test) — green
 - [x] STATE.md / ROADMAP.md / REQUIREMENTS.md updated for v1.0 closure
-- [x] VERIFICATION.md (06-VERIFICATION.md) authored — status `human_needed` pending Stage 2 + merge
-- [ ] Merge + tag v1.0 (HUMAN gate — pause for explicit approval per user election)
-- [ ] Open Phase 6.x v1.1 backlog issues for F-010..F-013 info-level polish before tagging (the 5 warns are all resolved in commits above)
+- [x] VERIFICATION.md (06-VERIFICATION.md) authored — status `human_needed` resolved by merge
+- [x] **Merge + tag v1.0** — PR #15 squash-merged on main as `ad8b291` on 2026-05-11T09:38:46Z; `v1.0.0` annotated tag pushed; https://agenticapps-dashboard.pages.dev returns HTTP 200 with current bundle hashes
+- [x] Open Phase 6.x v1.1 backlog issues for F-010..F-013 info-level polish — [#17](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/17) (F-010), [#19](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/19) (F-011), [#16](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/16) (F-012), [#18](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/18) (F-013)
+
+## Release
+
+| | |
+|---|---|
+| **PR** | https://github.com/agenticapps-eu/agenticapps-dashboard/pull/15 |
+| **Merge commit on main** | `ad8b291` (squash of 150 PR commits per D-6-24) |
+| **Tag** | `v1.0.0` (annotated, pushed) |
+| **Deploy** | https://agenticapps-dashboard.pages.dev (Cloudflare Pages) |
+| **Closes** | Phase 0..6 + 06.1 + 5.1 of the v1.0 roadmap; D-6-01..24 + D-6.1-01..04 + D-6-09.v1 amendment |
+| **v1.1 backlog (info-level Stage 2 findings, not ship-blocking)** | [#17](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/17) F-010 install-script robustness · [#19](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/19) F-011 KbdHint screen-reader parity · [#16](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/16) F-012 SPA motion-class invariant · [#18](https://github.com/agenticapps-eu/agenticapps-dashboard/issues/18) F-013 MultiProjectHome wall-clock test |
