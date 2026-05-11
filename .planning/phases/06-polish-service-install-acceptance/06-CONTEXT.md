@@ -131,6 +131,12 @@ Plus three carry-forwards explicitly handed from prior phases (see Phase 5 defer
 
 --
 
+- **D-6-24 (locked at Phase 06.1 closure 2026-05-11):** v1.0 ships as **one big PR** from `phase-06-polish-service-install` directly to `main`. The PR contains all of Phase 5.1 + Phase 6 + Phase 06.1 work as a single atomic v1.0 closing PR. Plan 06-07's executor MUST NOT split into sequential per-phase PRs.
+  - **Why:** Phase-06-polish-service-install branch sits on top of phase-05.1-ui-redesign which sits on top of main. Splitting into 5.1 → main → 6 → main → 6.1 → main would require 3 sequential PRs with intermediate merges, wave verification, and CI re-runs at each step — extra ~hours of process for the same diff. The single-PR path lets one Stage-1 (`/review`) + Stage-2 (`superpowers:requesting-code-review`) cycle cover the whole v1.0 surface, and the impeccable gate fires once on the final state.
+  - **How to apply:** 06-07's PR-creation step uses `gh pr create --base main --head phase-06-polish-service-install --title "v1.0: dashboard MVP — Phase 5.1 + Phase 6 + Phase 06.1"`. PR description structures the changelog by phase (5.1 sidebar redesign / 6 polish + service install / 06.1 typography + layout architecture). README rewrite + CF Access doc + review-protocol doc all land in the same PR. Tag `v1.0` after merge.
+
+--
+
 - **D-6-22:** Defer the launchd reboot UAT (Plan 06-04 manual acceptance) to user discretion. Plan 06-04 ships the install code + subprocess tests against a temp dir + temp label (safe, CI-runnable). The actual reboot test on the developer's real Mac (load `~/Library/LaunchAgents/eu.agenticapps.dashboard.plist`, reboot, verify `launchctl list` + daemon reachability) is opt-in.
   - **Why:** During Wave 0 close-out the developer's Mac was mid-task; rebooting wasn't acceptable. The install plist is well-scoped (one user-mode LaunchAgent, `--uninstall` flag exists for symmetry) and the unit + subprocess tests cover all logic. The "survives reboot" promise can be validated any time before v1.0 closure (Plan 06-07).
   - **How to apply:** Phase 6 verifier creates a HUMAN-UAT entry for the reboot validation; it's tracked but not required for Wave 1 to ship. Resolve before Plan 06-07's PR (or carry as a Phase 6.x post-ship UAT item).
