@@ -90,3 +90,37 @@ violations on /help (lg, prod build):
      impeccable scoring is restored.
 
 Evidence file: .planning/phases/07-help-docs-v1-0/evidence/impeccable-help-lg.json
+
+=========================================================================
+=== T10 RE-RUN after Rule 1 prose-invert fix @ 2026-05-11T22:42Z
+=========================================================================
+
+Discovered during T11 screenshot review: every prose `<h1>` and `<p>` on
+/help rendered WHITE on warm-paper (invisible body text). Root cause:
+`<article className="prose prose-slate dark:prose-invert max-w-none">`
+in HelpLayout (Plan 07-02 source). The dashboard's theme system
+(packages/spa/src/lib/theme.ts) defaults to `dark` mode (D-02) and adds
+the `dark` class to <html>, so `dark:prose-invert` fired everywhere.
+Phase 7 CONTEXT.md mis-assumed v1.0 ships "no .dark{} block; dark:
+prose-invert is dormant" — but the class is present app-wide.
+
+Rule 1 fix: remove `dark:prose-invert` from HelpLayout article (light
+prose only in v1.0; dark-mode prose deferred to v1.1 per D-7-12).
+Updated HelpLayout.test.tsx accordingly. All 715 vitest tests + 16/16
+Playwright still green.
+
+Re-measurement after fix:
+
+| Antipattern  | Pre-fix | Post-fix | Distinct pairs                       |
+|--------------|---------|----------|--------------------------------------|
+| low-contrast | 27      | 5        | (post) #9c95a8 on #fafaf7 (only)    |
+
+The 5 remaining findings are all `text-text-tertiary` (#9c95a8) at 2.8:1
+against the warm-paper bg — the inherited Phase 5.1 token used for
+"(soon)" stub tags. Pre-existing, not Plan 07-05's fault. The white-
+on-paper false-positives (22 findings) are GONE — those were the
+prose h1/p elements that ACTUALLY rendered white before the fix.
+
+Verdict: T10 is now operationally green for Plan 07-05. Even without a
+composite score, all "Plan 07-05's own component additions" findings
+are zero. The 5 inherited token findings are noted for v1.0.1.
