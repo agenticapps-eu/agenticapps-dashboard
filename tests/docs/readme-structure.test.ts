@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+
+import { describe, it, expect } from 'vitest'
 
 const readme = readFileSync(resolve(__dirname, '..', '..', 'README.md'), 'utf8')
 
