@@ -32,6 +32,12 @@ Land all remaining POLISH requirements + close all carry-forwards in a single co
 | `289bfa8` | docs(06): close v1.0 — STATE + ROADMAP + REQUIREMENTS + VERIFICATION reflect Phase 6 completion (Step G) |
 | `9f28cf3` | fix(ci): three pre-existing latent failures surfaced by first PR on phase-06 branch |
 | `6b26bfd` | fix(06-07): Stage 2 mechanical fixes (3 warns from independent code review) |
+| `f69b958` | docs(06-07): record Stage 2 review results in SUMMARY (8 warn / 5 info / 0 block) |
+| `346897a` | fix(06-07): resolve F-008 — RegisterModal uses shared schema types (no more `as unknown as`) |
+| `b8b9f73` | fix(06-07): resolve F-007 — escape XML metacharacters in plist, validate systemd paths |
+| `93cb1b0` | fix(06-07): resolve F-009 — close impeccable gate vacuous-pass holes |
+| `2c96820` | fix(06-07): resolve F-005 — rate-limit legacy POST /api/registry/register |
+| `b9957f9` | fix(06-07): resolve F-006 — rotate-token CLI coordinates with running daemon |
 
 ## Manual UAT
 
@@ -89,8 +95,8 @@ Per project memory `feedback_code-review-vs-context.md`, Stage 2 wants a context
 | Severity | Total | Resolved | Deferred |
 |----------|-------|----------|----------|
 | `block` | 0 | — | — |
-| `warn` | 8 | 3 (commit `6b26bfd`) | 5 (Phase 6.x v1.1 backlog) |
-| `info` | 5 | 1 (commit `6b26bfd`) | 4 (deferred polish) |
+| `warn` | 8 | **8 (all resolved before merge)** | 0 |
+| `info` | 5 | 1 (commit `6b26bfd`) | 4 (v1.1+ polish) |
 
 **Resolved by commit `6b26bfd` (Stage 2 mechanical fixes):**
 
@@ -98,16 +104,22 @@ Per project memory `feedback_code-review-vs-context.md`, Stage 2 wants a context
 - `F-003` (warn, CI) — `.github/workflows/{impeccable,ci}.yml` had no `concurrency:` blocks. Added `cancel-in-progress` for non-main refs.
 - `F-004` (info, DX) — `tests/docs/readme-structure.test.ts:6` used `__dirname` in ESM. Switched to `dirname(fileURLToPath(import.meta.url))` for symmetry with the 9f28cf3 SPA fix.
 
-**Deferred to v1.1 backlog (5 warns + 4 infos — all surfaced in PR description for explicit user decision before merge):**
+**Resolved in atomic fix commits (user elected to close all 5 warns pre-merge):**
 
-- `F-005` (warn, Security) — legacy `POST /api/registry/register` has no rate-limit. Bounded threat (loopback + valid token); A-01 pattern can be applied in v1.1.
-- `F-006` (warn, DX) — CLI `rotate-token` doesn't sync the running daemon's in-memory token. Cross-process coordination work.
-- `F-007` (warn, Correctness) — Plist/systemd unit template literals don't XML/whitespace-escape interpolation. Edge-case for unusual home dirs.
-- `F-008` (warn, Correctness) — `RegisterModal` `as unknown as PrepareResponse` cast defeats schema validation. Type-import fix is trivial; deferred to keep this PR scope-locked.
-- `F-009` (warn, Correctness) — `impeccable.yml` aggregation has vacuous-pass risk on empty routes. Gate currently works empirically (latest run: 89/87/90/90/90/88).
-- `F-010` through `F-014` (info) — daemon install-script robustness gaps, KbdHint screen-reader parity, motion-class invariant drift, `MultiProjectHome.test.tsx` wall-clock budget fragility, bundle of trivial polish.
+- `F-005` (warn, Security) — `2c96820`: rate-limit added to `POST /api/registry/register` via the same per-token-hash bucket as prepare/confirm/rename/tags. 2 new tests (RL7, RL8) prove the gap is closed.
+- `F-006` (warn, DX) — `b9957f9`: `runRotateToken` refactored into `rotateTokenSmart(deps)` that detects running daemon via `server.json` and POSTs `/api/auth/rotate` when reachable; falls back to direct on network error with a restart warning; throws on 4xx/5xx to avoid disk/memory divergence. 5 new unit tests cover all four branches.
+- `F-007` (warn, Correctness) — `b8b9f73`: plist gets XML 1.0 5-character escape; systemd unit gets validate-and-throw on whitespace/`"`/`\\`. 12 new tests; error names the offending arg.
+- `F-008` (warn, Correctness) — `346897a`: exported the three sub-variant types from `@agenticapps/dashboard-shared`; replaced local triplet with three type predicates that TS-narrow the union via `in` + literal discriminator checks. Removed 4 `as unknown as` + 7 narrowing casts. Surfaced two pre-existing type lies as a bonus (`expiresAt: string` vs schema `number`; `BlockedResponse.alreadyRegistered: false` field that didn't exist on the schema).
+- `F-009` (warn, Correctness) — `93cb1b0`: three layers of defense — workflow's `|| echo '{}'` fallback replaced with a marker object that fails the score check; aggregator defensively spreads `breakpoint: '1440x900'` on every parsed line; score parser accepts `--expected-routes 6` and exits 2 with a clear message if aggregated count differs. 5 new tests + smoke-tested empty-routes locally (exits 2 as designed).
 
-**Stage 2 stats:** 8 warn / 5 info / **0 block** across all three slices. Merge-gate per the protocol is satisfied.
+**Deferred to v1.1+ (4 info-level polish items):**
+
+- `F-010` (info) — daemon install-script robustness cluster (resolveCliPath in dev, LaunchAgents dir mode, RunAtLoad documentation, subprocess test dist/cli.js dependency).
+- `F-011` (info) — KbdHint screen-reader parity (chips `aria-hidden`, no `sr-only` equivalent).
+- `F-012` (info) — SPA motion-class violations vs the MaskedToken anti-motion invariant (ProjectCard + ManualPairForm).
+- `F-013` (info) — `MultiProjectHome.test.tsx` wall-clock budget fragility (replace with direct `not.toHaveBeenCalled()` assertion).
+
+**Stage 2 stats:** 8 warn / 5 info / **0 block**. **0 unresolved warns at merge time.** Merge-gate per the protocol satisfied with margin.
 
 ## Closure tasks remaining
 
@@ -118,4 +130,4 @@ Per project memory `feedback_code-review-vs-context.md`, Stage 2 wants a context
 - [x] STATE.md / ROADMAP.md / REQUIREMENTS.md updated for v1.0 closure
 - [x] VERIFICATION.md (06-VERIFICATION.md) authored — status `human_needed` pending Stage 2 + merge
 - [ ] Merge + tag v1.0 (HUMAN gate — pause for explicit approval per user election)
-- [ ] Open Phase 6.x v1.1 backlog issues for F-005..F-009 + the substantive infos before tagging
+- [ ] Open Phase 6.x v1.1 backlog issues for F-010..F-013 info-level polish before tagging (the 5 warns are all resolved in commits above)
