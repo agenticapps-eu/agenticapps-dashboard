@@ -1,6 +1,7 @@
 .claude/skills/
 .claude/scheduled_tasks.lock
 .claude/worktrees/
+.clone/
 .playwright-mcp/
 .planning/skill-observations/
 .gstack/
