@@ -17,8 +17,9 @@ import { render, screen } from '@testing-library/react'
 import { MDXProvider } from '@mdx-js/react'
 import { describe, it, expect } from 'vitest'
 
-import Smoke, { frontmatter } from './fixtures/smoke.mdx'
 import { mdxComponents } from '../mdxComponents'
+
+import Smoke, { frontmatter } from './fixtures/smoke.mdx'
 
 describe('Wave 0 MDX pipeline smoke', () => {
   it('imports a .mdx fixture and renders a default React component', () => {
