@@ -31,11 +31,9 @@ export function ManualPairForm() {
   const tokenInputRef = useRef<HTMLInputElement | null>(null)
   // Capture the pre-populated token at mount; if user types something else,
   // the masked view doesn't apply (we're showing what they typed).
-  const initialTokenRef = useRef<string | null>(existing?.token ?? null)
+  const [initialToken] = useState<string | null>(() => existing?.token ?? null)
   const showMaskedToken =
-    initialTokenRef.current !== null &&
-    !tokenEditMode &&
-    token === initialTokenRef.current
+    initialToken !== null && !tokenEditMode && token === initialToken
 
   const validateAgentUrl = (v: string): string | null => {
     const r = AgentUrlSchema.safeParse(v)

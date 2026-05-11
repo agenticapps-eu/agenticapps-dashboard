@@ -30,7 +30,7 @@ function HelpPage(): React.JSX.Element {
           <tbody>
             <tr className="border-b border-border-subtle">
               <td className="py-2 w-24"><KbdHint keys="R" /></td>
-              <td className="py-2 max-w-[75ch] text-text-secondary">Refresh the current view's data</td>
+              <td className="py-2 max-w-[75ch] text-text-secondary">Refresh the current view&rsquo;s data</td>
             </tr>
             <tr className="border-b border-border-subtle">
               <td className="py-2"><KbdHint keys="?" /></td>

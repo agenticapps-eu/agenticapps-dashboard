@@ -26,7 +26,6 @@ describe('A-01 Rate limit: POST /api/registry/:id/rename', () => {
   let cleanupHome: () => void
   let cleanupFixture: () => void
   let token: string
-  let token2: string
   let registryFile: string
   let projectId: string
   let projectRoot: string
@@ -41,7 +40,6 @@ describe('A-01 Rate limit: POST /api/registry/:id/rename', () => {
     const fresh = ensureAuthFile(authFile)
     setActiveToken(fresh.token)
     token = fresh.token
-    token2 = 'alternative-test-token-for-independent-bucket-test'
 
     const fixture = makePhase4Fixture()
     cleanupFixture = fixture.cleanup
