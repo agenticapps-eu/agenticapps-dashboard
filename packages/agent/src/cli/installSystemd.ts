@@ -14,7 +14,30 @@ const LOG_DIR_RELATIVE = join('.agenticapps', 'dashboard', 'logs')
 // Linux does not have /opt/homebrew (that's macOS); snap bin included for Ubuntu.
 const PATH_VALUE = '/usr/local/bin:/usr/bin:/bin'
 
+// F-007: systemd unit directive parsing has fragile quoting rules — ExecStart=
+// splits on whitespace; StandardOutput=append:<path> doesn't support shell-like
+// quoting at all. Rather than auto-quote and risk mangling, validate inputs and
+// throw a clear remediation error. The only correct fix on a system with weird
+// paths is to use a saner path or hand-craft the unit file.
+function validateSystemdPath(label: string, value: string): void {
+  if (/[\s\t\n\r]/.test(value)) {
+    throw new Error(
+      `install-systemd: ${label} contains whitespace which would break systemd unit parsing: ${JSON.stringify(value)}. ` +
+        `Use a path without whitespace or hand-craft ${UNIT_NAME}.`,
+    )
+  }
+  if (/["\\]/.test(value)) {
+    throw new Error(
+      `install-systemd: ${label} contains an unsafe character (" or \\) for systemd unit interpolation: ${JSON.stringify(value)}. ` +
+        `Use a path without these characters or hand-craft ${UNIT_NAME}.`,
+    )
+  }
+}
+
 export function makeSystemdUnit(nodeBinary: string, cliPath: string, logDir: string): string {
+  validateSystemdPath('nodeBinary', nodeBinary)
+  validateSystemdPath('cliPath', cliPath)
+  validateSystemdPath('logDir', logDir)
   return `[Unit]
 Description=AgenticApps Dashboard Daemon
 After=network.target

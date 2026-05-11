@@ -37,6 +37,47 @@ describe('makeSystemdUnit', () => {
   })
 })
 
+// F-007: systemd's ExecStart= and StandardOutput= directives have fragile
+// parsing (whitespace splits args; quoting is partial). Rather than try to
+// auto-quote/escape and risk mangling, validate-and-throw with a clear
+// remediation message — the only correct fix on a system with weird paths
+// is to either use a saner path or hand-craft the unit file.
+describe('makeSystemdUnit input validation (F-007)', () => {
+  it('throws when nodeBinary contains whitespace', () => {
+    expect(() =>
+      makeSystemdUnit('/path with space/node', '/x/cli.js', '/x/logs'),
+    ).toThrow(/whitespace/i)
+  })
+  it('throws when cliPath contains whitespace', () => {
+    expect(() =>
+      makeSystemdUnit('/x/node', '/path with space/cli.js', '/x/logs'),
+    ).toThrow(/whitespace/i)
+  })
+  it('throws when logDir contains whitespace', () => {
+    expect(() =>
+      makeSystemdUnit('/x/node', '/x/cli.js', '/path with space/logs'),
+    ).toThrow(/whitespace/i)
+  })
+  it('throws when any path contains " (double quote)', () => {
+    expect(() => makeSystemdUnit('/x"y/node', '/x/cli.js', '/x/logs')).toThrow(/unsafe/i)
+  })
+  it('throws when any path contains backslash', () => {
+    expect(() => makeSystemdUnit('/x/node', '/x\\y/cli.js', '/x/logs')).toThrow(/unsafe/i)
+  })
+  it('throws when any path contains newline', () => {
+    expect(() => makeSystemdUnit('/x/node', '/x/cli.js', '/x\nlogs')).toThrow(/whitespace/i)
+  })
+  it('accepts normal absolute paths without error', () => {
+    expect(() =>
+      makeSystemdUnit('/usr/bin/node', '/path/to/cli.js', '/home/x/logs'),
+    ).not.toThrow()
+  })
+  it('error message names the offending path (so user knows which to fix)', () => {
+    expect(() => makeSystemdUnit('/x/node', '/path with space/cli.js', '/x/logs'))
+      .toThrow(/cliPath/)
+  })
+})
+
 describe('runInstallSystemd', () => {
   let tmpHome: string
   let originalHome: string | undefined

@@ -37,6 +37,61 @@ describe('makePlist', () => {
   })
 })
 
+// F-007: XML escape of interpolated values. Without escaping, a username
+// or path containing `& < > " '` produces invalid XML that launchctl will
+// refuse to load. Standard XML 1.0 5-character escape set.
+describe('makePlist XML escaping (F-007)', () => {
+  it('escapes & as &amp; in interpolated paths', () => {
+    const plist = makePlist('/usr/local/bin/node', '/path/with&data/cli.js', '/x/logs')
+    expect(plist).toContain('<string>/path/with&amp;data/cli.js</string>')
+    expect(plist).not.toContain('<string>/path/with&data/cli.js</string>')
+  })
+  it('escapes < and > in interpolated paths', () => {
+    const plist = makePlist('/usr/local/bin/node', '/path/cli.js', '/Users/<user>/logs')
+    expect(plist).toContain('&lt;user&gt;')
+    expect(plist).not.toContain('<string>/Users/<user>/logs/daemon.log</string>')
+  })
+  it('escapes " (double quote) as &quot; in interpolated paths', () => {
+    const plist = makePlist('/path/"/node', '/x/cli.js', '/x/logs')
+    expect(plist).toContain('&quot;')
+    expect(plist).not.toContain('<string>/path/"/node</string>')
+  })
+  it("escapes ' (single quote) as &apos; in interpolated paths", () => {
+    const plist = makePlist("/path/'/node", '/x/cli.js', '/x/logs')
+    expect(plist).toContain('&apos;')
+  })
+  it('produces well-formed XML — no raw < or unescaped & inside <string> elements', () => {
+    const plist = makePlist(
+      '/path<>&"\'/node',
+      '/another<>&"\'/cli.js',
+      '/log<>&"\'/dir',
+    )
+    const stringContents = plist.match(/<string>([^]*?)<\/string>/g) ?? []
+    for (const tag of stringContents) {
+      const inner = tag.slice('<string>'.length, -'</string>'.length)
+      // No raw `<` (would prematurely close the tag).
+      expect(inner, `raw '<' in ${tag}`).not.toMatch(/</)
+      // Every `&` must be the start of one of the 5 recognized entities.
+      // Strip recognized entities, then assert no `&` survives.
+      const stripped = inner.replace(/&(amp|lt|gt|quot|apos);/g, '')
+      expect(stripped, `unrecognized entity in ${tag}`).not.toMatch(/&/)
+    }
+  })
+  it('does not double-escape pre-escaped output (idempotency check on its own output)', () => {
+    // makePlist's output already contains entity references like &amp; in
+    // escaped fields. Calling makePlist twice on its own output would re-
+    // encode the & in &amp; to &amp;amp; — verify we only escape inputs, not
+    // the template literal itself.
+    const plist = makePlist('/x/node', '/x/cli.js', '/x/logs')
+    // The PATH_VALUE constant contains no metachars; the template's own
+    // <true/> <false/> <key>...</key> tags must remain as raw XML.
+    expect(plist).toContain('<true/>')
+    expect(plist).toContain('<false/>')
+    expect(plist).toContain('<key>Label</key>')
+    expect(plist).not.toContain('&lt;true/&gt;')
+  })
+})
+
 describe('runInstallLaunchd', () => {
   let tmpHome: string
   let originalHome: string | undefined

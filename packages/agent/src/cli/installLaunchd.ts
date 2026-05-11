@@ -13,7 +13,23 @@ const LOG_DIR_RELATIVE = join('.agenticapps', 'dashboard', 'logs')
 // Pitfall 1: launchd does NOT inherit login shell PATH — must supply explicitly
 const PATH_VALUE = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin'
 
+// F-007: XML 1.0 5-character escape. Applied ONLY to interpolated input
+// strings, never to the template's own XML tags. Without this, a path or
+// username containing `& < > " '` produces malformed XML that launchctl
+// refuses to load (Stage 2 finding F-007).
+function xmlEscape(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
 export function makePlist(nodeBinary: string, cliPath: string, logDir: string): string {
+  const node = xmlEscape(nodeBinary)
+  const cli = xmlEscape(cliPath)
+  const logs = xmlEscape(logDir)
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -22,8 +38,8 @@ export function makePlist(nodeBinary: string, cliPath: string, logDir: string): 
   <string>${LABEL}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${nodeBinary}</string>
-    <string>${cliPath}</string>
+    <string>${node}</string>
+    <string>${cli}</string>
     <string>start</string>
   </array>
   <key>KeepAlive</key>
@@ -31,9 +47,9 @@ export function makePlist(nodeBinary: string, cliPath: string, logDir: string): 
   <key>RunAtLoad</key>
   <false/>
   <key>StandardOutPath</key>
-  <string>${logDir}/daemon.log</string>
+  <string>${logs}/daemon.log</string>
   <key>StandardErrorPath</key>
-  <string>${logDir}/error.log</string>
+  <string>${logs}/error.log</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
