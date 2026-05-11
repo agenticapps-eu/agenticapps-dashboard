@@ -135,3 +135,78 @@ Recommended path (in order):
 
 The route-generation console warning is a deferred polish item — fold
 into v1.1 unless impeccable critique flags it.
+
+=========================================================================
+=== T9 RE-RUN (post-fix executor pass) @ 2026-05-11T22:31Z
+=========================================================================
+Command: pnpm --filter @agenticapps/dashboard-spa exec playwright test e2e/help-walking-checklist.spec.ts --reporter=line
+Repo head: 1082a69 (feat/help-docs-v1)
+Webserver: auto-spawned (pnpm --filter @agenticapps/dashboard-spa dev on :5174)
+
+=== Result: 16 PASSED / 0 FAILED ===
+Duration: 6.2s
+
+=== Tests passed (16) ===
+- [chromium-desktop] every anchor renders without console errors; Mermaid SVG appears (3.4s)
+- [chromium-mobile]  every anchor renders without console errors; Mermaid SVG appears (3.4s)
+- [chromium-desktop] sampled stub routes render ComingSoon + back-link
+- [chromium-mobile]  sampled stub routes render ComingSoon + back-link
+- [chromium-desktop] section paths redirect to overview/install
+- [chromium-mobile]  section paths redirect to overview/install
+- [chromium-desktop] widget Suspense resolves: repos/overview shows Coming v1.2 badge
+- [chromium-mobile]  widget Suspense resolves: repos/overview shows Coming v1.2 badge
+- [chromium-desktop] ? shortcut from / lands on /help docs landing
+- [chromium-mobile]  ? shortcut from / lands on /help docs landing
+- [chromium-desktop] reference/shortcuts page renders KbdHint chips
+- [chromium-mobile]  reference/shortcuts page renders KbdHint chips
+- [chromium-desktop] catch-all redirect: unknown /help/* path falls to /help
+- [chromium-mobile]  catch-all redirect: unknown /help/* path falls to /help
+- [chromium-desktop] Mobile viewport HelpLayout sidebar hidden initially; toggle opens it
+- [chromium-mobile]  Mobile viewport HelpLayout sidebar hidden initially; toggle opens it
+
+=== Fixes applied ===
+Commit f47f5f2: mount helpLayout at /help so the index outranks /help/$ wildcard
+  - Root cause (1 fix, 6 symptoms): TanStack v1.169 `isFrameMoreSpecific`
+    prefers deeper frames when statics/dynamics/index-ness are equal.
+    With pathless `_helpLayout` and absolute `/help/...` child paths, the
+    catch-all `/help/$` (depth 3) silently outranked the static index
+    `/help` (depth 2) — `/help` resolved to the empty catch-all route,
+    `<Outlet/>` rendered nothing inside `<article class="prose">`,
+    and the catch-all's `beforeLoad` redirect-to-/help looped infinitely
+    (each Link to=/help re-emitting the `Generated path … did not match`
+    dev warning).
+  - Fix: drop `id: '_helpLayout'`, mount the layout at `path: '/help'`,
+    make children use TanStack-canonical relative shapes:
+      * index entry → `path: '/'` (true INDEX node, beats sibling WILDCARD)
+      * anchors/stubs/redirects → relative paths (`workflow/overview`, …)
+      * catch-all → `path: '$'` (matches under /help/ only, NOT /help)
+    Side-effect: route IDs change (auto-derived, no explicit id).
+    All 6 lazy wrappers + router.test.tsx updated.
+  - Resolved F1/F2 (article.prose visibility), F5/F6 (catch-all redirect),
+    F8/F9 (mobile sidebar aria-label).
+
+Commit 1082a69: tighten KbdHint locator and seed pairing in spec
+  - F3/F4: `page.addInitScript` seeds PairingSchema record in
+    localStorage BEFORE first goto, so /index route's beforeLoad doesn't
+    redirect to /onboarding (where useGlobalShortcuts isn't mounted).
+  - F7: scope locator to `article.prose span.font-mono` with exact-match
+    text regex (`/^R$/`), so the mobile sidebar h3 "REPOSITORIES" doesn't
+    win the `getByText('R').first()` race.
+
+=== Console health ===
+- console.error events: 0 (assertion held).
+- TanStack `Generated path … did not match` warning flood: GONE
+  (was symptomatic of the same matcher bug — now resolved at root).
+
+=== Follow-up (NOT blocking T9) ===
+- useGlobalShortcuts modifier-bail (`if (e.shiftKey) return`) prevents
+  real-browser `?` keypresses (US-layout Shift+/) — Playwright's
+  `keyboard.press('?')` bypasses OS layout, so the synthetic event the
+  test fires matches the unit-test contract. Real-user UX should be
+  verified in 07-UAT manual-walk; consider relaxing the bail to allow
+  Shift-only modifier for `?` in a v1.0.1 patch.
+
+=== Verdict: T9 GREEN ===
+T9 is the blocking quality gate. 16/16 Playwright tests pass on both
+projects. Ready to proceed to T10 (impeccable critique on /help lg),
+T11 (screenshots), T12 (07-VERIFICATION.md + 07-UAT.md).
