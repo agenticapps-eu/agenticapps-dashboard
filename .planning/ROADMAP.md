@@ -225,7 +225,14 @@ Plans:
   6. `?` keyboard shortcut still pushes `/help` (lands on docs landing). Keyboard shortcuts content from old `/help` lives at `/help/reference/shortcuts` with the same `KbdHint` rendering.
   7. Dark mode renders correctly on every help route (prose-invert applied via Tailwind v4 typography plugin).
   8. `pnpm -r typecheck && pnpm -r test && pnpm lint` all green; SPA build emits the help MDX chunks; PR opens against `main` (NOT the redesign branch) with two-stage review + impeccable critique ≥ 90 on `/help` (lg, 1440x900).
-**Plans**: TBD (capture in `07-CONTEXT.md` + `07-NN-PLAN.md` files)
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Wave 0 infrastructure: 7 catalog deps (@mdx-js/react, @mdx-js/rollup, remark-{gfm,frontmatter,mdx-frontmatter}, @tailwindcss/typography, mermaid) + Vite MDX plugin + Tailwind v4 typography + MDXProvider wiring + playwright.config.ts + tokenSourceOfTruth scope extension + HELP-01..06 in REQUIREMENTS.md + smoke test
+- [ ] 07-02-PLAN.md — Wave 1 shell components: HelpLayout (5 NAV sections incl. D-7-13 stubs + HELP-06 entry) + HelpWidget (8-stub dispatch) + HelpHook + ComingSoon + MermaidBlock (StrictMode-safe) + topicToUrl pure fn; ~40 unit tests
+- [ ] 07-03-PLAN.md — Wave 1 widget stubs: pruned _stub-pattern.tsx (primitive only) + 8 .stub.tsx default exports + 13 smoke tests (parallel with 07-02; disjoint file set)
+- [ ] 07-04-PLAN.md — Wave 2 page content: 5 anchor MDX (landing, workflow/overview, repos/overview, observability/overview, operations/install) + reference/shortcuts.mdx (HELP-06) + frontmatter + Mermaid syntax + render smoke tests (22 tests; Mermaid blocks converted from fences to JSX)
+- [ ] 07-05-PLAN.md — Wave 3 route wiring + closing ritual: helpRouteTable (41 entries) + buildHelpRoutes factory + ComingSoonRoute + 6 lazy wrappers + _helpLayout peer route (D-7-12) + DELETE legacy /help + Playwright walking checklist + impeccable ≥ 90 gate + /browse screenshots + VERIFICATION.md + UAT.md
 
 ### Phase 8: Optional Integrations (held) — was Phase 7
 **Goal**: Wire Sentry, Linear, and Infisical-aware env loading one sub-phase at a time, only when upstream tooling is set up. Each is fully optional and the dashboard MUST continue to work without them.
