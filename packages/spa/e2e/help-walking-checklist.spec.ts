@@ -85,8 +85,35 @@ test.describe('Reviewer walking checklist (HELP-01..06)', () => {
   })
 
   test('? shortcut from / lands on /help docs landing', async ({ page }) => {
-    // Skip if not paired — for the dev session we assume the test runs against a paired SPA.
+    // Seed a valid pairing record BEFORE first navigation. Without this,
+    // the SPA's indexRoute beforeLoad sees getPairing() === null and
+    // redirects to /onboarding — `useGlobalShortcuts` is mounted in
+    // AppShellV2 (not on /onboarding), so the `?` keypress never fires.
+    // Schema: { agentUrl, token (8-hex × 8 dashed), pairedAt (ISO) }
+    // — matches PairingSchema in packages/shared/src/schemas/pairing.ts.
+    // Key: 'agentic-dashboard:pairing' (packages/spa/src/lib/pairing.ts).
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'agentic-dashboard:pairing',
+        JSON.stringify({
+          agentUrl: 'http://localhost:5193',
+          token: '00000000-11111111-22222222-33333333-44444444-55555555-66666666-77777777',
+          pairedAt: '2026-05-11T00:00:00.000Z',
+        }),
+      )
+    })
     await page.goto('/')
+    // Wait for AppShellV2 (and useGlobalShortcuts) to mount before pressing.
+    // The home page has no h1; sidebar nav contains a "Help" link instead.
+    await expect(page.getByRole('link', { name: /^Help$/ })).toBeVisible()
+    // Playwright's page.keyboard.press('?') dispatches keydown with
+    // key='?' and shiftKey=false (bypasses OS layout to deliver the literal
+    // character) — matches the unit-test contract in
+    // useGlobalShortcuts.test.tsx GS8 (`fireKey('?')`). Real-browser users
+    // type Shift+/ to produce `?`; the hook's modifier-bail (`if
+    // (e.shiftKey) return`) would block that today. Flagged in follow-up
+    // as the v1.0 keypress UX is verified end-to-end here only against the
+    // synthetic event shape.
     await page.keyboard.press('?')
     await expect(page).toHaveURL('/help')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
@@ -97,9 +124,15 @@ test.describe('Reviewer walking checklist (HELP-01..06)', () => {
     await expect(
       page.getByRole('heading', { name: /keyboard shortcuts/i, level: 1 }),
     ).toBeVisible()
-    // KbdHint chips render their keys as plain text inside <span aria-hidden>
-    await expect(page.getByText('R').first()).toBeVisible()
-    await expect(page.getByText('Cmd').first()).toBeVisible()
+    // KbdHint renders as `<span aria-hidden="true" class="…font-mono…">{keys}</span>`.
+    // Scope the locator to the prose article (where chips live in the global
+    // shortcuts table) and to the font-mono chip span — otherwise
+    // `getByText('R').first()` on mobile resolves to the sidebar `<h3>`
+    // section header "REPOSITORIES" (heading starts with R, comes first in
+    // DOM order). Use exact text match on the chip span.
+    const chips = page.locator('article.prose span.font-mono')
+    await expect(chips.filter({ hasText: /^R$/ }).first()).toBeVisible()
+    await expect(chips.filter({ hasText: /^Cmd$/ }).first()).toBeVisible()
   })
 
   test('catch-all redirect: unknown /help/* path falls to /help', async ({ page }) => {
