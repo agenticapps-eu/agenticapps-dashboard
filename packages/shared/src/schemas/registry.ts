@@ -95,6 +95,12 @@ export const RegisterPrepareResponseSchema = z.union([
 ])
 export type RegisterPrepareResponse = z.infer<typeof RegisterPrepareResponseSchema>
 
+// F-008: export individual variant types so consumers can narrow the union
+// via type predicates instead of `as unknown as` casts.
+export type RegisterPrepareAllowed = z.infer<typeof RegisterPrepareAllowedSchema>
+export type RegisterPrepareBlocked = z.infer<typeof RegisterPrepareBlockedSchema>
+export type RegisterPrepareAlreadyRegistered = z.infer<typeof RegisterPrepareAlreadyRegisteredSchema>
+
 export const RegisterConfirmRequestSchema = z.object({
   nonce: NonceHexSchema,
   name: z.string().min(1).optional(),

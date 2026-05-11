@@ -1,48 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import type {
+  RegisterPrepareResponse,
+  RegisterPrepareAllowed,
+  RegisterPrepareBlocked,
+  RegisterPrepareAlreadyRegistered,
+} from '@agenticapps/dashboard-shared'
 
 import { useRegisterPrepare, useRegisterConfirm } from '../lib/registry.js'
 import { ApiError } from '../lib/api.js'
 
 import { SchemaDriftState } from './SchemaDriftState.js'
 
-// ─── Local types for prepare response union ─────────────────────────────────
-// These mirror RegisterPrepareResponseSchema from @agenticapps/dashboard-shared
-// (plan 03-06 creates the canonical schema; we match the runtime shape here).
-
-interface AllowedResponse {
-  alreadyRegistered: false
-  blocked: false
-  canonicalRoot: string
-  suggestedName: string
-  suggestedSlug: string
-  nonce: string
-  expiresAt: string
-  detectedMarkers: { gitRepo: boolean; planning: boolean; claudeSkills: boolean }
+// F-008: type predicates over the shared RegisterPrepareResponseSchema union.
+// The schema is a 3-way z.union; each variant has different fields, so we
+// narrow with `in` + literal discriminator checks rather than `as unknown as`
+// casts that would defeat parseOrDrift's validation guarantee.
+function isBlocked(d: RegisterPrepareResponse): d is RegisterPrepareBlocked {
+  return 'blocked' in d && d.blocked === true
 }
-
-interface BlockedResponse {
-  blocked: true
-  alreadyRegistered: false
-  canonicalRoot: string
-  blockedReason: string
+function isAlreadyRegistered(d: RegisterPrepareResponse): d is RegisterPrepareAlreadyRegistered {
+  return 'alreadyRegistered' in d && d.alreadyRegistered === true
 }
-
-interface AlreadyRegisteredResponse {
-  alreadyRegistered: true
-  blocked: false
-  canonicalRoot: string
-  existingEntry: {
-    id: string
-    name: string
-    root: string
-    client: string | null
-    addedAt: string
-    tags: string[]
-  }
+function isAllowed(d: RegisterPrepareResponse): d is RegisterPrepareAllowed {
+  return !isBlocked(d) && !isAlreadyRegistered(d)
 }
-
-type PrepareResponse = AllowedResponse | BlockedResponse | AlreadyRegisteredResponse
 
 type ModalMode =
   | 'step1'
@@ -51,9 +33,9 @@ type ModalMode =
   | 'step2-already'
   | 'drift'
 
-function decodePrepareResponse(data: PrepareResponse): ModalMode {
-  if ('blocked' in data && data.blocked) return 'step2-blocked'
-  if ('alreadyRegistered' in data && data.alreadyRegistered) return 'step2-already'
+function decodePrepareResponse(data: RegisterPrepareResponse): ModalMode {
+  if (isBlocked(data)) return 'step2-blocked'
+  if (isAlreadyRegistered(data)) return 'step2-already'
   return 'step2-allowed'
 }
 
@@ -81,7 +63,7 @@ export function RegisterModal({
   const [networkError, setNetworkError] = useState(false)
 
   // Step 2 state
-  const [prepareData, setPrepareData] = useState<PrepareResponse | null>(null)
+  const [prepareData, setPrepareData] = useState<RegisterPrepareResponse | null>(null)
   const [mode, setMode] = useState<ModalMode>('step1')
   const [name, setName] = useState('')
   const [client, setClient] = useState('')
@@ -125,10 +107,9 @@ export function RegisterModal({
   // ── Dirty-state detection ────────────────────────────────────────────────
   function isDirty(): boolean {
     if (mode === 'step1') return path !== ''
-    if (mode === 'step2-allowed' && prepareData && !prepareData.blocked && !prepareData.alreadyRegistered) {
-      const allowed = prepareData as AllowedResponse
+    if (mode === 'step2-allowed' && prepareData && isAllowed(prepareData)) {
       return (
-        name !== allowed.suggestedName ||
+        name !== prepareData.suggestedName ||
         client !== '' ||
         tags.length > 0
       )
@@ -165,13 +146,11 @@ export function RegisterModal({
       { path },
       {
         onSuccess: (data) => {
-          const typed = data as unknown as PrepareResponse
-          setPrepareData(typed)
-          const nextMode = decodePrepareResponse(typed)
+          setPrepareData(data)
+          const nextMode = decodePrepareResponse(data)
           setMode(nextMode)
-          if (nextMode === 'step2-allowed') {
-            const allowed = typed as AllowedResponse
-            setName(allowed.suggestedName)
+          if (isAllowed(data)) {
+            setName(data.suggestedName)
           }
         },
         onError: (err) => {
@@ -187,11 +166,10 @@ export function RegisterModal({
 
   // ── Confirm ──────────────────────────────────────────────────────────────
   async function handleConfirm() {
-    if (mode !== 'step2-allowed' || !prepareData || !('nonce' in prepareData)) return
-    const allowed = prepareData as AllowedResponse
+    if (mode !== 'step2-allowed' || !prepareData || !isAllowed(prepareData)) return
     try {
       const result = await confirm.mutateAsync({
-        nonce: allowed.nonce,
+        nonce: prepareData.nonce,
         ...(name ? { name } : {}),
         client: client || null,
         tags,
@@ -208,17 +186,11 @@ export function RegisterModal({
         setRefreshing(true)
         try {
           const fresh = await prepare.mutateAsync({ path })
-          const freshTyped = fresh as unknown as PrepareResponse
-          setPrepareData(freshTyped)
-          if (
-            'nonce' in freshTyped &&
-            !freshTyped.blocked &&
-            !freshTyped.alreadyRegistered
-          ) {
-            const freshAllowed = freshTyped as AllowedResponse
+          setPrepareData(fresh)
+          if (isAllowed(fresh)) {
             // Retry confirm directly with fresh nonce (avoid stale closure issue)
             const retryResult = await confirm.mutateAsync({
-              nonce: freshAllowed.nonce,
+              nonce: fresh.nonce,
               ...(name ? { name } : {}),
               client: client || null,
               tags,
@@ -256,12 +228,11 @@ export function RegisterModal({
 
   // ── No-markers detection ─────────────────────────────────────────────────
   function showNoMarkersHint(): boolean {
-    if (mode !== 'step2-allowed' || !prepareData || prepareData.blocked || prepareData.alreadyRegistered) return false
-    const allowed = prepareData as AllowedResponse
+    if (mode !== 'step2-allowed' || !prepareData || !isAllowed(prepareData)) return false
     return (
-      allowed.detectedMarkers.gitRepo === false &&
-      allowed.detectedMarkers.planning === false &&
-      allowed.detectedMarkers.claudeSkills === false
+      prepareData.detectedMarkers.gitRepo === false &&
+      prepareData.detectedMarkers.planning === false &&
+      prepareData.detectedMarkers.claudeSkills === false
     )
   }
 
@@ -354,7 +325,7 @@ export function RegisterModal({
         )}
 
         {/* Step 2 — allowed */}
-        {mode === 'step2-allowed' && prepareData && !prepareData.blocked && !prepareData.alreadyRegistered && (
+        {mode === 'step2-allowed' && prepareData && isAllowed(prepareData) && (
           <div>
             {/* Resolved path */}
             <div className="mb-4">
@@ -362,7 +333,7 @@ export function RegisterModal({
                 Resolved path
               </label>
               <div className="font-mono text-sm text-text-primary bg-card-bg-hover px-3 py-2 rounded-md">
-                {(prepareData as AllowedResponse).canonicalRoot}
+                {prepareData.canonicalRoot}
               </div>
             </div>
 
@@ -472,7 +443,7 @@ export function RegisterModal({
         )}
 
         {/* Step 2 — blocked */}
-        {mode === 'step2-blocked' && prepareData && prepareData.blocked && (
+        {mode === 'step2-blocked' && prepareData && isBlocked(prepareData) && (
           <div>
             {/* Resolved path */}
             <div className="mb-4">
@@ -480,13 +451,13 @@ export function RegisterModal({
                 Resolved path
               </label>
               <div className="font-mono text-sm text-text-primary bg-card-bg-hover px-3 py-2 rounded-md">
-                {(prepareData as BlockedResponse).canonicalRoot}
+                {prepareData.canonicalRoot}
               </div>
             </div>
 
             {/* Blocked banner */}
             <div className="mb-4 bg-status-error/8 border border-status-error/40 px-4 py-3 rounded-md text-sm text-text-primary">
-              Blocked: {(prepareData as BlockedResponse).blockedReason}
+              Blocked: {prepareData.blockedReason}
             </div>
 
             {/* Actions */}
@@ -513,7 +484,7 @@ export function RegisterModal({
         )}
 
         {/* Step 2 — already registered */}
-        {mode === 'step2-already' && prepareData && prepareData.alreadyRegistered && (
+        {mode === 'step2-already' && prepareData && isAlreadyRegistered(prepareData) && (
           <div>
             {/* Resolved path */}
             <div className="mb-4">
@@ -521,15 +492,15 @@ export function RegisterModal({
                 Resolved path
               </label>
               <div className="font-mono text-sm text-text-primary bg-card-bg-hover px-3 py-2 rounded-md">
-                {(prepareData as AlreadyRegisteredResponse).canonicalRoot}
+                {prepareData.canonicalRoot}
               </div>
             </div>
 
             {/* Already-registered banner */}
             <div className="mb-4 bg-card-bg-hover border border-border-subtle px-4 py-3 rounded-md">
               <p className="text-sm text-text-primary mb-3">
-                Already registered as {(prepareData as AlreadyRegisteredResponse).existingEntry.id} since{' '}
-                {new Date((prepareData as AlreadyRegisteredResponse).existingEntry.addedAt).toLocaleDateString()}.
+                Already registered as {prepareData.existingEntry.id} since{' '}
+                {new Date(prepareData.existingEntry.addedAt).toLocaleDateString()}.
               </p>
               <div className="flex gap-2">
                 <button
@@ -538,7 +509,7 @@ export function RegisterModal({
                     void navigate({
                       to: '/projects/$projectId',
                       params: {
-                        projectId: (prepareData as AlreadyRegisteredResponse).existingEntry.id,
+                        projectId: prepareData.existingEntry.id,
                       },
                     })
                     onClose()
