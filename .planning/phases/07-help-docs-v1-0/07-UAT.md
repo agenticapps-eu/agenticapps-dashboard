@@ -72,13 +72,12 @@ Any overflow? Log as info-level finding.
 2. On `/`, press the `?` key (Shift+/ on US keyboards).
 3. Verify URL changes to `/help` AND the docs landing page renders.
 
-**Known caveat (flagged for v1.0.1):** `useGlobalShortcuts.ts:49` bails on any shift/ctrl/meta/alt modifier. On a US keyboard, typing `?` requires Shift+/, which means the hook never fires the navigation. The Playwright test passes because `page.keyboard.press('?')` synthesises a `keydown` with `key='?'` and `shiftKey=false` (bypassing OS layout). Real users on US/most international layouts may need a follow-up patch.
+**Resolution:** Fixed inline during T9 (`84b688f`). The modifier-bail in `useGlobalShortcuts.ts:49` was originally `metaKey || ctrlKey || altKey || shiftKey`, which prevented `?` from firing on US layouts (since `Shift+/` is the only way to type `?`). Dropped `shiftKey` from the bail; metaKey/ctrlKey/altKey still preserved (so Cmd-R / Cmd-K / Alt-combos remain untouched). New test `GS8b` covers the real-browser scenario explicitly. Per user decision (auto-mode question): fix inline rather than defer to v1.0.1.
 
 **Result:**
 
 - [ ] `?` from `/` navigates to `/help` (real keyboard).
 - [ ] Landing renders, not redirected to /onboarding.
-- [ ] If `?` doesn't fire: confirm the keyboard-layout caveat above; log as bug for v1.0.1.
 
 ## 4. Dark-mode prose verification (deferred to v1.1)
 
