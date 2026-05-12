@@ -49,21 +49,28 @@ keep the old token in a short grace window during rotation.
 **Symptom:** `npx impeccable critique` no longer exists in impeccable v2.1.8 — only `detect` survives, which returns antipattern arrays without a composite score. Phase 6 D-6-21 set the gate at "score ≥ 90 on /help (lg 1440x900)" but the tool that emits a numeric score has been removed upstream.
 
 **Post-fix detect output (against the green Phase 7 /help routes):**
-- 5 low-contrast findings on /help (lg)
-- All 5 trace to Phase 5.1 inherited `text-text-tertiary` (`#9c95a8`) — 2.8:1 vs 3:1 target
-- Renders on the "(soon)" stub tags + various dashboard-wide chips
-- **Zero findings caused by Plan 07-05's own additions.**
+- 5 low-contrast findings on each /help/* route (30 total across the 6 user-visible routes) — all `text-text-tertiary #9c95a8 on bg-app-bg #fafaf7`, 2.8:1 vs 3:1 target
+- 1 single-font finding on `/help/operations/install` only — detector blind spot (see below)
+- **Verified scope correction (vs initial v1.0 T10 evidence):** the `#9c95a8` low-contrast findings fire ONLY on `/help/*` routes (zero on `/onboarding`). The TOKEN value (`#9c95a8`) is Phase 5.1 D-5.1-08; the SURFACES that expose it are Phase 7 (HelpLayout sidebar uses `text-text-tertiary` for "(soon)" stub tags + section labels + search placeholder + "help" badge).
+- The page renders correctly in browsers — these are detector outputs, not user-facing regressions.
+
+**Detector blind spot for monospace (operations/install single-font finding):**
+- The detector samples `<svg>` text + elements with explicit `font-family` or Tailwind `font-mono` utility classes.
+- It does NOT sample `<code>`/`<pre>` styled via `@tailwindcss/typography`'s default prose CSS.
+- 4 anchor pages escape the finding via Mermaid SVG; `reference/shortcuts` escapes via KbdHint's `font-mono` class.
+- `operations/install` has neither Mermaid nor KbdHint, so the detector sees only Inter Variable — despite the page rendering monospace code blocks correctly.
+- Resolution applied in this PR: added `--font-mono` token to `tokens.css` (real design-system gap closure, mirrors `--font-sans`). Does NOT silence the detector — the limitation is in impeccable's sampling, not our CSS.
 
 CI workflow `.github/workflows/impeccable.yml` is in the same drift state — it'll fail or no-op on the next run.
 
-**Out of scope for Phase 7:** Plan 07-05 introduced no new findings. The drift is in shared tooling + Phase 5.1 token contrast, both cross-phase concerns.
+**Out of scope for Phase 7:** Plan 07-05 introduced no functional or visual regressions. Tooling drift + Phase 5.1 token contrast are both cross-phase concerns.
 
-**Recommended v1.0.1 path (per user decision in auto-mode question):**
+**Recommended v1.0.1 path (per user decisions during PR review):**
 1. Either pin impeccable to a scoring-capable version (search for v2.0.x or earlier with `critique` subcommand), or
-2. Rewrite the scoring pipeline using `detect` output + a custom weighted aggregator that mirrors the prior composite formula.
-3. Bump `text-text-tertiary` from `#9c95a8` to a shade that clears 3:1 (`#8b85a0` or darker) — cross-phase token patch; needs visual regression review against every dashboard route.
+2. Rewrite the scoring pipeline using `detect` output + a custom weighted aggregator that mirrors the prior composite formula. The aggregator should weight monospace findings by whether the page actually uses code (reading the DOM for `<code>` / `<pre>` directly, not just sampling computed `font-family`).
+3. Bump `text-text-tertiary` from `#9c95a8` to a shade that clears 3:1 (`#8b85a0` or darker) — cross-phase token patch; needs visual regression review against every dashboard route AND the `/help/*` HelpLayout sidebar specifically (where the token surfaces most prominently).
 
-Full diagnosis in `evidence/impeccable.log`.
+Full diagnosis in `evidence/impeccable.log` (T10 record + post-PR review re-run).
 
 ---
 
