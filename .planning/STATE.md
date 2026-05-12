@@ -1,17 +1,18 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: /help docs site (post-ship)
-status: executing
-stopped_at: Completed 07-05 T1-T8 (route wiring + Playwright spec + preflight green) — STOPPED at T9 checkpoint per orchestrator scope
-last_updated: "2026-05-12T05:16:12.811Z"
+milestone_name: v1.0 complete (dashboard + /help docs site)
+status: between-milestones
+stopped_at: Phase 7 shipped via PR #21 + #22 (squash-merged to main 2026-05-12). v1.0 milestone fully closed.
+last_updated: "2026-05-12T14:55:00.000Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 12
-  completed_phases: 7
-  total_plans: 51
-  completed_plans: 46
-  percent: 90
+  completed_phases: 10
+  total_plans: 64
+  completed_plans: 64
+  percent: 100
+next_milestone: v1.0.1 follow-ups (impeccable tooling drift, text-text-tertiary contrast); Phase 8 held
 ---
 
 # Project State
@@ -21,17 +22,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 07 — help-docs-v1-0
+**Current focus:** v1.0 milestone closed (Phases 0–7 shipped). Awaiting decisions on v1.0.1 follow-ups; Phase 8 held per CLAUDE.md until Sentry / Linear / Infisical upstream tooling lands.
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
-Milestone: v1.0 Working dashboard (Phases 0–6) — 100%
-Status: Ready to execute
+Phase: — (between milestones)
+Plan: —
+Milestone: v1.0 (dashboard + /help docs) — 100% complete
+Status: No active phase. Next action: pick up v1.0.1 follow-ups or wait on Phase 8 upstream tooling.
 Last activity: 2026-05-12
 
 Progress: [██████████] 100% of v1.0 milestone
+
+## v1.0.1 Follow-ups (deferred from Phase 7)
+
+Captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md`:
+
+- **Impeccable scoring tool drift** — `npx impeccable critique` removed in v2.1.8 (only `detect` survives). Decision needed: pin to last critique-capable version, or migrate gate to `detect`. Phase 7 closure was not blocked (0 new findings introduced).
+- **`text-text-tertiary` token contrast bump** — current `#9c95a8` is 2.8:1 against warm paper bg; needs ≥ 3:1. Cross-phase patch against Phase 5.1 tokens. 5 inherited low-contrast hits all come from this single token.
 
 ## Performance Metrics
 
@@ -112,6 +120,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T19:34:16.605Z
-Stopped at: Completed 07-05 T1-T8 (route wiring + Playwright spec + preflight green) — STOPPED at T9 checkpoint per orchestrator scope
+Last session: 2026-05-12T14:55:00.000Z
+Stopped at: Phase 7 shipped via PR #21 + #22 (squash-merged to main 2026-05-12). STATE + ROADMAP reconciled to reflect v1.0 closure.
 Resume file: None
+Next action: address v1.0.1 follow-ups (impeccable + contrast) or pick a non-Phase-8 task (worktree cleanup, branch pruning).

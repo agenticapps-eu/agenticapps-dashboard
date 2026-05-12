@@ -2,15 +2,16 @@
 
 ## Overview
 
-A ten-phase journey from empty repo to a working multi-project pipeline dashboard with first-party `/help` docs. Phases 0–6 delivered the v1.0 dashboard (shipped as PR #15, tagged `v1.0.0`). Phase 7 — **added post-v1.0 ship** — lands the v1.0 `/help` docs site (5 anchor MDX pages + ~25 stub pages + shell components + 8 widget stubs). Phase 8 (was Phase 7) adds optional integrations (Sentry, Linear, Infisical-aware env loading) one at a time as upstream tooling lands. Phase 9 (was Phase 8) prepares for an eventual flip to public open-source.
+A ten-phase journey from empty repo to a working multi-project pipeline dashboard with first-party `/help` docs. Phases 0–6 delivered the v1.0 dashboard (shipped as PR #15, tagged `v1.0.0`). Phase 7 — **added post-v1.0 ship** — landed the v1.0 `/help` docs site (5 anchor MDX pages + ~25 stub pages + shell components + 8 widget stubs) via PR #21 / #22 (squash-merged to `main` on 2026-05-12). Phase 8 (was Phase 7) adds optional integrations (Sentry, Linear, Infisical-aware env loading) one at a time as upstream tooling lands. Phase 9 (was Phase 8) prepares for an eventual flip to public open-source.
 
 **Source spec:** `docs/spec/dashboard-prompt.md` — every phase here is derived from spec §"Implementation phasing" and §"Acceptance criteria". Phase 7's migration spec lives outside the repo at `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/MIGRATION-INSTRUCTIONS.md`.
 
 ## Milestones
 
 - ✅ **v1.0 Working dashboard** — Phases 0–6 complete; merged via PR #15 + tagged `v1.0.0`
-- 🚧 **v1.0 /help docs site (post-ship)** — Phase 7 (in-flight on `feat/help-docs-v1`)
-- 📋 **v1.1 Optional integrations** — Phase 8 (planned, gated on upstream tooling)
+- ✅ **v1.0 /help docs site (post-ship)** — Phase 7 complete; merged via PR #21 + PR #22 on 2026-05-12
+- 📋 **v1.0.1 Follow-ups** — impeccable scoring tool drift + `text-text-tertiary` 3:1 contrast bump (deferred from Phase 7, see `.planning/phases/07-help-docs-v1-0/deferred-items.md`)
+- ⏸️ **v1.1 Optional integrations** — Phase 8 (held until upstream Sentry / Linear / Infisical tooling lands)
 - 📋 **v1.2 Open-source readiness** — Phase 9 (planned, much later)
 
 ## Phases
@@ -19,14 +20,16 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 - Integer phases (0, 1, 2): Planned milestone work
 - Decimal phases (5.1, 6.1, 8.1): Sub-phases within their parent phase
 
-- [ ] **Phase 0: Bootstrap** — pnpm workspace, Cloudflare Pages preview, npm placeholder, CI green
-- [ ] **Phase 1: Daemon + Registry + Pairing** — Hono server, registry CRUD, bearer-token auth, path allow-list
-- [ ] **Phase 2: SPA Shell + Pair Flow** — Vite/React/Tailwind shell, `/pair`, `/onboarding`, `/settings`
-- [ ] **Phase 3: Multi-project Home** — `/api/registry`, `/api/projects/{id}/overview`, card grid, filters, register modal
-- [ ] **Phase 4: Single-project View — Discipline + Phase Progress** — left + center columns
-- [ ] **Phase 5: Skills + Health Panels** — right column, AgentLinter integration, observability/secrets/integrations detection
-- [ ] **Phase 6: Polish + Service Install + Acceptance** — keyboard shortcuts, install-launchd/systemd, impeccable critique gate, two-stage review
-- [ ] **Phase 7: Help docs v1.0** — MDX `/help` docs site (5 anchor pages + 25 stub pages + shell + 8 widget stubs); replaces existing `/help` shortcut page, folds shortcuts into docs
+- [x] **Phase 0: Bootstrap** — pnpm workspace, Cloudflare Pages preview, npm placeholder, CI green
+- [x] **Phase 1: Daemon + Registry + Pairing** — Hono server, registry CRUD, bearer-token auth, path allow-list
+- [x] **Phase 2: SPA Shell + Pair Flow** — Vite/React/Tailwind shell, `/pair`, `/onboarding`, `/settings`
+- [x] **Phase 3: Multi-project Home** — `/api/registry`, `/api/projects/{id}/overview`, card grid, filters, register modal
+- [x] **Phase 4: Single-project View — Discipline + Phase Progress** — left + center columns
+- [x] **Phase 5: Skills + Health Panels** — right column, AgentLinter integration, observability/secrets/integrations detection
+- [x] **Phase 05.1: UI redesign — Cloudflare-inspired sidebar shell** (inserted) — AppShellV2 + tokens.css + 7 UI primitives + panel migration
+- [x] **Phase 6: Polish + Service Install + Acceptance** — keyboard shortcuts, install-launchd/systemd, impeccable critique gate, two-stage review
+- [x] **Phase 06.1: Typography + layout impeccable lift** (inserted) — closes ≥ 90 gate on all 6 v1.0 routes
+- [x] **Phase 7: Help docs v1.0** — MDX `/help` docs site (5 anchor pages + 25 stub pages + shell + 8 widget stubs); replaces existing `/help` shortcut page, folds shortcuts into docs
 - [ ] **Phase 8: Optional Integrations (held)** — Sentry / Linear / Infisical wiring, gated on upstream tooling
 - [ ] **Phase 9: Open-source Readiness (much later)** — LICENSE, CONTRIBUTING, optional public landing
 
@@ -210,8 +213,9 @@ Plans:
 - [x] 06.1-04-PLAN.md — Wave 1: D-6.1-04 ARIA (aria-current/aria-label on Sidebar; aria-live="polite" on TopBar) + /pair numbered-steps empty canvas (3 tasks)
 - [x] 06.1-05-PLAN.md — Wave 3: D-6.1-03 MaskedToken integration in ManualPairForm + /settings page-prose cap (depends_on: [02]; 2 tasks)
 - [x] 06.1-06-PLAN.md — Wave 4: re-measure impeccable on all 6 routes; verify gate ≥ 90; commit refs/post-061-impeccable.md (autonomous: false; checkpoint:human-verify + checkpoint:decision; depends_on: [01,02,03,04,05]; 4 tasks)
+- [x] 06.1-07-PLAN.md — Wave 5: closure ritual + final regression sweep
 
-### Phase 7: Help docs v1.0
+### Phase 7: Help docs v1.0  ✅ shipped 2026-05-12 (PR #21 + #22)
 **Goal**: Ship the v1.0 `/help` docs site as a separate feature branch (`feat/help-docs-v1`) off `origin/main` — MDX-driven, mounted under `/help/*` in the existing TanStack Router. Replaces the current `/help` keyboard-shortcuts page; folds shortcuts into `/help/reference/shortcuts`. Five anchor pages (landing, workflow/overview, repos/overview, observability/overview, operations/install) plus ~25 stub pages rendering `ComingSoon`. Shell components: HelpLayout (sidebar + main + sticky TOC, mobile drawer), HelpWidget (lazy dispatch), HelpHook (in-page deep link), ComingSoon. Eight named widget stubs (RepoTopologyMap, WorkflowStateMachine, GatePicker, TraceVisualizer, ScanReportPlayground, ApplyConsentSimulator, MigrationDryRun, SlashCommandCatalog) — real implementations land in v1.2. PR targets `main`, ships independently of any future redesign work.
 **Canonical refs:** `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/MIGRATION-INSTRUCTIONS.md` (the migration spec — 12 steps), `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/HelpRoutes.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/HelpLayout.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/components/{HelpWidget,HelpHook,ComingSoon}.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/widgets/_stub-pattern.tsx`, source MDX content at `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/{landing,workflow/overview,repos/overview,observability/overview,operations/install}.md`.
 **Depends on**: Phase 6 (v1.0 ship — branched off `origin/main` `26e78c7`)
@@ -256,17 +260,23 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
+Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6 → (6.1) → 7 → 8 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Bootstrap | 0/TBD | Not started | - |
-| 1. Daemon + Registry + Pairing | 0/TBD | Not started | - |
-| 2. SPA Shell + Pair Flow | 0/TBD | Not started | - |
-| 3. Multi-project Home | 0/TBD | Not started | - |
-| 4. Single-project View — Disc + Phase | 0/TBD | Not started | - |
-| 5. Skills + Health Panels | 5/6 | In Progress|  |
-| 6. Polish + Service Install + Acceptance | 0/TBD | Not started | - |
-| 7. Help docs v1.0 | 0/TBD | In Progress (`feat/help-docs-v1`) | - |
-| 8. Optional Integrations | 0/TBD | Deferred (held until upstream tooling) | - |
-| 9. Open-source Readiness | 0/TBD | Deferred (much later) | - |
+| 0. Bootstrap | 5/5 | ✅ Complete | 2026-05-03 |
+| 1. Daemon + Registry + Pairing | 5/5 | ✅ Complete | 2026-05-04 |
+| 2. SPA Shell + Pair Flow | 6/6 | ✅ Complete | 2026-05-04 |
+| 3. Multi-project Home | 11/11 | ✅ Complete | 2026-05-05 |
+| 4. Single-project View — Disc + Phase | 6/6 | ✅ Complete | 2026-05-08 |
+| 5. Skills + Health Panels | 6/6 | ✅ Complete | 2026-05-08 |
+| 05.1. UI redesign (inserted) | 6/6 | ✅ Complete | 2026-05-09 |
+| 6. Polish + Service Install + Acceptance | 7/7 | ✅ Complete | 2026-05-10 |
+| 06.1. Typography + Layout lift (inserted) | 7/7 | ✅ Complete | 2026-05-11 |
+| 7. Help docs v1.0 | 5/5 | ✅ Complete (PR #21 + #22) | 2026-05-12 |
+| 8. Optional Integrations | 0/TBD | ⏸️ Held (upstream tooling required) | - |
+| 9. Open-source Readiness | 0/TBD | 📋 Deferred (much later) | - |
+
+**v1.0.1 follow-ups (deferred from Phase 7):**
+- Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
+- `text-text-tertiary` token contrast bump — current `#9c95a8` is 2.8:1 on warm paper; needs ≥ 3:1. Cross-phase Phase 5.1 token patch.
