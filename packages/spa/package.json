@@ -11,16 +11,24 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:subprocess": "vitest run --config vitest.subprocess.config.ts",
-    "test:scripts": "vitest run --config vitest.scripts.config.ts"
+    "test:scripts": "vitest run --config vitest.scripts.config.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@agenticapps/dashboard-shared": "workspace:*",
     "@fontsource-variable/inter": "catalog:",
+    "@mdx-js/react": "catalog:",
+    "@mdx-js/rollup": "catalog:",
+    "@tailwindcss/typography": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "lucide-react": "catalog:",
+    "mermaid": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "remark-frontmatter": "catalog:",
+    "remark-gfm": "catalog:",
+    "remark-mdx-frontmatter": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -29,6 +37,7 @@
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
+    "@types/mdx": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",

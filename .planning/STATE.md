@@ -1,18 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: Working dashboard
-status: awaiting_merge
-stopped_at: Phase 6 complete — v1.0 ready to merge (PR #15 pending Stage 2 + tag)
-last_updated: "2026-05-11T07:55:00.000Z"
-last_activity: 2026-05-11 -- Phase 06 complete; v1.0 closing PR #15 opened with Stage 1 review
+milestone_name: /help docs site (post-ship)
+status: executing
+stopped_at: Completed 07-05 T1-T8 (route wiring + Playwright spec + preflight green) — STOPPED at T9 checkpoint per orchestrator scope
+last_updated: "2026-05-12T05:16:12.811Z"
+last_activity: 2026-05-12
 progress:
-  total_phases: 11
-  completed_phases: 6
-  total_plans: 46
-  completed_plans: 41
-  percent: 89
-  v1_milestone_percent: 100
+  total_phases: 12
+  completed_phases: 7
+  total_plans: 51
+  completed_plans: 46
+  percent: 90
 ---
 
 # Project State
@@ -22,14 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.0 closure — PR #15 awaiting Stage 2 review + merge + tag
+**Current focus:** Phase 07 — help-docs-v1-0
 
 ## Current Position
 
-Phase: 06 — COMPLETE (all 7 plans landed)
+Phase: 8
+Plan: Not started
 Milestone: v1.0 Working dashboard (Phases 0–6) — 100%
-Status: PR #15 opened (phase-06-polish-service-install → main); Stage 1 review appended; Stage 2 review pending in fresh session; merge + v1.0 tag pending explicit user approval
-Last activity: 2026-05-11 -- Plan 06-07 closure ritual (review-protocol.md + CF Access doc + README rewrite + Stage 1 review)
+Status: Ready to execute
+Last activity: 2026-05-12
 
 Progress: [██████████] 100% of v1.0 milestone
 
@@ -37,7 +37,7 @@ Progress: [██████████] 100% of v1.0 milestone
 
 **Velocity:**
 
-- Total plans completed: 48
+- Total plans completed: 53
 - Average duration: —
 - Total execution time: 0 h
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100% of v1.0 milestone
 | 05.1 | 6 | - | - |
 | 06.1 | 7 | - | - |
 | 06 | 7 | - | - |
+| 07 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -65,6 +66,8 @@ Progress: [██████████] 100% of v1.0 milestone
 | Phase 05 P04 | 9 | 3 tasks | 6 files |
 | Phase 05 P05 | 10 | 3 tasks | 8 files |
 | Phase 05.1 P05 | resumed multi-session | 2 tasks | 47 files |
+| Phase 07 P01 | 10min | 8 tasks | 15 files |
+| Phase 07 P04 | 11min | 7 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -93,6 +96,11 @@ Recent decisions affecting current work:
 - [Phase 05]: INTEGRATIONS table stores nudges+paragraphs as React JSX literals — no daemon content interpolation in configure-to-enable guides (T-05-05-Static-Copy-Trust)
 - [Phase 05.1]: Batch-migrated 24 additional pre-05.1-state files to achieve zero legacy alias coverage; worktree discrepancy treated as sub-task per plan NOTE
 - [Phase 05.1]: Wave 5 precondition met: zero [--*] alias patterns remain in packages/spa/src/ after plans 01-05
+- [Phase 07]: vitest.config.ts plugin chain must mirror vite.config.ts — discovered when MDX smoke RED→GREEN cycle revealed transform-time .mdx parsing failure
+- [Phase 07]: @types/mdx must be a direct devDep — transitive peer dep of @mdx-js/react is insufficient for tsc to resolve mdx/types
+- [Phase 07]: Plan 07-04: Mermaid-as-JSX in MDX (<MermaidBlock code={...}/>) decouples content from Plan 07-05's pre-mapping wiring
+- [Phase 07]: Plan 07-04: MDX heading anchors require explicit <h2 id> (not kramdown {#anchor}); acorn parses {...} as JS expression
+- [Phase 07]: Plan 07-04: mermaid.parse() syntax test must run in jsdom env; mermaid v11 DOMPurify init needs window
 
 ### Pending Todos
 
@@ -104,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-10T13:27:44.784Z
-Stopped at: Phase 06.1 context gathered
-Resume file: .planning/phases/DASH-06.1-typography-layout-impeccable-lift/06.1-CONTEXT.md
+Last session: 2026-05-11T19:34:16.605Z
+Stopped at: Completed 07-05 T1-T8 (route wiring + Playwright spec + preflight green) — STOPPED at T9 checkpoint per orchestrator scope
+Resume file: None

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "./tokens.css";
 
 /* Preserved for future Phase 6 dark-mode tokens — does nothing without a .dark{} block. */

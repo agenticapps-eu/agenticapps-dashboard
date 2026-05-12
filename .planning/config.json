@@ -12,7 +12,9 @@
     "security_block_on": "high",
     "discuss_mode": "discuss",
     "research_before_questions": false,
-    "_auto_chain_active": false
+    "_auto_chain_active": false,
+    "ui_safety_gate": false,
+    "ui_phase": false
   },
   "planning": {
     "commit_docs": true,

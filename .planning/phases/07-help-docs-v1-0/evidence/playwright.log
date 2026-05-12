@@ -1,0 +1,212 @@
+=== T9: Playwright walking checklist run @ 2026-05-11T21:40Z ===
+Command: pnpm --filter @agenticapps/dashboard-spa exec playwright test --reporter=line
+Repo head: 7463046 (feat/help-docs-v1)
+Webserver: auto-spawned (pnpm --filter @agenticapps/dashboard-spa dev on :5174)
+
+=== Result: 9 FAILED / 7 PASSED out of 16 tests ===
+Duration: ~2m
+
+=== Tests passed (7) ===
+- [chromium-desktop] sampled stub routes render ComingSoon + back-link
+- [chromium-desktop] section paths redirect to overview/install
+- [chromium-desktop] widget Suspense resolves: repos/overview shows Coming v1.2 badge
+- [chromium-desktop] reference/shortcuts page renders KbdHint chips
+- [chromium-mobile] sampled stub routes render ComingSoon + back-link
+- [chromium-mobile] section paths redirect to overview/install
+- [chromium-mobile] widget Suspense resolves: repos/overview shows Coming v1.2 badge
+
+=== Tests failed (9) ===
+
+FAILURE 1+2 (both desktop + mobile): "every anchor renders without console errors; Mermaid SVG appears"
+  - Locator 'article.prose' not visible (Received: undefined; Timeout: 5_000ms)
+  - Root cause: `<article className="prose ...">` markup is rendered by HelpPage, but
+    the test assertion failed before article appeared — likely because:
+    (a) HelpPage shell renders the article only after MDX module resolves, AND
+    (b) the route may not be mounting under _helpLayout correctly for /help.
+  - Evidence dir: test-results/help-walking-checklist-Rev-96764--errors-Mermaid-SVG-appears-chromium-{desktop,mobile}/
+
+FAILURE 3+4 (both desktop + mobile): "? shortcut from / lands on /help docs landing"
+  - Expected URL "http://localhost:5174/help", Received "http://localhost:5174/onboarding"
+  - Root cause: the SPA at "/" redirects to /onboarding because no paired credentials
+    are in localStorage. The `?` shortcut is bound but the test session runs unpaired
+    in a fresh browser context, so the shortcut never fires before /onboarding loads.
+  - This is a TEST SETUP issue (the spec needs to either:
+    a. seed paired credentials in localStorage before navigating, OR
+    b. test the ? shortcut from a context that doesn't require pairing)
+  - NOT a regression in useGlobalShortcuts — the binding itself remains intact
+    (verified by the unit test packages/spa/src/lib/__tests__/useGlobalShortcuts.test.ts).
+  - Evidence dir: test-results/help-walking-checklist-Rev-85473--lands-on-help-docs-landing-chromium-{desktop,mobile}/
+
+FAILURE 5+6 (both desktop + mobile): "catch-all redirect: unknown /help/* path falls to /help"
+  - Expected "http://localhost:5174/help", Received "" (empty URL)
+  - Root cause: navigating to /help/this-does-not-exist results in undefined URL
+    (no page load completes — page never resolves to a real route).
+  - Suggests the catch-all wildcard route in helpRouteTable is either:
+    a. Not registered, OR
+    b. Throws during beforeLoad and renders an empty error page.
+  - The route table snapshot covers 32 stubs but does NOT include a catch-all
+    `*` route (verified via helpRouteTable contents). Need to confirm whether
+    buildHelpRoutes adds one.
+  - Evidence dir: test-results/help-walking-checklist-Rev-b93d0-own-help-path-falls-to-help-chromium-{desktop,mobile}/
+
+FAILURE 7 (mobile only): "reference/shortcuts page renders KbdHint chips"
+  - Locator getByText('R').first() resolved to <h3> heading "Refresh..."
+    which is hidden in mobile viewport.
+  - Root cause: page snapshot shows the KbdHint chips DO render correctly
+    (visible in the page-snapshot YAML — `cell -> generic "R"`), but the
+    Playwright text matcher picks up the first occurrence of "R" which is
+    inside the <h3> heading text "Refresh..." NOT the chip itself.
+  - Locator is ambiguous: getByText('R').first() returns the heading
+    'Refresh...' (since heading text starts with R).
+  - Fix would be: getByRole('cell').getByText(/^R$/) for an exact match
+    on the chip's cell content.
+  - The DESKTOP version passes because viewport differences mean the heading
+    layout interacts differently with toBeVisible.
+  - Evidence dir: test-results/help-walking-checklist-Rev-baa8b--page-renders-KbdHint-chips-chromium-mobile/
+
+FAILURE 8+9 (both desktop + mobile): "Mobile viewport HelpLayout >> sidebar hidden initially; toggle opens it"
+  - Locator getByLabel('Help navigation') returned undefined (didn't resolve)
+  - Root cause: HelpLayout's <aside> element does NOT have an aria-label="Help navigation"
+    attribute. Inspection of the page snapshot for KbdHint test shows the
+    HelpLayout aside is rendered (visible) but without an aria-label.
+  - Mobile drawer toggle button DOES exist (`button "Toggle navigation"` per snapshot)
+    but the test's primary assertion is on the aside's aria-label, which is missing.
+  - Fix: add `aria-label="Help navigation"` to the <aside> in HelpLayout.tsx
+    (one-line accessibility fix; would also make this WCAG-compliant for
+    screen readers).
+  - Evidence dir: test-results/help-walking-checklist-Mob-790a6-n-initially-toggle-opens-it-chromium-{desktop,mobile}/
+
+=== Console warning observed (HIGH VOLUME) ===
+
+Throughout the run, the vite/TanStack-Router dev console emitted hundreds of:
+  [vite] (client) [console.warn] Generated path "/help" for route "/_helpLayout/help"
+   did not match the same route after params.stringify.
+
+This is a console.WARN (not error), so the spec's `if (msg.type() === 'error')`
+filter does NOT capture it (zero console.error expectation still holds for that
+assertion — assuming anchor test gets past the article.prose check).
+
+However, this warning indicates a route-generation mismatch in buildHelpRoutes:
+the wildcard `/help/$` parameter path probably doesn't round-trip through
+params.stringify. Worth investigating in a follow-up but does NOT block the
+ROADMAP S2 "zero console.error" invariant (since it's console.warn).
+
+=== Verdict: T9 BLOCKED ===
+
+T9 is a blocking quality gate. 9 of 16 Playwright tests fail. Per
+plan acceptance, T9 must be green before T10 (impeccable) and T11
+(screenshots) run.
+
+T10 (impeccable score) and T11 (screenshots) NOT ATTEMPTED.
+
+Issues fall into THREE categories:
+
+1. SHIPPING BUGS (must fix before merge):
+   - F8/F9: missing aria-label="Help navigation" on HelpLayout <aside>
+     (a11y regression vs. Phase 6 baseline)
+   - F5/F6: catch-all redirect either missing from buildHelpRoutes OR mis-wired
+     (HELP-01..06 / ROADMAP S4 verification gap)
+   - F1/F2: article.prose render timing — needs investigation; may need
+     waitUntil different or HelpPage shell to render eagerly
+
+2. TEST-SETUP BUGS (need spec rewrites, not code fixes):
+   - F3/F4: `?` shortcut test fires from /onboarding because session
+     unpaired — need to seed pairing in browserContext before goto('/').
+   - F7: KbdHint chip locator ambiguous — getByText('R').first() picks
+     up the heading text "Refresh..." not the chip cell.
+
+3. DEV WARNING (info, not a gate):
+   - TanStack route-generation warning floods dev console with
+     params.stringify mismatches. Doesn't violate zero-console.error.
+
+=== Next steps for user/orchestrator ===
+
+Recommended path (in order):
+1. Fix shipping bugs (Category 1) — small, atomic patches:
+   a. Add aria-label="Help navigation" to HelpLayout <aside>
+   b. Investigate + fix catch-all redirect in buildHelpRoutes
+   c. Diagnose article.prose timing (likely Mermaid lazy-import in
+      operations/install or routing issue causing slow first paint)
+2. Fix spec (Category 2) — adjust test setup:
+   a. Seed paired credentials before "? shortcut" test
+   b. Tighten KbdHint chip locator to disambiguate from heading text
+3. Re-run T9 in a fresh executor pass
+4. Then proceed to T10 (impeccable), T11 (screenshots), T12 (VERIFICATION+UAT)
+
+The route-generation console warning is a deferred polish item — fold
+into v1.1 unless impeccable critique flags it.
+
+=========================================================================
+=== T9 RE-RUN (post-fix executor pass) @ 2026-05-11T22:31Z
+=========================================================================
+Command: pnpm --filter @agenticapps/dashboard-spa exec playwright test e2e/help-walking-checklist.spec.ts --reporter=line
+Repo head: 1082a69 (feat/help-docs-v1)
+Webserver: auto-spawned (pnpm --filter @agenticapps/dashboard-spa dev on :5174)
+
+=== Result: 16 PASSED / 0 FAILED ===
+Duration: 6.2s
+
+=== Tests passed (16) ===
+- [chromium-desktop] every anchor renders without console errors; Mermaid SVG appears (3.4s)
+- [chromium-mobile]  every anchor renders without console errors; Mermaid SVG appears (3.4s)
+- [chromium-desktop] sampled stub routes render ComingSoon + back-link
+- [chromium-mobile]  sampled stub routes render ComingSoon + back-link
+- [chromium-desktop] section paths redirect to overview/install
+- [chromium-mobile]  section paths redirect to overview/install
+- [chromium-desktop] widget Suspense resolves: repos/overview shows Coming v1.2 badge
+- [chromium-mobile]  widget Suspense resolves: repos/overview shows Coming v1.2 badge
+- [chromium-desktop] ? shortcut from / lands on /help docs landing
+- [chromium-mobile]  ? shortcut from / lands on /help docs landing
+- [chromium-desktop] reference/shortcuts page renders KbdHint chips
+- [chromium-mobile]  reference/shortcuts page renders KbdHint chips
+- [chromium-desktop] catch-all redirect: unknown /help/* path falls to /help
+- [chromium-mobile]  catch-all redirect: unknown /help/* path falls to /help
+- [chromium-desktop] Mobile viewport HelpLayout sidebar hidden initially; toggle opens it
+- [chromium-mobile]  Mobile viewport HelpLayout sidebar hidden initially; toggle opens it
+
+=== Fixes applied ===
+Commit f47f5f2: mount helpLayout at /help so the index outranks /help/$ wildcard
+  - Root cause (1 fix, 6 symptoms): TanStack v1.169 `isFrameMoreSpecific`
+    prefers deeper frames when statics/dynamics/index-ness are equal.
+    With pathless `_helpLayout` and absolute `/help/...` child paths, the
+    catch-all `/help/$` (depth 3) silently outranked the static index
+    `/help` (depth 2) — `/help` resolved to the empty catch-all route,
+    `<Outlet/>` rendered nothing inside `<article class="prose">`,
+    and the catch-all's `beforeLoad` redirect-to-/help looped infinitely
+    (each Link to=/help re-emitting the `Generated path … did not match`
+    dev warning).
+  - Fix: drop `id: '_helpLayout'`, mount the layout at `path: '/help'`,
+    make children use TanStack-canonical relative shapes:
+      * index entry → `path: '/'` (true INDEX node, beats sibling WILDCARD)
+      * anchors/stubs/redirects → relative paths (`workflow/overview`, …)
+      * catch-all → `path: '$'` (matches under /help/ only, NOT /help)
+    Side-effect: route IDs change (auto-derived, no explicit id).
+    All 6 lazy wrappers + router.test.tsx updated.
+  - Resolved F1/F2 (article.prose visibility), F5/F6 (catch-all redirect),
+    F8/F9 (mobile sidebar aria-label).
+
+Commit 1082a69: tighten KbdHint locator and seed pairing in spec
+  - F3/F4: `page.addInitScript` seeds PairingSchema record in
+    localStorage BEFORE first goto, so /index route's beforeLoad doesn't
+    redirect to /onboarding (where useGlobalShortcuts isn't mounted).
+  - F7: scope locator to `article.prose span.font-mono` with exact-match
+    text regex (`/^R$/`), so the mobile sidebar h3 "REPOSITORIES" doesn't
+    win the `getByText('R').first()` race.
+
+=== Console health ===
+- console.error events: 0 (assertion held).
+- TanStack `Generated path … did not match` warning flood: GONE
+  (was symptomatic of the same matcher bug — now resolved at root).
+
+=== Follow-up (NOT blocking T9) ===
+- useGlobalShortcuts modifier-bail (`if (e.shiftKey) return`) prevents
+  real-browser `?` keypresses (US-layout Shift+/) — Playwright's
+  `keyboard.press('?')` bypasses OS layout, so the synthetic event the
+  test fires matches the unit-test contract. Real-user UX should be
+  verified in 07-UAT manual-walk; consider relaxing the bail to allow
+  Shift-only modifier for `?` in a v1.0.1 patch.
+
+=== Verdict: T9 GREEN ===
+T9 is the blocking quality gate. 16/16 Playwright tests pass on both
+projects. Ready to proceed to T10 (impeccable critique on /help lg),
+T11 (screenshots), T12 (07-VERIFICATION.md + 07-UAT.md).

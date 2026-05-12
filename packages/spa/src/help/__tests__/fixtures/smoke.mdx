@@ -1,0 +1,16 @@
+---
+slug: /help/__smoke
+title: Smoke Test Page
+order: 0
+section: smoke
+---
+
+# Smoke Test
+
+This MDX file exists only to prove the Vite + MDX + Tailwind typography pipeline resolves end-to-end. It is imported from a vitest test and rendered into an `<article className="prose">` to verify that:
+
+1. `@mdx-js/rollup` compiles MDX → JSX successfully.
+2. `remark-mdx-frontmatter` exports `frontmatter` as a named const.
+3. `@tailwindcss/typography`'s `prose` class appears in the rendered DOM.
+
+If the test that imports this file fails, Wave 1 is blocked.

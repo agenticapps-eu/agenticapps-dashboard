@@ -11,8 +11,11 @@
  * Focus-guard (D-6-01): bails when an editable surface has focus, preventing
  * "r" in the search box from accidentally refreshing. (RESEARCH Pitfall 2).
  *
- * Modifier-bail: bails when metaKey/ctrlKey/altKey/shiftKey is held so that
- * Cmd-R (browser reload) and Cmd+K (palette) are never intercepted.
+ * Modifier-bail: bails when metaKey/ctrlKey/altKey is held so that Cmd-R
+ * (browser reload), Cmd+K (palette), Alt-combos are never intercepted.
+ * Shift is intentionally NOT in the bail — US-layout users need Shift+/
+ * to type `?`, and Shift+R producing `e.key === "R"` is handled by the
+ * R/r handler. Cmd-Shift-R browser hard-reload still bails on metaKey.
  */
 import { useEffect } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
@@ -46,7 +49,9 @@ export function useGlobalShortcuts(): void {
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
       // Modifier-bail: preserve Cmd-R browser reload, Cmd+K palette, etc.
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      // Shift is allowed through: US-layout users need Shift+/ to type `?`,
+      // and the R/r handler accepts both casings naturally.
+      if (e.metaKey || e.ctrlKey || e.altKey) return
       // Focus-guard: don't trigger when user is typing in an editable surface.
       if (isEditableSurface(document.activeElement)) return
 

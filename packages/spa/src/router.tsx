@@ -12,6 +12,8 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { AgentUrlSchema, TokenSchema } from '@agenticapps/dashboard-shared'
 
 import { AppShellV2 } from './components/AppShellV2.js'
+import { HelpLayout } from './help/components/HelpLayout.js'
+import { buildHelpRoutes } from './help/buildHelpRoutes.js'
 import { getPairing } from './lib/pairing.js'
 import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
 
@@ -83,15 +85,33 @@ const settingsRoute = createRoute({
   path: '/settings',
 }).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
 
-const helpRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/help',
-}).lazy(() => import('./routes/help.lazy.js').then((m) => m.Route))
-
 const projectsIdRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,
   path: '/projects/$projectId',
 }).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
+
+/**
+ * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
+ * AppShellV2 so the docs site owns its own chrome (sidebar + main).
+ *
+ * Originally registered as a pathless layout (id-only), but that forced every
+ * child to repeat the `/help` prefix in its `path` AND made the catch-all
+ * `path: '/help/$'` outrank the static `path: '/help'` index entry in
+ * TanStack's depth-based tie-breaker — the wildcard `$` lives one segment
+ * deeper than the index, and `isFrameMoreSpecific` prefers deeper frames when
+ * statics/dynamics/index-ness are otherwise equal, so `/help` resolved to the
+ * empty catch-all route and rendered an empty `<Outlet/>`. Rule 1 fix:
+ * mount the layout AT `/help` so children can use the canonical TanStack
+ * shape (`path: '/'` for the index, relative paths for anchors/stubs,
+ * `path: '$'` for the catch-all). The URL surface is unchanged.
+ *
+ * Children are generated from helpRouteTable via buildHelpRoutes (Plan 07-05).
+ */
+const helpLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/help',
+  component: HelpLayout,
+})
 
 // /onboarding and /pair stay at rootRoute (no shell — D-5.1-03)
 const onboardingRoute = createRoute({
@@ -110,9 +130,10 @@ const routeTree = rootRoute.addChildren([
   appShellLayoutRoute.addChildren([
     indexRoute,
     settingsRoute,
-    helpRoute,
     projectsIdRoute,
   ] as AnyRoute[]),
+  // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
+  helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),
   onboardingRoute,
   pairRoute,
 ] as AnyRoute[])

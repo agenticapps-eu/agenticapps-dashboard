@@ -1,0 +1,146 @@
+---
+slug: /help/workflow/overview
+title: Workflow Overview
+order: 0
+section: workflow
+---
+
+# Workflow Overview
+
+*Spec-first development with explicit gates between idea and shipped code.*
+
+The AgenticApps workflow is built on a simple premise: when an AI agent does most of the implementation work, the discipline that used to live in a senior developer's head needs to live somewhere explicit, where the agent can see it and where you can audit whether it was followed. That "somewhere" is a sequence of gates between the idea and the merged PR.
+
+## Why this matters
+
+A traditional software process can survive a casual approach to discipline because experienced humans absorb the rules and apply them tacitly. They know when to push back on a sloppy spec, when to demand a test, when to insist on an architecture decision record (ADR). When the implementer is an AI agent, that tacit knowledge isn't there — and the agent will happily produce 800 lines of plausible-looking code that no one would have approved if they'd seen the design first.
+
+The fix is to make the discipline *executable*: turn each piece of senior-developer judgment into a gate that fires automatically at the right moment in the work, and refuses to advance until the gate's contract is satisfied. The agent then can't paper over a missing test, a missing design discussion, or a missing security review — the gate refuses to let the work proceed.
+
+## How it works
+
+The workflow has three layers, each contributed by a different open-source project:
+
+<MermaidBlock code={`flowchart TB
+    subgraph L1["Discipline layer — Superpowers"]
+        S1[Brainstorming]
+        S2[Test-driven development]
+        S3[Verification before completion]
+        S4[Requesting code review]
+    end
+
+    subgraph L2["Planning layer — GSD"]
+        P1[Phases]
+        P2[Plans within phases]
+        P3[Atomic tasks within plans]
+    end
+
+    subgraph L3["Capability layer — gstack"]
+        G1["/review — code review"]
+        G2["/cso — security review"]
+        G3["/qa — UI quality assurance"]
+        G4["/design-shotgun — variant generation"]
+    end
+
+    subgraph L4["Quality layer — Impeccable"]
+        I1["/critique — design quality scoring"]
+        I2["/audit — finishing-time visual audit"]
+    end
+
+    L1 --> L2
+    L2 --> L3
+    L2 --> L4
+
+    classDef l1 fill:#fef3c7,stroke:#f59e0b
+    classDef l2 fill:#e0e7ff,stroke:#6366f1
+    classDef l3 fill:#dcfce7,stroke:#22c55e
+    classDef l4 fill:#fce7f3,stroke:#ec4899
+    class S1,S2,S3,S4 l1
+    class P1,P2,P3 l2
+    class G1,G2,G3,G4 l3
+    class I1,I2 l4`} />
+
+**Superpowers** is the *discipline*. It enforces commitment rituals, brainstorming before planning, test-driven development before implementation, evidence before declaring "done," and independent code review before merging. Each is invoked as a skill that the agent must run at the appropriate phase boundary.
+
+**GSD ("Get Shit Done")** is the *planning structure*. Work is broken into **phases** (large blocks of related work, typically a feature or migration), each containing **plans** (focused execution units), each containing **atomic tasks** (single edits, single test runs, single decisions). The phase tracks the work; the plans track the steps; the tasks track the actual diffs.
+
+**gstack** is the *capability*. It provides slash commands like `/review` (code review), `/cso` (security review by an independent reviewer agent), `/qa` (UI testing), and `/design-shotgun` (generate three or four design variants for visual surfaces). Each command runs an agent with a specific persona and produces a markdown artifact that becomes part of the phase's record.
+
+**Impeccable** is the *quality bar*. `impeccable:critique` scores design variants against ~24 known AI-slop anti-patterns; sub-bar variants are eliminated before you pick. `impeccable:audit` runs a finishing-time visual audit against the deployed frontend before branch close — red findings block the merge.
+
+The four layers compose: GSD says *what* you're doing; Superpowers says *how disciplined the process must be*; gstack provides the *tools*; Impeccable provides the *quality gate*.
+
+## The commitment ritual
+
+Every non-trivial task starts with a literal block of text the agent must emit before doing any other work:
+
+```markdown
+## Workflow commitment
+
+I am using the agentic-apps-workflow skill for this task.
+Task scope: {brief description}
+Task size: {tiny | small | medium | large}
+
+Skills I will invoke, in order:
+1. {skill-name} — {why}
+2. {skill-name} — {why}
+
+Post-phase gates (if applicable): {review | cso | qa}
+Verification evidence I will produce: {list}
+```
+
+This is borrowed from Robert Cialdini's *Influence* — the commitment principle. By explicitly listing what skills it will invoke and what evidence it will produce, the agent commits to following them through. Without the ritual, agents drift toward the path of least resistance, skipping skills with rationalizations like "this case is different" or "we don't really need TDD here."
+
+## The gate sequence
+
+A typical phase moves through these gates:
+
+| Gate | When | What it checks |
+|---|---|---|
+| **Brainstorm** | Before planning | Have we considered alternatives? UI surfaces require `/design-shotgun` + `impeccable:critique`. |
+| **Plan review** | Before execution | Does the plan match the spec? Are tasks atomic? |
+| **TDD** | During execution | For tasks marked `tdd="true"`, the test must be RED before any implementation. |
+| **UI preview** | During execution | Frontend changes require a screenshot taken via `/browse` before commit. |
+| **Verification** | Before marking complete | Each `must_have` from the phase's spec needs on-disk evidence (test output, grep result, screenshot, curl response). |
+| **Spec review** | After execution | `gstack /review` checks the diff for structural issues. |
+| **Code review** | After spec review | `superpowers:requesting-code-review` runs an independent reviewer agent. Two-stage: spec compliance first, then code quality. |
+| **Security** | If touching auth/data | `gstack /cso` for the diff; `database-sentinel:audit` if Supabase/Postgres/MongoDB. |
+| **QA** | If a dev server is reachable | `gstack /qa` runs UI checks. |
+| **Branch close** | Before merge | `superpowers:finishing-a-development-branch` composes the PR description with skills invoked, gates passed, evidence links. |
+
+Not every gate fires for every phase — they're conditional on the kind of work. A pure-backend bug fix might skip UI preview and `/qa`; a Figma-driven feature might skip `/cso`. The conditional logic lives in the workflow scaffolder's CLAUDE.md (or AGENTS.md for pi/codex hosts).
+
+## Try it
+
+To see what this looks like in practice, install the workflow on a fresh project:
+
+```bash
+# In an existing repo, or git init a fresh one:
+claude /setup-agenticapps-workflow
+```
+
+The skill writes a `CLAUDE.md` (or `AGENTS.md` for non-Claude hosts), seeds `.planning/` with the GSD scaffolding, and links the gates. Then start a phase:
+
+```bash
+claude /gsd-execute-phase 01-feature-name
+```
+
+The agent will emit the commitment ritual, then run the appropriate skills in order. You watch.
+
+## Common questions
+
+**Why three layers instead of one tool?** Each layer is independently maintained and independently valuable. Superpowers comes from [obra/superpowers](https://github.com/obra/superpowers); GSD from [rogs.me](https://rogs.me/posts/get-shit-done-claude-code/); gstack from [agenticapps-eu/gstack](https://github.com/agenticapps-eu/gstack). Bundling them into one monolithic tool would couple their release cycles. The composition is opinionated, but each piece can evolve on its own.
+
+**Is the discipline overhead worth it for small projects?** For pure throwaway scripts, no — `superpowers:flashbang` and similar exist for those. For anything that ships, even a small side project, the discipline pays off the first time you have to debug a broken production migration or a security regression. The gates take seconds; the regressions they prevent take days.
+
+**Can I disable a gate I disagree with?** Yes — `.planning/config.json` has feature flags for every gate. Don't disable lightly; the [Rationalization Table](/help/workflow/rationalization-table) lists common excuses for skipping gates and what's actually wrong with each.
+
+**What if the agent ignores the workflow?** It happens. The [13 Red Flags](/help/workflow/red-flags) document lists the exact warning signs (e.g. "the test passes on first run with no RED phase observed") that mean the agent has rationalized its way around discipline. When you spot one, you stop, delete the work, and restart from the gate that was skipped. Painful but cheaper than letting bad work compound.
+
+## See also
+
+- [Commitment ritual](/help/workflow/commitment-ritual) — the canonical block, verbatim
+- [Gates](/help/workflow/gates) — every gate, what triggers it, what evidence it requires
+- [Two-stage review](/help/workflow/two-stage-review) — why Stage 1 (spec) precedes Stage 2 (code)
+- [ADRs](/help/workflow/adrs) — when to write a decision record
+- [Installation](/help/operations/install) — set this up on a fresh machine

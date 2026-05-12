@@ -23,6 +23,7 @@ import { describe, it, expect } from 'vitest'
 // (cwd = repo root).
 const STYLES_DIR = dirname(fileURLToPath(import.meta.url))
 const COMPONENTS_DIR = resolve(STYLES_DIR, '..', 'components')
+const HELP_DIR = resolve(STYLES_DIR, '..', 'help')
 const TOKENS_FILE = resolve(STYLES_DIR, 'tokens.css')
 
 function walk(dir: string): string[] {
@@ -44,8 +45,18 @@ function walk(dir: string): string[] {
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/
 
-describe('AC-05 — tokens.css is the single source of truth for color hex values', () => {
-  const componentFiles = walk(COMPONENTS_DIR)
+describe('AC-05 + HELP — tokens.css is the single source of truth for color hex values (scans src/components/** + src/help/**)', () => {
+  // Walk both src/components and src/help so Phase 7+ files are protected by
+  // the same invariant as Phase 5.1's design system layer (RESEARCH P2).
+  const componentFiles = (() => {
+    const files = walk(COMPONENTS_DIR)
+    try {
+      return [...files, ...walk(HELP_DIR)]
+    } catch {
+      // src/help may not exist yet during Plan 07-01 Wave 0; fall through.
+      return files
+    }
+  })()
 
   it('no production component file contains a hex literal (every color must come via tokens)', () => {
     const offenders: { file: string; match: string }[] = []
