@@ -30,5 +30,5 @@ Reference for every keyboard shortcut wired into the dashboard. The `?` shortcut
 ## When shortcuts don't fire
 
 - **You're inside an input field.** Shortcut hook skips when the focused element is `<input>`, `<textarea>`, `<select>`, or contenteditable — typing "r" in the search box doesn't refresh.
-- **A modifier is held.** Cmd-R / Ctrl-R always reloads the browser; the shortcut hook bails on `metaKey`/`ctrlKey`/`altKey`/`shiftKey`.
+- **A modifier other than Shift is held.** Cmd-R / Ctrl-R always reloads the browser; the shortcut hook bails on `metaKey`/`ctrlKey`/`altKey`. Shift passes through so US-layout users can type `?` via Shift+/.
 - **You're on `/help/*` itself.** The docs site has its own chrome (separate layout); the global shortcut hook is mounted on the dashboard chrome only. Inside `/help/*`, no global shortcuts fire — use the in-page links instead. (v1.1 may add `?` to scroll-to-top within `/help/*`.)

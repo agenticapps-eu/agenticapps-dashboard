@@ -35,8 +35,8 @@ describe('ComingSoon', () => {
     ['workflow', 'Gates', '/help/workflow/overview'],
     ['repos', 'core repo', '/help/repos/overview'],
     ['observability', 'Scan', '/help/observability/overview'],
-    ['operations', 'Update', '/help/operations/install'], // SPECIAL CASE
-    ['reference', 'Glossary', '/help/reference/overview'],
+    ['operations', 'Update', '/help/operations/install'], // SPECIAL: no /overview, falls back to /install
+    ['reference', 'Glossary', '/help/reference/shortcuts'], // SPECIAL: no /overview, falls back to /shortcuts (only ready anchor)
   ])('section=%j title=%j back-links to %j', (section, title, expectedBackTo) => {
     render(<ComingSoon section={section} title={title} />)
     expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()

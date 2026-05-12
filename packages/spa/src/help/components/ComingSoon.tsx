@@ -6,10 +6,10 @@
  *
  * Back-link target:
  *   - 'operations' has no /overview in v1.0 — falls back to /install.
+ *   - 'reference' has no /overview either — falls back to /shortcuts (the
+ *     only ready anchor under reference; was redirecting to landing via
+ *     catch-all before the v1.0.0 review fix).
  *   - All other sections back-link to /help/<section>/overview.
- *   - 'reference' has no /overview yet either, so /help/reference/overview
- *     itself renders ComingSoon — the page won't crash, it just renders
- *     this fallback again.
  */
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Construction } from 'lucide-react'
@@ -20,9 +20,13 @@ export interface ComingSoonProps {
 }
 
 export function ComingSoon({ title, section }: ComingSoonProps): React.JSX.Element {
-  // Operations has no /overview — fall back to /install. All other sections use /overview.
+  // Per-section fallback: operations → /install, reference → /shortcuts, else → /overview.
   const fallbackPath =
-    section === 'operations' ? '/help/operations/install' : `/help/${section}/overview`
+    section === 'operations'
+      ? '/help/operations/install'
+      : section === 'reference'
+        ? '/help/reference/shortcuts'
+        : `/help/${section}/overview`
 
   return (
     <div className="my-12">
