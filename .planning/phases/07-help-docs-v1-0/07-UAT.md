@@ -1,8 +1,10 @@
 ---
 phase: 07
 slug: help-docs-v1-0
-status: drafted
+status: passed
 authored: 2026-05-11
+signed-off: 2026-05-12
+signed-off-by: Donald
 ---
 
 # Phase 7: /help docs v1.0 — Manual UAT
@@ -33,14 +35,12 @@ The four manual-only behaviors per Plan 07-05's validation map:
 
 **Result (filled in during walkthrough):**
 
-- [ ] Sidebar composition + token usage matches design intent.
-- [ ] Main article prose readable (dark slate body + headings on warm paper after the 0ce906a fix).
-- [ ] Active link uses purple accent on the current path.
-- [ ] Mermaid diagrams render as crisp SVG (no raw fenced-code text leaks).
+- [x] Sidebar composition + token usage matches design intent.
+- [x] Main article prose readable (dark slate body + headings on warm paper after the 0ce906a fix).
+- [x] Active link uses purple accent on the current path.
+- [x] Mermaid diagrams render as crisp SVG (no raw fenced-code text leaks).
 
-Notes:
-
-- Any visual delta? Log as info-level findings in `07-05-SUMMARY.md` once authored.
+Verified by Donald 2026-05-12 during preview walkthrough at 1440×900. All 6 routes visited. No visual deltas.
 
 ## 2. Mermaid diagram readability at lg + mobile breakpoints
 
@@ -54,13 +54,13 @@ Notes:
 
 **Result:**
 
-- [ ] Landing Mermaid (linear flow `Idea → Brainstorm → Plan → Execute → Verify → Review → Ship`) — readable lg + mobile.
-- [ ] workflow/overview Mermaid — readable lg + mobile.
-- [ ] repos/overview Mermaid — readable lg + mobile.
-- [ ] observability/overview Mermaid 1 — readable lg + mobile.
-- [ ] observability/overview Mermaid 2 — readable lg + mobile.
+- [x] Landing Mermaid (linear flow `Idea → Brainstorm → Plan → Execute → Verify → Review → Ship`) — readable lg + mobile.
+- [x] workflow/overview Mermaid — readable lg + mobile.
+- [x] repos/overview Mermaid — readable lg + mobile.
+- [x] observability/overview Mermaid 1 — readable lg + mobile.
+- [x] observability/overview Mermaid 2 — readable lg + mobile.
 
-Any overflow? Log as info-level finding.
+Verified by Donald 2026-05-12 at 1440×900 + 375×800. 5/5 diagrams fit container; labels legible at mobile.
 
 ## 3. `?` keyboard shortcut keypress check (post-merge, real session)
 
@@ -76,8 +76,10 @@ Any overflow? Log as info-level finding.
 
 **Result:**
 
-- [ ] `?` from `/` navigates to `/help` (real keyboard).
-- [ ] Landing renders, not redirected to /onboarding.
+- [x] `?` from `/` navigates to `/help` (real keyboard).
+- [x] Landing renders, not redirected to /onboarding.
+
+Verified by Donald 2026-05-12 in real browser. Real-keyboard Shift+/ produces `?` and the global shortcut handler now fires (was previously blocked by the `shiftKey` modifier-bail).
 
 ## 4. Dark-mode prose verification (deferred to v1.1)
 
@@ -108,6 +110,6 @@ Per CLAUDE.md mandate + the migration spec's §"Verification before merge":
 
 ## Sign-off
 
-- [ ] **User sign-off** (Donald) — visual + UX + shortcut behavior approved.
+- [x] **User sign-off** (Donald, 2026-05-12) — visual + UX + shortcut behavior approved.
 - [ ] **Two-stage review** (post-merge) — both stages pass.
 - [ ] **Documented issues** — any items flagged above as "log as info-level finding" are captured in `07-05-SUMMARY.md`.
