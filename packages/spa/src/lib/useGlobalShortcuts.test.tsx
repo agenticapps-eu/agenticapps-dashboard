@@ -158,6 +158,17 @@ describe('useGlobalShortcuts', () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/help' })
   })
 
+  it('GS8b: fire "?" with shiftKey=true (real US-layout keypress); navigate({ to: "/help" })', () => {
+    // On US keyboards, typing "?" requires Shift+/ — the browser computes
+    // event.key === "?" AND event.shiftKey === true. Playwright synthetic
+    // page.keyboard.press("?") bypasses this; real browsers do not. The
+    // modifier-bail must allow shiftKey through for `?` to ever fire.
+    mockPathname = '/'
+    renderHarness()
+    fireKey('?', { shiftKey: true })
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/help' })
+  })
+
   it('GS9: fire "r" on "/projects/xyz"; invalidates per-project query keys', () => {
     mockPathname = '/projects/xyz'
     renderHarness()
