@@ -29,6 +29,17 @@ const PairSearchSchema = z.object({
 })
 
 /**
+ * CoverageSearchSchema validates the optional /coverage?status=&q= search params.
+ * COV-06: URL round-trip — filter + search state reflected in the URL so that
+ * refreshing / sharing the page preserves the view. Malformed values render
+ * pairErrorComponent (Phase 7 Pitfall 8 defense — prevents blank-page failure mode).
+ */
+const CoverageSearchSchema = z.object({
+  status: z.string().optional(), // comma-joined statuses e.g. "missing,stale"
+  q: z.string().optional(), // free-text repo search
+})
+
+/**
  * Exported so a unit test can verify it never re-throws on a non-VALIDATE_SEARCH
  * error (WR-02). Pitfall 8: validateSearch errors arrive here with
  * `error.routerCode === 'VALIDATE_SEARCH'` and render <MalformedPairUrl/>;
@@ -91,6 +102,20 @@ const projectsIdRoute = createRoute({
 }).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
 
 /**
+ * coverageRoute — /coverage page under the _appshell layout.
+ * Phase 10 D-10-08: Observability sidebar section links here.
+ * validateSearch: COV-06 URL round-trip for filter (status) + search (q) params.
+ * errorComponent: Phase 7 Pitfall 8 defense — malformed search params render
+ * pairErrorComponent instead of blanking the screen (Assumption A7).
+ */
+const coverageRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/coverage',
+  validateSearch: zodValidator(CoverageSearchSchema),
+  errorComponent: pairErrorComponent,
+}).lazy(() => import('./routes/coverage.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -131,6 +156,7 @@ const routeTree = rootRoute.addChildren([
     indexRoute,
     settingsRoute,
     projectsIdRoute,
+    coverageRoute, // Phase 10 D-10-08 — /coverage under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),
