@@ -82,8 +82,10 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
 
   return (
     <tr className="group hover:bg-card-bg-hover">
-      {/* Repo identity — NEVER renders absPath (CODEX HIGH-1) */}
-      <td className="py-2 pr-3 text-sm font-medium text-text-primary whitespace-nowrap">
+      {/* Repo identity — NEVER renders absPath (CODEX HIGH-1).
+          pl-4 matches the column header's px-4 left padding so body rows align
+          with the "Repo" column label above. */}
+      <td className="py-2 pl-4 pr-3 text-sm font-medium text-text-primary whitespace-nowrap">
         <div className="flex items-center gap-2">
           <span>{row.repo}</span>
           <OverrideChip
