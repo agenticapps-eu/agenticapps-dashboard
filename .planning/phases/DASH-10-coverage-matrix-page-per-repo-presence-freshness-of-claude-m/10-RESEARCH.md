@@ -808,9 +808,11 @@ export function scanClaudeMd(repoAbsPath: string): { state: ClaudeMdState; via: 
 
 **If user confirms A1-A2 before planning, the planner can lock the gitnexus path-match logic + wiki-spawn strategy with full confidence.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Q-1: Does gitnexus's `registry.json` `path` field store the realpath form, the user-supplied form, or both?**
+All 5 questions accepted with the inline recommendations during the post-research user gate on 2026-05-13. Resolutions locked in `10-CONTEXT.md` § "Post-research amendments" (D-10-09 = Q-3) and "Post-research findings to lock" (Q-1, Q-2, Q-4 and the practical effects of Q-5 on the column).
+
+1. **Q-1 (RESOLVED — accept recommendation): Does gitnexus's `registry.json` `path` field store the realpath form, the user-supplied form, or both?**
    - What we know: gitnexus@1.6.4 since PR #664 (review by @evander-wang) canonicalises paths at write time via `canonicalizePath` (= `realpathSync.native` with fallback). Older entries may use raw `path.resolve()`.
    - What's unclear: whether the daemon-side scanner needs to canonicalise repoAbsPath before comparison.
    - Recommendation: Match by trying BOTH `repoAbsPath` AND `realpathSync(repoAbsPath)`. Cost is one extra stat per uncached repo.
