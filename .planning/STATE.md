@@ -1,20 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Cross-family observability (Coverage Matrix)
+milestone_name: Cross-family observability
 status: discussing
-stopped_at: Phase 10 added to roadmap 2026-05-13. About to run /gsd-discuss-phase 10.
-last_updated: "2026-05-13T09:15:00.000Z"
+stopped_at: "Phase 10 context gathered (8 decisions: 4 user-named constraints + 4 follow-ups)"
+last_updated: "2026-05-13T07:36:54.912Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 13
-  completed_phases: 10
-  total_plans: 64
-  completed_plans: 64
-  percent: 77
-next_milestone: v1.0.1 follow-ups still pending; Phase 8 still held
-current_phase: 10
-current_phase_name: Coverage Matrix Page
+  completed_phases: 8
+  total_plans: 51
+  completed_plans: 51
+  percent: 100
 ---
 
 # Project State
@@ -123,7 +120,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-12T14:55:00.000Z
-Stopped at: Phase 7 shipped via PR #21 + #22 (squash-merged to main 2026-05-12). STATE + ROADMAP reconciled to reflect v1.0 closure.
-Resume file: None
+Last session: 2026-05-13T07:36:54.908Z
+Stopped at: Phase 10 context gathered (8 decisions: 4 user-named constraints + 4 follow-ups)
+Resume file: .planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-CONTEXT.md
 Next action: address v1.0.1 follow-ups (impeccable + contrast) or pick a non-Phase-8 task (worktree cleanup, branch pruning).
