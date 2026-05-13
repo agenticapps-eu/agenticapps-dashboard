@@ -112,11 +112,7 @@ export function CoverageFamilySection({
             aria-expanded={!collapsed}
             aria-controls={bodyId}
             onClick={() => setCollapsed((c) => !c)}
-            // -ml-[22px] hangs the chevron in the header's px-4 padding zone so the
-            // family-name text aligns with the column header's "Repo" label at the
-            // same x as the body rows (which got pl-4 in CoverageRow). Result: chevron
-            // + title + column header + row text all read on a single vertical line.
-            className="flex items-center gap-2 -ml-[22px] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md"
+            className="flex items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md"
           >
             {collapsed ? (
               <ChevronRight size={14} aria-hidden="true" className="text-text-secondary" />
