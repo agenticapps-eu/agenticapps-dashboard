@@ -307,6 +307,42 @@ describe('CoveragePage', () => {
     expect(clipboardArg).not.toMatch(/agenticapps/)
   })
 
+  // P0 fix from 10-IMPECCABLE.md: when GitNexus isn't installed the primary action
+  // must be "Install GitNexus", not a disabled "Refresh 0 stale" that confuses
+  // first-timers staring at 42 red cells.
+  it('primary action is "Install GitNexus" when gitNexusInstalled === false', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstalled: false }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    // Install CTA is present in the page header (distinct from the per-family hint
+    // buttons which use the longer "Copy npm install -g gitnexus" aria-label)
+    expect(screen.getByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeTruthy()
+    // The confusing "Refresh N stale" button is NOT rendered
+    expect(screen.queryByRole('button', { name: /refresh.*stale/i })).toBeNull()
+  })
+
+  it('primary action is RefreshAllStaleButton when gitNexusInstalled === true', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstalled: true }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    // Refresh button is present
+    expect(screen.getByRole('button', { name: /refresh.*stale/i })).toBeTruthy()
+    // Install CTA is NOT in the header actions slot (it MAY still appear in
+    // family-section hints — those render independently and aren't this test's concern)
+  })
+
   it('per-row wiki-compile clipboard for a neuroflash row uses neuroflash', async () => {
     vi.mocked(writeToClipboard).mockClear()
 

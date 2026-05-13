@@ -33,6 +33,7 @@ import type { CoverageStatusFilter } from './CoverageToolbar.js'
 import { CoverageFamilySection } from './CoverageFamilySection.js'
 import { CoverageEmptyState } from './CoverageEmptyState.js'
 import { RefreshAllStaleButton } from './RefreshAllStaleButton.js'
+import { InstallGitNexusButton } from './InstallGitNexusButton.js'
 
 const FAMILIES: CoverageFamily[] = ['agenticapps', 'factiv', 'neuroflash']
 
@@ -249,10 +250,18 @@ export function CoveragePage(): React.JSX.Element {
         title="Coverage"
         helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
         actions={
-          <RefreshAllStaleButton
-            rows={filtered}
-            onRefresh={(req) => refresh.mutateAsync(req)}
-          />
+          // Primary action depends on whether GitNexus can actually be invoked.
+          // P0 fix from 10-IMPECCABLE.md: "Refresh 0 stale" was a confidence-killer
+          // when GitNexus wasn't installed — the button labelled itself "0" while
+          // 42 cells were red. Now swap to the actionable CTA in that state.
+          data.gitNexusInstalled ? (
+            <RefreshAllStaleButton
+              rows={filtered}
+              onRefresh={(req) => refresh.mutateAsync(req)}
+            />
+          ) : (
+            <InstallGitNexusButton />
+          )
         }
       />
 
