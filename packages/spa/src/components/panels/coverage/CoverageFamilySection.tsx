@@ -122,10 +122,12 @@ export function CoverageFamilySection({
             <span className="text-sm text-status-success">✓ {fresh}</span>
           </button>
 
-          {/* CODEX HIGH-6 Option A: per-family GitNexus install hint (not page-level banner) */}
+          {/* CODEX HIGH-6 Option A: per-family GitNexus install hint (not page-level banner).
+              Copy intentionally omits "for this family" — install is global, the hint just
+              repeats inside each section so users notice it from wherever they're looking. */}
           {!gitNexusInstalled && (
             <span className="flex items-center gap-2 text-xs text-status-warning">
-              GitNexus is not installed for this family —{' '}
+              GitNexus is not installed —{' '}
               <button
                 type="button"
                 onClick={() => void writeToClipboard(buildGitnexusInstallClipboardString())}
