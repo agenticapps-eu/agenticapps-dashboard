@@ -149,3 +149,32 @@ export type {
   GlobalSkillsResponse,
   LocalSkillsResponse,
 } from './schemas/skills.js'
+export {
+  CoverageStateSchema,
+  CoverageFamilySchema,
+  CoverageBasicColumnSchema,
+  CoverageWorkflowColumnSchema,
+  CoverageColumnStateSchema,
+  OverrideEntrySchema,
+  CoverageRowSchema,
+  CoverageResponseSchema,
+  CoverageRefreshActionSchema,
+  CoverageRefreshRequestSchema,
+  CoverageRefreshResponseSchema,
+} from './schemas/coverage.js'
+export type {
+  CoverageState,
+  CoverageFamily,
+  CoverageColumnState,
+  CoverageRow,
+  CoverageResponse,
+  CoverageRefreshAction,
+  CoverageRefreshRequest,
+  CoverageRefreshResponse,
+} from './schemas/coverage.js'
+export {
+  buildWikiCompileClipboardString,
+  buildWorkflowUpdateClipboardString,
+  buildClaudeMdHelpUrl,
+  buildGitnexusInstallClipboardString,
+} from './clipboard.js'
