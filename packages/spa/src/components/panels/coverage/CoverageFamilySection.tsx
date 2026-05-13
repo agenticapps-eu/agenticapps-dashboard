@@ -98,9 +98,14 @@ export function CoverageFamilySection({
   const bodyId = `family-${family}-body`
 
   return (
-    <section className="rounded-card bg-card-bg shadow-card overflow-hidden">
+    // P0 fix from 10-IMPECCABLE.md: `overflow-hidden` was neutering the sticky
+    // family header — sticky positioning needs a scrolling ancestor that doesn't
+    // clip the sticky element. With overflow-hidden, the section becomes its own
+    // (non-scrolling) clipping context and sticky has nowhere to stick.
+    // Rounded corners still render because the inner content shares bg-card-bg.
+    <section className="rounded-card bg-card-bg shadow-card">
       {/* Sticky family header (UI-SPEC §3) */}
-      <header className="sticky top-0 z-10 bg-card-bg border-b border-border-subtle px-4 py-3">
+      <header className="sticky top-0 z-20 bg-card-bg border-b border-border-subtle px-4 py-3 rounded-t-card">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -144,14 +149,18 @@ export function CoverageFamilySection({
       {!collapsed && (
         <div id={bodyId} role="region" aria-label={`${family} repos`}>
           <table className="w-full text-left">
+            {/* Column headers stick below the family header (~48px tall: py-3 + ~24px line).
+                Applied per-<th> rather than on <tr> because tr-level sticky is unreliable
+                across browsers. z-10 keeps them above scrolling rows but below the family
+                header (z-20). */}
             <thead>
               <tr className="text-xs text-text-tertiary border-b border-border-subtle">
-                <th scope="col" className="py-2 pr-3 px-4 font-medium">Repo</th>
-                <th scope="col" className="px-2 py-2 font-medium">CLAUDE.md</th>
-                <th scope="col" className="px-2 py-2 font-medium">GitNexus</th>
-                <th scope="col" className="px-2 py-2 font-medium">Wiki</th>
-                <th scope="col" className="px-2 py-2 font-medium">Workflow</th>
-                <th scope="col" className="pl-2 py-2 w-8">
+                <th scope="col" className="sticky top-12 z-10 bg-card-bg py-2 pr-3 px-4 font-medium">Repo</th>
+                <th scope="col" className="sticky top-12 z-10 bg-card-bg px-2 py-2 font-medium">CLAUDE.md</th>
+                <th scope="col" className="sticky top-12 z-10 bg-card-bg px-2 py-2 font-medium">GitNexus</th>
+                <th scope="col" className="sticky top-12 z-10 bg-card-bg px-2 py-2 font-medium">Wiki</th>
+                <th scope="col" className="sticky top-12 z-10 bg-card-bg px-2 py-2 font-medium">Workflow</th>
+                <th scope="col" className="sticky top-12 z-10 bg-card-bg pl-2 py-2 w-8">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
