@@ -62,7 +62,8 @@ vi.mock('../lib/coverageScan.js', () => ({
       {
         family: 'agenticapps',
         repo: 'dashboard',
-        absPath: '/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard',
+        // Module-level default — beforeEach overrides this with a real tmpdir path
+        absPath: '<placeholder — overridden in beforeEach>',
         claudeMd: { kind: 'basic', state: 'fresh' },
         gitNexus: { kind: 'basic', state: 'fresh' },
         wiki: { kind: 'basic', state: 'fresh' },
@@ -79,17 +80,11 @@ vi.mock('../lib/coverageScan.js', () => ({
   }),
 }))
 
-// Mock repoDiscovery BEFORE importing app — returns the real agenticapps-dashboard path
-// so realpathSync + family-root checks pass without touching actual filesystem in test
+// Mock repoDiscovery BEFORE importing app — initial value is overwritten in each
+// beforeEach with a tmpdir-resident repo so realpathSync + family-root checks pass
+// without touching the developer's actual ~/Sourcecode tree.
 vi.mock('../lib/repoDiscovery.js', () => ({
-  discoverRepos: vi.fn().mockReturnValue([
-    {
-      family: 'agenticapps',
-      name: 'dashboard',
-      // Use the actual repo path so realpathSync succeeds and family-root check passes
-      absPath: '/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard',
-    },
-  ]),
+  discoverRepos: vi.fn().mockReturnValue([]),
   FAMILIES: ['agenticapps', 'factiv', 'neuroflash'],
 }))
 
@@ -116,6 +111,8 @@ function makeTestSetup() {
   let cleanupHome: () => void
   let token: string
   let authFile: string
+  let originalHome: string | undefined
+  let tmpRepoPath: string
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -129,6 +126,14 @@ function makeTestSetup() {
     setActiveToken(fresh.token)
     token = fresh.token
 
+    // Override $HOME so os.homedir() in the route resolves the family root under
+    // our tmpdir, not the developer's actual ~/Sourcecode tree. Build a real repo
+    // path inside it so realpathSync() succeeds.
+    originalHome = process.env.HOME
+    process.env.HOME = tmp.homeDir
+    tmpRepoPath = join(tmp.homeDir, 'Sourcecode', 'agenticapps', 'dashboard')
+    mkdirSync(tmpRepoPath, { recursive: true })
+
     // Reset mocks to defaults for each test
     vi.mocked(coverageSpawnMod.spawnGitNexusAnalyze).mockResolvedValue({
       kind: 'ok',
@@ -138,7 +143,7 @@ function makeTestSetup() {
       {
         family: 'agenticapps',
         name: 'dashboard',
-        absPath: '/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard',
+        absPath: tmpRepoPath,
       },
     ])
     vi.mocked(coverageScanMod.scanCoverage).mockResolvedValue({
@@ -176,7 +181,7 @@ function makeTestSetup() {
         {
           family: 'agenticapps',
           repo: 'dashboard',
-          absPath: '/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard',
+          absPath: tmpRepoPath,
           claudeMd: { kind: 'basic', state: 'fresh' },
           gitNexus: { kind: 'basic', state: 'fresh' },
           wiki: { kind: 'basic', state: 'fresh' },
@@ -197,12 +202,15 @@ function makeTestSetup() {
     vi.clearAllMocks()
     _resetCoverageCacheForTests()
     _resetRefreshLocksForTests()
+    if (originalHome === undefined) delete process.env.HOME
+    else process.env.HOME = originalHome
     cleanupHome()
   })
 
   return {
     getToken: () => token,
     getAuthFile: () => authFile,
+    getTmpRepoPath: () => tmpRepoPath,
   }
 }
 
@@ -571,16 +579,20 @@ describe('POST /api/coverage/refresh', () => {
   }, 10000)
 
   it('CODEX MED-14: concurrent POSTs for DIFFERENT repos both spawn (no cross-repo blocking)', async () => {
+    // Build a second tmp repo so the two POSTs target distinct lock keys.
+    const secondRepo = join(setup.getTmpRepoPath(), '..', 'sibling-repo')
+    mkdirSync(secondRepo, { recursive: true })
+
     vi.mocked(repoDiscoveryMod.discoverRepos).mockReturnValue([
       {
         family: 'agenticapps',
         name: 'dashboard',
-        absPath: '/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard',
+        absPath: setup.getTmpRepoPath(),
       },
       {
         family: 'agenticapps',
-        name: 'agenticapps-dashboard',
-        absPath: '/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard',
+        name: 'sibling-repo',
+        absPath: secondRepo,
       },
     ])
 
@@ -602,7 +614,7 @@ describe('POST /api/coverage/refresh', () => {
         headers,
         body: JSON.stringify({
           family: 'agenticapps',
-          repo: 'agenticapps-dashboard',
+          repo: 'sibling-repo',
           action: 'gitnexus-analyze',
         }),
       }),
