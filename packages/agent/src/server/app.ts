@@ -26,6 +26,7 @@ import { agentlinterRoute } from '../routes/agentlinter.js'
 import { observabilityRoute } from '../routes/observability.js'
 import { secretsRoute } from '../routes/secrets.js'
 import { integrationsRoute } from '../routes/integrations.js'
+import { coverageRoute } from '../routes/coverage.js'
 
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
@@ -129,6 +130,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/projects', observabilityRoute)
   app.route('/api/projects', secretsRoute)
   app.route('/api/projects', integrationsRoute)
+  app.route('/api', coverageRoute)
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)
