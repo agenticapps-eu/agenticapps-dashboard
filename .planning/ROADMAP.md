@@ -11,8 +11,9 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 - ✅ **v1.0 Working dashboard** — Phases 0–6 complete; merged via PR #15 + tagged `v1.0.0`
 - ✅ **v1.0 /help docs site (post-ship)** — Phase 7 complete; merged via PR #21 + PR #22 on 2026-05-12
 - 📋 **v1.0.1 Follow-ups** — impeccable scoring tool drift + `text-text-tertiary` 3:1 contrast bump (deferred from Phase 7, see `.planning/phases/07-help-docs-v1-0/deferred-items.md`)
-- ⏸️ **v1.1 Optional integrations** — Phase 8 (held until upstream Sentry / Linear / Infisical tooling lands)
-- 📋 **v1.2 Open-source readiness** — Phase 9 (planned, much later)
+- 🚧 **v1.1 Cross-family observability** — Phase 10 in flight (Coverage Matrix Page); ships as migration 0008 in claude-workflow
+- ⏸️ **v1.2 Optional integrations** — Phase 8 (held until upstream Sentry / Linear / Infisical tooling lands)
+- 📋 **v1.3 Open-source readiness** — Phase 9 (planned, much later)
 
 ## Phases
 
@@ -32,6 +33,7 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 - [x] **Phase 7: Help docs v1.0** — MDX `/help` docs site (5 anchor pages + 25 stub pages + shell + 8 widget stubs); replaces existing `/help` shortcut page, folds shortcuts into docs
 - [ ] **Phase 8: Optional Integrations (held)** — Sentry / Linear / Infisical wiring, gated on upstream tooling
 - [ ] **Phase 9: Open-source Readiness (much later)** — LICENSE, CONTRIBUTING, optional public landing
+- [ ] **Phase 10: Coverage Matrix Page** — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (ships as migration 0008 in claude-workflow; depends on Phase 7, skips held Phases 8/9)
 
 ## Phase Details
 
@@ -276,7 +278,35 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 7. Help docs v1.0 | 5/5 | ✅ Complete (PR #21 + #22) | 2026-05-12 |
 | 8. Optional Integrations | 0/TBD | ⏸️ Held (upstream tooling required) | - |
 | 9. Open-source Readiness | 0/TBD | 📋 Deferred (much later) | - |
+| 10. Coverage Matrix Page | 0/TBD | 🚧 Discussing (v1.1 milestone, migration 0008) | - |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
 - `text-text-tertiary` token contrast bump — current `#9c95a8` is 2.8:1 on warm paper; needs ≥ 3:1. Cross-phase Phase 5.1 token patch.
+
+### Phase 10: Coverage Matrix Page — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across three client families
+
+**Goal:** Ship a `/coverage` page in agenticapps-dashboard that shows, for every git repo under `~/Sourcecode/{agenticapps,factiv,neuroflash}`, whether each of four knowledge artifacts is present and how fresh it is — with green/amber/red freshness coloring per row and a "refresh stale" action. Ships as **migration 0008** in claude-workflow. Honors the family-boundary contract from `~/Sourcecode/CLAUDE.md`.
+**Milestone:** v1.1 — Cross-family observability
+**Depends on:** Phase 7 (last shipped phase; skips held Phases 8/9)
+**Authoritative inputs:**
+  - `claude-workflow/docs/decisions/0018-multi-ai-plan-review-enforcement.md`
+  - `claude-workflow/docs/decisions/0019-llm-wiki-compiler-integration.md`
+  - `claude-workflow/docs/decisions/0020-gitnexus-code-graph-integration.md`
+  - `claude-workflow/migrations/{0005,0006,0007}.md`
+  - `~/Sourcecode/CLAUDE.md` + each family's `CLAUDE.md`
+  - Each family's `.wiki-compiler.json` (runtime schema)
+  - Existing agenticapps-dashboard codebase
+**Coverage columns:**
+  | Column | Source of truth | "Fresh" means |
+  |---|---|---|
+  | CLAUDE.md | `<repo>/CLAUDE.md` (or AGENTS.md) | exists |
+  | GitNexus indexed | `~/.gitnexus/registry.json` entry | last-indexed ≤ 14 days |
+  | Wiki linked | `<family>/.wiki-compiler.json` references repo | last compile ≤ 7 days |
+  | Workflow version | `<repo>/.claude/skills/agentic-apps-workflow/SKILL.md` frontmatter | matches current head (1.7.0) |
+**Non-goals (explicit):** No rewrite of dashboard's data layer; no auth (local-only); no websockets; no remote read of these state files.
+**Requirements**: COV-01..N (assigned during /gsd-discuss-phase 10)
+**Plans:** 0 plans (run /gsd-discuss-phase 10 → /gsd-plan-phase 10)
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 10 to break down)

@@ -1,18 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: v1.0 complete (dashboard + /help docs site)
-status: between-milestones
-stopped_at: Phase 7 shipped via PR #21 + #22 (squash-merged to main 2026-05-12). v1.0 milestone fully closed.
-last_updated: "2026-05-12T14:55:00.000Z"
-last_activity: 2026-05-12
+milestone: v1.1
+milestone_name: Cross-family observability (Coverage Matrix)
+status: discussing
+stopped_at: Phase 10 added to roadmap 2026-05-13. About to run /gsd-discuss-phase 10.
+last_updated: "2026-05-13T09:15:00.000Z"
+last_activity: 2026-05-13
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 10
   total_plans: 64
   completed_plans: 64
-  percent: 100
-next_milestone: v1.0.1 follow-ups (impeccable tooling drift, text-text-tertiary contrast); Phase 8 held
+  percent: 77
+next_milestone: v1.0.1 follow-ups still pending; Phase 8 still held
+current_phase: 10
+current_phase_name: Coverage Matrix Page
 ---
 
 # Project State
@@ -22,17 +24,17 @@ next_milestone: v1.0.1 follow-ups (impeccable tooling drift, text-text-tertiary 
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.0 milestone closed (Phases 0–7 shipped). Awaiting decisions on v1.0.1 follow-ups; Phase 8 held per CLAUDE.md until Sentry / Linear / Infisical upstream tooling lands.
+**Current focus:** Phase 10 — Coverage Matrix Page. New milestone v1.1 (cross-family observability) just opened. Ships as migration 0008 in claude-workflow.
 
 ## Current Position
 
-Phase: — (between milestones)
-Plan: —
-Milestone: v1.0 (dashboard + /help docs) — 100% complete
-Status: No active phase. Next action: pick up v1.0.1 follow-ups or wait on Phase 8 upstream tooling.
-Last activity: 2026-05-12
+Phase: 10 — Coverage Matrix Page
+Plan: Not started (entering /gsd-discuss-phase 10)
+Milestone: v1.1 — Cross-family observability — 0%
+Status: Discussing. Next action: adaptive questioning + 4 brainstorms (data acquisition, refresh granularity, cross-family display, override surfacing).
+Last activity: 2026-05-13
 
-Progress: [██████████] 100% of v1.0 milestone
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [          ] 0% (Phase 10 discussing)
 
 ## v1.0.1 Follow-ups (deferred from Phase 7)
 
@@ -83,6 +85,7 @@ Captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md`:
 
 - Phase 05.1 inserted after Phase 5: UI redesign Cloudflare-inspired sidebar dashboard shell (URGENT) — design pass before more functionality piles on; Cloudflare dashboard-inspired minimal aesthetic with sidebar nav. Inserted 2026-05-09.
 - Phase 06.1 inserted after Phase 6: typography-layout-impeccable-lift (URGENT) — Phase 6 Wave 2 (06-06) measured composite scores 83-87 across all 6 v1.0 routes after closing all 8 deterministic detector violations; Color sub-score reached 90 but Typography (82) and Layout (88) need UX architecture work (ARIA on OBSERVE items, max-w-[75ch] line-length, progressive disclosure on integration panels, empty-canvas treatment on /pair, token-masking on settings) to clear the ≥ 90 gate. Must close before Phase 6's 06-07 closing-ritual PR triggers the gate. Inserted 2026-05-10.
+- Phase 10 added 2026-05-13: Coverage Matrix Page — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (~/Sourcecode/{agenticapps,factiv,neuroflash}). Ships as migration 0008 in claude-workflow. Depends on Phase 7 (skips held Phases 8/9). Opens a new milestone (v1.1: cross-family observability) beyond the closed v1.0 milestone.
 
 ### Decisions
 
