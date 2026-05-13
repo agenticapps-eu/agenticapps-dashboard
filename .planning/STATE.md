@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: "Phase 10 context gathered (8 decisions: 4 user-named constraints + 4 follow-ups)"
-last_updated: "2026-05-13T11:11:59.297Z"
-last_activity: 2026-05-13 -- Phase 10 execution started
+stopped_at: "Phase 10 complete — all 9 plans landed, all 12 COV requirements ticked, 5 gate artifacts authored (10-REVIEW.md Stage1 pass, 10-CSO.md pass, 10-HUMAN-UAT.md scaffold); Stage 2 review + /qa + impeccable deferred to user (fresh-context session required)"
+last_updated: "2026-05-13T16:00:00Z"
+last_activity: 2026-05-13 -- Phase 10 plan 09 (post-phase gates) executed
 progress:
   total_phases: 13
   completed_phases: 8
@@ -109,6 +109,7 @@ Recent decisions affecting current work:
 - [Phase 07]: Plan 07-04: Mermaid-as-JSX in MDX (<MermaidBlock code={...}/>) decouples content from Plan 07-05's pre-mapping wiring
 - [Phase 07]: Plan 07-04: MDX heading anchors require explicit <h2 id> (not kramdown {#anchor}); acorn parses {...} as JS expression
 - [Phase 07]: Plan 07-04: mermaid.parse() syntax test must run in jsdom env; mermaid v11 DOMPurify init needs window
+- [Phase 10]: Coverage matrix page shipped. Migration 0008 bumps workflow head to 1.8.0. CODEX HIGH-1 (absPath strip), HIGH-2 (symlink escape guard), HIGH-3 (resolver-everywhere), HIGH-5 (refresh contract pin), HIGH-6 (per-family install hint) and 13 other review findings all landed via the --reviews replan. Stage 1 /review PASS (0 errors, 1 warning, 2 info). /cso PASS (0 errors). Stage 2, /qa, and impeccable deferred to user (fresh-context + dev server required).
 
 ### Pending Todos
 
