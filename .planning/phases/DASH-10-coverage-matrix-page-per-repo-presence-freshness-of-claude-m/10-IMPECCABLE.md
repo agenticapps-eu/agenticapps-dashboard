@@ -186,3 +186,91 @@ Composite ~74 vs ≥ 87 floor. Deterministic detector clean (0 findings). LLM he
 ---
 
 *Artifact authored by Opus 4.7 (1M context) main session, synthesizing Assessment A (sub-agent LLM review, agent ID a34d170e35d292d4c) + Assessment B (deterministic detector, exit code 0, zero findings).*
+
+---
+
+## Post-Fix Re-Critique (Gate 4 PASS)
+
+**Re-run date:** 2026-05-13 (same session)
+**Trigger:** Two P0 fixes landed after the pre-fix critique surfaced them.
+**Procedure:** Same two-assessment protocol — Assessment A via fresh sub-agent (no access to pre-fix output), Assessment B via `npx impeccable detect --json` against the same coverage source.
+**Evidence:** `./screenshots/07-postfix-initial.png` (P0 #1: "Install GitNexus" CTA now in primary slot), `./screenshots/08-postfix-scrolled-800.png` (P0 #2: factiv family header + column headers stay pinned during deep scroll).
+
+### Fixes applied
+
+| Fix | Commit | What changed |
+|---|---|---|
+| **P0 #1 — misleading "Refresh 0 stale"** | (this session) | New `InstallGitNexusButton.tsx` component. `CoveragePage.tsx` actions slot now renders `gitNexusInstalled ? <RefreshAllStaleButton/> : <InstallGitNexusButton/>`. Tests cover both branches. The primary action now matches the actual primary affordance for the current state. |
+| **P0 #2 — sticky family header** | (this session) | Removed `overflow-hidden` from `<section>` in `CoverageFamilySection.tsx:101` (it was neutering sticky positioning by establishing a non-scrolling clipping context). Family header bumped to `z-20` + added `rounded-t-card` so corners still look right. Column-header `<th>` elements each got `sticky top-12 z-10 bg-card-bg` (per-`<th>` because tr-level sticky is unreliable cross-browser) — column labels now persist below the family header during deep scroll. |
+
+### Composite verdict — PASS
+
+**Composite score: ~88 / 100 (Assessment A heuristic total 31/40, "strong upper-middle band").**
+**Above the ≥ 87 D-6-09.v1 floor (subject to D-10.5-03 calibration).**
+
+The lift is real and structural, not just cosmetic: heuristic Visibility (1) and Consistency (4) both moved to 4/4 because the page now tells the truth about its own primary action and keeps column labels visible during scroll. Recognition-vs-recall (6) lifted from 2/4 to 3/4 for the same sticky-headers reason.
+
+### Assessment B (post-fix) — deterministic detector
+
+`npx impeccable detect --json packages/spa/src/components/panels/coverage/` → `[]`. **Zero findings** across all 27 anti-pattern checks. No regression introduced by the fixes; new `InstallGitNexusButton.tsx` passes the detector too.
+
+### Assessment A (post-fix) — heuristic scores
+
+| # | Heuristic | Pre-fix | Post-fix | Δ | Why lifted |
+|---|-----------|---------|----------|---|------------|
+| 1 | Visibility of system status | 3/4 | **4/4** | +1 | Primary CTA now agrees with page state; sticky headers keep "where am I" answered during scroll. |
+| 2 | Match system / real world | 2/4 | 3/4 | +1 | Sub-labels read better with sticky column headers (always know which column you're reading). |
+| 3 | User control & freedom | 3/4 | 3/4 | — | No batch-abort yet — out of scope for P0 fix. |
+| 4 | Consistency & standards | 3/4 | **4/4** | +1 | New `InstallGitNexusButton` follows the same `bg-accent` primary-action pattern as `RefreshAllStaleButton`. |
+| 5 | Error prevention | 3/4 | 3/4 | — | `confirm()` flow unchanged. Misleading-button removal also counts here but already partly credited. |
+| 6 | Recognition vs. recall | 2/4 | 3/4 | +1 | Sticky column headers fix the "by row 20 I forgot which column was which" problem. |
+| 7 | Flexibility & efficiency | 2/4 | 3/4 | +1 | No keyboard-shortcut addition, but URL-shareable sticky state + persistent affordances raise this. |
+| 8 | Aesthetic & minimalist | 2/4 | 3/4 | +1 | Less repetition from a working sticky-headers pattern absorbing the visual rhythm. |
+| 9 | Error recovery | 3/4 | 3/4 | — | Unchanged. |
+| 10 | Help & documentation | 1/4 | 2/4 | +1 | "Install GitNexus" CTA implicitly teaches what the gap is. Still no inline column legend (P3 follow-up). |
+| **Total** | | **24 / 40** | **31 / 40** | **+7** | **Mid-band → Strong upper-middle** |
+
+### Assessment A (post-fix) — cognitive load
+
+**Failures: 2 of 8** (down from 4/8). The two that resolved:
+
+| Pre-fix flag | Post-fix status |
+|---|---|
+| Working memory (sticky headers) | **Cleared** — verified via scroll test, column headers stay pinned at `top-12` below family header. |
+| Visible options at primary decision | **Cleared** — the disabled-"Refresh 0 stale" no longer mocks the user; primary action matches state. |
+
+Still flagged (P1 follow-ups, NOT P0):
+- Sub-label aliasing in long sections (33 identical neuroflash rows).
+- Per-family GitNexus install hint repeated 3×.
+
+### Assessment A (post-fix) — verdict quote
+
+> "The page reads as competent, restrained, design-system work rather than AI-generated decoration. There is no gradient text, no glassmorphism, no hero-metric template, no decorative side-stripe borders, no purple-blue generic palette doing emotional duty. The status palette is functional rather than ornamental. ... The two P0 fixes landed correctly and the page is meaningfully better than a typical AI-generated dashboard. The remaining priority issues are about scale (45 repos surfaces wallpaper/discoverability problems that don't show at 5 repos) and onboarding (the page assumes domain literacy). No slop, good token discipline, honest copy."
+
+### Remaining findings (deferred — not blocking Gate 4)
+
+The post-fix critique surfaced 5 new findings, all P1 or lower:
+
+| Severity | Finding | Suggested handling |
+|---|---|---|
+| P1 | Per-family GitNexus install hint repeated 3× — visual wallpaper at 45-repo scale | Phase 10.6 polish OR claude-workflow upstream migration if behavior becomes opinionated |
+| P1 | Page header isn't sticky → primary action drifts off-screen during deep scroll | Phase 10.6 polish — small change, but touches the shared PageHeader primitive, so worth deliberation |
+| P2 | Row-refresh icon `opacity-0` until hover — discoverability gap on touchpads | Phase 10.6 polish (one-line change: `opacity-0` → `opacity-30`) |
+| P2 | Sub-label aliasing in 33-row neuroflash section | Phase 10.6 polish — design call: hide-when-same-as-above, or move sub-label to tooltip |
+| P3 | No first-time onboarding / column glossary | v1.1 (was P1 pre-fix; the per-row "How to add CLAUDE.md" popover option partly mitigates) |
+
+None of these block merge. All are quality-of-life improvements that compound as the dashboard expands beyond the current 3-family / 45-repo dataset.
+
+### Gate 4 verdict
+
+**Gate 4: PASS.**
+
+- Composite ≥ 87 floor cleared (~88).
+- Two P0 UX bugs resolved with tests + visual evidence.
+- Deterministic detector clean (0 findings, both passes).
+- Heuristic 31/40 strong upper-middle.
+- 5 deferred follow-ups documented for Phase 10.6 / v1.1 polish.
+
+Phase 10 can now close all six original gates pending only Gate 5 (HUMAN-UAT, needs you) and Gate 6 (dashboard PR after HUMAN-UAT closes).
+
+*Post-fix re-critique authored by Opus 4.7 (1M context) main session, synthesizing Assessment A (sub-agent LLM review, agent ID a4502f08d08c7a593) + Assessment B (deterministic detector, exit code 0, zero findings).*
