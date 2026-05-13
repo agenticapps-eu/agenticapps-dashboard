@@ -33,7 +33,7 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 - [x] **Phase 7: Help docs v1.0** — MDX `/help` docs site (5 anchor pages + 25 stub pages + shell + 8 widget stubs); replaces existing `/help` shortcut page, folds shortcuts into docs
 - [ ] **Phase 8: Optional Integrations (held)** — Sentry / Linear / Infisical wiring, gated on upstream tooling
 - [ ] **Phase 9: Open-source Readiness (much later)** — LICENSE, CONTRIBUTING, optional public landing
-- [ ] **Phase 10: Coverage Matrix Page** — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (ships as migration 0008 in claude-workflow; depends on Phase 7, skips held Phases 8/9)
+- [x] **Phase 10: Coverage Matrix Page** — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (ships as migration 0008 in claude-workflow; depends on Phase 7, skips held Phases 8/9) (completed 2026-05-13)
 
 ## Phase Details
 
@@ -278,7 +278,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 7. Help docs v1.0 | 5/5 | ✅ Complete (PR #21 + #22) | 2026-05-12 |
 | 8. Optional Integrations | 0/TBD | ⏸️ Held (upstream tooling required) | - |
 | 9. Open-source Readiness | 0/TBD | 📋 Deferred (much later) | - |
-| 10. Coverage Matrix Page | 8/9 | In Progress|  |
+| 10. Coverage Matrix Page | 9/9 | Complete   | 2026-05-13 |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
@@ -306,7 +306,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
   | Workflow version | `<repo>/.claude/skills/agentic-apps-workflow/SKILL.md` frontmatter | matches current head (1.7.0 → 1.8.0 after migration 0008) |
 **Non-goals (explicit):** No rewrite of dashboard's data layer; no auth (local-only); no websockets; no remote read of these state files.
 **Requirements**: COV-01, COV-02, COV-03, COV-04, COV-05, COV-06, COV-07, COV-08, COV-09, COV-10, COV-11, COV-12
-**Plans:** 8/9 plans executed
+**Plans:** 9/9 plans complete
 
 Plans:
 - [x] 10-01-PLAN.md — Wave 0 (TDD): Shared Zod schemas (coverage.ts) + barrel re-export + 21 RED-state test stubs across daemon scanners/orchestrator/route + SPA query hooks + 8 panel components — establishes the wire contract + Nyquist test scaffold
@@ -317,4 +317,4 @@ Plans:
 - [x] 10-06-PLAN.md — Wave 3: 8 SPA panel components in panels/coverage/ — CoverageCell (4-state Phase 05.1 tokens; workflow variant renders behind/ahead/version-unknown sub-states per CODEX HIGH-4) + OverrideChip (count===0 returns null per Pitfall 5) + CoverageRow + CoverageFamilySection (sticky header + per-family GitNexus install hint when not-applicable per CODEX HIGH-6 + filter-aware counts + localStorage collapse) + CoverageToolbar (4-chip multi-select + 200ms debounce + URL sync) + RefreshAllStaleButton (batch-progress state per AGREED-4) + CoverageEmptyState + CoveragePage composing all
 - [x] 10-07-PLAN.md — Wave 4: route mount — coverage.lazy.tsx + router.tsx coverageRoute (validateSearch zodValidator + errorComponent reuse per Phase 7 Pitfall 8) + Sidebar.tsx replaces OBSERVE placeholder with Observability/Coverage entry (COV-09) + Playwright e2e spec covering 6 user-journey scenarios
 - [x] 10-08-PLAN.md — Wave 5: Migration 0008 + ADR 0021 in claude-workflow repo (human-action checkpoints) + dashboard-side migration-0008.fixture.test.ts (CI-resident per CODEX MED-17) + migration-0008.smoke.test.ts (cross-repo, warns-not-skips) + CHANGELOG.md v1.1 entry (COV-12 + workflow head 1.7.0 → 1.8.0)
-- [ ] 10-09-PLAN.md — Wave 6 (depends on 10-08): Post-phase gates (added 2026-05-13 per CODEX HIGH-11) — Stage 1 /review, Stage 2 superpowers:requesting-code-review, /cso cross-repo trust boundary audit, /qa live walkthrough, impeccable:critique ≥ 90 at 1440x900, 10-HUMAN-UAT.md scaffold with 6 acceptance scenarios, REQUIREMENTS.md COV-01..12 tick-off
+- [x] 10-09-PLAN.md — Wave 6 (depends on 10-08): Post-phase gates (added 2026-05-13 per CODEX HIGH-11) — Stage 1 /review, Stage 2 superpowers:requesting-code-review, /cso cross-repo trust boundary audit, /qa live walkthrough, impeccable:critique ≥ 90 at 1440x900, 10-HUMAN-UAT.md scaffold with 6 acceptance scenarios, REQUIREMENTS.md COV-01..12 tick-off
