@@ -145,17 +145,17 @@ async function buildRow(
 
   // AGREED-2: Promise.allSettled isolates scanner failures — one failure does not
   // poison the whole row. Failures yield degraded columns.
+  //
+  // Each scanner is sync — wrapping with `Promise.resolve(scanX(...))` would let
+  // a sync throw escape the array literal before allSettled gets a chance to
+  // catch it. Wrap in an async IIFE so the throw resolves to a rejected promise
+  // that allSettled handles.
   const [cmS, gnS, wkS, wfS, ovS] = await Promise.allSettled([
-    // scanClaudeMd: object-form input (CODEX HIGH-3)
-    Promise.resolve(scanClaudeMd({ repoAbsPath, resolve })),
-    // rateGitNexusRepo: uses pre-computed global state (no resolve needed)
-    Promise.resolve(rateGitNexusRepo(gnGlobal, repoAbsPath)),
-    // scanWikiForFamily: (familyAbsPath, repoName, resolve) — separate args
-    Promise.resolve(scanWikiForFamily(familyRoot, repoName, resolve)),
-    // scanWorkflowVersionForRepo: (repoAbsPath, head, resolve) — separate args
-    Promise.resolve(scanWorkflowVersionForRepo(repoAbsPath, workflowHead, resolve)),
-    // scanOverrideSentinelsForRepo: (repoAbsPath, resolve) — separate args
-    Promise.resolve(scanOverrideSentinelsForRepo(repoAbsPath, resolve)),
+    (async () => scanClaudeMd({ repoAbsPath, resolve }))(),
+    (async () => rateGitNexusRepo(gnGlobal, repoAbsPath))(),
+    (async () => scanWikiForFamily(familyRoot, repoName, resolve))(),
+    (async () => scanWorkflowVersionForRepo(repoAbsPath, workflowHead, resolve))(),
+    (async () => scanOverrideSentinelsForRepo(repoAbsPath, resolve))(),
   ])
 
   const rowDegraded: string[] = []
