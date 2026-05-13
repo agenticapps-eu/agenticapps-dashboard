@@ -278,7 +278,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 7. Help docs v1.0 | 5/5 | ✅ Complete (PR #21 + #22) | 2026-05-12 |
 | 8. Optional Integrations | 0/TBD | ⏸️ Held (upstream tooling required) | - |
 | 9. Open-source Readiness | 0/TBD | 📋 Deferred (much later) | - |
-| 10. Coverage Matrix Page | 0/TBD | 🚧 Discussing (v1.1 milestone, migration 0008) | - |
+| 10. Coverage Matrix Page | 0/8 | 🚧 Planning complete (8 plans, 6 waves; v1.1 milestone; migration 0008) | - |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
@@ -303,10 +303,17 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
   | CLAUDE.md | `<repo>/CLAUDE.md` (or AGENTS.md) | exists |
   | GitNexus indexed | `~/.gitnexus/registry.json` entry | last-indexed ≤ 14 days |
   | Wiki linked | `<family>/.wiki-compiler.json` references repo | last compile ≤ 7 days |
-  | Workflow version | `<repo>/.claude/skills/agentic-apps-workflow/SKILL.md` frontmatter | matches current head (1.7.0) |
+  | Workflow version | `<repo>/.claude/skills/agentic-apps-workflow/SKILL.md` frontmatter | matches current head (1.7.0 → 1.8.0 after migration 0008) |
 **Non-goals (explicit):** No rewrite of dashboard's data layer; no auth (local-only); no websockets; no remote read of these state files.
-**Requirements**: COV-01..N (assigned during /gsd-discuss-phase 10)
-**Plans:** 0 plans (run /gsd-discuss-phase 10 → /gsd-plan-phase 10)
+**Requirements**: COV-01, COV-02, COV-03, COV-04, COV-05, COV-06, COV-07, COV-08, COV-09, COV-10, COV-11, COV-12
+**Plans:** 8 plans (Wave 0 → 5)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 10 to break down)
+- [ ] 10-01-PLAN.md — Wave 0 (TDD): Shared Zod schemas (coverage.ts) + barrel re-export + 21 RED-state test stubs across daemon scanners/orchestrator/route + SPA query hooks + 8 panel components — establishes the wire contract + Nyquist test scaffold
+- [ ] 10-02-PLAN.md — Wave 1 (TDD): 5 daemon scanners + repoDiscovery — claudeMdScanner / gitNexusScanner / wikiScanner / workflowVersionScanner / overrideSentinelScanner. Encodes RESEARCH Pitfalls 1-6 (registry-as-array, never-compiled-vs-not-linked, version-unknown dashboard case, dual-layout SKILL.md probe, empty sentinel set, no worktree walk)
+- [ ] 10-03-PLAN.md — Wave 1 (TDD, parallel with 02): paths.ts COVERAGE_ROOTS extension (additive — old /api/projects/:id/read scope preserved) + coverageCache (30s TTL singleton) + coverageScan orchestrator (Promise.all fan-out) + coverageSpawn (gitnexus-only spawn + 3 clipboard-string builders for D-10-09 wiki/CLAUDE.md/workflow-update)
+- [ ] 10-04-PLAN.md — Wave 2: routes/coverage.ts (GET /api/coverage + POST /api/coverage/refresh) + server/app.ts mount. Bearer-auth + CORS inherited; D-10-09 wiki-rejection at request-body Zod parse; cache integration; outbound() schema-drift defense
+- [ ] 10-05-PLAN.md — Wave 2 (parallel with 04): SPA lib/coverageQueries.ts — useCoverage (30s staleTime matching daemon cache) + useCoverageRefresh (invalidates query onSuccess) + parseOrDrift reuse
+- [ ] 10-06-PLAN.md — Wave 3: 8 SPA panel components in panels/coverage/ — CoverageCell (4-state Phase 05.1 tokens) + OverrideChip (count===0 returns null per Pitfall 5) + CoverageRow + CoverageFamilySection (sticky header + filter-aware counts + localStorage collapse) + CoverageToolbar (4-chip multi-select + 200ms debounce + URL sync) + CoverageGitNexusBanner + CoverageEmptyState + CoveragePage composing all
+- [ ] 10-07-PLAN.md — Wave 4: route mount — coverage.lazy.tsx + router.tsx coverageRoute (validateSearch zodValidator + errorComponent reuse per Phase 7 Pitfall 8) + Sidebar.tsx replaces OBSERVE placeholder with Observability/Coverage entry (COV-09) + Playwright e2e spec covering 6 user-journey scenarios
+- [ ] 10-08-PLAN.md — Wave 5: Migration 0008 + ADR 0021 in claude-workflow repo (human-action checkpoints) + dashboard-side migration-0008.smoke.test.ts + CHANGELOG.md v1.1 entry (COV-12 + workflow head 1.7.0 → 1.8.0)
