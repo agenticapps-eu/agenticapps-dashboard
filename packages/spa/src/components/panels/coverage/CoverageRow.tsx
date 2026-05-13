@@ -11,20 +11,29 @@
  */
 import React, { useState, useEffect, useRef } from 'react'
 import { RefreshCw } from 'lucide-react'
-import type { CoverageRow as CoverageRowData } from '@agenticapps/dashboard-shared'
+import type { CoverageRow as CoverageRowData, CoverageFamily } from '@agenticapps/dashboard-shared'
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
 
+export type CoverageRefreshAction =
+  | 'gitnexus-analyze'
+  | 'wiki-compile-clipboard'
+  | 'workflow-update-clipboard'
+  | 'claude-md-help'
+
+export interface CoverageRowContext {
+  family: CoverageFamily
+  repo: string
+}
+
 export interface CoverageRowProps {
   row: CoverageRowData
-  onRefresh?: (
-    action: 'gitnexus-analyze' | 'wiki-compile-clipboard' | 'workflow-update-clipboard' | 'claude-md-help',
-  ) => void
+  onRefresh?: (action: CoverageRefreshAction, context: CoverageRowContext) => void
 }
 
 // Derive popover options from the row's column states
 function getRefreshOptions(row: CoverageRowData) {
-  const opts: Array<{ label: string; action: CoverageRowProps['onRefresh'] extends ((a: infer A) => void) | undefined ? A : never }> = []
+  const opts: Array<{ label: string; action: CoverageRefreshAction }> = []
   if (row.gitNexus.state === 'stale' || row.gitNexus.state === 'missing') {
     opts.push({ label: 'Run gitnexus analyze for this repo', action: 'gitnexus-analyze' })
   }
@@ -118,7 +127,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
                   key={opt.action}
                   type="button"
                   onClick={() => {
-                    onRefresh?.(opt.action)
+                    onRefresh?.(opt.action, { family: row.family, repo: row.repo })
                     setPopoverOpen(false)
                   }}
                   className="block w-full rounded-md px-3 py-1.5 text-left text-sm text-text-primary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"

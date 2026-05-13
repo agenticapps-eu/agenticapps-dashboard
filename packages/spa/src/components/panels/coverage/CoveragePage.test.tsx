@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import type { CoverageResponse, CoverageRow } from '@agenticapps/dashboard-shared'
@@ -28,7 +28,13 @@ vi.mock('../../../lib/coverageQueries.js', () => ({
   useCoverageRefresh: vi.fn(),
 }))
 
+// Mock writeToClipboard so per-row clipboard tests can assert the payload
+vi.mock('../../../lib/clipboardCompat.js', () => ({
+  writeToClipboard: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
+import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { CoveragePage } from './CoveragePage.js'
 
 function makeRow(
@@ -215,5 +221,115 @@ describe('CoveragePage', () => {
 
     const { container } = render(<CoveragePage />, { wrapper })
     expect(container.innerHTML).not.toContain('absPath')
+  })
+
+  // ── Stage 2 review fixes: per-row dispatch threads (family, repo) through ──
+  // Stage 2 found CoverageRow.onRefresh dropped the row context, so gitnexus-analyze
+  // was a no-op and wiki-compile clipboard always copied the agenticapps command.
+
+  it('per-row gitnexus-analyze dispatches refresh.mutateAsync with the row\'s family + repo', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({
+      ok: true,
+      kind: 'ok',
+      updatedRow: makeRow('factiv', 'cparx'),
+    })
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('factiv', 'cparx', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+
+    // Open the row's refresh popover and click the gitnexus-analyze option
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for cparx/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    // mutateAsync called with the row's family + repo (NOT a hardcoded agenticapps)
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        family: 'factiv',
+        repo: 'cparx',
+        action: 'gitnexus-analyze',
+      })
+    })
+  })
+
+  it('per-row wiki-compile clipboard uses the row\'s family — not a hardcoded value', async () => {
+    vi.mocked(writeToClipboard).mockClear()
+
+    // factiv row with stale wiki — triggers the wiki-compile popover option
+    const factivRow = makeRow('factiv', 'cparx')
+    factivRow.wiki = { kind: 'basic', state: 'stale' }
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ rows: [factivRow] }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for cparx/i }))
+    fireEvent.click(screen.getByText(/copy \/wiki-compile/i))
+
+    // Clipboard should receive a command scoped to factiv, NOT agenticapps
+    await waitFor(() => {
+      expect(writeToClipboard).toHaveBeenCalled()
+    })
+    const clipboardArg = vi.mocked(writeToClipboard).mock.calls[0]![0] as string
+    expect(clipboardArg).toMatch(/factiv/)
+    expect(clipboardArg).not.toMatch(/agenticapps/)
+  })
+
+  it('per-row wiki-compile clipboard for a neuroflash row uses neuroflash', async () => {
+    vi.mocked(writeToClipboard).mockClear()
+
+    const neuroRow = makeRow('neuroflash', 'neuroflash-api')
+    neuroRow.wiki = { kind: 'basic', state: 'missing' }
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ rows: [neuroRow] }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for neuroflash-api/i }))
+    fireEvent.click(screen.getByText(/copy \/wiki-compile/i))
+
+    await waitFor(() => {
+      expect(writeToClipboard).toHaveBeenCalled()
+    })
+    const clipboardArg = vi.mocked(writeToClipboard).mock.calls[0]![0] as string
+    expect(clipboardArg).toMatch(/neuroflash/)
   })
 })

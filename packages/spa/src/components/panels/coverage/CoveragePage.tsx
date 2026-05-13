@@ -122,22 +122,25 @@ export function CoveragePage(): React.JSX.Element {
     [nav, filter],
   )
 
-  // Refresh action dispatcher (D-10-09: only gitnexus-analyze hits daemon)
+  // Refresh action dispatcher (D-10-09: only gitnexus-analyze hits daemon).
+  // CoverageRow → CoverageFamilySection → here passes {family, repo} so per-row
+  // gitnexus dispatch and per-family clipboard strings both use the correct context.
   const handleRefresh = useCallback(
-    (action: 'gitnexus-analyze' | 'wiki-compile-clipboard' | 'workflow-update-clipboard' | 'claude-md-help') => {
-      // Dispatch is per-row; CoverageRow passes the row context via onRefresh(action)
-      // The actual row context is captured in CoverageRow's popover handler which
-      // calls onRefresh(action) — CoveragePage needs the family+repo too.
-      // For clipboard actions the family is needed; pass through the action only here.
-      // (Full per-row dispatch with family+repo is wired in CoverageRow → CoverageFamilySection → CoveragePage chain)
+    (
+      action: 'gitnexus-analyze' | 'wiki-compile-clipboard' | 'workflow-update-clipboard' | 'claude-md-help',
+      context: { family: CoverageFamily; repo: string },
+    ) => {
       void (async () => {
         switch (action) {
           case 'gitnexus-analyze':
-            // Per-row gitnexus-analyze is dispatched in RefreshAllStaleButton or CoverageRow
+            await refresh.mutateAsync({
+              family: context.family,
+              repo: context.repo,
+              action: 'gitnexus-analyze',
+            })
             break
           case 'wiki-compile-clipboard':
-            // Family captured in CoverageFamilySection → CoverageRow → here via the chain
-            await writeToClipboard(buildWikiCompileClipboardString('agenticapps'))
+            await writeToClipboard(buildWikiCompileClipboardString(context.family))
             break
           case 'workflow-update-clipboard':
             await writeToClipboard(buildWorkflowUpdateClipboardString())
@@ -148,7 +151,7 @@ export function CoveragePage(): React.JSX.Element {
         }
       })()
     },
-    [navigate],
+    [navigate, refresh],
   )
 
   // useMemo hooks must be called unconditionally (React rules of hooks)
