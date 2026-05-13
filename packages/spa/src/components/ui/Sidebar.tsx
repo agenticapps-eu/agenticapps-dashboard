@@ -1,11 +1,11 @@
 /**
  * Sidebar — 240px left navigation sidebar (Phase 5.1 Wave 1).
  *
- * UI-SPEC §5: fixed 240px wide (w-60), warm sidebar-bg, 3 sections (WORKSPACE, OBSERVE, ACCOUNT).
+ * Sections (top → bottom): WORKSPACE → Observability → ACCOUNT.
  * Projects sub-list sourced from useRegistryList() directly (RESEARCH OQ-4 resolution).
  *
- * OBSERVE section: Skills/Health/Reviews routes are Phase 6+. Rendered as SidebarItemDisabled
- * so the IA shape from UI-SPEC §5 is locked while the actual routes ship in Phase 6.
+ * Phase 10 D-10-08 (COV-09): OBSERVE section replaced with Observability section containing
+ * a single Coverage entry linking to /coverage. Section architecture allows growth.
  *
  * Constraints (D-5.1-10):
  * - NO transition utilities
@@ -13,12 +13,12 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, ListChecks, ClipboardList } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
 import { SidebarSection } from './SidebarSection.js'
-import { SidebarItem, SidebarItemDisabled } from './SidebarItem.js'
+import { SidebarItem } from './SidebarItem.js'
 import { SidebarSubItem } from './SidebarSubItem.js'
 
 export function Sidebar(): React.JSX.Element {
@@ -62,13 +62,15 @@ export function Sidebar(): React.JSX.Element {
           ))}
         </SidebarSection>
 
-        <SidebarSection label="OBSERVE">
-          {/* Phase 5.1 v1: Skills/Health/Reviews routes are Phase 6+.
-              Rendered as disabled to lock the IA shape from UI-SPEC §5
-              without linking to non-existent routes. */}
-          <SidebarItemDisabled icon={<Activity size={16} aria-hidden="true" />} label="Skills" />
-          <SidebarItemDisabled icon={<ListChecks size={16} aria-hidden="true" />} label="Health" />
-          <SidebarItemDisabled icon={<ClipboardList size={16} aria-hidden="true" />} label="Reviews" />
+        {/* Observability section — Phase 10 D-10-08.
+            v1.0 contains a single 'Coverage' entry. Single-item sections are acceptable
+            per CONTEXT.md ("section architecture that can grow"). COV-09. */}
+        <SidebarSection label="Observability">
+          <SidebarItem
+            to="/coverage"
+            icon={<Activity size={16} aria-hidden="true" />}
+            label="Coverage"
+          />
         </SidebarSection>
 
         <SidebarSection label="ACCOUNT">
