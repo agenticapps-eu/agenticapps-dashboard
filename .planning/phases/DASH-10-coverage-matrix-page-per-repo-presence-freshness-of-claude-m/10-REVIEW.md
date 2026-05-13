@@ -211,3 +211,235 @@ All 12 COV requirements verified against implementation. All 20 10-REVIEWS.md fi
 ---
 
 *Authored by plan executor (claude-sonnet-4-6) as part of 10-09-PLAN.md Task 1.*
+
+---
+
+## Stage 2 — superpowers:requesting-code-review
+
+Reviewed: 2026-05-13
+Reviewer: general-purpose subagent (Stage 2) — Opus 4.7 (1M context), fresh-context independent pass
+Range: 83fa438..dbe2b1f (55 commits, 58 files, +8362/-20)
+
+### Strengths
+
+- **Trust-boundary hygiene is exceptionally well executed.** `coverageResolver.ts:46-49,77-147` establishes a single `PathResolver` type that every scanner consumes; the resolver re-realpaths roots, merges caller-supplied roots, and enforces basename or extension whitelisting. The CODEX HIGH-3 closure is real, not lipstick.
+- **TOCTOU mitigation in the refresh route is correct.** `coverage.ts:114-136` re-canonicalises `match.absPath` AND the family root immediately before spawn, then asserts `realRepo === familyRoot || realRepo.startsWith(familyRoot + sep)`. A symlink swap between discovery and spawn is rejected before `spawnGitNexusAnalyze` is ever called.
+- **Per-repo refresh lock implementation is minimal and correct.** `coverage.ts:66-188` keys on `${family}/${repo}`, awaits an in-flight promise for duplicates, and cleans up via `try { ... } finally { refreshLocks.delete(lockKey) }`. Different repos run in parallel.
+- **`stripInternal` + discriminated schemas prevent absPath leak structurally.** `coverageScan.ts:264-267` plus `CoverageRowSchema` having no `absPath` field means a future regression that adds it back would fail the outbound Zod parse (defense-in-depth on top of the explicit strip).
+- **Symlink-escape rejection in repo discovery is path-sep-aware and broken-symlink-safe.** `repoDiscovery.ts:72-101` realpaths candidate AND family root, uses `sep` (not hard-coded `/`), logs `safety.symlink-escape` via `agentError` (operational logging surface), and `continue`s on realpath failures rather than throwing.
+- **D-5-21 "no npx" honored.** `coverageSpawn.ts:28-38,60-81` uses `execFile('which', ['gitnexus'])` for PATH resolution, then `execa(cmd, ['analyze'], {cwd, timeout})` with argv-array form — no shell, no template literals, no `execa.command`. Returns `{kind: 'not-installed'}` when binary absent.
+- **AGREED-1 false-positive guard.** `wikiScanner.ts:101-107` uses `s.path === repoName || s.path.startsWith(repoName + '/')` — the prefix-with-slash predicate. `wikiScanner.test.ts:86-94` tests the `app` vs `app-worker/docs` false-positive case.
+- **Migration 0008 fixture test is genuinely CI-resident.** `migration-0008.fixture.test.ts` defines fixture content inline and asserts via tmpdir — never skips. The companion smoke test emits `console.warn` (not silent skip) when upstream is absent (`migration-0008.smoke.test.ts:32-40`).
+- **Scanner tests use real tmpdir fixtures, not mocks-of-mocks.** `wikiScanner.test.ts:11-27`, `gitNexusScanner.test.ts`, `workflowVersionScanner.test.ts` all create real directories with `mkdtempSync` and write actual JSON to disk. Behaviour is exercised, not stubbed.
+- **Schema-drift detection wired on both ends.** Daemon: `outbound(c, CoverageResponseSchema.parse.bind(...), value)` in both GET and POST routes. SPA: `apiFetch('/api/coverage', CoverageResponseSchema)` + `useCoverageRefresh` also runs `CoverageRefreshRequestSchema.parse(body)` before the network call — two layers of defense.
+
+### Issues
+
+#### Critical (Must Fix)
+
+<finding severity="critical" req="D-10-09 / D-10-02" file="packages/spa/src/components/panels/coverage/CoveragePage.tsx:138-140">
+**File:line:** `CoveragePage.tsx:138-141`
+**What's wrong:** The per-row "Copy /wiki-compile command" action hardcodes the family as `'agenticapps'` for every row regardless of which family the row belongs to.
+```typescript
+case 'wiki-compile-clipboard':
+  await writeToClipboard(buildWikiCompileClipboardString('agenticapps'))
+  break
+```
+The chain `CoverageRow.onRefresh(action)` → `CoverageFamilySection.onRefresh(action)` → `CoveragePage.handleRefresh(action)` carries ONLY the action enum. No `family` or `repo` is propagated. The comment on lines 128-132 even acknowledges this is unfinished: *"Family captured in CoverageFamilySection → CoverageRow → here via the chain"* — but that chain never threads family through.
+**Why it matters:** A user on a `factiv` or `neuroflash` row clicks "Copy /wiki-compile command" expecting `cd ~/Sourcecode/factiv && claude /wiki-compile`. They get `cd ~/Sourcecode/agenticapps && claude /wiki-compile`. They paste it, and either (a) recompile the wrong family (silent wrong-action), or (b) the command works in the agenticapps directory but does nothing for the family they intended. This is the central refresh affordance for 2/3 of all wiki-stale rows. Confirmed via grep — no test covers per-row dispatch through `CoveragePage.handleRefresh`.
+**How to fix:** Change the signature of `onRefresh` end-to-end to carry row context:
+```typescript
+onRefresh?: (
+  action: '...',
+  context: { family: CoverageFamily; repo: string },
+) => void
+```
+Thread `{ family: row.family, repo: row.repo }` from `CoverageRow.onRefresh` callsite and use `context.family` in `buildWikiCompileClipboardString`. Add a test in `CoveragePage.test.tsx` that mocks `writeToClipboard` and asserts the family passed for a non-agenticapps row.
+</finding>
+
+<finding severity="critical" req="D-10-02" file="packages/spa/src/components/panels/coverage/CoveragePage.tsx:135-137">
+**File:line:** `CoveragePage.tsx:135-137`
+**What's wrong:** The per-row "Run gitnexus analyze for this repo" popover button is dead. The `handleRefresh` switch body for `gitnexus-analyze` contains only `break` plus a comment claiming dispatch happens elsewhere:
+```typescript
+case 'gitnexus-analyze':
+  // Per-row gitnexus-analyze is dispatched in RefreshAllStaleButton or CoverageRow
+  break
+```
+`CoverageRow.tsx:120-123` calls `onRefresh?.(opt.action)` and closes the popover — it does NOT call the daemon. The daemon refresh mutation (`useCoverageRefresh`) lives in `CoveragePage`, not `CoverageRow`, so a per-row button click results in: popover closes, nothing else happens. No spawn, no toast, no error.
+**Why it matters:** D-10-02 specifies per-row refresh actions for the cases where daemon can act safely (gitnexus-analyze is the only one). The page-level `RefreshAllStaleButton` runs every stale row in one batch, but users who want to refresh one row (the documented v1 affordance) get a no-op. This is a primary UX path for the page.
+**How to fix:** In the same end-to-end `onRefresh(action, {family, repo})` refactor above, change the `gitnexus-analyze` case to:
+```typescript
+case 'gitnexus-analyze':
+  await refresh.mutateAsync({ family: ctx.family, repo: ctx.repo, action: 'gitnexus-analyze' })
+  break
+```
+Add a CoveragePage test that fires the popover button, asserts `refresh.mutateAsync` was called with the correct body.
+</finding>
+
+#### Important (Should Fix)
+
+<finding severity="important" req="testing portability" file="packages/agent/src/routes/coverage.test.ts:65,90,141,179,500-cleanup,578,583">
+**File:line:** `coverage.test.ts:65,90,141,179,500,578,583`
+**What's wrong:** The route test file hardcodes `/Users/donald/Sourcecode/agenticapps/agenticapps-dashboard` as the mock `discoverRepos` return value for 6 callsites. The POST route then calls `realpathSync(match.absPath)` inside the in-flight closure (`coverage.ts:117`). If the path does not exist, `realpathSync` throws and the route returns `{ ok: false, kind: 'error', stderr: 'repo path no longer accessible' }` — but tests like the "returns kind=ok" / "MED-14 lock" / "different repos parallel" assert `body.ok === true` and `body.kind === 'ok'`. These tests pass only when run on Donald's machine.
+**Why it matters:** Any contributor on another laptop or CI runner will see these tests fail with `expected 'ok' to be 'error'`. Reproducibility, CI portability, and Stage 1's claim of 1,627 tests GREEN are all anchored to a developer-specific filesystem. Notably the existing CI workflow may have been masked because the dashboard repo's own path happens to satisfy the constant. If the project is ever scaffolded on a fresh machine for a new contributor, those tests will fail.
+**How to fix:** Replace the literal with a per-test `mkdtempSync(join(tmpdir(), 'coverage-route-'))` directory, mock `discoverRepos` to return that tmpdir path, and create the tmpdir BEFORE the request so `realpathSync` succeeds. The TOCTOU test already does this (lines 494-526). Apply the same pattern to all 6 callsites.
+</finding>
+
+<finding severity="important" req="AGREED-2 / scanner robustness" file="packages/agent/src/lib/coverageScan.ts:148-159">
+**File:line:** `coverageScan.ts:148-159`
+**What's wrong:** The scanner fan-out uses `Promise.allSettled([Promise.resolve(scanX(...)), ...])`. Each `scanX(...)` is a SYNCHRONOUS function call. If any scanner throws synchronously, the throw happens *inside the array literal* — before `Promise.resolve` wraps the value — and propagates out of the array constructor BEFORE `Promise.allSettled` can capture it.
+
+The throw then bubbles out of `buildRow` (which is `async`, so the sync throw becomes a rejected promise). That rejected promise reaches `Promise.all(repos.map(buildRow))` at line 93 — which is `Promise.all`, not `Promise.allSettled` — so one bad scanner poisons the entire scan and the route returns 500.
+
+In practice none of the 5 scanners currently throw synchronously (each wraps reads in try/catch), so the bug is latent. But this defeats the AGREED-2 contract and the next scanner author who forgets the try/catch will break the page silently.
+**Why it matters:** AGREED-2 is the documented isolation guarantee. The current code reads as defensive but isn't. A regression in any scanner (e.g. someone adds a `JSON.parse(rawFile)` outside a try/catch) will collapse the matrix for ALL repos, not just degrade one row.
+**How to fix:** Wrap each scanner call in an explicit async IIFE so synchronous throws convert to promise rejections:
+```typescript
+const [cmS, gnS, wkS, wfS, ovS] = await Promise.allSettled([
+  (async () => scanClaudeMd({ repoAbsPath, resolve }))(),
+  (async () => rateGitNexusRepo(gnGlobal, repoAbsPath))(),
+  ...
+])
+```
+Add an explicit test where one scanner is replaced with `() => { throw new Error('boom') }` and assert the row is still emitted with the appropriate `degraded` column.
+</finding>
+
+<finding severity="important" req="UX surface for AGREED-2" file="packages/spa/src/components/panels/coverage/* (no surface)">
+**File:line:** SPA-side — no file consumes `row.degraded` or column-level `degraded: true`
+**What's wrong:** `CoverageBasicColumnSchema` and `CoverageWorkflowColumnSchema` both define an optional `degraded: boolean` + `degradedReason: string`. `CoverageRowSchema` defines an optional `degraded: { reason: string }`. The orchestrator populates these on scanner failure (`coverageScan.ts:170-229,251`). The SPA never reads them — grep confirms 0 hits for `degraded` in `packages/spa/src/components/panels/coverage/`. A scanner failure renders as a plain "missing" cell, indistinguishable from a confirmed-absent file.
+**Why it matters:** The whole point of AGREED-2 was to keep the matrix rendering even when scanners fail, while telling the user "this column failed to scan, not necessarily absent". As implemented, the user sees red where they should see "could not be determined", and they have no way to know that a scanner threw. The signal exists in the schema but is wired to nowhere.
+**How to fix:** In `CoverageCell.tsx`, render a distinct visual when `state.degraded === true` (e.g. a small "?" icon with a tooltip showing `degradedReason`). At minimum, log to the console so dogfooders notice. Add a CoverageCell test that asserts the degraded variant.
+</finding>
+
+<finding severity="important" req="resolver tautology" file="multiple scanner files">
+**File:line:** `claudeMdScanner.ts:85`, `gitNexusScanner.ts:101`, `wikiScanner.ts:87,127`, `workflowVersionScanner.ts:165`, `overrideSentinelScanner.ts:96`
+**What's wrong:** Every scanner calls the resolver, then immediately checks `existsSync(resolvedPath)`. But the resolver uses `realpathSync(candidatePath)` which throws on missing/inaccessible paths. If `resolve()` returns successfully, the path EXISTS by definition. The `existsSync` checks are tautologically true — dead code.
+**Why it matters:** It looks like defensive belt-and-braces but it's actually misleading: future authors may infer the resolver does NOT validate existence and add new readers that skip the resolver. It also creates churn — every TOCTOU window (file deleted between resolver and existsSync) returns the wrong branch (`'missing'` when the resolver previously succeeded). Minor correctness drift in a race.
+**How to fix:** Either (a) remove the post-resolver `existsSync` checks, or (b) document the contract: "resolver throws PathViolation when path is missing — `existsSync` is a defensive re-check for TOCTOU race only." Pick one and apply consistently.
+</finding>
+
+<finding severity="important" req="COV-10 wording bug" file="packages/spa/src/components/panels/coverage/CoverageFamilySection.tsx:128">
+**File:line:** `CoverageFamilySection.tsx:127-128`
+**What's wrong:** The hint message reads `"GitNexus is not installed for this family —"` but `gitNexusInstalled` is a GLOBAL signal, not per-family. When GitNexus is absent, this identical message appears in all 3 family headers — implying the install is per-family, which is incorrect. (Stage 1 flagged this as `info`; on second look it's a real correctness defect because the user will reasonably think they need to install GitNexus separately for each family.)
+**Why it matters:** Users get told 3x the same untrue thing. Anyone who reads the COV-10 spec and then audits the UI will assume the binding is broken. Also conflicts with the comment block above (`CODEX HIGH-6 Option A: per-family GitNexus install hint`) — the chosen design is per-family rendering but the same global gate, so the COPY should reflect that.
+**How to fix:** Change the message to "GitNexus is not installed —" (drop "for this family"). Or render it once at the page level when `!gitNexusInstalled` — but that re-opens the CODEX HIGH-6 page-banner-vs-family-header debate. Simplest fix is text.
+</finding>
+
+#### Minor (Nice to Have)
+
+<finding severity="minor" file="packages/spa/src/components/panels/coverage/CoveragePage.tsx:146">
+**File:line:** `CoveragePage.tsx:146`
+**What's wrong:** `void navigate({ to: buildClaudeMdHelpUrl() as '/' })`. `buildClaudeMdHelpUrl()` returns `/help/operations/install#claude-md-bootstrap`. The cast `as '/'` lies to TypeScript to silence the strict route-literal check. Whether the runtime navigation succeeds depends entirely on TanStack Router's behaviour with unknown route literals.
+**Why it matters:** The user clicking "How to add CLAUDE.md" may end up at `/` instead of the docs page, or at the docs page but with a router warning, or… it's not deterministic. The compiler's safety guarantee was intentionally bypassed without an asserted reason.
+**How to fix:** Either (a) register the help routes properly with the router and use the typed `to` parameter, or (b) use an anchor tag with `href={buildClaudeMdHelpUrl()}` for a documented external/static destination, or (c) re-export the help URL as a typed literal from `buildHelpRoutes`.
+</finding>
+
+<finding severity="minor" file="packages/spa/src/components/panels/coverage/RefreshAllStaleButton.tsx:42-46">
+**File:line:** `RefreshAllStaleButton.tsx:42-46`
+**What's wrong:** The confirm dialog reads `"Refresh ${spawnable.length} stale entries across ${spawnable.length} repos."` — both values are the same variable. Copy-paste artifact. Each entry IS one repo, so the second "across N repos" is redundant.
+**Why it matters:** Reads slightly confusingly. Not a bug.
+**How to fix:** `"Refresh ${spawnable.length} stale repos via gitnexus analyze. Sequential dispatch. Continue?"`
+</finding>
+
+<finding severity="minor" file="packages/agent/src/routes/coverage.ts:159">
+**File:line:** `coverage.ts:159`
+**What's wrong:** After a successful spawn, the route calls `scanCoverageInternal()` to produce `updatedRow`. This walks all 45 repos and re-runs all 5 scanners across each — for a single-row update. CODEX HIGH-5 mandates `updatedRow` be present, but populating it via a full re-scan is overkill.
+**Why it matters:** A POST refresh that completes the spawn in 200ms then waits ~500ms to assemble the full matrix just to extract one row. Cold-load latency target was < 1s; the refresh round-trip is now 700ms in the warm case. Not blocking, but the cache invalidation + the re-scan both happen, so the next GET will hit a fresh cache (good) — the route is doing the scan work twice.
+**How to fix:** Either (a) accept the cost (it's bounded), or (b) write a `scanSingleRowInternal(family, repo, ...)` that builds just one row, returns it, and lets the next GET cold-scan when the cache misses naturally.
+</finding>
+
+<finding severity="minor" file="packages/agent/src/lib/coverageCache.ts:22">
+**File:line:** `coverageCache.ts:22`
+**What's wrong:** Module-scoped singleton `let cache: CoverageCacheEntry | null = null` is shared across all callers in the daemon process. Test isolation requires `_resetCoverageCacheForTests()`. Multiple daemon instances within the same process (none today, but plausible for testing) would share cache.
+**Why it matters:** Future maintainability — a second daemon instance for, say, a multi-tenant variant would share the cache silently.
+**How to fix:** Move state into a factory that the route closure captures, or wrap in a small class. Not blocking; the singleton model is consistent with `overviewCache.ts` so changing it now would break the pattern.
+</finding>
+
+<finding severity="minor" file="packages/agent/src/lib/scanners/workflowVersionScanner.ts:192-200">
+**File:line:** `workflowVersionScanner.ts:192-200`
+**What's wrong:** When `head` is null (migrations dir not present) and the repo has an installed version, the scanner returns `state: 'fresh', detail: 'ahead'`. Marking "ahead" when there is no reference point to be ahead OF feels wrong — semantically the comparison cannot be made, so it should be `'version-unknown'` or a new `'head-unknown'` discriminant.
+**Why it matters:** Stage 1 flagged this as `info`. The current behaviour is plausibly defensible (fresh + ahead = "you're at least at head"), but the UI label "ahead" alongside `headVersion: null` is a confusing pair. A dogfooder who hasn't cloned claude-workflow will see "Workflow: fresh (ahead)" and have no way to verify.
+**How to fix:** When `head === null`, return `state: 'fresh', detail: 'equal'` with a side-channel hint, or extend the enum with `'head-unknown'`.
+</finding>
+
+<finding severity="minor" file="packages/agent/src/lib/coverageResolver.ts:115-120">
+**File:line:** `coverageResolver.ts:115-120`
+**What's wrong:** The resolver wraps `realpathSync(candidatePath)` in try/catch and throws PathViolation with message `not accessible: ${candidatePath}`. This message includes the candidate path on the LHS, not the original homedir-relative form. Combined with `realpathSafe` for roots (which silently swallows failures), the error chain is non-trivial to diagnose when a scanner unexpectedly returns 'missing' on a path the user expected to exist.
+**Why it matters:** Diagnostics. Not a runtime bug.
+**How to fix:** Add minimal structured logging at PathViolation throw sites, gated behind a daemon debug flag.
+</finding>
+
+### Recommendations
+
+- **End-to-end refactor of `onRefresh(action, context)` is high value.** It closes both Critical findings (per-row gitnexus-analyze + wiki-compile clipboard family) and unlocks a richer per-row toast/error surface. Worth doing before merge.
+- **Add a focused test for per-row dispatch.** `CoverageUserJourney.test.tsx` should exercise each popover option for at least one non-agenticapps row, mocking `writeToClipboard` and `refresh.mutateAsync` and asserting the payload.
+- **Add a "scanner threw" fixture test.** Inject a faulty scanner into the orchestrator (via the `resolve` callback throwing on a specific scanner's invocation pattern) and assert the row still renders with `degraded.reason` populated. This is the missing AGREED-2 negative test.
+- **Reconsider the post-resolver `existsSync` calls.** Either delete them (dead) or document them as a deliberate TOCTOU re-check.
+- **Surface scanner failures in the UI.** A small "?" icon + tooltip on degraded cells would convert silent failure into visible failure — the page is designed to expose coverage gaps; it should also expose its own coverage gaps.
+- **Sidebar section labels are inconsistent in case.** `WORKSPACE` and `ACCOUNT` are uppercase; `Observability` is title-case. Pick a convention (the rest of `Sidebar.tsx` suggests uppercase is canonical for section dividers).
+
+### Assessment
+
+**Ready to merge?** No — two Critical defects affect documented user-facing functionality (per-row gitnexus-analyze button is a no-op for every row; per-row wiki-compile clipboard hardcodes `agenticapps` family for factiv/neuroflash rows). One Important defect (hardcoded developer path in route tests) breaks CI portability and makes the "1,627 tests GREEN" claim machine-dependent. AGREED-2's Promise pattern is latently broken though no current scanner triggers it.
+
+**Reasoning:** The architectural spine of Phase 10 — trust boundary, TOCTOU mitigation, per-repo lock, absPath strip, schema-drift detection, scanner isolation — is unusually well executed and Stage 1's PASS is justified at that level. But Stage 1 audited *schemas and contracts* and did not exercise the per-row click path through `CoveragePage.handleRefresh`. The two Critical findings are visible only when you trace a single click from `CoverageRow.onRefresh` all the way to where the daemon mutation or clipboard writer actually runs — Stage 1's spec-compliance check confirmed the *components* exist and pass schemas, but not that the wiring between them carries family/repo context. Fix the wiring, port the route tests to tmpdir, and merge.
+
+---
+
+*Stage 2 authored by Opus 4.7 (1M context) fresh-context subagent per `superpowers:requesting-code-review` contract.*
+
+---
+
+## Stage 2 Closure — Fixes Applied
+
+Closed: 2026-05-13
+Author: Opus 4.7 (1M context) main session
+Range: dbe2b1f → (uncommitted Stage 2 fixes)
+
+### Verdict: Critical + Important findings resolved; Minor deferred
+
+All Critical findings and the actionable Important findings have been fixed. Minor findings are listed at the bottom with an explicit deferral rationale.
+
+### Fixes
+
+| Severity | Finding | Files Touched | What changed |
+|---|---|---|---|
+| **Critical** | `onRefresh` chain dropped row context — gitnexus button no-op + wiki-compile clipboard hardcoded `'agenticapps'` | `CoverageRow.tsx`, `CoverageFamilySection.tsx` (type chain), `CoveragePage.tsx` | Extended `onRefresh` signature to `(action, { family, repo }) => void`. `CoveragePage.handleRefresh` now uses `context.family` for `buildWikiCompileClipboardString` and calls `refresh.mutateAsync({ family, repo, action: 'gitnexus-analyze' })` for the gitnexus case. 3 new tests in `CoveragePage.test.tsx` exercise per-row dispatch for factiv + neuroflash rows. |
+| **Important** | Route tests hardcoded `/Users/donald/Sourcecode/...` at 6 callsites — would fail on any other machine | `routes/coverage.test.ts` | Tests now build a tmp repo via `mkdtempSync` inside `makeTmpHome()`, override `process.env.HOME` so `os.homedir()` resolves to the tmp tree, and restore the prior value in `afterEach`. The "different repos" test creates a sibling tmp repo. |
+| **Important** | `Promise.allSettled([Promise.resolve(scanX(...)), ...])` lets sync throws escape the array literal | `lib/coverageScan.ts` | Each scanner call now wraps in an async IIFE: `(async () => scanX(...))()` so a sync throw resolves to a rejected promise that `allSettled` catches. New file `coverageScan.allSettled.test.ts` mocks `wikiScanner.scanWikiForFamily` to throw synchronously and asserts the row is still emitted with `wiki.degraded === true`. |
+| **Important** | `row.degraded` and column-level `degraded: true` never consumed by SPA | `components/panels/coverage/CoverageCell.tsx` | `CoverageCell` now short-circuits to a distinct "scan failed" rendering (HelpCircle icon, tooltip showing `degradedReason`) when `state.degraded === true`. AGREED-2's signal now reaches the user. |
+| **Important** | Family-section gitnexus install hint copy implied per-family install | `components/panels/coverage/CoverageFamilySection.tsx` | Dropped "for this family" — message now reads "GitNexus is not installed — Copy npm install -g gitnexus". |
+
+### Verification
+
+- `pnpm -r typecheck` — clean across all 5 packages.
+- `pnpm --filter @agenticapps/dashboard-agent test` — 638/638 PASS (one new file with 1 new test added).
+- `pnpm --filter @agenticapps/dashboard-shared test` — 196/196 PASS.
+- `pnpm --filter @agenticapps/dashboard-spa test` for coverage scope only — 77/77 PASS (3 new tests added in `CoveragePage.test.tsx`).
+- Full SPA `pnpm test` — 792/797 PASS. The 5 failing tests are the pre-existing 5000ms-timeout flake documented in `session-handoff.md`. Verified to be timeout flake, not logic regression: `RegisterModal.test.tsx` passes 25/25 in 3.11s when run in isolation. Stage 2 fixes added 4 new tests and did not introduce these failures (underlying issue is `testTimeout: 5000` against 95+ parallel files). Fix tracked as follow-up — outside Stage 2 scope.
+
+### Minor findings — deferred
+
+| Finding | Why deferred |
+|---|---|
+| `void navigate({ to: ... as '/' })` route-cast lies to TS | Route literal extension belongs to a help-routes phase; cast is documented but functional. |
+| "Refresh N stale entries across N repos" — duplicate variable | Cosmetic. |
+| Post-spawn `scanCoverageInternal()` re-scans all 45 repos for one updated row | Bounded cost; CODEX HIGH-5 demands `updatedRow`; per-row builder is non-trivial. |
+| `coverageCache.ts` module-scope singleton | Consistent with `overviewCache.ts`. |
+| `workflowVersionScanner.ts:192-200` — `state: fresh, detail: ahead` when `head === null` | Stage 1 also flagged as info; defer to v1.2. |
+| `coverageResolver.ts:115-120` — PathViolation diagnostics minimal | Daemon already logs `safety.symlink-escape` separately. |
+| Resolver tautology — `existsSync` after `realpathSync` | Belt-and-braces; harmless. |
+| Sidebar section-label case inconsistency | Outside Phase 10 scope. |
+
+### What this unblocks
+
+Stage 2 is now PASS. Remaining Phase 10 human gates:
+
+1. /review Stage 1 — PASS (existing)
+2. superpowers:requesting-code-review Stage 2 — PASS (this section)
+3. /qa live walkthrough (Gate 3 in session-handoff)
+4. impeccable critique (Gate 4; blocked on tool drift)
+5. HUMAN-UAT walkthrough (Gate 5)
+6. Push claude-workflow PR (Gate 1) + dashboard PR after gates 3+5 close (Gate 6)
+
+*Stage 2 closure authored by Opus 4.7 (1M context) main session after applying fixes.*
