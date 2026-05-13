@@ -18,7 +18,7 @@
  * - NO shadcn aliases (no bg-background, text-foreground, etc.)
  */
 import React from 'react'
-import { Check, AlertTriangle, X, Circle } from 'lucide-react'
+import { Check, AlertTriangle, X, Circle, HelpCircle } from 'lucide-react'
 import type { CoverageColumnState } from '@agenticapps/dashboard-shared'
 
 // Workflow column shape — narrowed from discriminated union when kind === 'workflow'
@@ -95,6 +95,24 @@ function workflowSubtext(c: CoverageWorkflowColumn): string {
 }
 
 export function CoverageCell({ column, state, repoName }: CoverageCellProps): React.JSX.Element {
+  // AGREED-2: scanner failures surface as a degraded cell — distinct from a confirmed-absent
+  // file. Render a "?" with the scanner's error in the tooltip so the user can tell them apart.
+  if (state.degraded) {
+    const reason = state.degradedReason ?? 'Scanner failed'
+    const ariaLabel = `${column} for ${repoName}: scanner failed — ${reason}`
+    return (
+      <figure
+        role="figure"
+        aria-label={ariaLabel}
+        title={reason}
+        className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 bg-text-tertiary/10 text-text-tertiary"
+      >
+        <HelpCircle size={14} aria-hidden="true" />
+        <span className="text-xs text-text-tertiary whitespace-nowrap">scan failed</span>
+      </figure>
+    )
+  }
+
   const tokens = STATE_TOKEN_MAP[state.state] ?? STATE_TOKEN_MAP['stale']
 
   // CODEX HIGH-4: workflow column gets sub-state text; basic column uses .label
