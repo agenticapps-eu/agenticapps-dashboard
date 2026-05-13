@@ -106,6 +106,21 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 - [ ] **HELP-05**: `<HelpHook topic="..." />` component compiles and exports cleanly; pure `topicToUrl()` returns expected `/help/<segments>` URLs with optional `#anchor` (consumer wiring deferred to v1.1)
 - [x] **HELP-06**: existing `/help` keyboard-shortcuts page replaced by docs landing; shortcuts content lives at `/help/reference/shortcuts` MDX page rendering the `KbdHint` table; `?` keyboard shortcut still navigates to `/help` landing
 
+### Coverage Matrix Page (Phase 10)
+
+- [ ] **COV-01**: `GET /api/coverage` returns the full coverage matrix — one entry per git repo under `~/Sourcecode/{agenticapps,factiv,neuroflash}` (one level deep), each entry has `family`, `repo`, `claudeMd`, `gitNexus`, `wiki`, `workflowVersion` columns + `overrideCount` + per-column freshness state (`fresh`/`stale`/`missing`/`not-applicable`).
+- [ ] **COV-02**: Filesystem reads outside the dashboard project root use daemon-side dedicated scanners only (no `/api/projects/:id/read` exposure); `resolveAllowedNamed` extended with new allowed roots (`~/.gitnexus`, `~/Sourcecode/agenticapps`, `~/Sourcecode/factiv`, `~/Sourcecode/neuroflash`); SPA never names any external path.
+- [ ] **COV-03**: `GET /api/coverage` response cached 30s daemon-side; cache cleared on `POST /api/coverage/refresh`; cold-load scan completes < 1s for ~42 repos.
+- [ ] **COV-04**: `POST /api/coverage/refresh` accepts `{ repo, action }`; daemon spawns `wiki-compile` (family-scoped) or `gitnexus analyze` (repo-scoped) when `action` permits; returns updated row state; `CLAUDE.md`-missing and workflow-version-mismatch actions return a clipboard-string instead of spawning.
+- [ ] **COV-05**: `/coverage` route renders grouped sections per family with sticky headers showing aggregate counts (`✕ N missing · ⚠ N stale · ✓ N fresh`) + per-family collapse toggle; matrix value always visible (never hidden behind tree expansion).
+- [ ] **COV-06**: Page-header toolbar provides status filter chips (`[all] [✕ missing] [⚠ stale] [✓ fresh]` multi-select with "all" default) + free-text repo-name search; default sort family-alpha then repo-alpha; filter state persisted in URL query params for deep-linking; family aggregate counts reflect filtered view.
+- [ ] **COV-07**: Inline `⚠ N override` chip rendered next to repo name when any `<repo>/.planning/phases/*/multi-ai-review-skipped` sentinel exists; click expands inline to list `<phase-slug> — sentinel since <ISO-date>` entries; chip absent when count is 0.
+- [ ] **COV-08**: Workflow-version "current head" derived from the highest-numbered file in `~/Sourcecode/agenticapps/claude-workflow/migrations/*.md`, parsing `to_version` from YAML frontmatter; per-repo cell compares installed `<repo>/.claude/skills/agentic-apps-workflow/skill/SKILL.md` frontmatter `version` against this head (equal=green, behind=amber, ahead=green-with-annotation, missing-skill-file=red, missing-version-field=amber with "version unknown" subtext).
+- [ ] **COV-09**: AppShellV2 sidebar gets a new `Observability` section between `Projects` and `Help`, containing a single `Coverage` entry routing to `/coverage`.
+- [ ] **COV-10**: When `~/.gitnexus/` directory does not exist, the GitNexus column shows `⚪ Not installed` for every row with a one-line `npm install -g gitnexus` hint at the family aggregate level (never crashes, never shows red); rows show `not-applicable` freshness state.
+- [ ] **COV-11**: Four-state per-column freshness: `fresh` (green ✓), `stale` (amber ⚠), `missing` (red ✕), `not-applicable` (gray ⚪); thresholds — GitNexus stale at > 14 days since last index, Wiki stale at > 7 days since last family compile, Workflow stale at any version below head, CLAUDE.md never stale (binary present/absent).
+- [ ] **COV-12**: Migration `0008-coverage-matrix-page.md` ships in `~/Sourcecode/agenticapps/claude-workflow/migrations/` alongside the dashboard PR; frontmatter `from_version: 1.7.0`, `to_version: 1.8.0`; documents the new `/coverage` route as a workflow surface (so other repos can discover where coverage is tracked) and bumps the agentic-apps-workflow skill version.
+
 ### Architectural Invariants (every phase)
 
 - [ ] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
