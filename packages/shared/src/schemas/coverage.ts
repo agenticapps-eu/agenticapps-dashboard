@@ -42,6 +42,7 @@ export const OverrideEntrySchema = z.object({
   sinceIso: z.string().optional(),
   source: z.enum(['git-log', 'mtime']),
 })
+export type OverrideEntry = z.infer<typeof OverrideEntrySchema>
 
 // Per-row matrix entry — PUBLIC (SPA-bound) shape. (CODEX HIGH-1)
 // Local filesystem paths are stripped before emission; they live only in the daemon-internal type.

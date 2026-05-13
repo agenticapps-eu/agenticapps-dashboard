@@ -156,7 +156,11 @@ export function CoverageFamilySection({
             </thead>
             <tbody className="divide-y divide-border-subtle">
               {rows.map((row) => (
-                <CoverageRow key={`${row.family}-${row.repo}`} row={row} onRefresh={onRefresh} />
+                <CoverageRow
+                  key={`${row.family}-${row.repo}`}
+                  row={row}
+                  {...(onRefresh !== undefined ? { onRefresh } : {})}
+                />
               ))}
             </tbody>
           </table>

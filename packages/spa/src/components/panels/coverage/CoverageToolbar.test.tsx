@@ -73,8 +73,10 @@ describe('CoverageToolbar', () => {
     // Now missing is selected, all is deselected. Click missing again to deselect it.
     fireEvent.click(screen.getByRole('button', { name: /missing/i }))
     // All chips now false → auto-revert to all=true
-    const lastCall = onFilterChange.mock.calls[onFilterChange.mock.calls.length - 1][0]
-    expect(lastCall.all).toBe(true)
+    const calls = onFilterChange.mock.calls
+    const lastCall = calls[calls.length - 1]
+    expect(lastCall).toBeDefined()
+    expect(lastCall![0].all).toBe(true)
   })
 
   it('search input debounces 200ms before calling onSearchChange', async () => {

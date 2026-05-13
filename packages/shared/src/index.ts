@@ -171,6 +171,7 @@ export type {
   CoverageRefreshAction,
   CoverageRefreshRequest,
   CoverageRefreshResponse,
+  OverrideEntry,
 } from './schemas/coverage.js'
 export {
   buildWikiCompileClipboardString,

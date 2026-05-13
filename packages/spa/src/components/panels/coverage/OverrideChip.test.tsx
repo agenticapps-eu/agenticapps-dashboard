@@ -58,7 +58,7 @@ describe('OverrideChip', () => {
 
   it('has correct ARIA attributes: aria-expanded on toggle button, accessible list role on entries', () => {
     render(
-      <OverrideChip count={1} overrides={[SAMPLE_OVERRIDES[0]]} repoName="agenticapps-dash" />,
+      <OverrideChip count={1} overrides={[SAMPLE_OVERRIDES[0]!]} repoName="agenticapps-dash" />,
     )
     const btn = screen.getByRole('button')
     expect(btn.getAttribute('aria-expanded')).toBeTruthy()
