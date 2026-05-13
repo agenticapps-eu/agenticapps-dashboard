@@ -124,7 +124,7 @@ function _scanSentinels(repoAbsPath: string, resolve: PathResolver): OverrideEnt
       }
     }
 
-    entries.push({ phaseSlug, sinceIso, source })
+    entries.push({ phaseSlug, source, ...(sinceIso !== undefined ? { sinceIso } : {}) })
   }
 
   return entries
