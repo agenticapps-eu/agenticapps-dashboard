@@ -106,6 +106,10 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
     if (resolverOpts.allowedNames && resolverOpts.extension) {
       throw new PathViolation('opts.allowedNames and opts.extension are mutually exclusive')
     }
+    // Require at least one of allowedNames or extension (mirrors resolveAllowedNamed contract)
+    if (!resolverOpts.allowedNames && !resolverOpts.extension) {
+      throw new PathViolation('one of opts.allowedNames or opts.extension is required')
+    }
 
     // Resolve candidate to realpath
     let real: string
