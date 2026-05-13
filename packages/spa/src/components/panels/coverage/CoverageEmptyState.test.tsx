@@ -1,21 +1,44 @@
 /**
- * Test scaffold for CoverageEmptyState.tsx — 4 empty-state branch renderer.
- * Plan 06 implements; Plan 01 provides the it.todo placeholders.
+ * CoverageEmptyState.test.tsx — Tests for 4-branch empty state renderer.
  *
- * Empty-state kinds:
- * - no-repos: No family roots found or all families missing
- * - no-gitnexus: GitNexus not installed globally (full-page treatment; per-family hint is inline in CoverageFamilySection)
- * - scan-failed: Daemon scan returned an error/degraded response
- * - no-results: Filter/search produced 0 matching rows
+ * UI-SPEC §6: each condition maps to specific copy + CTA.
  */
 
-import { describe, it } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import React from 'react'
+import { CoverageEmptyState } from './CoverageEmptyState.js'
 
 describe('CoverageEmptyState', () => {
-  it.todo("renders no-repos empty state when kind='no-repos'")
-  it.todo(
-    "renders no-gitnexus empty state when kind='no-gitnexus' (full-page treatment; per-family inline hint rendered in CoverageFamilySection)"
-  )
-  it.todo("renders scan-failed empty state when kind='scan-failed' with retry CTA")
-  it.todo("renders no-results empty state when kind='no-results' with clear-filter CTA")
+  it("renders no-repos empty state when kind='no-repos'", () => {
+    render(<CoverageEmptyState kind="no-repos" />)
+    // Both h3 title and body contain "No git repos found" — getAllByText handles multiple matches
+    const matches = screen.getAllByText(/No.*repos found/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/Sourcecode/i)).toBeTruthy()
+  })
+
+  it("renders no-gitnexus empty state when kind='no-gitnexus' with copy install command button", () => {
+    render(<CoverageEmptyState kind="no-gitnexus" />)
+    expect(screen.getByText(/GitNexus is not installed/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /copy install command/i })).toBeTruthy()
+  })
+
+  it("renders scan-failed empty state when kind='scan-failed' with retry CTA", () => {
+    const onRetry = vi.fn()
+    render(<CoverageEmptyState kind="scan-failed" onRetry={onRetry} />)
+    expect(screen.getByText(/Coverage scan failed/i)).toBeTruthy()
+    const retryBtn = screen.getByRole('button', { name: /retry/i })
+    fireEvent.click(retryBtn)
+    expect(onRetry).toHaveBeenCalledOnce()
+  })
+
+  it("renders no-results empty state when kind='no-results' with clear-filter CTA", () => {
+    const onClearFilters = vi.fn()
+    render(<CoverageEmptyState kind="no-results" onClearFilters={onClearFilters} />)
+    expect(screen.getByText(/No repos match your filters/i)).toBeTruthy()
+    const clearBtn = screen.getByRole('button', { name: /clear filters/i })
+    fireEvent.click(clearBtn)
+    expect(onClearFilters).toHaveBeenCalledOnce()
+  })
 })

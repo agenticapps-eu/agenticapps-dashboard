@@ -13,6 +13,8 @@ dist
 *.tsbuildinfo
 .DS_Store
 coverage
+# Negate test-coverage glob for the coverage feature panel source directory
+!**/panels/coverage/
 .vite
 # Playwright per-run output
 test-results/
