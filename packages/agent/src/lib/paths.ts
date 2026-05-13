@@ -1,5 +1,6 @@
 import { realpath } from 'node:fs/promises'
-import { resolve, isAbsolute, sep, basename } from 'node:path'
+import { resolve, isAbsolute, sep, basename, join } from 'node:path'
+import { homedir } from 'node:os'
 
 export const ALLOWED_SUBDIRS = ['.planning', '.claude'] as const
 
@@ -135,3 +136,17 @@ export async function resolveAllowedNamed(
 
   return real
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COVERAGE_ROOTS — Phase 10 D-10-NEW (extends D-5-13 pattern)
+// Cross-family read roots for the /coverage page. Daemon-side scanners only —
+// these are NEVER reachable via /api/projects/:id/read (INV-01 preserved).
+// personal/, shared/, archive/ are explicitly excluded (D-10-05 lock).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const COVERAGE_ROOTS = {
+  gitnexus: (): string => join(homedir(), '.gitnexus'),
+  agenticapps: (): string => join(homedir(), 'Sourcecode', 'agenticapps'),
+  factiv: (): string => join(homedir(), 'Sourcecode', 'factiv'),
+  neuroflash: (): string => join(homedir(), 'Sourcecode', 'neuroflash'),
+} as const
