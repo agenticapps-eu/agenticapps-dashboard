@@ -96,6 +96,30 @@ Ships as **migration 0008** in `~/Sourcecode/agenticapps/claude-workflow/migrati
   - **Why:** Leaves room for future cross-family panels (compliance, security audit, etc.). User explicitly chose this over my recommendation — pattern: prefers section architecture that can grow, even when v1.0 puts only one entry in that section.
   - **How to apply:** AppShellV2 sidebar gets a new `<SidebarSection title="Observability">` group containing `<SidebarItem to="/coverage" label="Coverage" />`. Section placement: between the existing "Projects" group and the "Help" group. Single-item sections are acceptable in v1.
 
+### Post-research amendments (added 2026-05-13 after 10-RESEARCH.md surfaced technical realities)
+
+- **D-10-09: Wiki refresh is CLIPBOARD-ONLY in v1.0** (revises D-10-02). RESEARCH.md surfaced that `/wiki-compile` is a Claude Code slash command with **no headless runner** — daemon cannot spawn it. The "daemon spawns when safe" rule (D-10-02) therefore applies ONLY to `gitnexus analyze`. Wiki refresh, CLAUDE.md authoring, and workflow-version update all become clipboard actions in v1.0.
+  - **Why:** Forcing wiki-compile through `claude code -p` headless mode (experimental) would couple the dashboard to Claude Code's CLI surface and break when that surface changes. Shipping a CLI wrapper for the wiki-compiler plugin is scope creep into wiki-builder territory.
+  - **How to apply:** Planner removes "spawnWikiCompile" from the daemon's refresh route. Refresh-action popover for wiki-stale rows offers a "Copy `/wiki-compile` command for terminal" button + a help link. Page UI documents the limitation in a small subscript under the toolbar. Defer headless wiki refresh to a future phase (could ship a wrapper or revisit headless Claude Code).
+  - **Net effect on D-10-02**: still per-row refresh + daemon-spawns-when-safe, but the "when safe" set narrows to `{gitnexus analyze}` only.
+
+- **D-10-10: GitNexus "never indexed" → `missing` (red); `~/.gitnexus/` absent entirely → `not-applicable` (gray) for the whole column** (refines COV-11 + COV-10). RESEARCH.md Q-5 + verified empty-state.
+  - **Why:** "Never indexed" semantically IS a missing artifact — user has not run the initial `gitnexus analyze`. The 14-day stale threshold applies only to indexed repos that have aged out. When the tool itself isn't installed (`~/.gitnexus/` missing), the column has no meaningful state for any row, hence `not-applicable` is column-wide.
+  - **How to apply:** Scanner returns `not-applicable` for every row when `~/.gitnexus/` absent (with the install banner). When `~/.gitnexus/registry.json` exists but a specific repo isn't in `entries[]`, return `missing` (red) for that row. When the repo IS in entries[] but `last_indexed < now - 14d`, return `stale` (amber). When fresh, return `fresh` (green).
+
+- **D-10-11: Phase 10 ships with the `not-applicable` GitNexus baseline; no gitnexus install bundled.**
+  - **Why:** Phase 10's job is to surface the coverage gap, not close it. Shipping with the `Not installed` GitNexus column proves the empty-state code path works — which IS the most common case for new dashboard users. Bundling gitnexus install would inflate scope (license review for PolyForm Noncommercial; 10-15min indexing time; daemon would need to detect gitnexus installation events).
+  - **How to apply:** UAT verifies both empty state (live, dev machine) AND populated state (fixture test with a mocked registry.json on disk). Migration 0008 documents the gitnexus install path as a separate user step. No `npm install -g gitnexus` shell-out during Phase 10 verification.
+
+### Post-research findings to lock as implementation guidance (Claude's discretion confirmed)
+
+- **Repo count is 45 not ~42** (agenticapps=9, factiv=3, neuroflash=33). RESEARCH.md verified by `find` walk.
+- **`registry.json` is a top-level JSON array of RegistryEntry**, NOT `{ repos: [...] }`. The ADR 0020 + migration 0007 verify scripts (`jq '.repos | length'`) contain a bug. Phase 10's scanner MUST use the correct schema; migration 0008's frontmatter MAY document the corrected `jq 'length'` form for future migration verify steps.
+- **Skill directory probe MUST try both layouts**: (a) `<repo>/.claude/skills/agentic-apps-workflow/SKILL.md` (canonical, used by migration-installed projects); (b) `<repo>/.claude/skills/agenticapps-workflow/skill/SKILL.md` (bundle layout, used by this dashboard repo itself — with NO version field). Identify by frontmatter `name:` field, not by directory name.
+- **Wiki "last compile" comes from `<family>/.knowledge/wiki/.compile-state.json` `last_compiled` field (YYYY-MM-DD)**. Treat absent file as "never compiled" → `missing`. Treat parse failure as `stale` with subtext "compile-state.json invalid" (Q-2 recommendation accepted).
+- **Override chip "since" timestamp comes from `git log -1 --format=%aI -- <sentinel-path>`**, not mtime. ~5-20ms per sentinel; bounded by # sentinels (currently 0 across all repos).
+- **GitNexus path canonicalization**: scanner tries BOTH `repoAbsPath` AND `realpathSync(repoAbsPath)` when matching against `registry.json` entries. Cost: one extra `realpath` syscall per uncached repo (Q-1 recommendation accepted).
+
 ### Claude's Discretion
 
 The following are implementation details the planner / researcher resolves:
