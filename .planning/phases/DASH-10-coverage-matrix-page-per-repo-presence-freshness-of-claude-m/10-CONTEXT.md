@@ -31,7 +31,7 @@ Ships as **migration 0008** in `~/Sourcecode/agenticapps/claude-workflow/migrati
 **In scope:**
 - New route `/coverage` mounted under `_appshell` via `createLazyRoute('/coverage')` in `packages/spa/src/router.tsx`.
 - New daemon route `GET /api/coverage` returning the full matrix; daemon-side 30s memo cache.
-- New daemon route `POST /api/coverage/refresh` accepting `{ repo, action }`; spawns `gitnexus analyze` or `wiki-compile` when safe; returns refreshed row state.
+- New daemon route `POST /api/coverage/refresh` accepting `{ family, repo, action: 'gitnexus-analyze' }`; spawns `gitnexus analyze`; returns required `updatedRow` on success. Clipboard actions (wiki refresh, CLAUDE.md authoring, workflow-version update) are SPA-side only per D-10-09 — the daemon rejects any non-'gitnexus-analyze' action at Zod parse with 400.
 - New shared schemas at `packages/shared/src/schemas/coverage.ts` (`CoverageRowSchema`, `CoverageResponseSchema`, `CoverageRefreshRequestSchema`, `CoverageRefreshResponseSchema`).
 - New SPA hooks (`useCoverage`, `useCoverageRefresh`) and panel components (`CoverageMatrix`, `CoverageFamilySection`, `CoverageRow`, `OverrideChip`).
 - New filesystem scanners in `packages/agent/src/lib/coverageScan.ts` reading `~/Sourcecode/<family>/` (one level), `~/.gitnexus/registry.json`, `<family>/.wiki-compiler.json`, per-repo `<repo>/CLAUDE.md` and `<repo>/AGENTS.md` and `<repo>/.claude/skills/agentic-apps-workflow/SKILL.md` and `<repo>/.planning/phases/*/multi-ai-review-skipped` sentinels.
