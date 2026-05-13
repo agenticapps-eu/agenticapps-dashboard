@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: "Phase 10 context gathered (8 decisions: 4 user-named constraints + 4 follow-ups)"
-last_updated: "2026-05-13T11:08:05.944Z"
-last_activity: 2026-05-13 -- Phase 10 planning complete
+last_updated: "2026-05-13T11:11:59.297Z"
+last_activity: 2026-05-13 -- Phase 10 execution started
 progress:
   total_phases: 13
   completed_phases: 8
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 10 — Coverage Matrix Page. New milestone v1.1 (cross-family observability) just opened. Ships as migration 0008 in claude-workflow.
+**Current focus:** Phase 10 — coverage-matrix-page-per-repo-presence-freshness-of-claude-m
 
 ## Current Position
 
-Phase: 10 — Coverage Matrix Page
-Plan: Not started (entering /gsd-discuss-phase 10)
+Phase: 10 (coverage-matrix-page-per-repo-presence-freshness-of-claude-m) — EXECUTING
+Plan: 1 of 9
 Milestone: v1.1 — Cross-family observability — 0%
-Status: Ready to execute
-Last activity: 2026-05-13 -- Phase 10 planning complete
+Status: Executing Phase 10
+Last activity: 2026-05-13 -- Phase 10 execution started
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [          ] 0% (Phase 10 discussing)
 
