@@ -33,12 +33,12 @@ Last activity: 2026-05-14 -- Phase 10.6 merged + STATE/ROADMAP reconciliation
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
 
-## v1.0.1 Follow-ups (deferred from Phase 7)
+## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
-Captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md`:
+Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` are resolved:
 
-- **Impeccable scoring tool drift** — `npx impeccable critique` removed in v2.1.8 (only `detect` survives). Decision needed: pin to last critique-capable version, or migrate gate to `detect`. Phase 7 closure was not blocked (0 new findings introduced).
-- **`text-text-tertiary` token contrast bump** — current `#9c95a8` is 2.8:1 against warm paper bg; needs ≥ 3:1. Cross-phase patch against Phase 5.1 tokens. 5 inherited low-contrast hits all come from this single token.
+- **Impeccable scoring tool drift** — ✅ resolved: superseded by Phase 10.5 D-10.5-01 (CI gate retired) + D-10.5-02 (skill-driven per-phase artifact replaces it).
+- **`text-text-tertiary` token contrast bump** — ✅ resolved 2026-05-14: `--color-text-tertiary` bumped from `#9C95A8` (2.8:1) to `#807A92` (~3.9:1) in `packages/spa/src/styles/tokens.css`. Comfortable margin above the 3:1 detector floor; tests pass (class-name invariants, not color literals).
 
 ## Performance Metrics
 

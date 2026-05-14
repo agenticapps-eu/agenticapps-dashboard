@@ -10,7 +10,7 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 
 - ✅ **v1.0 Working dashboard** — Phases 0–6 complete; merged via PR #15 + tagged `v1.0.0`
 - ✅ **v1.0 /help docs site (post-ship)** — Phase 7 complete; merged via PR #21 + PR #22 on 2026-05-12
-- 📋 **v1.0.1 Follow-ups** — `text-text-tertiary` 3:1 contrast bump still open (impeccable tool drift superseded by D-10.5-01: CI gate retired, skill-driven artifact replaces it). See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
+- ✅ **v1.0.1 Follow-ups (closed 2026-05-14)** — both items resolved: impeccable tool drift superseded by Phase 10.5 D-10.5-01, and `text-text-tertiary` bumped to `#807A92` (3.9:1). See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
 - 🚧 **v1.1 Cross-family observability** — Phase 10 (Coverage Matrix), 10.5 (skill-driven impeccable gate), 10.6 (three-state GitNexus detection) all shipped 2026-05-13 → 2026-05-14 via PRs #28 + #29. Phase 11 close-out scope TBD.
 - ⏸️ **v1.2 Optional integrations** — Phase 8 (held until upstream Sentry / Linear / Infisical tooling lands)
 - 📋 **v1.3 Open-source readiness** — Phase 9 (planned, much later)

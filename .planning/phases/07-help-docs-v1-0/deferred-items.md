@@ -42,7 +42,11 @@ keep the old token in a short grace window during rotation.
 
 ---
 
-## Impeccable scoring tool drift (v1.0.1 follow-up)
+## Impeccable scoring tool drift (v1.0.1 follow-up) — ✅ RESOLVED 2026-05-13
+
+**Status:** Superseded by Phase 10.5 decisions D-10.5-01 (retire the CI-enforced impeccable gate) + D-10.5-02 (skill-driven per-phase artifact replaces it) + D-10.5-03 (composite ≥ 87 floor, provisional pending calibration). The `.github/workflows/impeccable.yml` workflow and `scripts/check-impeccable-score.mjs` have been deleted. Per-phase `<N>-IMPECCABLE.md` artifacts authored by the `/impeccable critique` skill now replace CI enforcement. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
+
+**Original entry (historical):**
 
 **Discovered during:** Plan 07-05 T10 (impeccable critique ≥ 90 gate).
 
@@ -70,7 +74,12 @@ CI workflow `.github/workflows/impeccable.yml` is in the same drift state — it
 2. Rewrite the scoring pipeline using `detect` output + a custom weighted aggregator that mirrors the prior composite formula. The aggregator should weight monospace findings by whether the page actually uses code (reading the DOM for `<code>` / `<pre>` directly, not just sampling computed `font-family`).
 3. Bump `text-text-tertiary` from `#9c95a8` to a shade that clears 3:1 (`#8b85a0` or darker) — cross-phase token patch; needs visual regression review against every dashboard route AND the `/help/*` HelpLayout sidebar specifically (where the token surfaces most prominently).
 
-Full diagnosis in `evidence/impeccable.log` (T10 record + post-PR review re-run).
+**Resolution paths taken (2026-05-13 → 2026-05-14):**
+
+- **Items 1 + 2 (tool drift):** Superseded by Phase 10.5 D-10.5-01 + D-10.5-02. No CI replacement; per-phase artifact authored by the skill.
+- **Item 3 (token contrast):** Bumped `--color-text-tertiary` from `#9C95A8` (2.8:1 against `--color-app-bg #FAFAF7`) to `#807A92` (~3.9:1, comfortable margin above the 3:1 detector floor). Single hex change in `packages/spa/src/styles/tokens.css`; no test changes required (test invariants check class names, not computed color values). v1.0.1 follow-up closed. See `packages/spa/src/styles/tokens.css:17-31` for the rationale comment block.
+
+Full historical diagnosis in `evidence/impeccable.log` (T10 record + post-PR review re-run).
 
 ---
 
