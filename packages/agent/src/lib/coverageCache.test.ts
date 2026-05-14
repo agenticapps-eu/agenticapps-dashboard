@@ -21,7 +21,7 @@ function makeFakeResponse(_tag = 'test'): CoverageResponse {
   return {
     schemaVersion: 1,
     generatedAtIso: new Date().toISOString(),
-    gitNexusInstalled: false,
+    gitNexusInstallState: 'not-installed',
     workflowHeadVersion: null,
     rows: [],
   }

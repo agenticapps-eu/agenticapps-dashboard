@@ -30,7 +30,7 @@ vi.mock('../lib/coverageScan.js', () => ({
   scanCoverage: vi.fn().mockResolvedValue({
     schemaVersion: 1,
     generatedAtIso: new Date().toISOString(),
-    gitNexusInstalled: false,
+    gitNexusInstallState: 'not-installed',
     workflowHeadVersion: null,
     rows: [],
   }),
@@ -38,7 +38,7 @@ vi.mock('../lib/coverageScan.js', () => ({
     response: {
       schemaVersion: 1,
       generatedAtIso: new Date().toISOString(),
-      gitNexusInstalled: false,
+      gitNexusInstallState: 'not-installed',
       workflowHeadVersion: null,
       rows: [
         {
@@ -149,7 +149,7 @@ function makeTestSetup() {
     vi.mocked(coverageScanMod.scanCoverage).mockResolvedValue({
       schemaVersion: 1,
       generatedAtIso: new Date().toISOString(),
-      gitNexusInstalled: false,
+      gitNexusInstallState: 'not-installed',
       workflowHeadVersion: null,
       rows: [],
     })
@@ -157,7 +157,7 @@ function makeTestSetup() {
       response: {
         schemaVersion: 1,
         generatedAtIso: new Date().toISOString(),
-        gitNexusInstalled: false,
+        gitNexusInstallState: 'not-installed',
         workflowHeadVersion: null,
         rows: [
           {
@@ -258,14 +258,14 @@ describe('GET /api/coverage', () => {
       .mockResolvedValueOnce({
         schemaVersion: 1,
         generatedAtIso: t1,
-        gitNexusInstalled: false,
+        gitNexusInstallState: 'not-installed',
         workflowHeadVersion: null,
         rows: [],
       })
       .mockResolvedValueOnce({
         schemaVersion: 1,
         generatedAtIso: t2,
-        gitNexusInstalled: false,
+        gitNexusInstallState: 'not-installed',
         workflowHeadVersion: null,
         rows: [],
       })
@@ -293,7 +293,7 @@ describe('GET /api/coverage', () => {
     vi.mocked(coverageScanMod.scanCoverage).mockResolvedValueOnce({
       schemaVersion: 1,
       generatedAtIso: new Date().toISOString(),
-      gitNexusInstalled: true,
+      gitNexusInstallState: 'installed-with-registry',
       workflowHeadVersion: '1.0.0',
       rows: [
         {
@@ -326,7 +326,7 @@ describe('GET /api/coverage', () => {
   it('outbound schema-drift defense: malformed scan result yields schema_drift 500', async () => {
     // Return a value with wrong schemaVersion — Zod literal(1) will reject it.
     vi.mocked(coverageScanMod.scanCoverage).mockResolvedValueOnce(
-      { schemaVersion: 999 as unknown as 1, generatedAtIso: '', gitNexusInstalled: false, workflowHeadVersion: null, rows: [] },
+      { schemaVersion: 999 as unknown as 1, generatedAtIso: '', gitNexusInstallState: 'not-installed', workflowHeadVersion: null, rows: [] },
     )
     _resetCoverageCacheForTests()
 

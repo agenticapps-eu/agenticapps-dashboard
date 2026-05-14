@@ -101,7 +101,7 @@ const COVERAGE_ROW = {
 const COVERAGE_RESPONSE_BODY = {
   schemaVersion: 1,
   generatedAtIso: '2026-05-13T12:00:00.000Z',
-  gitNexusInstalled: true,
+  gitNexusInstallState: 'installed-with-registry',
   workflowHeadVersion: '1.0.0',
   rows: [COVERAGE_ROW],
 }

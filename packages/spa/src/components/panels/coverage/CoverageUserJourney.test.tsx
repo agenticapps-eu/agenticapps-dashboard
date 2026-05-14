@@ -77,7 +77,7 @@ function makeFixtureData(dataOverrides: Partial<CoverageResponse> = {}): Coverag
   return {
     schemaVersion: 1,
     generatedAtIso: '2026-05-13T12:00:00.000Z',
-    gitNexusInstalled: true,
+    gitNexusInstallState: 'installed-with-registry',
     workflowHeadVersion: '1.7.0',
     rows: [
       makeRow('agenticapps', 'agenticapps-dashboard'),
@@ -280,9 +280,9 @@ describe('Coverage user journey (deterministic, mocked — CODEX MED-16)', () =>
     expect(disabledButtons.length).toBeLessThanOrEqual(buttons.length)
   })
 
-  it('7. GitNexus install hint appears in each family header when gitNexusInstalled=false (CODEX HIGH-6 Option A)', () => {
+  it("7. GitNexus install hint appears in each family header when gitNexusInstallState='not-installed' (CODEX HIGH-6 Option A)", () => {
     vi.mocked(useCoverage).mockReturnValue({
-      data: makeFixtureData({ gitNexusInstalled: false }),
+      data: makeFixtureData({ gitNexusInstallState: 'not-installed' }),
       isPending: false,
       isError: false,
       error: null,
@@ -292,7 +292,9 @@ describe('Coverage user journey (deterministic, mocked — CODEX MED-16)', () =>
     render(<CoveragePage />, { wrapper })
 
     // CODEX HIGH-6 Option A: install hint rendered inside each CoverageFamilySection
-    // when gitNexusInstalled=false — 3 families = 3 hints
+    // when GitNexus binary is absent — 3 families = 3 hints.
+    // 10.6: the hint MUST NOT fire for installed-no-registry (that variant has
+    // its own page-level "Index with GitNexus" CTA — see CoveragePage.test.tsx).
     const hints = screen.getAllByText(/GitNexus is not installed/i)
     expect(hints.length).toBeGreaterThanOrEqual(3)
   })

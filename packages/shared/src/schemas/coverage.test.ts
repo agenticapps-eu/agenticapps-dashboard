@@ -237,7 +237,7 @@ describe('CoverageResponseSchema', () => {
       CoverageResponseSchema.parse({
         schemaVersion: 1,
         generatedAtIso: '2026-05-13T00:00:00Z',
-        gitNexusInstalled: false,
+        gitNexusInstallState: 'not-installed',
         workflowHeadVersion: null,
         rows: [],
       })
@@ -249,8 +249,20 @@ describe('CoverageResponseSchema', () => {
       CoverageResponseSchema.parse({
         schemaVersion: 2,
         generatedAtIso: '2026-05-13T00:00:00Z',
-        gitNexusInstalled: true,
+        gitNexusInstallState: 'installed-with-registry',
         workflowHeadVersion: '1.7.0',
+        rows: [],
+      })
+    ).toThrow()
+  })
+
+  it('rejects unknown gitNexusInstallState values (10.6 enum lock)', () => {
+    expect(() =>
+      CoverageResponseSchema.parse({
+        schemaVersion: 1,
+        generatedAtIso: '2026-05-13T00:00:00Z',
+        gitNexusInstallState: 'something-else',
+        workflowHeadVersion: null,
         rows: [],
       })
     ).toThrow()

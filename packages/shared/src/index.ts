@@ -151,6 +151,7 @@ export type {
 } from './schemas/skills.js'
 export {
   CoverageStateSchema,
+  GitNexusInstallStateSchema,
   CoverageFamilySchema,
   CoverageBasicColumnSchema,
   CoverageWorkflowColumnSchema,
@@ -164,6 +165,7 @@ export {
 } from './schemas/coverage.js'
 export type {
   CoverageState,
+  GitNexusInstallState,
   CoverageFamily,
   CoverageColumnState,
   CoverageRow,
@@ -178,4 +180,5 @@ export {
   buildWorkflowUpdateClipboardString,
   buildClaudeMdHelpUrl,
   buildGitnexusInstallClipboardString,
+  buildGitnexusIndexClipboardString,
 } from './clipboard.js'
