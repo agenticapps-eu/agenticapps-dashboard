@@ -356,3 +356,69 @@ Plans:
 - `packages/spa/src/components/panels/coverage/CoverageFamilySection.tsx` — install hint only for `not-installed`.
 - `eslint.config.mjs` — added `argsIgnorePattern`, `varsIgnorePattern`, `caughtErrorsIgnorePattern`, `destructuredArrayIgnorePattern` all `^_`.
 **Plans:** N/A — single squashable feature (1 PR scope). Triggered as a hot-follow-up; no separate `/gsd-plan-phase` artefacts.
+
+---
+
+## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)
+
+**Audit scope:** v1.1 milestone "Cross-family observability" has shipped Phase 10 (Coverage Matrix) + 10.5 (skill-driven impeccable gate) + 10.6 (3-state GitNexus detection). What else, if anything, belongs in v1.1 before declaring the milestone closed and reverting to Phase 8 (held: optional integrations) for v1.2?
+
+**Authoritative framing:** PROJECT.md Core Value — *"A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service."*
+
+The Coverage Matrix delivers the **point-in-time** half of "what every project's pipeline is doing right now". The natural v1.1 close-out question: should v1.1 also deliver the **drift over time** half ("how is it changing") before moving on?
+
+### Candidate A — Phase 11: Coverage trends + Phase 10.6 polish bundle ★ RECOMMENDED
+
+**Goal:** Persist daily coverage snapshots locally and show drift indicators per cell (e.g. `▲ 14d` / `▼ since 2026-05-08`). Bundle in the 2 Phase 10.6 triage items (sticky PageHeader + row-refresh icon opacity bump) since both touch the Coverage surface and individually are too small to phase-justify.
+
+**Why this is the right v1.1 close-out:**
+
+- **Closes the observability loop.** Phase 10 answers "what's broken?"; trends answer "what's getting worse?" and "what did we just fix?". Trends turn the matrix from a passive snapshot into a leading indicator.
+- **Stays inside hard architectural constraints.** Snapshots persist to `~/.agenticapps/dashboard/coverage-history/` (already mode `0600` writable per spec); the dashboard's read-only contract over project filesystems is untouched. No new services, no native deps, no cloud upload.
+- **Compounds with Phase 10 investment.** Reuses `coverageScan` orchestrator, the `gitNexusInstallState` enum (10.6), the 30s daemon cache, and the existing wire-schema barrel. No new schema layer.
+- **Naturally folds the Phase 10.6 polish backlog.** The 2 "fold into Phase 11.x" items from `.planning/phases/DASH-10-.../10-IMPECCABLE.md` triage are Coverage-surface UX work — they belong here.
+
+**Sketch (subject to /gsd-discuss-phase 11 + /gsd-plan-phase 11):**
+
+| Wave | Work |
+|---|---|
+| 0 | Shared schema: extend `CoverageResponseSchema` with optional `history?: CoverageDrift[]`; new schema `CoverageDrift` (per cell, last 14 days, state transition list). |
+| 1 | Daemon: snapshot writer (NDJSON-append under `~/.agenticapps/dashboard/coverage-history/<ISO-date>.ndjson`, 14-day rolling retention). New endpoint `GET /api/coverage/history?repoId=&cell=`. Cron-style daily run via launchd / systemd timer (reuses Phase 6 install-launchd/systemd). |
+| 2 | SPA: drift sparkline (12-tick mini-sparkline, no library — pure SVG, 30-line render fn). `CoverageCell` gets optional `drift` prop; renders inline `▲14d` / `▼7d` text indicator if drift present. |
+| 3 | Polish bundle: sticky PageHeader (shared primitive — affects every dashboard route; bonus benefit beyond Coverage); row-refresh icon `opacity-0` → `opacity-30` (touchpad/keyboard discoverability). |
+| 4 | Gates: Stage 1 + Stage 2 review, `/cso` (touches daemon filesystem writes — needs trust-boundary pass), `/qa` walkthrough, `/impeccable critique` post-fix re-run (calibration data point #2 for D-10.5-03 score floor). |
+
+**Effort estimate:** 4 waves, ~5 plans, comparable to Phase 10 scope. Roughly 1 week of focused execution.
+
+**Open scope decisions (would be surfaced in /gsd-discuss-phase 11):**
+
+- **Retention window** — 14 days vs 30 days vs 90 days. Storage cost is trivial (NDJSON, ~few KB/day for 45 repos × 4 columns); the question is UI signal-to-noise.
+- **Snapshot trigger** — daily cron only, or also opportunistically on every dashboard load (with dedup)? Cron-only is simpler but misses days the user isn't using the dashboard.
+- **Drift surface** — inline indicator (▲14d) vs sparkline vs both. Pure inline is calmer; sparkline conveys magnitude but adds visual weight to an already-dense matrix.
+- **Cross-repo aggregation** — does v1.1 also ship a family-aggregate trend (e.g. "neuroflash wiki freshness: 90% → 60% over 14 days")? Could be deferred to v1.2.
+
+### Candidate B — Phase 11: Cross-repo skill drift surface (alternative)
+
+**Goal:** Aggregate `.claude/skills/` across all registered projects into a "Skill matrix" page. Highlight which skills are missing, version drift between repos, last-modified per skill.
+
+**Why this is a strong alternative:** Phase 5 already wired the per-project Skills panel and AgentLinter integration. A cross-repo aggregate is a small extension — same data sources, different aggregation layer. Stays read-only.
+
+**Why I'm NOT recommending it over Candidate A:** v1.1's milestone name is "Cross-family observability" — Coverage trends are a deeper completion of that promise. Skill drift is more naturally a **v1.2** topic ("project lifecycle observability") and would benefit from being scoped after Phase 8's integration work has shape (Sentry / Linear can supply richer signal).
+
+### Candidate C — Defer everything; declare v1.1 closed now
+
+**Goal:** Treat Phase 10 / 10.5 / 10.6 as sufficient for v1.1. Move directly to Phase 8 (held: optional integrations) when upstream tooling lands; bundle the 2 Phase 10.6 polish items into Phase 8 or a small inline patch.
+
+**Why this is on the table:** v1.1's stated milestone description is "Coverage Matrix Page ships as migration 0008 in claude-workflow" — strictly speaking, that's done. The dashboard's observability story is materially richer than v1.0. Donald may have higher-leverage work elsewhere.
+
+**Why I'm NOT recommending it:** "Drift over time" is the natural extension of "what's the current state?", and the daemon + scanner infrastructure was just built. Cost-to-add is low while context is fresh; cost would balloon if Phase 11 = trends is attempted 6 months later after the Coverage code has been forgotten.
+
+### Recommendation
+
+**Phase 11 = Candidate A (Coverage trends + Phase 10.6 polish bundle).** Close v1.1 with the drift story before reverting to held Phase 8.
+
+**Phase 12 (v1.2 start) decision deferred until Phase 8 unblock signal arrives** — i.e. when Sentry / Linear / Infisical upstream tooling reaches a stable enough surface to consume. v1.2 likely re-numbers Phase 8 (held) as Phase 12 and proceeds.
+
+**Next action if Phase 11 = Candidate A is approved:** `/gsd-discuss-phase 11` to surface the 4 open scope decisions above before planning.
+
+*Audit authored 2026-05-14 by Opus 4.7 (1M context) main session, based on PROJECT.md core-value framing + Phase 10.6 polish triage results + current claude-workflow chain state (head 1.9.3).*
