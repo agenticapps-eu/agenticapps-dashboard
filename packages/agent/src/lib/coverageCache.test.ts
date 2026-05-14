@@ -17,7 +17,7 @@ import {
 import type { CoverageResponse } from '@agenticapps/dashboard-shared'
 
 // Minimal valid CoverageResponse for test fixtures
-function makeFakeResponse(tag = 'test'): CoverageResponse {
+function makeFakeResponse(_tag = 'test'): CoverageResponse {
   return {
     schemaVersion: 1,
     generatedAtIso: new Date().toISOString(),

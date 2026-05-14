@@ -12,7 +12,7 @@
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { scanCoverage, scanCoverageInternal } from './coverageScan.js'
 import { CoverageResponseSchema } from '@agenticapps/dashboard-shared'
 
@@ -32,13 +32,6 @@ function makeFakeSourcecodeRoot(families: Record<string, string[]>): {
     }
   }
   return { root, cleanup: () => rmSync(root, { recursive: true, force: true }) }
-}
-
-/** Build a fake ~/.gitnexus dir (empty — no registry.json). */
-function makeFakeGitnexusHome(): { home: string; cleanup: () => void } {
-  const home = mkdtempSync(join(tmpdir(), 'gitnexus-home-test-'))
-  mkdirSync(join(home, '.gitnexus'), { recursive: true })
-  return { home: join(home, '.gitnexus'), cleanup: () => rmSync(home, { recursive: true, force: true }) }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
