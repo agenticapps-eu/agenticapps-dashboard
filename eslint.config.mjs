@@ -24,6 +24,20 @@ export default tseslint.config(
     rules: {
       'import/order': ['warn', { 'newlines-between': 'always' }],
       'import/no-duplicates': 'error',
+      // Honor the underscore-prefix convention already used across the codebase
+      // (e.g. `_opts` on scanner callbacks, `_omit` in destructuring discards) for
+      // intentionally-unused identifiers. Without this override, the default
+      // @typescript-eslint/no-unused-vars rule flags every `_`-prefixed name as
+      // an error, contradicting the project's own convention.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
     },
   },
   // SPA React rules (Plan 03 fills out the matching files)

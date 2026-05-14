@@ -1,18 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: v1.0 complete (dashboard + /help docs site)
-status: between-milestones
-stopped_at: Phase 7 shipped via PR #21 + #22 (squash-merged to main 2026-05-12). v1.0 milestone fully closed.
-last_updated: "2026-05-12T14:55:00.000Z"
-last_activity: 2026-05-12
+milestone: v1.1
+milestone_name: Cross-family observability
+status: executing
+stopped_at: "Phase 10 complete — all 9 plans landed, all 12 COV requirements ticked, 5 gate artifacts authored (10-REVIEW.md Stage1 pass, 10-CSO.md pass, 10-HUMAN-UAT.md scaffold); Stage 2 review + /qa + impeccable deferred to user (fresh-context session required)"
+last_updated: "2026-05-13T16:00:00Z"
+last_activity: 2026-05-13 -- Phase 10 plan 09 (post-phase gates) executed
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 64
-  completed_plans: 64
+  total_phases: 13
+  completed_phases: 8
+  total_plans: 51
+  completed_plans: 51
   percent: 100
-next_milestone: v1.0.1 follow-ups (impeccable tooling drift, text-text-tertiary contrast); Phase 8 held
 ---
 
 # Project State
@@ -22,17 +21,17 @@ next_milestone: v1.0.1 follow-ups (impeccable tooling drift, text-text-tertiary 
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.0 milestone closed (Phases 0–7 shipped). Awaiting decisions on v1.0.1 follow-ups; Phase 8 held per CLAUDE.md until Sentry / Linear / Infisical upstream tooling lands.
+**Current focus:** Phase 10 — coverage-matrix-page-per-repo-presence-freshness-of-claude-m
 
 ## Current Position
 
-Phase: — (between milestones)
-Plan: —
-Milestone: v1.0 (dashboard + /help docs) — 100% complete
-Status: No active phase. Next action: pick up v1.0.1 follow-ups or wait on Phase 8 upstream tooling.
-Last activity: 2026-05-12
+Phase: 10 (coverage-matrix-page-per-repo-presence-freshness-of-claude-m) — EXECUTING
+Plan: 1 of 9
+Milestone: v1.1 — Cross-family observability — 0%
+Status: Executing Phase 10
+Last activity: 2026-05-13 -- Phase 10 execution started
 
-Progress: [██████████] 100% of v1.0 milestone
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [          ] 0% (Phase 10 discussing)
 
 ## v1.0.1 Follow-ups (deferred from Phase 7)
 
@@ -83,6 +82,7 @@ Captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md`:
 
 - Phase 05.1 inserted after Phase 5: UI redesign Cloudflare-inspired sidebar dashboard shell (URGENT) — design pass before more functionality piles on; Cloudflare dashboard-inspired minimal aesthetic with sidebar nav. Inserted 2026-05-09.
 - Phase 06.1 inserted after Phase 6: typography-layout-impeccable-lift (URGENT) — Phase 6 Wave 2 (06-06) measured composite scores 83-87 across all 6 v1.0 routes after closing all 8 deterministic detector violations; Color sub-score reached 90 but Typography (82) and Layout (88) need UX architecture work (ARIA on OBSERVE items, max-w-[75ch] line-length, progressive disclosure on integration panels, empty-canvas treatment on /pair, token-masking on settings) to clear the ≥ 90 gate. Must close before Phase 6's 06-07 closing-ritual PR triggers the gate. Inserted 2026-05-10.
+- Phase 10 added 2026-05-13: Coverage Matrix Page — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (~/Sourcecode/{agenticapps,factiv,neuroflash}). Ships as migration 0008 in claude-workflow. Depends on Phase 7 (skips held Phases 8/9). Opens a new milestone (v1.1: cross-family observability) beyond the closed v1.0 milestone.
 
 ### Decisions
 
@@ -109,6 +109,7 @@ Recent decisions affecting current work:
 - [Phase 07]: Plan 07-04: Mermaid-as-JSX in MDX (<MermaidBlock code={...}/>) decouples content from Plan 07-05's pre-mapping wiring
 - [Phase 07]: Plan 07-04: MDX heading anchors require explicit <h2 id> (not kramdown {#anchor}); acorn parses {...} as JS expression
 - [Phase 07]: Plan 07-04: mermaid.parse() syntax test must run in jsdom env; mermaid v11 DOMPurify init needs window
+- [Phase 10]: Coverage matrix page shipped. Migration 0008 bumps workflow head to 1.8.0. CODEX HIGH-1 (absPath strip), HIGH-2 (symlink escape guard), HIGH-3 (resolver-everywhere), HIGH-5 (refresh contract pin), HIGH-6 (per-family install hint) and 13 other review findings all landed via the --reviews replan. Stage 1 /review PASS (0 errors, 1 warning, 2 info). /cso PASS (0 errors). Stage 2, /qa, and impeccable deferred to user (fresh-context + dev server required).
 
 ### Pending Todos
 
@@ -120,7 +121,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-12T14:55:00.000Z
-Stopped at: Phase 7 shipped via PR #21 + #22 (squash-merged to main 2026-05-12). STATE + ROADMAP reconciled to reflect v1.0 closure.
-Resume file: None
+Last session: 2026-05-13T07:36:54.908Z
+Stopped at: Phase 10 context gathered (8 decisions: 4 user-named constraints + 4 follow-ups)
+Resume file: .planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-CONTEXT.md
 Next action: address v1.0.1 follow-ups (impeccable + contrast) or pick a non-Phase-8 task (worktree cleanup, branch pruning).
