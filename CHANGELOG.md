@@ -10,7 +10,7 @@ All notable changes to agenticapps-dashboard are documented here.
 - **`GET /api/coverage` + `POST /api/coverage/refresh`** daemon endpoints, 30s memo cache, gitnexus-analyze spawn (PATH-resolved, argv-array, never `npx`).
 - **Sidebar `Observability` section** with `Coverage` entry, replacing the three placeholder stubs (Skills/Health/Reviews).
 - **Override chip** surfaces `<repo>/.planning/phases/*/multi-ai-review-skipped` sentinel files (from migration 0005's audit pattern). Inline expansion shows phase slug + sentinel since timestamp.
-- **Migration 0008** in `claude-workflow` — documents the `/coverage` workflow surface, bumps workflow head version 1.7.0 → 1.8.0.
+- **Migration 0008** in `claude-workflow` — documents the `/coverage` workflow surface. Originally shipped as `1.7.0 → 1.8.0`; re-anchored 2026-05-14 to `1.5.0 → 1.6.0` by claude-workflow PR #17 "chain integrity" (coverage matrix is a dashboard surface, not a consumer-repo capability bump). The 1.6 → 1.8 jump is now carried by migration 0009 (CLAUDE.md vendoring). Workflow scaffolder head currently at 1.9.3.
 - **ADR 0023** in `claude-workflow/docs/decisions/` — captures Phase 10 design rationale (4 columns, 11 decisions D-10-01..D-10-11, override surface, refresh semantics, cache strategy).
 - **CODEX MED-17 fixture test** (`migration-0008.fixture.test.ts`) — CI-resident, never skips; asserts parseFrontmatter produces the expected migration 0008 frontmatter shape.
 

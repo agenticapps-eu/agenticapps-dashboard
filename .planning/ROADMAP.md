@@ -10,8 +10,8 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 
 - ✅ **v1.0 Working dashboard** — Phases 0–6 complete; merged via PR #15 + tagged `v1.0.0`
 - ✅ **v1.0 /help docs site (post-ship)** — Phase 7 complete; merged via PR #21 + PR #22 on 2026-05-12
-- 📋 **v1.0.1 Follow-ups** — impeccable scoring tool drift + `text-text-tertiary` 3:1 contrast bump (deferred from Phase 7, see `.planning/phases/07-help-docs-v1-0/deferred-items.md`)
-- 🚧 **v1.1 Cross-family observability** — Phase 10 in flight (Coverage Matrix Page); ships as migration 0008 in claude-workflow
+- 📋 **v1.0.1 Follow-ups** — `text-text-tertiary` 3:1 contrast bump still open (impeccable tool drift superseded by D-10.5-01: CI gate retired, skill-driven artifact replaces it). See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
+- 🚧 **v1.1 Cross-family observability** — Phase 10 (Coverage Matrix), 10.5 (skill-driven impeccable gate), 10.6 (three-state GitNexus detection) all shipped 2026-05-13 → 2026-05-14 via PRs #28 + #29. Phase 11 close-out scope TBD.
 - ⏸️ **v1.2 Optional integrations** — Phase 8 (held until upstream Sentry / Linear / Infisical tooling lands)
 - 📋 **v1.3 Open-source readiness** — Phase 9 (planned, much later)
 
@@ -33,7 +33,9 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 - [x] **Phase 7: Help docs v1.0** — MDX `/help` docs site (5 anchor pages + 25 stub pages + shell + 8 widget stubs); replaces existing `/help` shortcut page, folds shortcuts into docs
 - [ ] **Phase 8: Optional Integrations (held)** — Sentry / Linear / Infisical wiring, gated on upstream tooling
 - [ ] **Phase 9: Open-source Readiness (much later)** — LICENSE, CONTRIBUTING, optional public landing
-- [x] **Phase 10: Coverage Matrix Page** — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (ships as migration 0008 in claude-workflow; depends on Phase 7, skips held Phases 8/9) (completed 2026-05-13)
+- [x] **Phase 10: Coverage Matrix Page** — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (ships as migration 0008 in claude-workflow; depends on Phase 7, skips held Phases 8/9) (completed 2026-05-13, PR #28)
+- [x] **Phase 10.5: Impeccable skill-driven gate (INSERTED)** — retire broken CI gate (`.github/workflows/impeccable.yml`), adopt per-phase `<N>-IMPECCABLE.md` artifact authored by running `/impeccable critique`. 5 decisions: D-10.5-01..05. Shipped bundled in PR #28 (completed 2026-05-13)
+- [x] **Phase 10.6: Three-state GitNexus detection (INSERTED)** — coverage scanner upgraded from boolean `~/.gitnexus` presence to `gitNexusInstallState` enum (`not-installed` / `installed-no-registry` / `installed-with-registry`); new `IndexGitNexusButton` CTA for the middle state; stat-based binary probe over fnm/nvm/volta/bun/homebrew/system prefixes (completed 2026-05-14, PR #29)
 
 ## Phase Details
 
@@ -278,7 +280,9 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 7. Help docs v1.0 | 5/5 | ✅ Complete (PR #21 + #22) | 2026-05-12 |
 | 8. Optional Integrations | 0/TBD | ⏸️ Held (upstream tooling required) | - |
 | 9. Open-source Readiness | 0/TBD | 📋 Deferred (much later) | - |
-| 10. Coverage Matrix Page | 9/9 | Complete   | 2026-05-13 |
+| 10. Coverage Matrix Page | 9/9 | ✅ Complete (PR #28) | 2026-05-13 |
+| 10.5. Impeccable skill-driven gate (inserted) | 5 deliverables / 5 | ✅ Complete (PR #28) | 2026-05-13 |
+| 10.6. Three-state GitNexus detection (inserted) | 1/1 | ✅ Complete (PR #29) | 2026-05-14 |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
@@ -316,5 +320,39 @@ Plans:
 - [x] 10-05-PLAN.md — Wave 2 (parallel with 04): SPA lib/coverageQueries.ts — useCoverage (30s staleTime matching daemon cache) + useCoverageRefresh (invalidates query onSuccess) + parseOrDrift reuse
 - [x] 10-06-PLAN.md — Wave 3: 8 SPA panel components in panels/coverage/ — CoverageCell (4-state Phase 05.1 tokens; workflow variant renders behind/ahead/version-unknown sub-states per CODEX HIGH-4) + OverrideChip (count===0 returns null per Pitfall 5) + CoverageRow + CoverageFamilySection (sticky header + per-family GitNexus install hint when not-applicable per CODEX HIGH-6 + filter-aware counts + localStorage collapse) + CoverageToolbar (4-chip multi-select + 200ms debounce + URL sync) + RefreshAllStaleButton (batch-progress state per AGREED-4) + CoverageEmptyState + CoveragePage composing all
 - [x] 10-07-PLAN.md — Wave 4: route mount — coverage.lazy.tsx + router.tsx coverageRoute (validateSearch zodValidator + errorComponent reuse per Phase 7 Pitfall 8) + Sidebar.tsx replaces OBSERVE placeholder with Observability/Coverage entry (COV-09) + Playwright e2e spec covering 6 user-journey scenarios
-- [x] 10-08-PLAN.md — Wave 5: Migration 0008 + ADR 0021 in claude-workflow repo (human-action checkpoints) + dashboard-side migration-0008.fixture.test.ts (CI-resident per CODEX MED-17) + migration-0008.smoke.test.ts (cross-repo, warns-not-skips) + CHANGELOG.md v1.1 entry (COV-12 + workflow head 1.7.0 → 1.8.0)
+- [x] 10-08-PLAN.md — Wave 5: Migration 0008 + ADR 0021 in claude-workflow repo (human-action checkpoints) + dashboard-side migration-0008.fixture.test.ts (CI-resident per CODEX MED-17) + migration-0008.smoke.test.ts (cross-repo, warns-not-skips) + CHANGELOG.md v1.1 entry (COV-12 — originally shipped as workflow head 1.7.0 → 1.8.0; re-anchored 2026-05-14 to 1.5.0 → 1.6.0 by claude-workflow PR #17 chain-integrity fix)
 - [x] 10-09-PLAN.md — Wave 6 (depends on 10-08): Post-phase gates (added 2026-05-13 per CODEX HIGH-11) — Stage 1 /review, Stage 2 superpowers:requesting-code-review, /cso cross-repo trust boundary audit, /qa live walkthrough, impeccable:critique ≥ 90 at 1440x900, 10-HUMAN-UAT.md scaffold with 6 acceptance scenarios, REQUIREMENTS.md COV-01..12 tick-off
+
+### Phase 10.5: Impeccable skill-driven gate (INSERTED)
+
+**Goal:** Replace the broken CI-enforced impeccable gate with a skill-driven per-phase artifact. Phase 6's `.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs` have been silently broken since `npx impeccable critique` was removed in v2.1.8. Every frontend-touching phase ends by running `/impeccable critique` against affected routes at 1440×900 and committing `<N>-IMPECCABLE.md`.
+**Milestone:** v1.1 — Cross-family observability
+**Depends on:** Phase 6 / Phase 10 (triggered by Phase 10 Gate 4)
+**Decisions:** D-10.5-01 (retire CI gate) · D-10.5-02 (skill-driven per-phase artifact is the gate) · D-10.5-03 (composite ≥ 87 floor provisional pending 3-phase calibration) · D-10.5-04 (no headless skill invocation in CI) · D-10.5-05 (cross-repo update via ADR addendum only).
+**Scope:** `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-SCOPE.md`
+**Deliverables (5):**
+- [x] D1 — Run `/impeccable critique` against `/coverage` → write `10-IMPECCABLE.md` (composite + sub-scores + findings).
+- [x] D2 — Delete `.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`.
+- [x] D3 — Update `CLAUDE.md:38` + `docs/spec/dashboard-prompt.md` lines 554, 594, 696 to describe the per-phase artifact contract.
+- [x] D4 — New dashboard ADR `docs/decisions/0024-impeccable-skill-driven-gate.md` documenting the retirement + new contract.
+- [x] D5 — Cross-repo ADR-0011 addendum on `agenticapps-workflow-core` (separate branch + PR, queued).
+
+### Phase 10.6: Three-state GitNexus detection (INSERTED)
+
+**Goal:** Distinguish three GitNexus install states on the coverage page instead of conflating them as a boolean. Triggered by user bug report: "coverage page says GitNexus not installed but it is installed on my machine" — root cause was `existsSync(~/.gitnexus)` proxy that only becomes true after the first `gitnexus analyze`, misclassifying users with binary installed (e.g. via fnm) but never analyzed.
+**Milestone:** v1.1 — Cross-family observability
+**Depends on:** Phase 10 (extends the coverage scanner + page CTAs)
+**Decisions:**
+- 3-state enum on the wire (`not-installed` / `installed-no-registry` / `installed-with-registry`), not 2 boolean flags. Why: semantic clarity, exhaustive-switch checking, harder to misuse.
+- Stat-based binary detection probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) — no shell-out. Why: predictable, no shell-injection surface, survives launchd minimal PATH.
+- Per-row state under `installed-no-registry` shifts `'not-applicable'` → `'missing'`. Why: under installed-no-registry, repos CAN be indexed — actionable state is the correct semantic.
+- eslint `argsIgnorePattern: '^_'` + variants adopted globally to align with existing underscore-discard convention.
+**Files touched:**
+- `packages/agent/src/lib/scanners/gitNexusScanner.ts` — new `detectGitNexusBinary`, 3-state enum, semantic shift for `rateGitNexusRepo`.
+- `packages/shared/src/schemas/coverage.ts` — `gitNexusInstallState` enum replaces `gitNexusInstalled` boolean on `CoverageResponseSchema`.
+- `packages/shared/src/clipboard.ts` — new `buildGitnexusIndexClipboardString()`.
+- `packages/spa/src/components/panels/coverage/IndexGitNexusButton.tsx` — new component (sparkles icon, copies `gitnexus analyze`).
+- `packages/spa/src/components/panels/coverage/CoveragePage.tsx` — 3-way CTA selection.
+- `packages/spa/src/components/panels/coverage/CoverageFamilySection.tsx` — install hint only for `not-installed`.
+- `eslint.config.mjs` — added `argsIgnorePattern`, `varsIgnorePattern`, `caughtErrorsIgnorePattern`, `destructuredArrayIgnorePattern` all `^_`.
+**Plans:** N/A — single squashable feature (1 PR scope). Triggered as a hot-follow-up; no separate `/gsd-plan-phase` artefacts.
