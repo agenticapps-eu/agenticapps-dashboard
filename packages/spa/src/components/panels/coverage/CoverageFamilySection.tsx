@@ -2,7 +2,15 @@
  * CoverageFamilySection.tsx — Sticky family header + per-repo rows + GitNexus install hint.
  *
  * CODEX HIGH-6 Option A: GitNexus install hint is inside the family header
- *   (not a separate page-level banner). Hint shows when gitNexusInstalled=false.
+ *   (not a separate page-level banner).
+ *
+ * 10.6 change: the install hint now fires ONLY when `gitNexusInstallState`
+ *   is 'not-installed'. Under the prior boolean it also fired for the
+ *   installed-but-never-indexed case, which was wrong advice ("install" when
+ *   the binary was already present). For the `installed-no-registry` state
+ *   the page-level CTA shows "Index with GitNexus"; this section stays quiet
+ *   to avoid double-prompting.
+ *
  * CODEX MED: worst-state-wins aggregate counts per row
  *   (missing > stale > fresh; not-applicable ignored).
  *   Each row counted ONCE in its highest-priority bucket.
@@ -16,7 +24,12 @@
  */
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import type { CoverageRow as CoverageRowData, CoverageFamily, CoverageState } from '@agenticapps/dashboard-shared'
+import type {
+  CoverageRow as CoverageRowData,
+  CoverageFamily,
+  CoverageState,
+  GitNexusInstallState,
+} from '@agenticapps/dashboard-shared'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
@@ -24,7 +37,7 @@ import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
   rows: ReadonlyArray<CoverageRowData>  // already filtered (parent applies filter+search)
-  gitNexusInstalled: boolean            // CODEX HIGH-6 Option A
+  gitNexusInstallState: GitNexusInstallState  // 10.6: 3-state replaces boolean
   onRefresh?: CoverageRowProps['onRefresh']
 }
 
@@ -71,7 +84,7 @@ function computeCounts(rows: ReadonlyArray<CoverageRowData>) {
 export function CoverageFamilySection({
   family,
   rows,
-  gitNexusInstalled,
+  gitNexusInstallState,
   onRefresh,
 }: CoverageFamilySectionProps): React.JSX.Element {
   const key = storageKey(family)
@@ -128,9 +141,10 @@ export function CoverageFamilySection({
           </button>
 
           {/* CODEX HIGH-6 Option A: per-family GitNexus install hint (not page-level banner).
-              Copy intentionally omits "for this family" — install is global, the hint just
-              repeats inside each section so users notice it from wherever they're looking. */}
-          {!gitNexusInstalled && (
+              10.6: only fires for 'not-installed' — when binary is present but registry
+              isn't yet ('installed-no-registry'), the page-level "Index with GitNexus"
+              CTA is the right prompt; this section stays quiet to avoid double-prompting. */}
+          {gitNexusInstallState === 'not-installed' && (
             <span className="flex items-center gap-2 text-xs text-status-warning">
               GitNexus is not installed —{' '}
               <button

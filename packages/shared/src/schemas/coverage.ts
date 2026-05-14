@@ -4,6 +4,17 @@ import { z } from 'zod'
 export const CoverageStateSchema = z.enum(['fresh', 'stale', 'missing', 'not-applicable'])
 export type CoverageState = z.infer<typeof CoverageStateSchema>
 
+// 3-state GitNexus install classification (10.6 follow-up).
+// Distinguishes "binary not installed" from "installed but never indexed" so the
+// page can render the right CTA ("Install GitNexus" vs "Index with GitNexus")
+// instead of the pre-10.6 boolean which conflated the two cases.
+export const GitNexusInstallStateSchema = z.enum([
+  'not-installed',
+  'installed-no-registry',
+  'installed-with-registry',
+])
+export type GitNexusInstallState = z.infer<typeof GitNexusInstallStateSchema>
+
 // 3 family identifiers (D-10-05)
 export const CoverageFamilySchema = z.enum(['agenticapps', 'factiv', 'neuroflash'])
 export type CoverageFamily = z.infer<typeof CoverageFamilySchema>
@@ -65,10 +76,16 @@ export const CoverageRowSchema = z.object({
 export type CoverageRow = z.infer<typeof CoverageRowSchema>
 
 // Full /api/coverage response
+//
+// 10.6 wire change: `gitNexusInstalled: boolean` → `gitNexusInstallState: enum`.
+// Distinguishes "binary not installed" from "installed but never indexed". The
+// SPA picks the page-level CTA from this state. Per-family install hints fire
+// only for 'not-installed' (under the 2-state model they fired whenever the
+// registry was absent, which was wrong for the installed-no-registry case).
 export const CoverageResponseSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAtIso: z.string(),
-  gitNexusInstalled: z.boolean(), // global signal — drives per-family hint per COV-10 Option A
+  gitNexusInstallState: GitNexusInstallStateSchema,
   workflowHeadVersion: z.string().nullable(),
   rows: z.array(CoverageRowSchema),
 })

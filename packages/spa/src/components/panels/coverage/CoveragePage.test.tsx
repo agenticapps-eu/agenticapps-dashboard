@@ -64,7 +64,7 @@ function makeData(overrides: Partial<CoverageResponse> = {}): CoverageResponse {
   return {
     schemaVersion: 1,
     generatedAtIso: new Date().toISOString(),
-    gitNexusInstalled: true,
+    gitNexusInstallState: 'installed-with-registry',
     workflowHeadVersion: '1.7.0',
     rows: [
       makeRow('agenticapps', 'agenticapps-dashboard'),
@@ -147,9 +147,9 @@ describe('CoveragePage', () => {
     expect(screen.getAllByText(/No.*repos found/i).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('PER-FAMILY install hint when gitNexusInstalled=false rendered inside each family section (CODEX HIGH-6 Option A)', () => {
+  it("PER-FAMILY install hint when gitNexusInstallState='not-installed' rendered inside each family section (CODEX HIGH-6 Option A)", () => {
     vi.mocked(useCoverage).mockReturnValue({
-      data: makeData({ gitNexusInstalled: false }),
+      data: makeData({ gitNexusInstallState: 'not-installed' }),
       isPending: false,
       isError: false,
       error: null,
@@ -310,9 +310,9 @@ describe('CoveragePage', () => {
   // P0 fix from 10-IMPECCABLE.md: when GitNexus isn't installed the primary action
   // must be "Install GitNexus", not a disabled "Refresh 0 stale" that confuses
   // first-timers staring at 42 red cells.
-  it('primary action is "Install GitNexus" when gitNexusInstalled === false', () => {
+  it("primary action is 'Install GitNexus' when gitNexusInstallState === 'not-installed'", () => {
     vi.mocked(useCoverage).mockReturnValue({
-      data: makeData({ gitNexusInstalled: false }),
+      data: makeData({ gitNexusInstallState: 'not-installed' }),
       isPending: false,
       isError: false,
       error: null,
@@ -325,11 +325,31 @@ describe('CoveragePage', () => {
     expect(screen.getByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeTruthy()
     // The confusing "Refresh N stale" button is NOT rendered
     expect(screen.queryByRole('button', { name: /refresh.*stale/i })).toBeNull()
+    // The Index CTA is NOT shown either — installed-no-registry is a different state.
+    expect(screen.queryByRole('button', { name: /^copy gitnexus analyze to clipboard$/i })).toBeNull()
   })
 
-  it('primary action is RefreshAllStaleButton when gitNexusInstalled === true', () => {
+  // 10.6: third state — binary present but registry absent. The CTA must be
+  // "Index with GitNexus" (gitnexus analyze), not "Install GitNexus" (the
+  // pre-10.6 bug where every installed-but-never-indexed user saw wrong advice).
+  it("primary action is 'Index with GitNexus' when gitNexusInstallState === 'installed-no-registry' (10.6)", () => {
     vi.mocked(useCoverage).mockReturnValue({
-      data: makeData({ gitNexusInstalled: true }),
+      data: makeData({ gitNexusInstallState: 'installed-no-registry' }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    expect(screen.getByRole('button', { name: /^copy gitnexus analyze to clipboard$/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /refresh.*stale/i })).toBeNull()
+  })
+
+  it("primary action is RefreshAllStaleButton when gitNexusInstallState === 'installed-with-registry'", () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState: 'installed-with-registry' }),
       isPending: false,
       isError: false,
       error: null,
@@ -339,8 +359,9 @@ describe('CoveragePage', () => {
     render(<CoveragePage />, { wrapper })
     // Refresh button is present
     expect(screen.getByRole('button', { name: /refresh.*stale/i })).toBeTruthy()
-    // Install CTA is NOT in the header actions slot (it MAY still appear in
-    // family-section hints — those render independently and aren't this test's concern)
+    // Neither install nor index CTA in the page header.
+    expect(screen.queryByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^copy gitnexus analyze to clipboard$/i })).toBeNull()
   })
 
   it('per-row wiki-compile clipboard for a neuroflash row uses neuroflash', async () => {

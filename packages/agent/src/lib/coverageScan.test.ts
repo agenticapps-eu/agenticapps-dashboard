@@ -152,7 +152,7 @@ describe('scanCoverage', () => {
     expect(parseResult.success).toBe(true)
   })
 
-  it('gitNexusInstalled=false when gitnexus home absent (gitnexusHomeOverride=nonexistent path)', async () => {
+  it("gitNexusInstallState='not-installed' when gitnexus home absent and binary not on disk (gitnexusHomeOverride=nonexistent path)", async () => {
     const { root, cleanup } = makeFakeSourcecodeRoot({
       agenticapps: ['test-repo'],
     })
@@ -161,7 +161,7 @@ describe('scanCoverage', () => {
       sourcecodeRootOverride: root,
       gitnexusHomeOverride: join(root, 'nonexistent-gitnexus-home'),
     })
-    expect(result.gitNexusInstalled).toBe(false)
+    expect(result.gitNexusInstallState).toBe('not-installed')
     // COV-10: all rows' gitNexus.state === 'not-applicable' when gitnexus not installed
     expect(result.rows.every((r) => r.gitNexus.state === 'not-applicable')).toBe(true)
   })

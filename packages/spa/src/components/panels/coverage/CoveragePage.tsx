@@ -34,6 +34,7 @@ import { CoverageFamilySection } from './CoverageFamilySection.js'
 import { CoverageEmptyState } from './CoverageEmptyState.js'
 import { RefreshAllStaleButton } from './RefreshAllStaleButton.js'
 import { InstallGitNexusButton } from './InstallGitNexusButton.js'
+import { IndexGitNexusButton } from './IndexGitNexusButton.js'
 
 const FAMILIES: CoverageFamily[] = ['agenticapps', 'factiv', 'neuroflash']
 
@@ -250,15 +251,22 @@ export function CoveragePage(): React.JSX.Element {
         title="Coverage"
         helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
         actions={
-          // Primary action depends on whether GitNexus can actually be invoked.
-          // P0 fix from 10-IMPECCABLE.md: "Refresh 0 stale" was a confidence-killer
-          // when GitNexus wasn't installed — the button labelled itself "0" while
-          // 42 cells were red. Now swap to the actionable CTA in that state.
-          data.gitNexusInstalled ? (
+          // Primary action depends on the 3-state GitNexus install classification.
+          // 10.6: this used to be a 2-way (boolean) switch that mis-labelled the
+          // installed-but-never-indexed case as "Install GitNexus". Now:
+          //   - not-installed           → Install GitNexus (copy npm install)
+          //   - installed-no-registry   → Index with GitNexus (copy gitnexus analyze)
+          //   - installed-with-registry → Refresh N stale (normal matrix)
+          // Prior P0 (10-IMPECCABLE.md): "Refresh 0 stale" was a confidence-killer
+          // when 42 cells were red because no install existed. Three-way swap fixes
+          // the second variant of that bug (binary present, no registry yet).
+          data.gitNexusInstallState === 'installed-with-registry' ? (
             <RefreshAllStaleButton
               rows={filtered}
               onRefresh={(req) => refresh.mutateAsync(req)}
             />
+          ) : data.gitNexusInstallState === 'installed-no-registry' ? (
+            <IndexGitNexusButton />
           ) : (
             <InstallGitNexusButton />
           )
@@ -288,7 +296,7 @@ export function CoveragePage(): React.JSX.Element {
               key={family}
               family={family}
               rows={byFamily[family]}
-              gitNexusInstalled={data.gitNexusInstalled}
+              gitNexusInstallState={data.gitNexusInstallState}
               onRefresh={handleRefresh}
             />
           ))}

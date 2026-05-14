@@ -106,7 +106,7 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
   const response: CoverageResponse = {
     schemaVersion: 1,
     generatedAtIso: new Date().toISOString(),
-    gitNexusInstalled: gnGlobal.installed,
+    gitNexusInstallState: gnGlobal.installState, // 10.6: 3-state replaces boolean
     workflowHeadVersion: workflowHead,
     rows: internalRows.map(stripInternal),
   }

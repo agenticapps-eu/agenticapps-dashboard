@@ -23,3 +23,14 @@ export function buildClaudeMdHelpUrl(): string {
 export function buildGitnexusInstallClipboardString(): string {
   return 'npm install -g gitnexus'
 }
+
+/**
+ * 10.6: the "Index with GitNexus" clipboard string.
+ *
+ * Used when the binary is installed but `~/.gitnexus/registry.json` does not
+ * exist yet. Running `gitnexus analyze` in any git repo creates the registry,
+ * which transitions the page to the normal stale/fresh matrix.
+ */
+export function buildGitnexusIndexClipboardString(): string {
+  return 'gitnexus analyze'
+}

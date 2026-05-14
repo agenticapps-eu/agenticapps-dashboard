@@ -10,6 +10,7 @@ import {
   buildWorkflowUpdateClipboardString,
   buildClaudeMdHelpUrl,
   buildGitnexusInstallClipboardString,
+  buildGitnexusIndexClipboardString,
 } from './clipboard.js'
 
 describe('buildWikiCompileClipboardString', () => {
@@ -47,5 +48,11 @@ describe('buildClaudeMdHelpUrl', () => {
 describe('buildGitnexusInstallClipboardString', () => {
   it('returns the gitnexus install command', () => {
     expect(buildGitnexusInstallClipboardString()).toBe('npm install -g gitnexus')
+  })
+})
+
+describe('buildGitnexusIndexClipboardString (10.6)', () => {
+  it('returns the gitnexus analyze command — what the user runs in any repo to seed the registry', () => {
+    expect(buildGitnexusIndexClipboardString()).toBe('gitnexus analyze')
   })
 })
