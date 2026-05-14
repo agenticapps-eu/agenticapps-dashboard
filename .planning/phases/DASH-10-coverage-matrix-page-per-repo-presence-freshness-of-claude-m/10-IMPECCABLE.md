@@ -261,6 +261,14 @@ The post-fix critique surfaced 5 new findings, all P1 or lower:
 
 None of these block merge. All are quality-of-life improvements that compound as the dashboard expands beyond the current 3-family / 45-repo dataset.
 
+### Additional follow-up (user-reported during post-Gate-4 walkthrough, 2026-05-14)
+
+Not surfaced by `/impeccable critique` — found by the user on `localhost:5174/coverage` after Phase 10 closed locally.
+
+| Severity | Finding | Suggested handling |
+|---|---|---|
+| P1 | GitNexus "installed" detection misclassifies the installed-but-never-indexed state. Scanner uses `existsSync(~/.gitnexus)` as the proxy (`packages/agent/src/lib/scanners/gitNexusScanner.ts:98`), but that directory only appears after the first `gitnexus analyze` run. Result: every first-time user who installs the binary before opening the dashboard sees the wrong CTA ("Install GitNexus") when their actual next step is "Index with GitNexus". Confirmed reproducible with gitnexus@1.6.4 binary on PATH + no `~/.gitnexus/` directory. | Phase 10.6 — split the 2-state detection into 3 states: `not-installed` (no binary on PATH) → keep "Install GitNexus" CTA; `installed-no-registry` (binary present, registry absent) → new "Index with GitNexus" CTA that copies `gitnexus analyze` to clipboard; `installed-with-registry` → existing stale/fresh matrix. Binary detection should not assume `which gitnexus` from the daemon's spawn environment (fnm shims won't be on PATH there) — probe well-known locations (`/usr/local/bin`, `/opt/homebrew/bin`, `$HOME/.local/state/fnm_multishells/*/bin`, `$HOME/.nvm/versions/node/*/bin`) and the `~/.npm-global/bin` style prefixes, or shell out through the user's login shell. Update `GitNexusGlobalState` schema in `packages/shared/src/schemas/coverage.ts`, add a new `InstallGitNexusButton` sibling component, extend `rateGitNexusRepo` to emit a new repo state, and update the `COV-10` / `COV-11` tests + fixture. |
+
 ### Gate 4 verdict
 
 **Gate 4: PASS.**
@@ -269,7 +277,7 @@ None of these block merge. All are quality-of-life improvements that compound as
 - Two P0 UX bugs resolved with tests + visual evidence.
 - Deterministic detector clean (0 findings, both passes).
 - Heuristic 31/40 strong upper-middle.
-- 5 deferred follow-ups documented for Phase 10.6 / v1.1 polish.
+- 5 deferred follow-ups documented for Phase 10.6 / v1.1 polish, plus 1 user-reported P1 (GitNexus installed-but-never-indexed misclassification) added post-Gate-4.
 
 Phase 10 can now close all six original gates pending only Gate 5 (HUMAN-UAT, needs you) and Gate 6 (dashboard PR after HUMAN-UAT closes).
 
