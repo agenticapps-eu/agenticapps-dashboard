@@ -282,3 +282,26 @@ Not surfaced by `/impeccable critique` — found by the user on `localhost:5174/
 Phase 10 can now close all six original gates pending only Gate 5 (HUMAN-UAT, needs you) and Gate 6 (dashboard PR after HUMAN-UAT closes).
 
 *Post-fix re-critique authored by Opus 4.7 (1M context) main session, synthesizing Assessment A (sub-agent LLM review, agent ID a4502f08d08c7a593) + Assessment B (deterministic detector, exit code 0, zero findings).*
+
+---
+
+### Triage 2026-05-14 — Phase 10.6 polish backlog disposition
+
+Walked the 6 deferred items (5 from `/impeccable critique` post-fix + 1 user-reported) and assigned dispositions. The GitNexus 3-state row is fully closed by Phase 10.6 itself (PR #29) — removing it from the open backlog. The remaining 5 are quality-of-life items, none block any phase.
+
+| Original severity | Finding | Disposition | Rationale + trigger |
+|---|---|---|---|
+| P1 | Per-family GitNexus install hint repeated 3× | **PARTIALLY MITIGATED → defer to backlog** | Phase 10.6 narrowed the surface — the hint now fires only for the `not-installed` state. When NOT installed, 3× repetition still occurs but only on first-time install (rare for repeat users). Trigger to revisit: a user with multiple consecutive sessions reports finding it "noisy", OR the dashboard grows beyond the 3-family / 45-repo dataset (where repetition compounds). |
+| P1 | Page header isn't sticky → primary action drifts off-screen during deep scroll | **FOLD INTO PHASE 11.x candidate** | Real UX issue that affects every dashboard route since PageHeader is a shared primitive (Phase 5.1). One-PR scope. Worth grouping with the row-refresh-icon opacity fix below into a small "Coverage page UX polish" phase if not before. |
+| P2 | Row-refresh icon `opacity-0` until hover → discoverability gap on touchpads | **FOLD INTO PHASE 11.x candidate** | One-line change (`opacity-0` → `opacity-30` or `opacity-50`). Natural pair with the sticky-header item — same surface, similar tier. Combined effort < 30 min. |
+| P2 | Sub-label aliasing in 33-row neuroflash section | **DEFER TO BACKLOG** | Design call: hide-when-same-as-above, or move sub-label to tooltip. Impact scales with family size — currently visible only in neuroflash, not the other two families. Trigger to revisit: any family exceeds 15 repos AND a user reports visual fatigue, OR the project adopts a 4th family. |
+| P3 | No first-time onboarding / column glossary | **DEFER TO V1.2 (Phase 9-adjacent OSS readiness)** | Naturally belongs with the dashboard's eventual OSS-readiness pass (Phase 9), since first-time-onboarding matters most when external users land on the page cold. Currently the per-row "How to add CLAUDE.md" popover option partly mitigates internally. Trigger: any external user uses the dashboard, OR Phase 9 starts. |
+
+**Net result:**
+- 2 items folded into a candidate Phase 11.x ("Coverage page UX polish": sticky header + refresh icon discoverability) — actionable, small enough to bundle with whatever other v1.1 close-out work the user picks.
+- 2 items deferred to backlog with explicit triggers.
+- 1 item deferred to v1.2 / Phase 9.
+
+No item warrants a standalone phase today. Phase 11 audit (the next task in the v1.1 close-out queue) can fold the two "polish" items into whatever the next phase concept becomes, or leave them for Phase 6.2 / future UX-pass work.
+
+*Triage authored by Opus 4.7 (1M context) main session on 2026-05-14.*
