@@ -421,4 +421,48 @@ The Coverage Matrix delivers the **point-in-time** half of "what every project's
 
 **Next action if Phase 11 = Candidate A is approved:** `/gsd-discuss-phase 11` to surface the 4 open scope decisions above before planning.
 
-*Audit authored 2026-05-14 by Opus 4.7 (1M context) main session, based on PROJECT.md core-value framing + Phase 10.6 polish triage results + current claude-workflow chain state (head 1.9.3).*
+### Decision (2026-05-15) — Phase 11 = Candidates A + B combined
+
+**Chosen direction:** Bundle Candidate A (Coverage trends) and Candidate B (Cross-repo skill drift surface) into a single Phase 11. v1.1 close-out is the union of both observability stories — temporal (trends) + cross-cut (skill drift) — plus the 2 Phase 10.6 polish items.
+
+**Why combined makes sense:**
+
+- **Shared daemon infrastructure.** Both reuse the existing scanner architecture from Phase 10. Coverage trends extends `coverageScan` with a snapshot writer; skill drift extends the per-project `.claude/skills/` scanner (Phase 5) into a cross-repo aggregator. No new architectural primitives required.
+- **Shared sidebar entry point.** Both belong under the AppShellV2 `Observability` section. v1.1 introduced the section with a single `Coverage` entry; this phase fleshes it out to a proper section with multiple entries — better information architecture than treating each as a one-off phase.
+- **Reuses the Phase 10 wire-schema pattern.** Same Zod-barrel discipline, same `parseOrDrift` strategy on the SPA side, same 30s daemon cache shape.
+- **Closes v1.1 with the milestone's full observability promise delivered.** "Cross-family observability" reads stronger as Coverage + Trends + Skill drift than as just Coverage.
+- **Concentrates context.** Phase 10 / 10.5 / 10.6 are fresh in memory. Splitting trends and skill drift into separate phases would mean re-loading the daemon scanner mental model twice.
+
+**Why combined is NOT just "Phase 11 + Phase 12":**
+
+- Skill drift would otherwise sit awkwardly between v1.1's Coverage focus and Phase 8's held integration work. Folding it into Phase 11 gives it a natural home in the cross-family-observability frame.
+- A standalone "skill drift" phase would be small (~3-4 plans). The discuss → plan → execute → review cycle has fixed overhead; bundling avoids paying that overhead twice for adjacent work.
+
+**Phase 11 combined scope sketch (subject to /gsd-discuss-phase 11):**
+
+| Sub-track | Scope |
+|---|---|
+| Trends (Candidate A) | Daemon snapshot writer to `~/.agenticapps/dashboard/coverage-history/` (NDJSON, rolling retention); `GET /api/coverage/history` endpoint; SPA inline drift indicators on `CoverageCell`. |
+| Skill drift (Candidate B) | New daemon aggregator scanning `.claude/skills/` across all registered projects; new sidebar entry `Observability › Skill drift`; new SPA panel showing skill-presence matrix + version drift across projects. Reuses Phase 5 AgentLinter integration where available. |
+| Polish bundle | Sticky `PageHeader` primitive (affects every dashboard route); row-refresh icon `opacity-0` → `opacity-30`. |
+| Gates | Stage 1 + Stage 2 review, `/cso` for daemon filesystem-write surface, `/qa` walkthrough, `/impeccable critique` post-fix (calibration data point #2 for D-10.5-03 floor). |
+
+**Open scope decisions (8 — to be surfaced in /gsd-discuss-phase 11):**
+
+*From Candidate A:*
+1. Snapshot retention window — 14d / 30d / 90d?
+2. Snapshot trigger — cron-only vs cron + opportunistic dedup on dashboard load?
+3. Drift surface — inline `▲14d` indicator / sparkline / both?
+4. Family-aggregate trends in v1.1 or defer to v1.2?
+
+*From Candidate B:*
+5. Skill-drift aggregation level — per-skill (showing presence in N of M projects) vs per-project (showing missing skills) vs both views?
+6. AgentLinter integration depth — surface per-project linter outputs in the matrix, or just version-drift / presence?
+7. Cross-family vs in-family drift — does v1.1 ship the cross-family view, or scope to in-family only?
+
+*From combined frame:*
+8. Sidebar IA — keep `Observability` as a section with 2-3 entries (Coverage, Trends, Skill drift)? Or fold Trends into Coverage as a sub-view?
+
+**Next concrete action:** `/gsd-discuss-phase 11` to surface the 8 open scope decisions before formal planning. Discuss-phase output will feed `/gsd-plan-phase 11`.
+
+*Audit authored 2026-05-14 by Opus 4.7 (1M context) main session. Decision (combined A+B) recorded 2026-05-15.*
