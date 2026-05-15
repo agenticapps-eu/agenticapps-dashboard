@@ -14,10 +14,22 @@
   --color-card-bg:         #FFFFFF;
   --color-card-bg-hover:   #FAFAF7;
 
-  /* Text */
+  /* Text
+   *
+   * Contrast against --color-app-bg (#FAFAF7):
+   *   --color-text-primary    →  ~13.5:1 (WCAG AAA for body text)
+   *   --color-text-secondary  →  ~6.4:1  (WCAG AA+ for body text)
+   *   --color-text-tertiary   →  ~3.9:1  (clears 3:1 detector bar; sits below the
+   *                                       4.5:1 body-text floor — only used for
+   *                                       chrome-level helper text + dimmed UI)
+   *
+   * 2026-05-14 — v1.0.1 contrast bump: tertiary darkened from #9C95A8 (2.8:1)
+   * to #807A92 (3.9:1) to clear the impeccable detector's ≥ 3:1 floor. See
+   * .planning/phases/07-help-docs-v1-0/deferred-items.md (v1.0.1 follow-up).
+   */
   --color-text-primary:    #1F1B2E;
   --color-text-secondary:  #6B6478;
-  --color-text-tertiary:   #9C95A8;
+  --color-text-tertiary:   #807A92;
 
   /* Accent — purple, used sparingly */
   --color-accent:           #6B46C1;
