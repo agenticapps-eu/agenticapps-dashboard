@@ -28,8 +28,8 @@ const FIXTURE_CONTENT = [
   'id: 0008',
   'slug: coverage-matrix-page',
   'title: Coverage Matrix Page',
-  'from_version: 1.7.0',
-  'to_version: 1.8.0',
+  'from_version: 1.5.0',
+  'to_version: 1.6.0',
   'type: workflow-surface',
   DELIM,
   '',
@@ -59,8 +59,8 @@ describe('migration 0008 fixture (CODEX MED-17 — CI-resident, never skips)', (
     expect(fm).toMatchObject({
       id: '0008',
       slug: 'coverage-matrix-page',
-      from_version: '1.7.0',
-      to_version: '1.8.0',
+      from_version: '1.5.0',
+      to_version: '1.6.0',
       type: 'workflow-surface',
     })
   })

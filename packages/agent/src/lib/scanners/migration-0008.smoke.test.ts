@@ -7,7 +7,12 @@
  *
  * When upstream IS present, asserts:
  *   - File exists at canonical path
- *   - Frontmatter contains id=0008, slug, from_version, to_version=1.8.0
+ *   - Frontmatter contains id=0008, slug, from_version=1.5.0, to_version=1.6.0
+ *     (re-anchored 2026-05-14 — claude-workflow PR #17 "chain integrity":
+ *      0008 took its semantic version slot rather than the originally-planned
+ *      1.7.0 → 1.8.0 since coverage matrix is a dashboard surface, not a
+ *      consumer-repo capability bump. CLAUDE.md vendoring (0009) carries the
+ *      1.6 → 1.8 jump that was originally bundled with 0008.)
  *   - Migration documents the jq registry.json correction (top-level array)
  *   - Migration documents the clipboard-only wiki refresh stance (D-10-09)
  */
@@ -50,14 +55,14 @@ describe('migration 0008 smoke (cross-repo; warns when upstream missing)', () =>
     expect(fm).toMatchObject({
       id: '0008',
       slug: 'coverage-matrix-page',
-      from_version: '1.7.0',
-      to_version: '1.8.0',
+      from_version: '1.5.0',
+      to_version: '1.6.0',
     })
   })
 
-  it.skipIf(!HAS_UPSTREAM)('to_version is 1.8.0 (COV-12 version contract)', () => {
+  it.skipIf(!HAS_UPSTREAM)('to_version is 1.6.0 (COV-12 version contract, re-anchored)', () => {
     const fm = parseFrontmatter(MIGRATION_PATH)
-    expect((fm as Record<string, unknown>)?.to_version).toBe('1.8.0')
+    expect((fm as Record<string, unknown>)?.to_version).toBe('1.6.0')
   })
 
   it.skipIf(!HAS_UPSTREAM)('documents jq registry.json correction (Pitfall 7)', () => {

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: executing
-stopped_at: "Phase 10 complete — all 9 plans landed, all 12 COV requirements ticked, 5 gate artifacts authored (10-REVIEW.md Stage1 pass, 10-CSO.md pass, 10-HUMAN-UAT.md scaffold); Stage 2 review + /qa + impeccable deferred to user (fresh-context session required)"
-last_updated: "2026-05-13T16:00:00Z"
-last_activity: 2026-05-13 -- Phase 10 plan 09 (post-phase gates) executed
+status: between-phases
+stopped_at: "Phase 10 (Coverage Matrix) + Phase 10.5 (skill-driven impeccable gate) + Phase 10.6 (three-state GitNexus detection) all merged to main. PRs #28 + #29. Working tree clean. Awaiting Phase 11 scoping for v1.1 close-out."
+last_updated: "2026-05-14T19:30:00Z"
+last_activity: 2026-05-14 -- Phase 10.6 merged via PR #29 (78b6b6f); reconciled STATE+ROADMAP
 progress:
   total_phases: 13
-  completed_phases: 8
-  total_plans: 51
-  completed_plans: 51
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 60
   percent: 100
 ---
 
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 10 — coverage-matrix-page-per-repo-presence-freshness-of-claude-m
+**Current focus:** v1.1 close-out — Phase 11 scope TBD; Phase 10 + 10.5 + 10.6 shipped.
 
 ## Current Position
 
-Phase: 10 (coverage-matrix-page-per-repo-presence-freshness-of-claude-m) — EXECUTING
-Plan: 1 of 9
-Milestone: v1.1 — Cross-family observability — 0%
-Status: Executing Phase 10
-Last activity: 2026-05-13 -- Phase 10 execution started
+Phase: — between phases —
+Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
+Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
+Status: Working tree clean. Awaiting v1.1 close-out scoping.
+Last activity: 2026-05-14 -- Phase 10.6 merged + STATE/ROADMAP reconciliation
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [          ] 0% (Phase 10 discussing)
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
 
 ## v1.0.1 Follow-ups (deferred from Phase 7)
 
@@ -82,7 +82,9 @@ Captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md`:
 
 - Phase 05.1 inserted after Phase 5: UI redesign Cloudflare-inspired sidebar dashboard shell (URGENT) — design pass before more functionality piles on; Cloudflare dashboard-inspired minimal aesthetic with sidebar nav. Inserted 2026-05-09.
 - Phase 06.1 inserted after Phase 6: typography-layout-impeccable-lift (URGENT) — Phase 6 Wave 2 (06-06) measured composite scores 83-87 across all 6 v1.0 routes after closing all 8 deterministic detector violations; Color sub-score reached 90 but Typography (82) and Layout (88) need UX architecture work (ARIA on OBSERVE items, max-w-[75ch] line-length, progressive disclosure on integration panels, empty-canvas treatment on /pair, token-masking on settings) to clear the ≥ 90 gate. Must close before Phase 6's 06-07 closing-ritual PR triggers the gate. Inserted 2026-05-10.
-- Phase 10 added 2026-05-13: Coverage Matrix Page — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (~/Sourcecode/{agenticapps,factiv,neuroflash}). Ships as migration 0008 in claude-workflow. Depends on Phase 7 (skips held Phases 8/9). Opens a new milestone (v1.1: cross-family observability) beyond the closed v1.0 milestone.
+- Phase 10 added 2026-05-13: Coverage Matrix Page — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (~/Sourcecode/{agenticapps,factiv,neuroflash}). Ships as migration 0008 in claude-workflow. Depends on Phase 7 (skips held Phases 8/9). Opens a new milestone (v1.1: cross-family observability) beyond the closed v1.0 milestone. Shipped 2026-05-13 via PR #28.
+- Phase 10.5 inserted 2026-05-13: impeccable skill-driven gate. Phase 6's CI gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`) deleted; replaced by per-phase `<N>-IMPECCABLE.md` artifact authored by running `/impeccable critique` against affected routes at 1440×900. Triggered by tool drift discovered during Phase 10 Gate 4 (`npx impeccable critique` removed in v2.1.8). 5 decisions captured (D-10.5-01..05). Shipped bundled with Phase 10 in PR #28.
+- Phase 10.6 inserted 2026-05-14: three-state GitNexus detection. Coverage scanner upgraded from `existsSync(~/.gitnexus)` boolean to a `gitNexusInstallState` enum (`not-installed` / `installed-no-registry` / `installed-with-registry`). New `detectGitNexusBinary()` probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) stat-only — no shell-out, survives launchd-spawned daemons. New `IndexGitNexusButton` for the middle state. Per-row state under `installed-no-registry` shifts from `'not-applicable'` → `'missing'`. Shipped 2026-05-14 via PR #29 (78b6b6f).
 
 ### Decisions
 
@@ -109,19 +111,27 @@ Recent decisions affecting current work:
 - [Phase 07]: Plan 07-04: Mermaid-as-JSX in MDX (<MermaidBlock code={...}/>) decouples content from Plan 07-05's pre-mapping wiring
 - [Phase 07]: Plan 07-04: MDX heading anchors require explicit <h2 id> (not kramdown {#anchor}); acorn parses {...} as JS expression
 - [Phase 07]: Plan 07-04: mermaid.parse() syntax test must run in jsdom env; mermaid v11 DOMPurify init needs window
-- [Phase 10]: Coverage matrix page shipped. Migration 0008 bumps workflow head to 1.8.0. CODEX HIGH-1 (absPath strip), HIGH-2 (symlink escape guard), HIGH-3 (resolver-everywhere), HIGH-5 (refresh contract pin), HIGH-6 (per-family install hint) and 13 other review findings all landed via the --reviews replan. Stage 1 /review PASS (0 errors, 1 warning, 2 info). /cso PASS (0 errors). Stage 2, /qa, and impeccable deferred to user (fresh-context + dev server required).
+- [Phase 10]: Coverage matrix page shipped. Migration 0008 originally bumped workflow head 1.7.0 → 1.8.0; re-anchored 2026-05-14 to 1.5.0 → 1.6.0 by claude-workflow PR #17 (chain-integrity fix — coverage is a dashboard surface, not a consumer-repo capability). The 1.6 → 1.8 bump is now carried by migration 0009 (CLAUDE.md vendoring). Dashboard tests + REQUIREMENTS COV-12 + CHANGELOG re-anchored to match. CODEX HIGH-1 (absPath strip), HIGH-2 (symlink escape guard), HIGH-3 (resolver-everywhere), HIGH-5 (refresh contract pin), HIGH-6 (per-family install hint) and 13 other review findings all landed via the --reviews replan. Stage 1 /review PASS (0 errors, 1 warning, 2 info). /cso PASS (0 errors). Stage 2, /qa, and impeccable deferred to user (fresh-context + dev server required).
+- [Phase 10.5]: D-10.5-01 — retire CI-enforced impeccable gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs` deleted). D-10.5-02 — skill-driven per-phase `<N>-IMPECCABLE.md` artifact is the gate. D-10.5-03 — composite ≥ 87 floor provisional pending 3-phase calibration. D-10.5-04 — no headless skill invocation in CI. D-10.5-05 — cross-repo update is single ADR addendum on workflow-core, no claude-workflow migration. Supersedes the CI-enforcement portions of D-6-09 / D-6-09.v1 / D-6-10 / D-6-11 / D-6-21; their score-floor commitments remain in force applied to the new artifact.
+- [Phase 10.6]: 3-state enum on wire (`gitNexusInstallState`) chosen over 2 boolean flags for semantic clarity + exhaustive switch checking. Stat-based binary detection chosen over shell-out: predictable, no shell-injection surface, survives launchd minimal PATH. eslint `argsIgnorePattern: '^_'` etc. adopted globally to align with the existing underscore-discard convention used in 6 places in phase-10 scanner code.
 
 ### Pending Todos
 
-None yet.
+Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
+
+1. **Push ADR-0011 addendum on `agenticapps-workflow-core`** — local branch `docs/adr-0011-impeccable-cli-rename-addendum` (commit `7f2cdb6`) unpushed. Documents the upstream `pbakaus/impeccable` CLI rename. Per D-10.5-05.
+2. **Migration 0008 drift investigation** — `claude-workflow` main has commits about "re-anchor 0008 (1.5→1.6)" / "0009 (1.6→1.8)". Dashboard's `migration-0008.fixture.test.ts` + `migration-0008.smoke.test.ts` still pinned to v1.8.0 contract. 2 known-pending smoke failures every CI run. Read current claude-workflow STATE.md + recent commits before re-engaging.
+3. **v1.0.1 follow-ups** — (a) impeccable scoring tool drift (`npx impeccable critique` removed in v2.1.8; decision: pin to last critique-capable version, or migrate gate to `detect`). Largely resolved by D-10.5-01 (CI gate deleted) — but the `.planning/phases/07-help-docs-v1-0/deferred-items.md` entry should be retired/redirected. (b) `text-text-tertiary` token contrast bump — current `#9c95a8` is 2.8:1 against warm paper bg; needs ≥ 3:1. Cross-phase patch against Phase 5.1 tokens. 5 inherited low-contrast hits all come from this single token.
+4. **Phase 10.6 polish backlog** — 5 deferred P1/P2/P3 items in `.planning/phases/DASH-10-.../10-IMPECCABLE.md` "Additional follow-up" section. Triage: drop, defer with explicit trigger, or fold into next phase.
+5. **Phase 11/12 audit** — v1.1 milestone has only Phase 10 shipped under it. Candidates for v1.1 close-out: trends/history over time, cross-repo skill drift detection, cross-family workflow upgrade orchestration, GitNexus index health surfacing.
 
 ### Blockers/Concerns
 
-None yet.
+- `claude-workflow` migration 0008 drift causes 2 smoke-test failures on every dashboard CI run — known-pending, not blocking merges but worsening signal-to-noise.
 
 ## Session Continuity
 
-Last session: 2026-05-13T07:36:54.908Z
-Stopped at: Phase 10 context gathered (8 decisions: 4 user-named constraints + 4 follow-ups)
-Resume file: .planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-CONTEXT.md
-Next action: address v1.0.1 follow-ups (impeccable + contrast) or pick a non-Phase-8 task (worktree cleanup, branch pruning).
+Last session: 2026-05-14T19:17:00Z
+Stopped at: Phase 10/10.5/10.6 all shipped to main; STATE+ROADMAP reconciliation completed in next session.
+Resume file: session-handoff.md (root) + `.planning/phases/DASH-10.5-.../10.5-DECISIONS.md`
+Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
