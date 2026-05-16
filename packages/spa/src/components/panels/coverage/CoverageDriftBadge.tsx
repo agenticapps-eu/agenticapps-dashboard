@@ -9,9 +9,9 @@
  * Tokens (D-5.1-10): text-status-success for direction="up" (improvement);
  * text-status-error for direction="down" (regression). NO new hex literals.
  *
- * Name choice (D-11-03 footnote / CONTEXT canonical_refs):
- * MUST NOT be named `InlineDrift` — that is the Phase 6 schema-drift panel
- * at packages/spa/src/components/panels/InlineDrift.tsx.
+ * Name choice (D-11-03 footnote / CONTEXT canonical_refs): the chosen name
+ * avoids the Phase 6 schema-drift panel namespace (sibling component under
+ * packages/spa/src/components/panels/).
  *
  * Aria-label is singular/plural correct: "Improved 1 day ago" vs
  * "Improved 3 days ago" so screen readers narrate naturally.
