@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: between-phases
-stopped_at: "Phase 10 (Coverage Matrix) + Phase 10.5 (skill-driven impeccable gate) + Phase 10.6 (three-state GitNexus detection) all merged to main. PRs #28 + #29. Working tree clean. Awaiting Phase 11 scoping for v1.1 close-out."
-last_updated: "2026-05-14T19:30:00Z"
-last_activity: 2026-05-14 -- Phase 10.6 merged via PR #29 (78b6b6f); reconciled STATE+ROADMAP
+status: Working tree clean. Awaiting v1.1 close-out scoping.
+stopped_at: Phase 11 context gathered (DASH-11 — coverage trends + skill drift + 10.6 polish)
+last_updated: "2026-05-16T08:38:05.984Z"
+last_activity: 2026-05-14 -- Phase 10.6 merged + STATE/ROADMAP reconciliation
 progress:
-  total_phases: 13
-  completed_phases: 11
-  total_plans: 60
-  completed_plans: 60
+  total_phases: 16
+  completed_phases: 8
+  total_plans: 51
+  completed_plans: 51
   percent: 100
 ---
 
@@ -131,7 +131,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-14T19:17:00Z
-Stopped at: Phase 10/10.5/10.6 all shipped to main; STATE+ROADMAP reconciliation completed in next session.
-Resume file: session-handoff.md (root) + `.planning/phases/DASH-10.5-.../10.5-DECISIONS.md`
+Last session: 2026-05-16T08:38:05.979Z
+Stopped at: Phase 11 context gathered (DASH-11 — coverage trends + skill drift + 10.6 polish)
+Resume file: .planning/phases/DASH-11-coverage-trends-skill-drift/11-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
