@@ -357,6 +357,38 @@ Plans:
 - `eslint.config.mjs` — added `argsIgnorePattern`, `varsIgnorePattern`, `caughtErrorsIgnorePattern`, `destructuredArrayIgnorePattern` all `^_`.
 **Plans:** N/A — single squashable feature (1 PR scope). Triggered as a hot-follow-up; no separate `/gsd-plan-phase` artefacts.
 
+### Phase 11: Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle
+
+**Goal:** Close v1.1 — Cross-family observability — by adding the **drift over time** half to the dashboard's observability story. Persist daily Coverage snapshots locally (NDJSON under `~/.agenticapps/dashboard/coverage-history/`) and surface per-cell drift indicators on the Coverage matrix; ship a sibling **Skill drift** page aggregating `.claude/skills/` presence + version drift across every registered project; fold the 2 Phase 10.6 IMPECCABLE polish items (sticky `PageHeader` primitive + row-refresh icon `opacity-0` → `opacity-30` discoverability). Stays read-only on project filesystems; all new writes are confined to the daemon's `~/.agenticapps/dashboard/` directory.
+**Milestone:** v1.1 — Cross-family observability (close-out)
+**Depends on:** Phase 10 (reuses `coverageScan` orchestrator, `gitNexusInstallState` enum from 10.6, 30s daemon cache, wire-schema barrel) · Phase 5 (extends per-project skills scanner into cross-repo aggregator) · Phase 10.5 (re-runs `impeccable critique` as calibration data point #2 for D-10.5-03 score floor)
+**Authoritative inputs:**
+  - `.planning/ROADMAP.md` §"Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)" — combined A+B decision recorded 2026-05-15
+  - `.planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-IMPECCABLE.md` — 2 polish items flagged "fold into Phase 11.x"
+  - `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md` — composite floor + calibration policy (D-10.5-03)
+  - `packages/agent/src/lib/scanners/` — existing coverage scanners (extension surface)
+  - `packages/shared/src/schemas/coverage.ts` — `CoverageResponseSchema` (extension surface for `history?: CoverageDrift[]`)
+  - `docs/spec/dashboard-prompt.md` — hard architectural constraints (read-only on project FS, daemon writes confined to `~/.agenticapps/dashboard/`, no native deps, bearer-auth on every route)
+**Sub-tracks:**
+  | Sub-track | Scope |
+  |---|---|
+  | Trends (Candidate A) | Daemon snapshot writer (NDJSON-append, rolling retention) under `~/.agenticapps/dashboard/coverage-history/<ISO-date>.ndjson`; `GET /api/coverage/history?repoId=&cell=` endpoint; SPA inline drift indicator on `CoverageCell` (▲14d / ▼7d) and/or 12-tick sparkline. |
+  | Skill drift (Candidate B) | New daemon aggregator scanning `.claude/skills/` across every registered project; new sidebar entry `Observability › Skill drift`; new SPA panel showing skill-presence matrix + version drift across projects. Reuses Phase 5 AgentLinter integration where available. |
+  | Polish bundle | Sticky `PageHeader` primitive (affects every dashboard route — bonus benefit beyond Coverage); row-refresh icon `opacity-0` → `opacity-30` for touchpad/keyboard discoverability. |
+  | Gates | Stage 1 `/review`, Stage 2 `superpowers:requesting-code-review`, `/cso` for daemon filesystem-write surface (new write paths cross trust boundary), `/qa` walkthrough, `impeccable:critique` post-fix re-run (calibration data point #2 for D-10.5-03 floor). |
+**Non-goals (explicit):** No cloud upload of snapshots; no family-aggregate trend views (deferred to v1.2 — open question 4 in audit); no auto-correction of registry path drift (separate hygiene task); no rewrite of Phase 10 scanner architecture; no new third-party deps (must stay native-free per spec).
+**Open scope decisions (8 — to be resolved in /gsd-discuss-phase 11):**
+  1. Snapshot retention window — 14d / 30d / 90d?
+  2. Snapshot trigger — cron-only vs cron + opportunistic dedup on dashboard load?
+  3. Drift surface — inline `▲14d` indicator / sparkline / both?
+  4. Family-aggregate trends in v1.1 or defer to v1.2?
+  5. Skill-drift aggregation level — per-skill view / per-project view / both?
+  6. AgentLinter integration depth — surface per-project linter outputs in the matrix, or just version-drift / presence?
+  7. Cross-family vs in-family skill drift — does v1.1 ship the cross-family view?
+  8. Sidebar IA — keep `Observability` as a section with multiple entries (Coverage, Trends, Skill drift), or fold Trends into Coverage as a sub-view?
+**Requirements:** TBD — minted during `/gsd-plan-phase 11`. Working stems: `TRD-*` (trends), `SKD-*` (skill drift), `PLI-*` (polish).
+**Plans:** Pending — created by `/gsd-plan-phase 11`.
+
 ---
 
 ## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)
