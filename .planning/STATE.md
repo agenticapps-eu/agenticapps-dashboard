@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Completed 11-01-PLAN.md (shared schemas + barrel re-exports)
-last_updated: "2026-05-16T13:42:32.328Z"
+stopped_at: Completed 11-02-PLAN.md (DAEMON coverage trends)
+last_updated: "2026-05-16T14:04:10.089Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 16
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 11 (coverage-trends-skill-drift) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
 Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
 Status: Ready to execute
@@ -77,6 +77,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 07 P01 | 10min | 8 tasks | 15 files |
 | Phase 07 P04 | 11min | 7 tasks | 10 files |
 | Phase 11 P01 | 4min | 3 tasks | 5 files |
+| Phase 11 P02 | 15min | 7 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,10 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-01: Bulk-per-repo CoverageHistoryResponseSchema (PD-11-02) — single response carries all four cells; cuts /coverage first-paint fan-out from ~168 to ~42 requests; CoverageCell stays presentational
 - [Phase 11]: Plan 11-01: Family enum locked to ['agenticapps','factiv','neuroflash','other'] — derived from path-prefix match against ~/Sourcecode/, not from registry.client (null for every live entry)
 - [Phase 11]: Plan 11-01: Literal-versioned wire fields (schemaVersion: 1, windowDays: 14) + .strict() on cells inner object — three independent structural guardrails against silent contract drift (STRIDE T-11-01-01)
+- [Phase 11]: Plan 11-02: PD-11-01 in-process scheduler honoured (setTimeout chain inside the daemon process launchd keeps alive — NO plist modification)
+- [Phase 11]: Plan 11-02: PD-11-02 bulk-per-repo endpoint honoured (GET /api/coverage/history?repoId=X returns all 4 cells in one response — cuts first-paint fan-out from ~168 to ≤42 requests)
+- [Phase 11]: Plan 11-02: REVIEWS action items 3 (data-driven repoId validation against scanCoverageInternal ∪ readRegistry — no regex), 4 (writer appends, reader collapses with last-record-wins per (date, repo, cell)), 5 (explicit disposer registry in boot.ts — LIFO + throw-isolated + idempotent + wired into all 3 shutdown branches) all addressed
+- [Phase 11]: Plan 11-02: T-11-02-03 symlink-escape boot check landed (assertSnapshotDirInDaemonHome via realpathSync — refuses to start with 'escapes daemon home' if coverage-history realpath escapes ~/.agenticapps/dashboard/)
 
 ### Pending Todos
 
@@ -136,7 +141,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-16T13:42:22.644Z
-Stopped at: Completed 11-01-PLAN.md (shared schemas + barrel re-exports)
+Last session: 2026-05-16T14:03:59.611Z
+Stopped at: Completed 11-02-PLAN.md (DAEMON coverage trends)
 Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).

@@ -127,10 +127,10 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 #### Coverage trends (TRD-*)
 
-- [ ] **TRD-01**: Daemon writes daily NDJSON snapshot to `~/.agenticapps/dashboard/coverage-history/<ISO-date>.ndjson` (UTC date). Directory created with `mode 0o700` on first use; file created with `mode 0o600`; explicit `fs.chmod(path, 0o600)` re-applied after first creation to defend against umask drift on subsequent appends. Snapshot record shape is row-per-day: one record per repo per day with the four per-column freshness states (`claudeMd`, `gitNexus`, `wiki`, `workflowVersion`) inline. Realised by `snapshotWriter.ts` reading `scanCoverageInternal()` and emitting one NDJSON line per row via `fs.appendFile(..., { flag: 'a', mode: 0o600 })`. (D-11-01, D-11-13, INV-02 generalised to directory tree)
-- [ ] **TRD-02**: Snapshot pruner drops files whose ISO-date filename is older than `now - 14d`; runs lazily IMMEDIATELY before each writer tick (no second scheduler). Filename regex-validated (`/^\d{4}-\d{2}-\d{2}\.ndjson$/`) — non-matching entries are skipped, not unlinked. (D-11-01)
+- [x] **TRD-01**: Daemon writes daily NDJSON snapshot to `~/.agenticapps/dashboard/coverage-history/<ISO-date>.ndjson` (UTC date). Directory created with `mode 0o700` on first use; file created with `mode 0o600`; explicit `fs.chmod(path, 0o600)` re-applied after first creation to defend against umask drift on subsequent appends. Snapshot record shape is row-per-day: one record per repo per day with the four per-column freshness states (`claudeMd`, `gitNexus`, `wiki`, `workflowVersion`) inline. Realised by `snapshotWriter.ts` reading `scanCoverageInternal()` and emitting one NDJSON line per row via `fs.appendFile(..., { flag: 'a', mode: 0o600 })`. (D-11-01, D-11-13, INV-02 generalised to directory tree)
+- [x] **TRD-02**: Snapshot pruner drops files whose ISO-date filename is older than `now - 14d`; runs lazily IMMEDIATELY before each writer tick (no second scheduler). Filename regex-validated (`/^\d{4}-\d{2}-\d{2}\.ndjson$/`) — non-matching entries are skipped, not unlinked. (D-11-01)
 - [x] **TRD-03**: `GET /api/coverage/history?repoId=&cell=` returns `CoverageHistoryResponseSchema` `{ schemaVersion: 1, repoId, cell, direction, daysSince, windowDays: 14 }` for a single (repo, cell) coordinate. Server-side drift computation: scans the 14-day NDJSON window for the most-recent state transition; returns `direction='up'` (improvement) / `'down'` (regression) / `null` (no transition in window) and the corresponding `daysSince` (or `null`). Query params Zod-validated: `repoId` matches `/^[a-z0-9\-]+\/[a-z0-9\-_]+$/`; `cell` ∈ enum `{claudeMd, gitNexus, wiki, workflowVersion}`. Cached 1h daemon-side via `coverageHistoryCache.ts` `Map<string, { value, expiresAt }>` keyed by `${repoId}:${cell}`. Bearer-auth + CORS inherited from middleware chain. (D-11-11, D-11-12)
-- [ ] **TRD-04**: Daily snapshot trigger fires once per ISO date while daemon is running via an **in-process scheduler** (PD-11-01 — see Plan 02). Implementation: `setTimeout` chain anchored to next 03:00 local time, re-armed after each tick, `.unref()`'d so it does not block daemon shutdown. Errors swallowed (logged via `agentError`) so a failed write never crashes the daemon and the scheduler always re-arms. First-boot fires immediately IF `<today-UTC>.ndjson` does not yet exist; never backfills historical missed days. NO `StartCalendarInterval` added to Phase 6 launchd plist (research finding A9 — `KeepAlive=true` makes the plist incompatible with calendar triggers). (D-11-02 reinterpreted via PD-11-01)
+- [x] **TRD-04**: Daily snapshot trigger fires once per ISO date while daemon is running via an **in-process scheduler** (PD-11-01 — see Plan 02). Implementation: `setTimeout` chain anchored to next 03:00 local time, re-armed after each tick, `.unref()`'d so it does not block daemon shutdown. Errors swallowed (logged via `agentError`) so a failed write never crashes the daemon and the scheduler always re-arms. First-boot fires immediately IF `<today-UTC>.ndjson` does not yet exist; never backfills historical missed days. NO `StartCalendarInterval` added to Phase 6 launchd plist (research finding A9 — `KeepAlive=true` makes the plist incompatible with calendar triggers). (D-11-02 reinterpreted via PD-11-01)
 - [x] **TRD-05**: `CoverageCell` renders `▲Nd` / `▼Nd` inline indicator below the existing 4-state subtext when `drift` prop is present (`{ direction: 'up' | 'down'; daysSince: number }`). New component `CoverageDriftBadge.tsx` — text-only span using `text-status-success` (▲ / improvement) and `text-status-error` (▼ / regression) tokens. `aria-label` reads `"Improved N day(s) ago"` / `"Regressed N day(s) ago"`. NO new hex literals; `tokenSourceOfTruth.test.ts` continues to pass. (D-11-03 — component name MUST NOT be `InlineDrift` — Phase 6 schema-drift panel collision)
 
 #### Cross-repo skill drift (SKD-*)
@@ -149,11 +149,11 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 ### Architectural Invariants (every phase)
 
-- [ ] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
-- [ ] **INV-02**: Registry, auth, env files in `~/.agenticapps/dashboard/` enforce mode `0600`; daemon refuses to start if looser. **Generalised in Phase 11:** the policy extends to the new `coverage-history/` directory tree — directory mode `0o700`, NDJSON files mode `0o600`, symlink-escape defence via `realpathSync(snapshotDir)` once at boot.
+- [x] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
+- [x] **INV-02**: Registry, auth, env files in `~/.agenticapps/dashboard/` enforce mode `0600`; daemon refuses to start if looser. **Generalised in Phase 11:** the policy extends to the new `coverage-history/` directory tree — directory mode `0o700`, NDJSON files mode `0o600`, symlink-escape defence via `realpathSync(snapshotDir)` once at boot.
 - [x] **INV-03**: Dashboard renders fully and gracefully when Sentry / Linear / Infisical are unconfigured
 - [x] **INV-04**: Schema validation runs at both ends of every API call; mismatches surface as "schema drift" warnings
-- [ ] **INV-05**: No native dependencies in `packages/agent` (no `keytar`, no FFI)
+- [x] **INV-05**: No native dependencies in `packages/agent` (no `keytar`, no FFI)
 
 ---
 
@@ -263,7 +263,7 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | POLISH-04 | Phase 6 | Complete (gate floor amended to 87 per D-6-09.v1; v1.1 lifts to 90) |
 | POLISH-05 | Phase 6 | Stage 1 complete; Stage 2 pending fresh-session review on PR #15 |
 | POLISH-06 | Phase 6 | Complete |
-| INV-01 | All phases | Pending |
+| INV-01 | All phases | Complete |
 | INV-02 | Phase 1 (then upheld) | Pending — generalised in Phase 11 to cover `coverage-history/` directory tree |
 | INV-03 | All phases | Complete |
 | INV-04 | All phases | Complete |
@@ -286,10 +286,10 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | COV-10 | Phase 10 | Complete |
 | COV-11 | Phase 10 | Complete |
 | COV-12 | Phase 10 | Complete |
-| TRD-01 | Phase 11 | Pending |
-| TRD-02 | Phase 11 | Pending |
+| TRD-01 | Phase 11 | Complete |
+| TRD-02 | Phase 11 | Complete |
 | TRD-03 | Phase 11 | Complete |
-| TRD-04 | Phase 11 | Pending |
+| TRD-04 | Phase 11 | Complete |
 | TRD-05 | Phase 11 | Complete |
 | SKD-01 | Phase 11 | Complete |
 | SKD-02 | Phase 11 | Complete |
