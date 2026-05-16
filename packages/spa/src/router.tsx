@@ -116,6 +116,18 @@ const coverageRoute = createRoute({
 }).lazy(() => import('./routes/coverage.lazy.js').then((m) => m.Route))
 
 /**
+ * observabilitySkillDriftRoute — /observability/skill-drift page under the _appshell layout.
+ * Phase 11 D-11-08: Observability sidebar section adds this as the SECOND peer entry
+ * (after Coverage).
+ * PD-11-03 URL round-trip for the scope chip (?scope=family|cross) — validated/normalized
+ * inside useSkillDriftScopeFromUrl() so invalid values silently fall back to 'family'.
+ */
+const observabilitySkillDriftRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/observability/skill-drift',
+}).lazy(() => import('./routes/observability.skill-drift.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -157,6 +169,7 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     projectsIdRoute,
     coverageRoute, // Phase 10 D-10-08 — /coverage under _appshell
+    observabilitySkillDriftRoute, // Phase 11 D-11-08 — /observability/skill-drift under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

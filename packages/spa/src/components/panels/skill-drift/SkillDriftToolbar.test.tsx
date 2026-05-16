@@ -40,7 +40,10 @@ async function renderWithRouter(
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: Component,
+    // TanStack's RouteComponent expects (props: { [...]: ... }) → JSX shape; our
+    // local harness components are React.ComponentType — cast via unknown is
+    // fine for the test harness (no public API surface).
+    component: Component as unknown as () => React.JSX.Element,
   })
   const routeTree = rootRoute.addChildren([indexRoute])
   const router = createRouter({ routeTree })

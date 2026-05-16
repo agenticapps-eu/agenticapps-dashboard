@@ -99,4 +99,15 @@ describe('router — single AppShellV2 route tree', () => {
     })
     expect(result).not.toBeNull()
   })
+
+  it('RT5: /observability/skill-drift is mounted under the _appshell layout (Phase 11 D-11-08)', async () => {
+    const { router } = await import('./router.js')
+    const ids = Object.keys(router.routesById ?? {})
+    // Mounted as a child of _appshell (NOT a peer/separate layout) — per D-11-08
+    // and REVIEWS action item 9 (no inline if-branch extension; reuse the existing
+    // _appshell parent route mount pattern).
+    expect(ids.some((id) => id === '/_appshell/observability/skill-drift')).toBe(true)
+    // It is NOT registered at the root (would bypass AppShellV2 chrome).
+    expect(ids.some((id) => id === '/observability/skill-drift')).toBe(false)
+  })
 })
