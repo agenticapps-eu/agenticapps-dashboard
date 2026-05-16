@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: Phase 11 context gathered (DASH-11 — coverage trends + skill drift + 10.6 polish)
-last_updated: "2026-05-16T13:30:20.932Z"
-last_activity: 2026-05-16 -- Phase 11 planning complete
+last_updated: "2026-05-16T13:35:33.822Z"
+last_activity: 2026-05-16 -- Phase 11 execution started
 progress:
   total_phases: 16
   completed_phases: 8
@@ -21,15 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.1 close-out — Phase 11 scope TBD; Phase 10 + 10.5 + 10.6 shipped.
+**Current focus:** Phase 11 — coverage-trends-skill-drift
 
 ## Current Position
 
-Phase: — between phases —
+Phase: 11 (coverage-trends-skill-drift) — EXECUTING
+Plan: 1 of 6
 Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
 Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
-Status: Ready to execute
-Last activity: 2026-05-16 -- Phase 11 planning complete
+Status: Executing Phase 11
+Last activity: 2026-05-16 -- Phase 11 execution started
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
 
