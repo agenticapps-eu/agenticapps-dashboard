@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: Working tree clean. Awaiting v1.1 close-out scoping.
+status: executing
 stopped_at: Phase 11 context gathered (DASH-11 — coverage trends + skill drift + 10.6 polish)
-last_updated: "2026-05-16T08:38:05.984Z"
-last_activity: 2026-05-14 -- Phase 10.6 merged + STATE/ROADMAP reconciliation
+last_updated: "2026-05-16T12:46:23.418Z"
+last_activity: 2026-05-16 -- Phase 11 planning complete
 progress:
   total_phases: 16
   completed_phases: 8
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 Phase: — between phases —
 Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
 Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
-Status: Working tree clean. Awaiting v1.1 close-out scoping.
-Last activity: 2026-05-14 -- Phase 10.6 merged + STATE/ROADMAP reconciliation
+Status: Ready to execute
+Last activity: 2026-05-16 -- Phase 11 planning complete
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
 
