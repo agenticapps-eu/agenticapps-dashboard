@@ -392,10 +392,10 @@ Plans:
 
 **Requirements (minted during `/gsd-plan-phase 11`, 2026-05-16):** TRD-01, TRD-02, TRD-03, TRD-04, TRD-05, SKD-01, SKD-02, SKD-03, SKD-04, SKD-05, PLI-01, PLI-02, PLI-03 — full descriptions in `.planning/REQUIREMENTS.md` §"Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle (Phase 11)".
 
-**Plans:** 6 plans (3 waves) — created by `/gsd-plan-phase 11` 2026-05-16.
+**Plans:** 1/6 plans executed
 
 Plans:
-- [ ] 11-01-PLAN.md — Wave 0 (TDD): shared schemas `coverageHistory.ts` + `skillDrift.ts` + barrel re-export. Covers TRD-03, TRD-05, SKD-01, SKD-02, SKD-04, INV-04. Foundation for every downstream daemon + SPA plan.
+- [x] 11-01-PLAN.md — Wave 0 (TDD): shared schemas `coverageHistory.ts` + `skillDrift.ts` + barrel re-export. Covers TRD-03, TRD-05, SKD-01, SKD-02, SKD-04, INV-04. Foundation for every downstream daemon + SPA plan.
 - [ ] 11-02-PLAN.md — Wave 1 (TDD): Coverage trends daemon — `snapshotPaths/Writer/Pruner/Reader/Scheduler` + `coverageHistoryCache` + `GET /api/coverage/history` route + boot-wired symlink-escape defence + in-process scheduler (PD-11-01). Covers TRD-01..04, INV-01/02/04/05. depends_on: 11-01.
 - [ ] 11-03-PLAN.md — Wave 1 (TDD, parallel with 02): Skill drift daemon — `skillDriftScan` aggregator (path-based familyOf with 'other' fallback) + `skillDriftCache` (30s) + `GET /api/skills/drift` + `POST /api/skills/drift/agentlinter` (single-project-per-request, .strict body). Reuses Phase 5 `agentLinterRunner` + `agentLinterCache` UNCHANGED — D-11-14 widens call-site only, not spawn surface. Covers SKD-01..03, INV-01/04/05. depends_on: 11-01.
 - [ ] 11-04-PLAN.md — Wave 2 (TDD): SPA Coverage drift badge — `useCoverageHistory(repoId, cell)` hook + `CoverageDriftBadge` component (text-only ▲Nd / ▼Nd, name avoids Phase 6 `InlineDrift` collision) + `CoverageCell` extended with optional `drift` prop. Covers TRD-03, TRD-05, INV-04. depends_on: 11-01, 11-02.
