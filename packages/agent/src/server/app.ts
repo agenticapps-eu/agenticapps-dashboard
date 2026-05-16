@@ -27,6 +27,7 @@ import { observabilityRoute } from '../routes/observability.js'
 import { secretsRoute } from '../routes/secrets.js'
 import { integrationsRoute } from '../routes/integrations.js'
 import { coverageRoute } from '../routes/coverage.js'
+import { coverageHistoryRoute } from '../routes/coverageHistory.js'
 
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
@@ -131,6 +132,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/projects', secretsRoute)
   app.route('/api/projects', integrationsRoute)
   app.route('/api', coverageRoute)
+  app.route('/api', coverageHistoryRoute) // Phase 11 TRD-03 (PD-11-02 bulk-per-repo)
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)
