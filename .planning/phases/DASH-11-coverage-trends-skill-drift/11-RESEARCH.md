@@ -974,27 +974,31 @@ Phase 11 introduces TWO trust-boundary deltas per CONTEXT (D-11-13, D-11-14). Bo
 
 **A9 is the most important assumption.** It re-interprets a locked CONTEXT decision (D-11-02) based on direct source-code evidence (`installLaunchd.ts:46` review). The planner SHOULD surface this as a Plan-Decision (or fold it back through `/gsd-discuss-phase` briefly) before execution. Failing to flag it risks shipping a snapshot mechanism that the user expected to live "in the plist."
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the snapshot scheduler fire when the daemon first starts (even mid-day), or only at the next 03:00 boundary?**
    - What we know: D-11-02 says "one snapshot per ISO date." First-boot-fires-immediately + per-day uniqueness suggests checking whether `<today>.ndjson` exists; if missing, write immediately and re-arm.
    - What's unclear: Whether the user wants a "missed day" backfill (e.g., daemon was down all of yesterday).
    - Recommendation: First-boot-fires-immediately IF `<today>.ndjson` doesn't exist; never backfill historical missed days (consistent with D-11-02 "Acceptable gap: days the daemon isn't running are missing from history").
+   - **RESOLVED:** scheduler fires immediately on first daemon boot of the day if no snapshot yet for today (idempotent — `2026-05-16.ndjson` exists check).
 
 2. **Should `GET /api/coverage/history` include the actual transition timestamps (so SPA can render multiple ▲ + ▼ if both occurred), or only the most-recent transition?**
    - What we know: D-11-03 says "▲Nd / ▼Nd text indicator when state transition occurred in the last 14 days" — singular, not plural.
    - What's unclear: For a cell that went `fresh → stale → fresh` (e.g., 7d ago down, 2d ago up), is the indicator only `▲2d` or also `▼7d`?
    - Recommendation: **Only the most-recent transition** (whichever direction). Keeps the badge to one glyph. If the user needs richer history, that's the v1.2 sparkline (deferred).
+   - **RESOLVED:** most-recent transition only (one `▲Nd` OR one `▼Nd` per cell, never both — show whichever is newer within the 14d window).
 
 3. **What's the projectId format on the wire for the Skill drift response — registry id, or `family/repo` like CoverageHistory uses?**
    - What we know: Registry entries have `id` (slugified name). Coverage uses `family + repo`. These are different namespaces.
    - What's unclear: Whether Skill drift columns are keyed by registry id (matches the existing skills route at `/api/projects/:id/skills/local`) or `family/repo` (matches Coverage).
    - Recommendation: **Registry id** — Skill drift extends per-project skills which are already registered-project-scoped (matches Phase 5's API surface). Coverage drift is `family/repo` because Coverage is repo-discovery-scoped (`discoverRepos()` walks the family tree).
+   - **RESOLVED:** projectId on the wire = registry entry id (the canonical id from `registry.json`, not the on-disk path).
 
 4. **For the new POST route, should we return 200 with the AgentLinter result body, or 202 + a Location header (async) for long-running lint runs?**
    - What we know: Phase 5's GET route returns 200 synchronously even for fresh runs (no 202 today).
    - What's unclear: Whether the new POST should match the GET pattern or model itself differently for spawn-semantics clarity.
    - Recommendation: **200 + sync body** — matches Phase 5; 30s timeout means a fresh run is bounded. No async layer needed.
+   - **RESOLVED:** 200 sync body (AgentLinter run is bounded to ~5s per project, do not need 202+polling for a single project).
 
 ## Sources
 
