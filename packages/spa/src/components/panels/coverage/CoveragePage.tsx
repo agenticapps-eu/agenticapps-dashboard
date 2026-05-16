@@ -206,6 +206,7 @@ export function CoveragePage(): React.JSX.Element {
         <PageHeader
           title="Coverage"
           helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
+          sticky={true}
         />
         <div className="flex flex-col gap-4">
           {FAMILIES.map((fam) => (
@@ -224,7 +225,7 @@ export function CoveragePage(): React.JSX.Element {
   if (query.isError) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Coverage" />
+        <PageHeader title="Coverage" sticky={true} />
         <CoverageEmptyState
           kind="scan-failed"
           onRetry={() => void query.refetch()}
@@ -239,7 +240,7 @@ export function CoveragePage(): React.JSX.Element {
   if (!data || data.rows.length === 0) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Coverage" />
+        <PageHeader title="Coverage" sticky={true} />
         <CoverageEmptyState kind="no-repos" />
       </div>
     )
@@ -250,6 +251,7 @@ export function CoveragePage(): React.JSX.Element {
       <PageHeader
         title="Coverage"
         helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
+        sticky={true}
         actions={
           // Primary action depends on the 3-state GitNexus install classification.
           // 10.6: this used to be a 2-way (boolean) switch that mis-labelled the
