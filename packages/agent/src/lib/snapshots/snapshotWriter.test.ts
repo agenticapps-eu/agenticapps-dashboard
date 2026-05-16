@@ -185,8 +185,8 @@ describe('snapshotWriter', () => {
     expect(pruneSpy).toHaveBeenCalledTimes(1)
     // Pruner called before scanCoverageInternal — the scan + append happens
     // AFTER the prune so the writer sees a fresh window.
-    const pruneOrder = pruneSpy.mock.invocationCallOrder[0]
-    const scanOrder = scanSpy.mock.invocationCallOrder[0]
+    const pruneOrder = pruneSpy.mock.invocationCallOrder[0]!
+    const scanOrder = scanSpy.mock.invocationCallOrder[0]!
     expect(pruneOrder).toBeLessThan(scanOrder)
   })
 

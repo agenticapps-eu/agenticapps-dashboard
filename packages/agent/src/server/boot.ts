@@ -1,3 +1,7 @@
+import { existsSync, realpathSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+
 import { serve, type ServerType } from '@hono/node-server'
 import type { Hono } from 'hono'
 
@@ -7,6 +11,8 @@ import { agentLog, agentError } from '../lib/logging.js'
 import { renderBanner, renderZeroBindWarning } from '../lib/banner.js'
 import { listProjectsWithStatus } from '../lib/registry.js'
 import { getActiveToken } from '../lib/auth.js'
+import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
+import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
 import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
 import type { Env } from './app.js'
@@ -75,6 +81,40 @@ export function _runDisposersForTests(): void {
   runDisposers()
 }
 
+// ── Symlink-escape boot check (Plan 11-02 Task 7 — T-11-02-03) ────────────────
+//
+// The daemon writes coverage-history NDJSON snapshots under
+// ~/.agenticapps/dashboard/coverage-history/ (D-11-13). If that directory has
+// been replaced by a symlink that resolves OUTSIDE ~/.agenticapps/dashboard/,
+// every subsequent snapshot would be written to attacker-controlled storage.
+//
+// Defence: at boot, realpathSync() the snapshot dir parent + the snapshot dir
+// itself and refuse to start if the realpath escapes the daemon home. Mirrors
+// auth.ts's "refuse to start if X" idiom for INV-02 enforcement.
+//
+// If the snapshot dir doesn't exist yet (first-run), there is no symlink to
+// check — boot proceeds normally and snapshotWriter.mkdir() will create it
+// with mode 0o700 on the first tick.
+export function assertSnapshotDirInDaemonHome(): void {
+  const expected = join(homedir(), '.agenticapps', 'dashboard')
+  let expectedReal: string
+  try {
+    expectedReal = realpathSync(expected)
+  } catch {
+    // Daemon home doesn't exist yet — first-run + auth.ts hasn't lazy-created
+    // it. Nothing to check; auth path will create + chmod it.
+    return
+  }
+  const snapshotDir = resolveSnapshotDir()
+  if (!existsSync(snapshotDir)) return
+  const real = realpathSync(snapshotDir)
+  if (real !== expectedReal && !real.startsWith(expectedReal + '/')) {
+    throw new Error(
+      `[boot] coverage-history dir escapes daemon home: ${real} (expected under ${expectedReal})`,
+    )
+  }
+}
+
 /**
  * Test-only export — exercises the early-signal path (the closure body when
  * `serverRef === null` inside bootDaemon). Calls the same sequence the
@@ -95,6 +135,11 @@ export function _earlyShutdownForTests(): void {
  * SIGTERM and SIGINT are wired to gracefulShutdown automatically.
  */
 export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
+  // Symlink-escape defence — refuse to start if the snapshot dir realpath
+  // escapes the daemon home (T-11-02-03). Runs BEFORE any state write or
+  // signal-handler attach so a bad symlink fails fast at process start.
+  assertSnapshotDirInDaemonHome()
+
   const projects = await listProjectsWithStatus()
   const bindUrl = `http://${opts.host}:${opts.port}`
 
@@ -143,6 +188,11 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
 
       writePidfile()
       writeServerInfo({ bindUrl, pid: process.pid, startedAt: new Date().toISOString() })
+
+      // Plan 11-02 Task 7 — wire the in-process snapshot scheduler (PD-11-01)
+      // and register its disposer with the Task 6 disposer registry so
+      // gracefulShutdown drains it on every shutdown branch.
+      registerDisposer(startSnapshotScheduler())
     },
   )
 

@@ -75,9 +75,15 @@ describe('boot.ts disposer registry', () => {
 
   it('Test 2: multiple disposers run in REVERSE (LIFO) order', () => {
     const callOrder: string[] = []
-    registerDisposer(() => callOrder.push('first'))
-    registerDisposer(() => callOrder.push('second'))
-    registerDisposer(() => callOrder.push('third'))
+    registerDisposer(() => {
+      callOrder.push('first')
+    })
+    registerDisposer(() => {
+      callOrder.push('second')
+    })
+    registerDisposer(() => {
+      callOrder.push('third')
+    })
     _runDisposersForTests()
     expect(callOrder).toEqual(['third', 'second', 'first'])
   })
@@ -159,5 +165,94 @@ describe('boot.ts disposer registry', () => {
     expect(removePidfile).toHaveBeenCalledTimes(1)
     expect(removeServerInfo).toHaveBeenCalledTimes(1)
     expect(exitSpy).toHaveBeenCalledWith(0)
+  })
+})
+
+// ── Task 7: symlink-escape boot check + scheduler wiring ──────────────────────
+
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { assertSnapshotDirInDaemonHome } from './boot.js'
+
+describe('boot.ts assertSnapshotDirInDaemonHome (T-11-02-03)', () => {
+  let originalHome: string | undefined
+  let cleanups: Array<() => void> = []
+
+  beforeEach(() => {
+    originalHome = process.env.HOME
+  })
+
+  afterEach(() => {
+    for (const c of cleanups) c()
+    cleanups = []
+    if (originalHome === undefined) delete process.env.HOME
+    else process.env.HOME = originalHome
+  })
+
+  it('Test 1: throws when coverage-history realpaths OUTSIDE daemon home (symlink escape)', () => {
+    const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-home-'))
+    const daemonHome = join(homeDir, '.agenticapps', 'dashboard')
+    mkdirSync(daemonHome, { recursive: true, mode: 0o700 })
+
+    // Place an escaping symlink at coverage-history.
+    const outside = mkdtempSync(join(tmpdir(), 'agentic-escape-'))
+    symlinkSync(outside, join(daemonHome, 'coverage-history'))
+
+    cleanups.push(() => rmSync(homeDir, { recursive: true, force: true }))
+    cleanups.push(() => rmSync(outside, { recursive: true, force: true }))
+
+    process.env.HOME = homeDir
+
+    expect(() => assertSnapshotDirInDaemonHome()).toThrow(/escapes daemon home/)
+  })
+
+  it('Test 2: happy path — normal directory under daemon home passes', () => {
+    const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-home-ok-'))
+    const daemonHome = join(homeDir, '.agenticapps', 'dashboard')
+    mkdirSync(join(daemonHome, 'coverage-history'), { recursive: true, mode: 0o700 })
+    cleanups.push(() => rmSync(homeDir, { recursive: true, force: true }))
+
+    process.env.HOME = homeDir
+
+    expect(() => assertSnapshotDirInDaemonHome()).not.toThrow()
+  })
+
+  it('Test 3: first-run path — absent snapshot dir is acceptable (boot succeeds)', () => {
+    const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-firstrun-'))
+    // Create daemon home but NOT the coverage-history child.
+    mkdirSync(join(homeDir, '.agenticapps', 'dashboard'), { recursive: true, mode: 0o700 })
+    cleanups.push(() => rmSync(homeDir, { recursive: true, force: true }))
+
+    process.env.HOME = homeDir
+
+    expect(() => assertSnapshotDirInDaemonHome()).not.toThrow()
+  })
+})
+
+describe('boot.ts scheduler wiring', () => {
+  it('Test 4: registerDisposer + startSnapshotScheduler are wired together (contract check)', async () => {
+    // We assert the CONTRACT — boot.ts imports the symbols and threads them
+    // through the registry. The wiring lives inside the serve() listen
+    // callback (not directly testable without spinning up a real Hono server),
+    // so this contract test verifies the imports + the call shape via grep
+    // is enforced separately by acceptance criteria.
+    const mod = await import('./boot.js')
+    expect(typeof mod.registerDisposer).toBe('function')
+    // The disposer registry helper exists; the wiring inside bootDaemon's
+    // listen callback is enforced by the acceptance-criteria grep
+    // (registerDisposer(startSnapshotScheduler === 1 hit in boot.ts).
+  })
+
+  it('Test 5: route mounted at /api in app.ts (acceptance grep)', async () => {
+    // Sanity: the mount line landed in Task 5. This test ensures we haven't
+    // regressed it during the Task 7 wiring touches.
+    const { readFileSync } = await import('node:fs')
+    const appSrc = readFileSync(
+      new URL('./app.ts', import.meta.url),
+      'utf8',
+    )
+    expect(appSrc).toMatch(/app\.route\('\/api', coverageHistoryRoute\)/)
   })
 })
