@@ -19,7 +19,12 @@
  */
 import React from 'react'
 import { Check, AlertTriangle, X, Circle, HelpCircle } from 'lucide-react'
-import type { CoverageColumnState } from '@agenticapps/dashboard-shared'
+import type {
+  CoverageColumnState,
+  CoverageCellDrift,
+} from '@agenticapps/dashboard-shared'
+
+import { CoverageDriftBadge } from './CoverageDriftBadge.js'
 
 // Workflow column shape — narrowed from discriminated union when kind === 'workflow'
 type CoverageWorkflowColumn = Extract<CoverageColumnState, { kind: 'workflow' }>
@@ -28,6 +33,17 @@ export interface CoverageCellProps {
   column: 'claudeMd' | 'gitNexus' | 'wiki' | 'workflowVersion'
   state: CoverageColumnState
   repoName: string // for ARIA labels
+  /**
+   * Optional inline drift indicator (Phase 11 TRD-05).
+   *
+   * Null/undefined when no transition occurred in the last 14 days OR when
+   * drift data is still loading.
+   *
+   * Owned by parent `CoverageRow` (PD-11-02 / REVIEWS action item 1 Option C
+   * — bulk-per-repo endpoint, single ownership in CoverageRow).
+   * CoverageCell does NOT call any hook to fetch this itself.
+   */
+  drift?: CoverageCellDrift | null
 }
 
 // State → {bg, text} token mapping (UI-SPEC §4 — non-negotiable)
@@ -94,7 +110,12 @@ function workflowSubtext(c: CoverageWorkflowColumn): string {
   }
 }
 
-export function CoverageCell({ column, state, repoName }: CoverageCellProps): React.JSX.Element {
+export function CoverageCell({
+  column,
+  state,
+  repoName,
+  drift,
+}: CoverageCellProps): React.JSX.Element {
   // AGREED-2: scanner failures surface as a degraded cell — distinct from a confirmed-absent
   // file. Render a "?" with the scanner's error in the tooltip so the user can tell them apart.
   if (state.degraded) {
@@ -123,6 +144,12 @@ export function CoverageCell({ column, state, repoName }: CoverageCellProps): Re
 
   const ariaLabel = `${column} for ${repoName}: ${state.state}${subtext ? ` — ${subtext}` : ''}`
 
+  // Phase 11-04 (D-11-03 / PD-11-02): inline drift badge — only when the
+  // parent (CoverageRow) provided a non-null direction + daysSince. Cross-field
+  // nulls (loaded but no transition) render WITHOUT a badge.
+  const showDrift =
+    drift != null && drift.direction !== null && drift.daysSince !== null
+
   return (
     <figure
       role="figure"
@@ -132,6 +159,12 @@ export function CoverageCell({ column, state, repoName }: CoverageCellProps): Re
       <StateIcon state={state.state} />
       {subtext && (
         <span className="text-xs text-text-tertiary whitespace-nowrap">{subtext}</span>
+      )}
+      {showDrift && (
+        <CoverageDriftBadge
+          direction={drift.direction as 'up' | 'down'}
+          daysSince={drift.daysSince as number}
+        />
       )}
     </figure>
   )
