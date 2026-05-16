@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Completed 11-03-PLAN.md (DAEMON Cross-repo Skill drift)
-last_updated: "2026-05-16T14:17:41.435Z"
+stopped_at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
+last_updated: "2026-05-16T14:28:39.789Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 16
@@ -79,6 +79,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 11 P01 | 4min | 3 tasks | 5 files |
 | Phase 11 P02 | 15min | 7 tasks | 17 files |
 | Phase 11 P03 | 9min | 2 tasks | 7 files |
+| Phase 11 P06 | 10min | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-02: REVIEWS action items 3 (data-driven repoId validation against scanCoverageInternal ∪ readRegistry — no regex), 4 (writer appends, reader collapses with last-record-wins per (date, repo, cell)), 5 (explicit disposer registry in boot.ts — LIFO + throw-isolated + idempotent + wired into all 3 shutdown branches) all addressed
 - [Phase 11]: Plan 11-02: T-11-02-03 symlink-escape boot check landed (assertSnapshotDirInDaemonHome via realpathSync — refuses to start with 'escapes daemon home' if coverage-history realpath escapes ~/.agenticapps/dashboard/)
 - [Phase 11]: Plan 11-03: D-11-04 per-skill matrix view + D-11-14 single-project-per-request enforced structurally via .strict() Zod schema + REVIEWS #6 (readLocalSkills .skills destructure), #7 (fixture isolation), #10 (shared AgentLinterResponseSchema reuse) all addressed
+- [Phase 11]: Plan 11-06: PageHeader sticky?: boolean opt-in (D-11-09) — default false preserves all non-opted-in routes
+- [Phase 11]: Plan 11-06: CoverageRow refresh button opacity-30 default (D-11-10) — hover/focus still bumps to opacity-100
+- [Phase 11]: Plan 11-06: CoveragePage opts into sticky at all 4 PageHeader render paths (PLI-03) — coverage.lazy.tsx untouched (REVIEWS #9 lock); 4 PageHeader elements verified live (plan-time count of 5 was a counting artifact)
 
 ### Pending Todos
 
@@ -143,7 +147,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-16T14:17:41.430Z
-Stopped at: Completed 11-03-PLAN.md (DAEMON Cross-repo Skill drift)
+Last session: 2026-05-16T14:28:31.887Z
+Stopped at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
 Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).

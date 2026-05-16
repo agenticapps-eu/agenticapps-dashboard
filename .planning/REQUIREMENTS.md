@@ -143,9 +143,9 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 
 #### Polish bundle (PLI-*)
 
-- [ ] **PLI-01**: `PageHeader` gains a `sticky?: boolean` prop (default `false` — preserves current behaviour on every route that has not opted in). When `sticky={true}`, the outer `<div>` className becomes `mb-6 flex flex-col gap-1 sticky top-0 z-10 bg-app-bg`. `z-10` matches the existing `--z-sticky: 10` token; `bg-app-bg` (`#FAFAF7`) provides the opaque backstop so scrolled content does not bleed through; the `mb-6` 24px bottom margin is preserved per CONTEXT §Specifics. (D-11-09)
-- [ ] **PLI-02**: `CoverageRow.tsx` per-row refresh button starts at `opacity-30` (was `opacity-0`); hover/focus still bumps to `opacity-100`. One-token swap on the existing className. (D-11-10)
-- [ ] **PLI-03**: `/coverage` route (`packages/spa/src/routes/coverage.lazy.tsx`) opts into sticky `PageHeader` by passing `sticky={true}`. Other dashboard routes remain default (`sticky=false`) and adopt during their own cycles. (D-11-09 opt-in pattern)
+- [x] **PLI-01**: `PageHeader` gains a `sticky?: boolean` prop (default `false` — preserves current behaviour on every route that has not opted in). When `sticky={true}`, the outer `<div>` className becomes `mb-6 flex flex-col gap-1 sticky top-0 z-10 bg-app-bg`. `z-10` matches the existing `--z-sticky: 10` token; `bg-app-bg` (`#FAFAF7`) provides the opaque backstop so scrolled content does not bleed through; the `mb-6` 24px bottom margin is preserved per CONTEXT §Specifics. (D-11-09)
+- [x] **PLI-02**: `CoverageRow.tsx` per-row refresh button starts at `opacity-30` (was `opacity-0`); hover/focus still bumps to `opacity-100`. One-token swap on the existing className. (D-11-10)
+- [x] **PLI-03**: `/coverage` route (`packages/spa/src/routes/coverage.lazy.tsx`) opts into sticky `PageHeader` by passing `sticky={true}`. Other dashboard routes remain default (`sticky=false`) and adopt during their own cycles. (D-11-09 opt-in pattern)
 
 ### Architectural Invariants (every phase)
 
@@ -296,9 +296,9 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | SKD-03 | Phase 11 | Complete |
 | SKD-04 | Phase 11 | Complete |
 | SKD-05 | Phase 11 | Pending |
-| PLI-01 | Phase 11 | Pending |
-| PLI-02 | Phase 11 | Pending |
-| PLI-03 | Phase 11 | Pending |
+| PLI-01 | Phase 11 | Complete |
+| PLI-02 | Phase 11 | Complete |
+| PLI-03 | Phase 11 | Complete |
 
 **Coverage:**
 - v1 requirements: 62 total (57 phase-bound + 5 invariants)
