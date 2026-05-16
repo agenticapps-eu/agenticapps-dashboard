@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Completed 11-02-PLAN.md (DAEMON coverage trends)
-last_updated: "2026-05-16T14:04:10.089Z"
+stopped_at: Completed 11-03-PLAN.md (DAEMON Cross-repo Skill drift)
+last_updated: "2026-05-16T14:17:41.435Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 16
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 11 (coverage-trends-skill-drift) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
 Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
 Status: Ready to execute
@@ -78,6 +78,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 07 P04 | 11min | 7 tasks | 10 files |
 | Phase 11 P01 | 4min | 3 tasks | 5 files |
 | Phase 11 P02 | 15min | 7 tasks | 17 files |
+| Phase 11 P03 | 9min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-02: PD-11-02 bulk-per-repo endpoint honoured (GET /api/coverage/history?repoId=X returns all 4 cells in one response — cuts first-paint fan-out from ~168 to ≤42 requests)
 - [Phase 11]: Plan 11-02: REVIEWS action items 3 (data-driven repoId validation against scanCoverageInternal ∪ readRegistry — no regex), 4 (writer appends, reader collapses with last-record-wins per (date, repo, cell)), 5 (explicit disposer registry in boot.ts — LIFO + throw-isolated + idempotent + wired into all 3 shutdown branches) all addressed
 - [Phase 11]: Plan 11-02: T-11-02-03 symlink-escape boot check landed (assertSnapshotDirInDaemonHome via realpathSync — refuses to start with 'escapes daemon home' if coverage-history realpath escapes ~/.agenticapps/dashboard/)
+- [Phase 11]: Plan 11-03: D-11-04 per-skill matrix view + D-11-14 single-project-per-request enforced structurally via .strict() Zod schema + REVIEWS #6 (readLocalSkills .skills destructure), #7 (fixture isolation), #10 (shared AgentLinterResponseSchema reuse) all addressed
 
 ### Pending Todos
 
@@ -141,7 +143,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-16T14:03:59.611Z
-Stopped at: Completed 11-02-PLAN.md (DAEMON coverage trends)
+Last session: 2026-05-16T14:17:41.430Z
+Stopped at: Completed 11-03-PLAN.md (DAEMON Cross-repo Skill drift)
 Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
