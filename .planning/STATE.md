@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: Phase 11 context gathered (DASH-11 — coverage trends + skill drift + 10.6 polish)
-last_updated: "2026-05-16T12:46:23.418Z"
+last_updated: "2026-05-16T13:30:20.932Z"
 last_activity: 2026-05-16 -- Phase 11 planning complete
 progress:
   total_phases: 16

@@ -48,7 +48,7 @@ source: 11-RESEARCH.md §"Validation Architecture"
 | SKD-05 | `Sidebar` now exposes both `Coverage` and `Skill drift` items under `Observability` | unit | `src/components/ui/Sidebar.test.tsx` (existing — extend) | Wave 0 extension (Plan 05) |
 | PLI-01 | `PageHeader` with `sticky={true}` adds `sticky top-0 z-10 bg-app-bg` classes; default false preserves current behavior | unit | `src/components/ui/PageHeader.test.tsx` (existing — extend with sticky case) | Wave 0 extension (Plan 06) |
 | PLI-02 | `CoverageRow` refresh button starts at `opacity-30`; hovers/focuses to `opacity-100` | unit | `src/components/panels/coverage/CoverageRow.test.tsx` (existing — extend) | Wave 0 extension (Plan 06) |
-| PLI-03 | `/coverage` page passes `sticky={true}` to `PageHeader` | unit | `src/routes/coverage.lazy.test.tsx` (new) | Wave 0 (Plan 06) |
+| PLI-03 | `/coverage` page passes `sticky={true}` to `PageHeader` at all FIVE invocations (PD-11-02 / REVIEWS item 9 — `CoveragePage.tsx`, not the lazy route) | unit | `src/components/panels/coverage/CoveragePage.test.tsx` (new) | Wave 1 (Plan 06) |
 | Integration | Full cron-tick → snapshot file → endpoint read → SPA `CoverageCell` renders badge | integration | New test file `src/integration/snapshotFlow.integration.test.ts` (agent only, no SPA — daemon E2E) | Wave 0 |
 | Integration | `scanSkillDrift` output → `/api/skills/drift` response → `SkillDriftMatrix` jsdom render | integration | New test file `src/integration/skillDriftFlow.integration.test.tsx` | Wave 0 |
 | Impeccable | `/coverage` re-critique (drift badge + sticky header + opacity polish) | impeccable artifact | manual `/impeccable critique http://localhost:5174/coverage` | manual (gate) |
@@ -77,7 +77,7 @@ These test files MUST exist before their corresponding production code lands (TD
 - [ ] `packages/spa/src/components/panels/skill-drift/SkillDriftToolbar.test.tsx` — covers SKD-04 toolbar URL sync + debounce
 - [ ] `packages/spa/src/lib/coverageHistoryQueries.test.ts` — covers TanStack Query hook (cache + suspense behaviour)
 - [ ] `packages/spa/src/lib/skillDriftQueries.test.ts` — covers TanStack Query hook
-- [ ] `packages/spa/src/routes/coverage.lazy.test.tsx` — covers PLI-03 (lazy route opts into sticky PageHeader)
+- [ ] `packages/spa/src/components/panels/coverage/CoveragePage.test.tsx` — covers PLI-03 (CoveragePage opts into sticky PageHeader at all FIVE invocations; lazy route is intentionally NOT modified per REVIEWS item 9 / PD-11-02)
 - [ ] Integration: `packages/agent/src/integration/snapshotFlow.integration.test.ts` — covers full end-to-end on daemon side
 - [ ] Test fixtures: extend `packages/agent/src/lib/__fixtures__/` with `coverage-history/` example NDJSON files for snapshot-reader unit tests (use small synthetic data — 3 repos, 5 days, 2 known transitions)
 

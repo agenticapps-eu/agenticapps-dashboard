@@ -14,9 +14,9 @@ Close v1.1 — **Cross-family observability** — by extending the existing Cove
 3. **Phase 10.6 polish bundle** — sticky `PageHeader` primitive (affects every dashboard route) + Coverage row-refresh icon `opacity-0` → `opacity-30` for touchpad/keyboard discoverability.
 
 **In scope (v1.1 close-out):**
-- Daemon snapshot writer + 14-day rolling retention + `GET /api/coverage/history?repoId=&cell=` endpoint.
+- Daemon snapshot writer + 14-day rolling retention + `GET /api/coverage/history?repoId=` endpoint (returns drift for ALL FOUR cells of one repo in one response — bulk-per-repo shape locked by PD-11-02 below).
 - Daily cron trigger via Phase 6 launchd/systemd install (no opportunistic dashboard-load writes).
-- `CoverageCell` extension: inline `▲Nd` / `▼Nd` text indicator when state transition occurred in the last 14 days; absent otherwise.
+- `CoverageCell` extension: inline `▲Nd` / `▼Nd` text indicator when state transition occurred in the last 14 days; absent otherwise. `CoverageCell` stays purely presentational — drift data arrives via a `drift?` prop fanned out from its parent `CoverageRow`, which owns the single per-repo history hook (Option C — see PD-11-02).
 - Daemon `skillDriftScan.ts` aggregator + `GET /api/skills/drift` endpoint + `POST /api/skills/drift/agentlinter` for on-demand AgentLinter runs per project (reuses Phase 5 `agentLinterRunner.ts` + `agentLinterCache.ts`).
 - New SPA route `/observability/skill-drift` mounted under `_appshell`; new `Skill drift` sidebar entry (the second item under `Observability` after `Coverage`).
 - `PageHeader` sticky polish + `RefreshRowButton`/icon opacity polish.
@@ -40,14 +40,14 @@ Close v1.1 — **Cross-family observability** — by extending the existing Cove
 ### Coverage trends (Candidate A)
 
 - **D-11-01:** Snapshot retention window — **14 days** (rolling). Why: symmetry with COV-11's GitNexus 14-day stale threshold; tight visual signal; ~5MB/year storage at 45 repos × 4 columns. NDJSON-append plus a daily pruner that drops lines older than 14 days.
-- **D-11-02:** Snapshot trigger — **daily cron only** via the existing Phase 6 launchd / systemd install. Why: reuses installed infrastructure; one snapshot per ISO date; no race-condition surface from opportunistic on-load writes. Acceptable gap: days the daemon isn't running are missing from history (signal degrades, doesn't crash).
+- **D-11-02:** Snapshot trigger — **daily cron only** via the existing Phase 6 launchd / systemd install. Why: reuses installed infrastructure; one snapshot per ISO date; no race-condition surface from opportunistic on-load writes. Acceptable gap: days the daemon isn't running are missing from history (signal degrades, doesn't crash). **SUPERSEDED by PD-11-01 — see <deviations> block below.**
 - **D-11-03:** Drift surface — **inline indicator only** (▲Nd / ▼Nd text, where N is days since the most recent state transition within the 14d window). Why: preserves the dense matrix's calm aesthetic (post Phase-6/10.5 polish); no new SVG primitive; works on touch. Absent when no transition in window. Component name MUST avoid the existing `InlineDrift.tsx` (schema-drift panel) — use `CoverageDriftBadge` or similar.
 
 ### Skill drift (Candidate B)
 
 - **D-11-04:** Aggregation level — **per-skill matrix** as the primary view (rows = skills, columns = projects). Why: mirrors the Coverage matrix mental model; answers "which projects are still behind on skill X?" fleet-wide; per-project view already exists at the Phase 5 single-project Skills panel.
 - **D-11-05:** AgentLinter integration depth — **on-demand AgentLinter run per project from the matrix**. Why: reuses Phase 5's existing `packages/agent/src/lib/agentLinterRunner.ts` + `agentLinterCache.ts`; the AgentLinter spawn surface already exists at the per-project route — Phase 11 adds a new invocation context (from the cross-repo matrix), not a new spawn surface. `/cso` must verify the widened call-site doesn't expand the trust boundary beyond the per-project equivalent (same binary, same args, same cache semantics, same per-project root constraint).
-- **D-11-06:** Cross-family vs in-family — **both, per-family default with cross-family via filter chip**. Why: reuses Phase 10's `CoverageToolbar` multi-select filter-chip pattern (200ms debounce + URL sync). Default per-family respects family-boundary contract; cross-family chip closes the v1.1 milestone framing without forcing it as the default.
+- **D-11-06:** Cross-family vs in-family — **both, per-family default with cross-family via filter chip**. Why: reuses Phase 10's `CoverageToolbar` multi-select filter-chip pattern (200ms debounce + URL sync). Default per-family respects family-boundary contract; cross-family chip closes the v1.1 milestone framing without forcing it as the default. **Scope-model details refined by PD-11-03 below.**
 
 ### Scope + IA
 
@@ -61,7 +61,7 @@ Close v1.1 — **Cross-family observability** — by extending the existing Cove
 
 ### Wire schema strategy
 
-- **D-11-11:** **Sibling endpoint** for history (`GET /api/coverage/history`), NOT a `history?: CoverageDrift[]` field on `CoverageResponseSchema`. Why: keeps the 30s `CoverageResponse` payload tight (the matrix-view path is hot); history is a separate cell-scoped fetch only when the cell renders a drift indicator. Mirrors how Phase 12 chose sibling routes (D-12-02) over widening Phase 5's `/observability`.
+- **D-11-11:** **Sibling endpoint** for history (`GET /api/coverage/history`), NOT a `history?: CoverageDrift[]` field on `CoverageResponseSchema`. Why: keeps the 30s `CoverageResponse` payload tight (the matrix-view path is hot); history is a separate cell-scoped fetch only when the cell renders a drift indicator. Mirrors how Phase 12 chose sibling routes (D-12-02) over widening Phase 5's `/observability`. **Endpoint SHAPE refined by PD-11-02 below — now bulk-per-repo (4 cells per response) instead of per-(repo, cell).**
 - **D-11-12:** **New shared schema file** `packages/shared/src/schemas/coverageHistory.ts` (sibling to `coverage.ts`); barrel re-export from `packages/shared/src/index.ts`. Skill drift gets its own `packages/shared/src/schemas/skillDrift.ts`. Why: file boundary keeps the Phase 10 schema file from growing past 200 LOC and keeps git blame clean for the existing Coverage surface.
 
 ### Trust-boundary deltas (for `/cso`)
@@ -73,7 +73,7 @@ Close v1.1 — **Cross-family observability** — by extending the existing Cove
 
 - **Component naming** for the inline drift surface (`CoverageDriftBadge` / `DriftIndicator` / `TrendBadge` — Claude picks at plan time; just NOT `InlineDrift` which is the Phase 6 schema-drift panel).
 - **NDJSON record shape** internal to `coverage-history/*.ndjson` files (planner can choose record per row per day vs row per (row × column) per day). Wire shape is locked by `CoverageHistorySchema` regardless.
-- **Cron implementation detail** — extend the existing Phase 6 launchd plist with a `StartCalendarInterval` entry, or wire a separate timer; planner decides based on what tests cleanest.
+- **Cron implementation detail** — extend the existing Phase 6 launchd plist with a `StartCalendarInterval` entry, or wire a separate timer; planner decides based on what tests cleanest. **Resolved by PD-11-01 below — in-process scheduler chosen.**
 
 ### Folded Todos
 
@@ -86,6 +86,90 @@ None matched from `gsd-tools todo match-phase 11` (todo_count = 0). The 5 STATE.
 - STATE Todo #5 (Phase 11/12 audit) — resolved by the 2026-05-15 audit decision (combined A+B) and this CONTEXT.
 
 </decisions>
+
+<deviations>
+## Plan-Time Deviations (PD-11-NN)
+
+These supersede or refine locked decisions during planning. Recorded here for
+auditability — original decision text is preserved above for traceability.
+
+### PD-11-01 — In-process scheduler supersedes D-11-02's launchd `StartCalendarInterval`
+
+**Supersedes:** D-11-02's "daily cron only via the existing Phase 6 launchd / systemd install" — specifically the `StartCalendarInterval` plist extension implied by the wording.
+
+**New direction:** Daily snapshot trigger fires **inside the running daemon** via an in-process `setTimeout` chain anchored to next 03:00 local time, re-armed after each tick, `.unref()`'d so it does not block daemon shutdown. NO modifications to the Phase 6 launchd plist or systemd unit.
+
+**Why the deviation:**
+- Phase 6's installed plist sets `KeepAlive=true` + `RunAtLoad=false` (verified at `installLaunchd.ts:46`). Adding `StartCalendarInterval` to a `KeepAlive=true` plist either spawns duplicate daemons or is silently ignored — launchd treats those triggers as mutually exclusive (research §A9).
+- The daemon process IS the long-lived process that launchd keeps alive; scheduling within it reuses the same lifecycle without a second launchd-managed actor.
+- Tests are simpler (`vi.useFakeTimers()` + injected `now()`) than out-of-process cron testing.
+
+**Spirit preserved:** Daily snapshot, one tick per ISO date, infrastructure-managed lifecycle. The only changed implementation detail is "who fires the tick" — the daemon, not launchd.
+
+**Owner:** Plan 11-02 Task 4 (`snapshotScheduler.ts`).
+
+---
+
+### PD-11-02 — Bulk-per-repo `/api/coverage/history` endpoint supersedes per-(repo, cell) shape
+
+**Refines:** D-11-11's "sibling endpoint" decision. The sibling endpoint stays — its SHAPE changes from per-(repo, cell) to per-repo (all 4 cells in one response).
+
+**New endpoint contract:**
+
+```
+GET /api/coverage/history?repoId=<family/repo>
+→ {
+    schemaVersion: 1,
+    repoId: '<family/repo>',
+    windowDays: 14,
+    cells: {
+      claudeMd:        { direction: 'up'|'down'|null, daysSince: number|null },
+      gitNexus:        { direction: ..., daysSince: ... },
+      wiki:            { direction: ..., daysSince: ... },
+      workflowVersion: { direction: ..., daysSince: ... },
+    }
+  }
+```
+
+The `?cell=` query parameter is REMOVED — every response carries drift for all
+four cells of the named repo.
+
+**Why the deviation:**
+- The original per-(repo, cell) shape produces 4 requests per row × ~42 rows = ~168 requests on first paint of `/coverage`. TanStack Query dedup cannot help — query keys are unique per `(repoId, cell)` tuple. REVIEWS.md action item 2 flagged this as a HIGH performance concern.
+- The original shape also forced an ambiguous ownership model on `CoverageCell.tsx`: either the cell becomes a smart cell (calls `useCoverageHistory` itself, breaks presentational purity) or its parent fans out the data (in which case ONE history call per cell is wasteful when the parent already fetches per-row coverage data).
+- Bulk-per-repo cuts first-paint requests to ≤ 1 per registered repo (≤ 42), keeps `CoverageCell` purely presentational with a `drift?` prop, and lets `CoverageRow` own the single `useCoverageHistory(repoId)` hook that produces the four cell drifts in one go.
+
+**Performance budget (REVIEWS.md action item 2):**
+- **≤ 1 history request per registered repo on first paint of `/coverage` until the user interacts** (i.e. ≤ ~42 requests for the current registry size, not ~168).
+- Verified by a fetch-call-count assertion in `CoverageRow.test.tsx` and an integration assertion in `CoveragePage.test.tsx` (mock `apiFetch`, render with N fixture rows, assert call count === N).
+
+**Drift-data ownership model (REVIEWS.md action item 1 — Option C chosen):**
+- `CoverageRow.tsx` owns `useCoverageHistory(repoId)` and passes each of the four cells' `drift` values as props into the four `CoverageCell` children.
+- `CoverageCell.tsx` stays purely presentational with a `drift?: { direction; daysSince } | null` prop. NO hook calls inside the cell.
+- `CoveragePage.tsx` is unchanged — the per-row fanout lives one level down.
+
+**Owners:**
+- Plan 11-01: schema `CoverageHistoryResponseSchema` shape (cells inline, 4-cell record).
+- Plan 11-02: endpoint handler + cache key (now `${repoId}` not `${repoId}:${cell}`); `snapshotReader.ts` exposes a `readDriftForRepo(repoId)` helper returning all 4 cells.
+- Plan 11-04: `useCoverageHistory(repoId)` hook signature drops `cell` parameter; `CoverageRow.tsx` added to `files_modified`; `CoverageCell.tsx` becomes purely presentational.
+
+---
+
+### PD-11-03 — Skill-drift scope model: family sections by default + cross-family flat view via chip
+
+**Refines:** D-11-06's "both, per-family default with cross-family via filter chip" by locking the exact UX so Plan 11-05's hook signature, toolbar tests, and matrix tests all align before execution (REVIEWS.md action item 8).
+
+**Decision:** Mirror Phase 10's `CoverageToolbar.tsx` exactly:
+
+- Default scope `'family'`: matrix is **rendered as four family sections** (`agenticapps`, `factiv`, `neuroflash`, `other`) stacked vertically. Each section header shows family name + project count. Columns within each section are that family's projects only. This matches `CoverageFamilySection.tsx` and `CoveragePage.tsx`'s family grouping.
+- Scope `'cross'` (via chip): matrix is **rendered as a single flat block** with ALL projects from ALL families interleaved alphabetically by `projectId` as columns. No family section dividers.
+- URL sync: `?scope=family` (default — may be elided) | `?scope=cross`.
+- Chip pattern: single-select chip group `[ Per family ] [ Cross family ]` (NOT multi-select — exactly one is active at a time).
+- `useSkillDrift({ scope })` hook signature: `scope` is consumed for the queryKey only (`['skillDrift', scope]`) so URL navigation between scopes triggers a cache-aware refetch if needed; the daemon endpoint does NOT change shape based on scope (always returns all projects + all skills; SPA filters/groups client-side).
+
+**Owner:** Plan 11-05 Task 1 (hook), Task 2 (toolbar + matrix rendering).
+
+</deviations>
 
 <canonical_refs>
 ## Canonical References
@@ -107,15 +191,17 @@ None matched from `gsd-tools todo match-phase 11` (todo_count = 0). The 5 STATE.
 - `packages/agent/src/lib/coverageScan.ts` — orchestrator; snapshot write triggers off the cron tick reading the latest scan, NOT inside the request-path orchestrator.
 - `packages/agent/src/lib/coverageCache.ts` — 30s memo; unchanged.
 - `packages/agent/src/routes/` — existing route directory; Phase 11 adds `coverage-history.ts` + `skill-drift.ts`.
-- `packages/spa/src/components/panels/coverage/CoverageCell.tsx` — extend with optional `drift?: { transitionAt: string; direction: 'up' | 'down' }` prop and render the inline `▲Nd`/`▼Nd` badge.
-- `packages/spa/src/components/panels/coverage/CoverageRow.tsx` — opacity polish (D-11-10) lives here.
+- `packages/spa/src/components/panels/coverage/CoverageCell.tsx` — extend with optional `drift?: { direction: 'up' | 'down'; daysSince: number } | null` prop and render the inline `▲Nd`/`▼Nd` badge. **Cell stays presentational — no hook calls inside (PD-11-02).**
+- `packages/spa/src/components/panels/coverage/CoverageRow.tsx` — owns `useCoverageHistory(repoId)` per PD-11-02 + opacity polish (D-11-10) lives here.
 - `packages/spa/src/components/ui/PageHeader.tsx` — add `sticky?: boolean` prop (D-11-09).
+- `packages/spa/src/components/panels/coverage/CoveragePage.tsx` — owns the `<PageHeader>` invocation; PLI-03 opts THIS file (not `coverage.lazy.tsx`) into `sticky={true}`.
 
 ### Phase 5 surface (skills + AgentLinter — reuse, do NOT rebuild)
-- `packages/agent/src/lib/skillsScan.ts` — per-project skills scanner; Phase 11's cross-repo aggregator wraps this per project, does NOT reimplement scan logic.
+- `packages/agent/src/lib/skillsScan.ts` — per-project skills scanner; Phase 11's cross-repo aggregator wraps this per project, does NOT reimplement scan logic. **`readLocalSkills` returns `{ scope: 'local'; skills: SkillEntry[] }` (not a raw array — verified at `skillsScan.ts:133-135`).**
 - `packages/agent/src/routes/skills.ts` — per-project skills route; Phase 11 adds a sibling `/api/skills/drift` route.
 - `packages/agent/src/lib/agentLinterRunner.ts` — spawn surface; reused as-is by D-11-05.
 - `packages/agent/src/lib/agentLinterCache.ts` — 1h cache; reused.
+- `packages/agent/src/routes/agentlinter.ts` — Phase 5 per-project route; canonical response shape `AgentLinterResponseSchema` from `@agenticapps/dashboard-shared`. **Plan 11-05 mutation hook MUST import this shared schema (do NOT define a local copy — REVIEWS.md action item 10).**
 - `packages/spa/src/components/panels/InstalledSkills.tsx` + `SkillHealth.tsx` — single-project precedents for visual treatment of skill presence + lint scores.
 
 ### Phase 10.6 / 10.5 polish source
@@ -129,6 +215,9 @@ None matched from `gsd-tools todo match-phase 11` (todo_count = 0). The 5 STATE.
 - `packages/spa/src/styles/tokens.css` — Phase 5.1 token namespace (warm paper, aubergine, accent purple). Drift badge must use existing status tokens (`text-status-error`, `text-status-success` or new tertiary if needed; planner picks).
 - `packages/spa/src/components/AppShellV2.tsx` + `Sidebar.tsx` — section/entry pattern (D-10-08 introduced `Observability` as single-item section).
 
+### SPA API client
+- `packages/spa/src/lib/api.ts` — **`apiFetch(path, schema, init?)` returns `Promise<ParseOrDrift<T>>` (verified at `api.ts:61-65`). Callers must unwrap via `result.ok ? result.data : throw`.** Plans 11-04 and 11-05 MUST use this signature exactly — do NOT pass options-object shapes.
+
 ### Forbidden name collision
 - `packages/spa/src/components/panels/InlineDrift.tsx` — **THIS IS THE PHASE 6 SCHEMA-DRIFT PANEL**, not coverage drift. Phase 11's inline drift indicator MUST NOT reuse this name. Suggested names: `CoverageDriftBadge`, `DriftIndicator`, `TrendBadge` (planner picks).
 
@@ -140,13 +229,14 @@ None matched from `gsd-tools todo match-phase 11` (todo_count = 0). The 5 STATE.
 ### Reusable Assets
 
 - **`packages/agent/src/lib/scanners/coverageScan.ts`** — Phase 10 orchestrator. Phase 11 reads its latest output (via cache or fresh scan) inside the daily cron callback and writes the snapshot.
-- **`packages/agent/src/lib/skillsScan.ts`** — Per-project skills scanner. Phase 11's cross-repo aggregator iterates registered projects and calls this per project.
+- **`packages/agent/src/lib/skillsScan.ts`** — Per-project skills scanner. Phase 11's cross-repo aggregator iterates registered projects and calls this per project. `readLocalSkills(root)` returns `{ scope: 'local'; skills: SkillEntry[] }`; aggregator destructures `.skills`.
 - **`packages/agent/src/lib/agentLinterRunner.ts`** + **`agentLinterCache.ts`** — AgentLinter spawn + cache. Phase 11's D-11-05 on-demand AgentLinter route reuses both unchanged.
-- **`packages/spa/src/components/panels/coverage/CoverageCell.tsx`** — Receives optional `drift` prop; renders inline indicator next to existing 4-state cell content.
+- **`packages/spa/src/components/panels/coverage/CoverageCell.tsx`** — Receives optional `drift` prop fanned out by parent `CoverageRow`; renders inline indicator next to existing 4-state cell content. NO hook calls inside.
+- **`packages/spa/src/components/panels/coverage/CoverageRow.tsx`** — Owns `useCoverageHistory(repoId)` and fans drift props out to its four CoverageCell children (PD-11-02). Also carries the opacity-30 polish (D-11-10).
 - **`packages/spa/src/components/panels/coverage/CoverageToolbar.tsx`** — Multi-select filter chip pattern (200ms debounce + URL sync). Skill drift toolbar replicates this exact pattern for per-family/cross-family toggle.
 - **`packages/spa/src/components/ui/PageHeader.tsx`** — Existing primitive; Phase 11 adds `sticky?: boolean` prop opt-in.
-- **`packages/spa/src/components/ui/SidebarSection.tsx` + `SidebarSubItem.tsx`** — Existing primitives; Skill drift entry is one more `SidebarSubItem` under the existing `Observability` `SidebarSection`.
-- **Phase 6 launchd plist** at `packages/agent/src/install/launchd/*` (path to verify at plan time) — extend with `StartCalendarInterval` for the daily snapshot cron.
+- **`packages/spa/src/components/ui/SidebarSection.tsx` + `SidebarItem.tsx`** — Existing primitives; Skill drift entry is one more `SidebarItem` peer under the existing `Observability` `SidebarSection` (NOT `SidebarSubItem` — see Plan 11-05).
+- **Phase 6 launchd plist** at `packages/agent/src/install/launchd/*` (path to verify at plan time) — **NOT MODIFIED** per PD-11-01; scheduler runs in-process inside the daemon launchd keeps alive.
 - **`packages/agent/src/lib/paths.ts`** — `COVERAGE_ROOTS` extension pattern (used in Phase 10 to add `~/.gitnexus` + family roots). New write path `~/.agenticapps/dashboard/coverage-history/` lives under the existing daemon-confined root, so no new public allow-list needed.
 
 ### Established Patterns
@@ -162,8 +252,8 @@ None matched from `gsd-tools todo match-phase 11` (todo_count = 0). The 5 STATE.
 
 - **New route mount** — extend `packages/agent/src/server/app.ts` with `coverage-history` + `skill-drift` routes (bearer-auth + CORS inherited from middleware).
 - **New SPA route** — extend `packages/spa/src/router.tsx` with `/observability/skill-drift` (lazy + zodValidator like the Phase 10 `/coverage` route).
-- **New sidebar entry** — extend `packages/spa/src/components/ui/Sidebar.tsx` with one more `SidebarSubItem` under the existing `Observability` `SidebarSection`.
-- **Launchd / systemd** — extend the Phase 6 install scripts (test paths at plan time; conventionally under `packages/agent/src/install/`).
+- **New sidebar entry** — extend `packages/spa/src/components/ui/Sidebar.tsx` with one more `SidebarItem` under the existing `Observability` `SidebarSection`.
+- **In-process scheduler wiring** — `packages/agent/src/server/boot.ts` calls `startSnapshotScheduler()` and registers its disposer with the existing `gracefulShutdown` path. Per REVIEWS.md action item 5, Plan 11-02 contains an explicit sub-task to introduce a minimal disposer registry inside `boot.ts` so the wiring is explicit, not assumed (current `boot.ts` has no callback/disposer registry — verified at `boot.ts:31-83`).
 - **CHANGELOG.md** — v1.1 entry already exists for Phase 10; Phase 11 appends a sub-bullet (not a new release line — v1.1 is the milestone being closed).
 
 </code_context>
@@ -198,3 +288,4 @@ None reviewed — `gsd-tools todo match-phase 11` returned 0 matches; STATE.md P
 
 *Phase: DASH-11-coverage-trends-skill-drift*
 *Context gathered: 2026-05-16*
+*Deviations appended 2026-05-16 during `/gsd-plan-phase 11 --reviews` (PD-11-01, PD-11-02, PD-11-03).*
