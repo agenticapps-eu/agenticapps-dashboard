@@ -92,4 +92,31 @@ describe('CoverageRow', () => {
     expect(container.innerHTML).not.toContain('absPath')
     expect(container.innerHTML).not.toContain('/Users/')
   })
+
+  // Phase 11 PLI-02 / D-11-10 — refresh button defaults to opacity-30 (was
+  // opacity-0). Touchpad/keyboard discoverability per Phase 10.6 IMPECCABLE
+  // triage. Hover/focus still bumps to opacity-100.
+
+  it('PLI-02: per-row refresh button defaults to opacity-30 (not opacity-0)', () => {
+    render(<CoverageRow row={makeRow()} />)
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.className).toContain('opacity-30')
+    expect(refreshBtn.className).not.toContain('opacity-0')
+  })
+
+  it('PLI-02: per-row refresh button still bumps to opacity-100 on hover (group-hover preserved)', () => {
+    render(<CoverageRow row={makeRow()} />)
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    // hover/group-hover variant preserved so the button reaches full opacity on
+    // pointer hover (UI-SPEC §5).
+    expect(refreshBtn.className).toMatch(/group-hover:opacity-100|hover:opacity-100/)
+  })
+
+  it('PLI-02: per-row refresh button still bumps to opacity-100 on focus (keyboard discoverability preserved)', () => {
+    render(<CoverageRow row={makeRow()} />)
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    // focus/focus-within variant preserved so keyboard users still see full
+    // opacity when the button is the active element.
+    expect(refreshBtn.className).toMatch(/focus:opacity-100|focus-within:opacity-100/)
+  })
 })

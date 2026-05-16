@@ -117,7 +117,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
             type="button"
             aria-label={`Refresh actions for ${row.repo}`}
             onClick={() => setPopoverOpen((o) => !o)}
-            className="text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-0 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
+            className="text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-30 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
           >
             <RefreshCw size={14} aria-hidden="true" />
           </button>
