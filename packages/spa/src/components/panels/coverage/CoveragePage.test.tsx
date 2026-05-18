@@ -621,3 +621,141 @@ describe('CoveragePage handleRefresh toast (IMP-03)', () => {
     })
   })
 })
+
+describe('gitnexus-analyze toast wiring', () => {
+  it('gitnexus-analyze success fires toast with "Indexed {family}/{repo}"', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({
+      ok: true,
+      kind: 'ok',
+      updatedRow: makeRow('agenticapps', 'dashboard'),
+    })
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('agenticapps', 'dashboard', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    await waitFor(() => {
+      const statusEls = screen.getAllByRole('status')
+      const toastEl = statusEls.find((el) => el.textContent?.includes('Indexed'))
+      expect(toastEl).toBeDefined()
+      expect(toastEl!.textContent).toContain('Indexed agenticapps/dashboard')
+    })
+  })
+
+  it('gitnexus-analyze error fires toast with "Indexing failed: {reason}"', async () => {
+    const mutateAsync = vi.fn().mockRejectedValue(new Error('exit code 1: spawn ENOENT'))
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('agenticapps', 'dashboard', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    await waitFor(() => {
+      const alertEls = screen.getAllByRole('alert')
+      const toastEl = alertEls.find((el) => el.textContent?.includes('Indexing failed'))
+      expect(toastEl).toBeDefined()
+      expect(toastEl!.textContent).toContain('Indexing failed: exit code 1: spawn ENOENT')
+    })
+  })
+
+  it('refreshIsPending + refreshVariables are passed through to family sections', async () => {
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
+      isPending: true,
+      isError: false,
+      isSuccess: false,
+      isIdle: false,
+      status: 'pending',
+      variables: { family: 'agenticapps', repo: 'dashboard', action: 'gitnexus-analyze' },
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [
+          makeRow('agenticapps', 'dashboard', 'stale'),
+          makeRow('factiv', 'cparx', 'fresh'),
+        ],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+
+    // The agenticapps/dashboard row should have aria-busy=true
+    await waitFor(() => {
+      const allRows = screen.getAllByRole('row')
+      const dashboardRow = allRows.find((r) => r.textContent?.includes('dashboard') && r.querySelector('td'))
+      expect(dashboardRow?.getAttribute('aria-busy')).toBe('true')
+      // The cparx row should NOT have aria-busy
+      const cparxRow = allRows.find((r) => r.textContent?.includes('cparx') && r.querySelector('td'))
+      expect(cparxRow?.getAttribute('aria-busy')).toBeNull()
+    })
+  })
+})
