@@ -65,6 +65,13 @@ export function CoverageToolbar({
     setInputValue(search)
   }, [search])
 
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    },
+    [],
+  )
+
   function handleChipClick(key: ChipKey) {
     if (key === 'all') {
       // 'all' clicked → deselect everything else, select 'all'

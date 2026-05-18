@@ -240,4 +240,24 @@ describe('controlled input (D-11.2-13)', () => {
     expect(onSearchChange).toHaveBeenCalledWith('agentic')
     vi.useRealTimers()
   })
+
+  // WR-01 regression: pending debounce timer must be cleared on unmount so
+  // route-change races do not fire onSearchChange against an unmounted parent.
+  it('clears the debounce timer on unmount (no onSearchChange after unmount)', () => {
+    vi.useFakeTimers()
+    const onSearchChange = vi.fn()
+    const { unmount } = render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'agentic' } })
+    unmount()
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(onSearchChange).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
 })
