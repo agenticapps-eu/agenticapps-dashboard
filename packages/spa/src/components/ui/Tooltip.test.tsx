@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import React from 'react'
 import { Tooltip } from './Tooltip.js'
 
@@ -57,14 +57,14 @@ describe('Tooltip primitive', () => {
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
     const panel = screen.getByRole('tooltip')
 
-    fireEvent.mouseEnter(trigger)
+    act(() => { fireEvent.mouseEnter(trigger) })
 
     // At 50ms: still closed
-    vi.advanceTimersByTime(50)
+    act(() => { vi.advanceTimersByTime(50) })
     expect(panel.className).toContain('opacity-0')
 
     // At 110ms total: should be open
-    vi.advanceTimersByTime(60)
+    act(() => { vi.advanceTimersByTime(60) })
     expect(panel.className).not.toContain('opacity-0')
     expect(panel.className).toContain('opacity-100')
   })
@@ -75,14 +75,14 @@ describe('Tooltip primitive', () => {
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
     const panel = screen.getByRole('tooltip')
 
-    fireEvent.focus(trigger)
+    act(() => { fireEvent.focus(trigger) })
 
     // At 50ms: still closed
-    vi.advanceTimersByTime(50)
+    act(() => { vi.advanceTimersByTime(50) })
     expect(panel.className).toContain('opacity-0')
 
     // At 110ms total: should be open
-    vi.advanceTimersByTime(60)
+    act(() => { vi.advanceTimersByTime(60) })
     expect(panel.className).not.toContain('opacity-0')
     expect(panel.className).toContain('opacity-100')
   })
@@ -94,12 +94,12 @@ describe('Tooltip primitive', () => {
     const panel = screen.getByRole('tooltip')
 
     // Open the tooltip
-    fireEvent.mouseEnter(trigger)
-    vi.advanceTimersByTime(110)
+    act(() => { fireEvent.mouseEnter(trigger) })
+    act(() => { vi.advanceTimersByTime(110) })
     expect(panel.className).toContain('opacity-100')
 
     // Close instantly
-    fireEvent.mouseLeave(trigger)
+    act(() => { fireEvent.mouseLeave(trigger) })
     expect(panel.className).toContain('opacity-0')
   })
 
@@ -110,12 +110,12 @@ describe('Tooltip primitive', () => {
     const panel = screen.getByRole('tooltip')
 
     // Open the tooltip
-    fireEvent.mouseEnter(trigger)
-    vi.advanceTimersByTime(110)
+    act(() => { fireEvent.mouseEnter(trigger) })
+    act(() => { vi.advanceTimersByTime(110) })
     expect(panel.className).toContain('opacity-100')
 
     // Escape key closes instantly
-    fireEvent.keyDown(trigger, { key: 'Escape' })
+    act(() => { fireEvent.keyDown(trigger, { key: 'Escape' }) })
     expect(panel.className).toContain('opacity-0')
   })
 
