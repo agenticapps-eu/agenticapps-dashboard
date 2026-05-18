@@ -354,3 +354,50 @@ describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
     expect(toastEl.textContent).toContain('open the help guide for the command')
   })
 })
+
+describe('column-header tooltips', () => {
+  it('the CLAUDE.md <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Project AI instructions file. Must exist in repo root for AI coding agents to pick up project conventions.')).toBeInTheDocument()
+  })
+
+  it('the GitNexus <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Local code index for repo-aware AI search. Built by `gitnexus analyze`; stored under `~/.gitnexus`.')).toBeInTheDocument()
+  })
+
+  it('the Wiki <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Compiled knowledge base from CLAUDE.md, ADRs, READMEs. Built by `/wiki-compile`.')).toBeInTheDocument()
+  })
+
+  it('the Workflow <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Installed version of `agenticapps-workflow`. Compared against the current scaffolder release.')).toBeInTheDocument()
+  })
+
+  it('the Repo and Actions <th> elements do NOT render tooltips — only 4 tooltips total', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.queryAllByRole('tooltip')).toHaveLength(4)
+  })
+})
