@@ -418,7 +418,7 @@ Plans:
 **Requirements**: IMP-01..IMP-05 inherited as regression contract from Phase 11.1 (D-11.2-15). No new REQ-IDs minted — Phase 11.2 closes the 15 D-11.2-01..15 decision set without expanding the requirement surface.
 **Depends on:** Phase 11 (CoverageFamilySection + CoverageRow + CoverageToolbar + CoveragePage + PageHeader + Toast primitive) + Phase 11.1 (`<colgroup>` column-width SoT, sticky PageHeader + `--ph-h`, Toast wiring at 6 sites, contrast invariant)
 **Branch:** `feat/impeccable-p2-polish-bundle` (cut from `main` after Phase 11.1 merge `8fe463a`)
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 **Decisions (D-11.2-01..15) — RESOLVED in `/gsd-discuss-phase 11.2` (`--auto`-equivalent mode), 2026-05-18:**
   1. In-house `Tooltip.tsx` primitive (~65 LOC, no Radix/shadcn) (D-11.2-01)
@@ -441,7 +441,7 @@ Plans:
 - [x] 11.2-01-PLAN.md — Wave 1 (TDD, parallel): `ui/Tooltip.tsx` primitive (~65 LOC) + `Tooltip.test.tsx` (8 tests) + `coverageColumnTooltips.ts` SoT + `CoverageFamilySection.tsx` wires 4 `<th>` with `<Tooltip>`. Closes D-11.2-01..05. depends_on: []
 - [x] 11.2-02-PLAN.md — Wave 2 (TDD, sequential — same file CoverageFamilySection.tsx as 01): `CoverageRow.tsx` adds `pending` prop (spinner + aria-busy + disabled + opacity-100) + `CoverageFamilySection.tsx` derives per-row pending from `refresh.isPending` + `.variables` + `CoveragePage.tsx` wires refresh handle + adds gitnexus-analyze success/error toast (7th + 8th call sites). Closes D-11.2-06..08. depends_on: 11.2-01
 - [x] 11.2-03-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` wiki: `w-[22rem]` → `w-72` + comment chain + `coverageColumns.test.ts` regression lock. Closes D-11.2-09..10. depends_on: []
-- [ ] 11.2-04-PLAN.md — Wave 3 (TDD, sequential — single-writer to coverageColumns.ts + CoverageRow.tsx): `coverageColumns.ts` actions: `w-8` → `w-12` + `CoverageRow.tsx` refresh button `p-0.5` → `p-[15px]` + `min-w/h-[44px]` in both pending and idle branches. Closes D-11.2-11..12. depends_on: 11.2-02, 11.2-03
+- [x] 11.2-04-PLAN.md — Wave 3 (TDD, sequential — single-writer to coverageColumns.ts + CoverageRow.tsx): `coverageColumns.ts` actions: `w-8` → `w-12` + `CoverageRow.tsx` refresh button `p-0.5` → `p-[15px]` + `min-w/h-[44px]` in both pending and idle branches. Closes D-11.2-11..12. depends_on: 11.2-02, 11.2-03
 - [x] 11.2-05-PLAN.md — Wave 1 (TDD, parallel): `CoverageToolbar.tsx` switches from `defaultValue={search}` to controlled `value={inputValue}` with `useState(search)` + `useEffect([search])` mirror-state; 200ms debounce locality preserved. Closes D-11.2-13. depends_on: []
 - [x] 11.2-06-PLAN.md — Wave 1 (TDD, parallel): `PageHeader.tsx` subtitle `<p>` gains `max-w-prose` (Tailwind 65ch utility); one-token edit applies retroactively to 4 PageHeader-using routes. Closes D-11.2-14. depends_on: []
 
