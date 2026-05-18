@@ -411,6 +411,16 @@ Plans:
 
 ---
 
+### Phase 11.1: impeccable p1 polish bundle (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11.1 to break down)
+
 ## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)
 
 **Audit scope:** v1.1 milestone "Cross-family observability" has shipped Phase 10 (Coverage Matrix) + 10.5 (skill-driven impeccable gate) + 10.6 (3-state GitNexus detection). What else, if anything, belongs in v1.1 before declaring the milestone closed and reverting to Phase 8 (held: optional integrations) for v1.2?
