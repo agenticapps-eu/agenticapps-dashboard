@@ -7,11 +7,19 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { CoverageRow as CoverageRowData } from '@agenticapps/dashboard-shared'
 import { CoverageFamilySection } from './CoverageFamilySection.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { ToastProvider } from '../../ui/Toast.js'
+
+vi.mock('../../../lib/clipboardCompat.js', () => ({
+  writeToClipboard: vi.fn().mockResolvedValue(true),
+}))
+
+import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 
 // Phase 11-04: CoverageRow (rendered by CoverageFamilySection) now calls
 // useCoverageHistory and therefore requires a QueryClientProvider. fetch is
@@ -298,5 +306,52 @@ describe('column-width lock (IMP-01)', () => {
     )
     const table = container.querySelector('table')
     expect(table?.className).toContain('table-fixed')
+  })
+})
+
+describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
+  beforeEach(() => {
+    vi.mocked(writeToClipboard).mockResolvedValue(true)
+  })
+
+  it('fires success toast when family install hint button is clicked and clipboard succeeds', async () => {
+    const rows = [makeRow('repo-a')]
+    render(
+      withQC(
+        <ToastProvider>
+          <CoverageFamilySection
+            family="agenticapps"
+            rows={rows}
+            gitNexusInstallState="not-installed"
+          />
+        </ToastProvider>,
+      ),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('install GitNexus')
+  })
+
+  it('fires error toast when clipboard write fails', async () => {
+    vi.mocked(writeToClipboard).mockResolvedValue(false)
+    const rows = [makeRow('repo-a')]
+    render(
+      withQC(
+        <ToastProvider>
+          <CoverageFamilySection
+            family="agenticapps"
+            rows={rows}
+            gitNexusInstallState="not-installed"
+          />
+        </ToastProvider>,
+      ),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('Copy failed'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('open the help guide for the command')
   })
 })

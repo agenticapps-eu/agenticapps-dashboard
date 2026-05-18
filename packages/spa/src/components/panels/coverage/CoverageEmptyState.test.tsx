@@ -4,10 +4,18 @@
  * UI-SPEC §6: each condition maps to specific copy + CTA.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { CoverageEmptyState } from './CoverageEmptyState.js'
+import { ToastProvider } from '../../ui/Toast.js'
+
+vi.mock('../../../lib/clipboardCompat.js', () => ({
+  writeToClipboard: vi.fn().mockResolvedValue(true),
+}))
+
+import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 
 describe('CoverageEmptyState', () => {
   it("renders no-repos empty state when kind='no-repos'", () => {
@@ -40,5 +48,38 @@ describe('CoverageEmptyState', () => {
     const clearBtn = screen.getByRole('button', { name: /clear filters/i })
     fireEvent.click(clearBtn)
     expect(onClearFilters).toHaveBeenCalledOnce()
+  })
+})
+
+describe('CoverageEmptyState no-gitnexus toast (IMP-03)', () => {
+  beforeEach(() => {
+    vi.mocked(writeToClipboard).mockResolvedValue(true)
+  })
+
+  it('fires success toast when copy install command button is clicked and clipboard succeeds', async () => {
+    render(
+      <ToastProvider>
+        <CoverageEmptyState kind="no-gitnexus" />
+      </ToastProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /copy install command/i }))
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('install GitNexus')
+  })
+
+  it('fires error toast when clipboard write fails', async () => {
+    vi.mocked(writeToClipboard).mockResolvedValue(false)
+    render(
+      <ToastProvider>
+        <CoverageEmptyState kind="no-gitnexus" />
+      </ToastProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /copy install command/i }))
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('Copy failed'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('open the help guide for the command')
   })
 })
