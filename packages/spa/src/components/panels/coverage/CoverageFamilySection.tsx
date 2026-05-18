@@ -33,6 +33,7 @@ import type {
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
@@ -162,7 +163,15 @@ export function CoverageFamilySection({
       {/* Body: rows visible when expanded */}
       {!collapsed && (
         <div id={bodyId} role="region" aria-label={`${family} repos`}>
-          <table className="w-full text-left">
+          <table className="w-full table-fixed text-left">
+            <colgroup>
+              <col className={COVERAGE_COL_WIDTHS.repo} />
+              <col className={COVERAGE_COL_WIDTHS.claudeMd} />
+              <col className={COVERAGE_COL_WIDTHS.gitNexus} />
+              <col className={COVERAGE_COL_WIDTHS.wiki} />
+              <col className={COVERAGE_COL_WIDTHS.workflow} />
+              <col className={COVERAGE_COL_WIDTHS.actions} />
+            </colgroup>
             {/* Column headers stick below the family header. Post-UAT layering stack:
                 PageHeader sticks at viewport-top with min-h-14 backstop (56px tall,
                 bottom at sticky-offset top-8 / 32px from wrapper-content-top because
