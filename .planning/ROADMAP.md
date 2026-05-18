@@ -418,7 +418,7 @@ Plans:
 **Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05 (5 minted during `/gsd-plan-phase 11.1`, 2026-05-18 — see REQUIREMENTS.md §"Impeccable P1 polish bundle (Phase 11.1)")
 **Depends on:** Phase 11 (`/coverage` route + sticky PageHeader primitive + Coverage components)
 **Branch:** `feat/impeccable-p1-polish-bundle` (cut from `main@d1d72f0`)
-**Plans:** 6 plans
+**Plans:** 6/6 plans complete
 
 **Decisions (D-11.1-01..23) — RESOLVED in brainstorming + `/gsd-discuss-phase 11.1`, 2026-05-18:**
   1. Column-width lock approach — shared `<colgroup>` with `table-fixed` (D-11.1-01; rejected Option B CSS-Grid refactor)
@@ -438,12 +438,12 @@ Plans:
   15. New `verify-contrast.test.ts` invariant for all `text-*` tokens (D-11.1-15)
 
 Plans:
-- [ ] 11.1-01-PLAN.md — Wave 0 (TDD, foundational): `lib/contrast.ts` (WCAG calculator) + `lib/contrast.test.ts` + `styles/verify-contrast.test.ts` (token invariant) + `tokens.css` swap `--color-text-tertiary` to `#75708A`. Covers IMP-04, IMP-05. depends_on: []
-- [ ] 11.1-02-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` SoT + `coverageColumns.test.ts` + `CoverageFamilySection.tsx` `<colgroup>` + `table-fixed` + `CoverageRow.tsx` track adoption. Covers IMP-01. depends_on: 11.1-01
-- [ ] 11.1-03-PLAN.md — Wave 1 (TDD, parallel): new `ui/Toast.tsx` primitive (provider + portal + `useToast` hook, single-slot replace, opacity-only animation) + `Toast.test.tsx` (11 assertions). Covers IMP-03 (primitive half). depends_on: 11.1-01
-- [ ] 11.1-04-PLAN.md — Wave 1 (TDD, parallel): new `ui/usePageHeaderHeight.ts` (ResizeObserver → `--ph-h`) + tests + `tokens.css` `:root { --ph-h: 56px }` default + `PageHeader.tsx` binds the hook. Covers IMP-02 (measurement half). depends_on: 11.1-01
-- [ ] 11.1-05-PLAN.md — Wave 2 (TDD, sequential): `CoveragePage.tsx` move `CoverageToolbar` into `PageHeader` children + `CoverageFamilySection.tsx` switch `top-` constants from hardcoded `top-8`/`top-[5.0625rem]` to `calc(var(--ph-h) ± ...)` expressions. Closes IMP-02 (composition + consumption). depends_on: 11.1-02, 11.1-04
-- [ ] 11.1-06-PLAN.md — Wave 2 (TDD, sequential): `AppShellV2.tsx` wrap with `<ToastProvider>` + wire 6 clipboard call sites (`IndexGitNexusButton`, `InstallGitNexusButton`, `CoverageEmptyState`, `CoverageFamilySection` family-hint, `CoveragePage` wiki-compile, `CoveragePage` workflow update). Closes IMP-03 (wiring). depends_on: 11.1-03, 11.1-05
+- [x] 11.1-01-PLAN.md — Wave 0 (TDD, foundational): `lib/contrast.ts` (WCAG calculator) + `lib/contrast.test.ts` + `styles/verify-contrast.test.ts` (token invariant) + `tokens.css` swap `--color-text-tertiary` to `#75708A`. Covers IMP-04, IMP-05. depends_on: []
+- [x] 11.1-02-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` SoT + `coverageColumns.test.ts` + `CoverageFamilySection.tsx` `<colgroup>` + `table-fixed` + `CoverageRow.tsx` track adoption. Covers IMP-01. depends_on: 11.1-01
+- [x] 11.1-03-PLAN.md — Wave 1 (TDD, parallel): new `ui/Toast.tsx` primitive (provider + portal + `useToast` hook, single-slot replace, opacity-only animation) + `Toast.test.tsx` (11 assertions). Covers IMP-03 (primitive half). depends_on: 11.1-01
+- [x] 11.1-04-PLAN.md — Wave 1 (TDD, parallel): new `ui/usePageHeaderHeight.ts` (ResizeObserver → `--ph-h`) + tests + `tokens.css` `:root { --ph-h: 56px }` default + `PageHeader.tsx` binds the hook. Covers IMP-02 (measurement half). depends_on: 11.1-01
+- [x] 11.1-05-PLAN.md — Wave 2 (TDD, sequential): `CoveragePage.tsx` move `CoverageToolbar` into `PageHeader` children + `CoverageFamilySection.tsx` switch `top-` constants from hardcoded `top-8`/`top-[5.0625rem]` to `calc(var(--ph-h) ± ...)` expressions. Closes IMP-02 (composition + consumption). depends_on: 11.1-02, 11.1-04
+- [x] 11.1-06-PLAN.md — Wave 2 (TDD, sequential): `AppShellV2.tsx` wrap with `<ToastProvider>` + wire 6 clipboard call sites (`IndexGitNexusButton`, `InstallGitNexusButton`, `CoverageEmptyState`, `CoverageFamilySection` family-hint, `CoveragePage` wiki-compile, `CoveragePage` workflow update). Closes IMP-03 (wiring). depends_on: 11.1-03, 11.1-05
 
 **Post-phase gates:**
 - Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse)
