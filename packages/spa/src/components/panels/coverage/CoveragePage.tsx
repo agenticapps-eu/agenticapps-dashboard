@@ -137,11 +137,23 @@ export function CoveragePage(): React.JSX.Element {
       void (async () => {
         switch (action) {
           case 'gitnexus-analyze':
-            await refresh.mutateAsync({
-              family: context.family,
-              repo: context.repo,
-              action: 'gitnexus-analyze',
-            })
+            try {
+              await refresh.mutateAsync({
+                family: context.family,
+                repo: context.repo,
+                action: 'gitnexus-analyze',
+              })
+              toast.show({
+                message: `Indexed ${context.family}/${context.repo}`,
+                variant: 'success',
+              })
+            } catch (err) {
+              const reason = err instanceof Error ? err.message : String(err)
+              toast.show({
+                message: `Indexing failed: ${reason}`,
+                variant: 'error',
+              })
+            }
             break
           case 'wiki-compile-clipboard': {
             const ok = await writeToClipboard(buildWikiCompileClipboardString(context.family))
@@ -167,7 +179,7 @@ export function CoveragePage(): React.JSX.Element {
         }
       })()
     },
-    [navigate, refresh],
+    [navigate, refresh, toast],
   )
 
   // useMemo hooks must be called unconditionally (React rules of hooks)
@@ -305,6 +317,8 @@ export function CoveragePage(): React.JSX.Element {
               rows={byFamily[family]}
               gitNexusInstallState={data.gitNexusInstallState}
               onRefresh={handleRefresh}
+              refreshIsPending={refresh.isPending}
+              refreshVariables={refresh.variables}
             />
           ))}
         </div>
