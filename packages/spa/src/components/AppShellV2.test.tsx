@@ -183,6 +183,9 @@ describe('ToastProvider wraps AppShellV2 (IMP-03 / PD-11.1-04)', () => {
   it("useToast() works for any descendant rendered through AppShellV2's Outlet", () => {
     renderAppShellV2()
     fireEvent.click(screen.getByText('fire'))
-    expect(screen.getByRole('status')).toHaveTextContent('probe')
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('probe'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('probe')
   })
 })

@@ -23,11 +23,13 @@ import { CommandPalette } from './CommandPalette.js'
 import { RepairBanner } from './RepairBanner.js'
 import { Sidebar } from './ui/Sidebar.js'
 import { TopBar } from './ui/TopBar.js'
+import { ToastProvider } from './ui/Toast.js'
 
 export function AppShellV2(): React.JSX.Element {
   // POLISH-01 D-6-01..03 — single keydown listener with focus-guard
   useGlobalShortcuts()
   return (
+    <ToastProvider>
     <div
       data-testid="app-shell-v2"
       className="grid h-screen bg-app-bg text-text-primary"
@@ -52,5 +54,6 @@ export function AppShellV2(): React.JSX.Element {
       </div>
       <CommandPalette />
     </div>
+    </ToastProvider>
   )
 }
