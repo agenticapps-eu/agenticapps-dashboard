@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import type { CoverageResponse, CoverageRow } from '@agenticapps/dashboard-shared'
@@ -525,5 +525,33 @@ describe('CoveragePage — PLI-03 sticky PageHeader opt-in', () => {
     const lazyPath = path.resolve(__dirname, '../../../routes/coverage.lazy.tsx')
     const content = fs.readFileSync(lazyPath, 'utf8')
     expect(content).not.toMatch(/sticky/)
+  })
+})
+
+describe('CoverageToolbar inside sticky PageHeader (IMP-02 / PD-11.1-07)', () => {
+  function setupMainRender() {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState: 'installed-with-registry' }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+    render(<CoveragePage />, { wrapper })
+  }
+
+  it('renders CoverageToolbar as a child of the sticky PageHeader subtree', () => {
+    setupMainRender()
+    const stickyHeader = screen.getByTestId('page-header-sticky')
+    const toolbar = within(stickyHeader).getByRole('group', { name: 'Filter by status' })
+    expect(toolbar).toBeTruthy()
+  })
+
+  it('does not render CoverageToolbar as a sibling of the sticky PageHeader (toolbar appears exactly once and only inside the testid subtree)', () => {
+    setupMainRender()
+    const allFilterGroups = screen.getAllByRole('group', { name: 'Filter by status' })
+    expect(allFilterGroups).toHaveLength(1)
+    const stickyHeader = screen.getByTestId('page-header-sticky')
+    expect(stickyHeader.contains(allFilterGroups[0]!)).toBe(true)
   })
 })
