@@ -88,6 +88,7 @@ function renderAppShellV2() {
   let hookResult: ReturnType<typeof useRepair> | undefined
 
   function Consumer() {
+    // eslint-disable-next-line react-hooks/globals -- intentional test-harness pattern: expose hook value to outer scope for getHook() spy
     hookResult = useRepair()
     return null
   }
