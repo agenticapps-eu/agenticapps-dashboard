@@ -402,3 +402,87 @@ describe('column-header tooltips', () => {
     expect(screen.queryAllByRole('tooltip')).toHaveLength(4)
   })
 })
+
+describe('per-row pending derivation', () => {
+  const mockRow = makeRow('repo-a')
+
+  it('when refreshIsPending is false, no row receives pending=true', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          refreshIsPending={false}
+          refreshVariables={undefined}
+        />,
+      ),
+    )
+    // Expand section (starts expanded by default)
+    const rows = screen.getAllByRole('row')
+    // No row should have aria-busy
+    for (const row of rows) {
+      expect(row.getAttribute('aria-busy')).toBeNull()
+    }
+  })
+
+  it('when refreshIsPending is true but refreshVariables.action is NOT gitnexus-analyze, no row receives pending=true', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          refreshIsPending={true}
+          refreshVariables={{ family: 'agenticapps', repo: mockRow.repo, action: 'wiki-compile-clipboard' as never }}
+        />,
+      ),
+    )
+    const rows = screen.getAllByRole('row')
+    for (const row of rows) {
+      expect(row.getAttribute('aria-busy')).toBeNull()
+    }
+  })
+
+  it('when refreshIsPending is true AND variables matches the row family+repo, that row receives pending=true', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          refreshIsPending={true}
+          refreshVariables={{ family: 'agenticapps', repo: mockRow.repo, action: 'gitnexus-analyze' }}
+        />,
+      ),
+    )
+    const dataRow = screen.getByRole('row')
+    expect(dataRow.getAttribute('aria-busy')).toBe('true')
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
+    expect(refreshBtn).toHaveProperty('disabled', true)
+  })
+
+  it('when refreshIsPending is true but variables.repo matches a DIFFERENT row, only that row receives pending', () => {
+    const mockRowA = makeRow('repo-a')
+    const mockRowB = makeRow('repo-b')
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRowA, mockRowB]}
+          gitNexusInstallState="installed-with-registry"
+          refreshIsPending={true}
+          refreshVariables={{ family: 'agenticapps', repo: mockRowB.repo, action: 'gitnexus-analyze' }}
+        />,
+      ),
+    )
+    const allRows = screen.getAllByRole('row')
+    // The data rows are the ones after the header row
+    const dataRows = allRows.filter((r) => r.querySelector('td'))
+    const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
+    const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
+    expect(rowA?.getAttribute('aria-busy')).toBeNull()
+    expect(rowB?.getAttribute('aria-busy')).toBe('true')
+  })
+})
