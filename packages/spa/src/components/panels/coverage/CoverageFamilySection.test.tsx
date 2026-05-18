@@ -11,6 +11,7 @@ import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { CoverageRow as CoverageRowData } from '@agenticapps/dashboard-shared'
 import { CoverageFamilySection } from './CoverageFamilySection.js'
+import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 
 // Phase 11-04: CoverageRow (rendered by CoverageFamilySection) now calls
 // useCoverageHistory and therefore requires a QueryClientProvider. fetch is
@@ -224,5 +225,45 @@ describe('CoverageFamilySection', () => {
       ),
     )
     expect(screen.queryByText(/GitNexus is not installed/i)).toBeNull()
+  })
+})
+
+describe('column-width lock (IMP-01)', () => {
+  it('renders <colgroup> with 6 <col> elements consuming COVERAGE_COL_WIDTHS', () => {
+    const fixture: CoverageRowData[] = [
+      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
+      makeRow('repo-b', { claudeMd: 'stale', gitNexus: 'missing', wiki: 'fresh', workflow: 'fresh' }),
+    ]
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={fixture}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const cols = container.querySelectorAll('colgroup > col')
+    expect(cols).toHaveLength(6)
+    expect(cols[0]?.className).toBe(COVERAGE_COL_WIDTHS.repo)
+    expect(cols[1]?.className).toBe(COVERAGE_COL_WIDTHS.claudeMd)
+    expect(cols[2]?.className).toBe(COVERAGE_COL_WIDTHS.gitNexus)
+    expect(cols[3]?.className).toBe(COVERAGE_COL_WIDTHS.wiki)
+    expect(cols[4]?.className).toBe(COVERAGE_COL_WIDTHS.workflow)
+    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
+  })
+
+  it('marks <table> as table-fixed', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const table = container.querySelector('table')
+    expect(table?.className).toContain('table-fixed')
   })
 })
