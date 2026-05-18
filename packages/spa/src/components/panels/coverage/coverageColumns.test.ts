@@ -46,9 +46,8 @@ describe('COVERAGE_COL_WIDTHS', () => {
   it('workflow column width is w-32 (128px)', () => {
     expect(COVERAGE_COL_WIDTHS.workflow).toBe('w-32')
   })
-  // Note: actions column is owned by Plan 04 — it stays at 'w-8' (32px) until that plan lands.
-  it('actions column width is w-8 (32px) — Plan 04 will widen to w-12', () => {
-    expect(COVERAGE_COL_WIDTHS.actions).toBe('w-8')
+  it('actions column width is w-12 (48px) — widened from w-8 for 44×44px button per D-11.2-12', () => {
+    expect(COVERAGE_COL_WIDTHS.actions).toBe('w-12')
   })
 
   // Plan 03 (D-11.2-09): wiki tightening
