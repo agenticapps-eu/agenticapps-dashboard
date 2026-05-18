@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: completed
+status: executing
 stopped_at: Phase 11.2 UI-SPEC approved
-last_updated: "2026-05-18T16:54:28.347Z"
-last_activity: 2026-05-18
+last_updated: "2026-05-18T17:36:17.565Z"
+last_activity: 2026-05-18 -- Phase 11.2 planning complete
 progress:
   total_phases: 18
   completed_phases: 8
@@ -29,8 +29,8 @@ Phase: 11.1 SHIPPED (merge commit 8fe463a on main)
 Plan: 6/6 plans complete; all 5 IMP-* requirements verified
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Phase complete; awaiting next-phase route
-Last activity: 2026-05-18
+Status: Ready to execute
+Last activity: 2026-05-18 -- Phase 11.2 planning complete
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 
