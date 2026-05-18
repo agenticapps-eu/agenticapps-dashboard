@@ -74,8 +74,13 @@
   --text-3xl:  32px;
 }
 
-/* Z-index ladder — outside @theme (not utility-class generators) */
+/* CSS custom properties outside @theme (Tailwind 4 reserves @theme for utility-class generators).
+ * --ph-h is published by usePageHeaderHeight() at runtime; 56px is the first-paint default
+ * (single-row PageHeader without children); Coverage's title+toolbar PageHeader publishes ~110px
+ * once the ResizeObserver fires.
+ */
 :root {
+  --ph-h: 56px;
   --z-base:    0;
   --z-sticky:  10;
   --z-overlay: 100;
