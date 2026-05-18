@@ -34,6 +34,7 @@ import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shar
 import { CoverageRow } from './CoverageRow.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { useToast } from '../../ui/Toast.js'
 
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
@@ -88,6 +89,7 @@ export function CoverageFamilySection({
   gitNexusInstallState,
   onRefresh,
 }: CoverageFamilySectionProps): React.JSX.Element {
+  const toast = useToast()
   const key = storageKey(family)
 
   // Restore collapse state from localStorage on mount (UI-SPEC §5)
@@ -150,7 +152,14 @@ export function CoverageFamilySection({
               GitNexus is not installed —{' '}
               <button
                 type="button"
-                onClick={() => void writeToClipboard(buildGitnexusInstallClipboardString())}
+                onClick={async () => {
+                  const ok = await writeToClipboard(buildGitnexusInstallClipboardString())
+                  toast.show(
+                    ok
+                      ? { message: 'Copied — paste in terminal to install GitNexus', variant: 'success' }
+                      : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+                  )
+                }}
                 className="underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
               >
                 Copy npm install -g gitnexus

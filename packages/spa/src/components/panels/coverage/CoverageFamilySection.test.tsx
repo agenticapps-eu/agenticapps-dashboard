@@ -57,7 +57,11 @@ function withQC(children: React.ReactElement) {
       },
     },
   })
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={qc}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  )
 }
 
 afterEach(() => {
@@ -318,13 +322,11 @@ describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
     const rows = [makeRow('repo-a')]
     render(
       withQC(
-        <ToastProvider>
-          <CoverageFamilySection
-            family="agenticapps"
-            rows={rows}
-            gitNexusInstallState="not-installed"
-          />
-        </ToastProvider>,
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="not-installed"
+        />,
       ),
     )
     await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
@@ -339,13 +341,11 @@ describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
     const rows = [makeRow('repo-a')]
     render(
       withQC(
-        <ToastProvider>
-          <CoverageFamilySection
-            family="agenticapps"
-            rows={rows}
-            gitNexusInstallState="not-installed"
-          />
-        </ToastProvider>,
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="not-installed"
+        />,
       ),
     )
     await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
