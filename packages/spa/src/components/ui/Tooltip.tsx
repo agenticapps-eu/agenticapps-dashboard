@@ -16,28 +16,52 @@
  * - Opacity-only animation (transition-opacity duration-100 ease-out)
  * - Panel stays mounted when closed (opacity-0 + pointer-events-none) to avoid remount reflow
  *
+ * Phase 11.2 follow-up: panel renders via createPortal(document.body) using
+ * position: fixed + viewport coords from trigger.getBoundingClientRect(). This
+ * escapes table-fixed containing-block width constraints so the max-w-xs (320px)
+ * cap survives inside narrow <th> cells (CLAUDE.md / GitNexus / Workflow columns).
+ * Re-measures on scroll (capture phase) and resize so the panel tracks the trigger.
+ *
  * ARIA: trigger receives aria-describedby={tooltipId}; panel uses role="tooltip" + matching id.
  * Z-index: var(--z-overlay) = 100 (above sticky=10, below modal=1000).
  */
 import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface TooltipProps {
   content: string
   children: React.ReactNode
 }
 
+interface Coords {
+  top: number
+  left: number
+}
+
 export function Tooltip({ content, children }: TooltipProps): React.JSX.Element {
   const tooltipId = useId()
   const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState<Coords | null>(null)
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const triggerRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => () => {
     if (openTimerRef.current) clearTimeout(openTimerRef.current)
   }, [])
 
+  function measure() {
+    const el = triggerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setCoords({ top: rect.bottom + 4, left: rect.left })
+  }
+
   function scheduleOpen() {
     if (openTimerRef.current) clearTimeout(openTimerRef.current)
-    openTimerRef.current = setTimeout(() => setOpen(true), 100)
+    openTimerRef.current = setTimeout(() => {
+      measure()
+      setOpen(true)
+    }, 100)
   }
 
   function closeNow() {
@@ -52,11 +76,36 @@ export function Tooltip({ content, children }: TooltipProps): React.JSX.Element 
     if (e.key === 'Escape') closeNow()
   }
 
-  const panelClassName = `absolute top-full mt-1 left-0 z-[var(--z-overlay)] bg-card-bg border border-border-subtle rounded-md shadow-card px-3 py-2 text-sm text-text-primary max-w-xs transition-opacity duration-100 ease-out ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`
+  useEffect(() => {
+    if (!open) return
+    function onScrollOrResize() {
+      measure()
+    }
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [open])
+
+  const panelClassName = `fixed z-[var(--z-overlay)] bg-card-bg border border-border-subtle rounded-md shadow-card px-3 py-2 text-sm text-text-primary max-w-xs transition-opacity duration-100 ease-out ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`
+
+  const panel = (
+    <span
+      id={tooltipId}
+      role="tooltip"
+      className={panelClassName}
+      style={coords ? { top: coords.top, left: coords.left } : undefined}
+    >
+      {content}
+    </span>
+  )
 
   return (
     <span className="relative inline-block">
       <span
+        ref={triggerRef}
         tabIndex={0}
         aria-describedby={tooltipId}
         className="border-b border-dotted border-text-tertiary cursor-default"
@@ -68,9 +117,7 @@ export function Tooltip({ content, children }: TooltipProps): React.JSX.Element 
       >
         {children}
       </span>
-      <span id={tooltipId} role="tooltip" className={panelClassName}>
-        {content}
-      </span>
+      {typeof document !== 'undefined' && createPortal(panel, document.body)}
     </span>
   )
 }

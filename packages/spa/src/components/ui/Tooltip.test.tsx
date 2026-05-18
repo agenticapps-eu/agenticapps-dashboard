@@ -8,9 +8,8 @@
  * Implements TDD RED step for D-11.2-01..04 (open/close timing, ARIA, animation).
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
-import React from 'react'
 import { Tooltip } from './Tooltip.js'
 
 afterEach(() => {
@@ -126,5 +125,67 @@ describe('Tooltip primitive', () => {
     expect(panel.className).toContain('border-border-subtle')
     expect(panel.className).toContain('text-text-primary')
     expect(panel.className).not.toMatch(/#[0-9a-fA-F]/)
+  })
+
+  it('renders panel in document.body via portal (escapes table-fixed cell)', () => {
+    render(<Tooltip content="hi">trigger</Tooltip>)
+    const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
+    const panel = screen.getByRole('tooltip')
+    // Panel is NOT a descendant of the trigger (it lives in the portal)
+    expect(trigger.contains(panel)).toBe(false)
+    // Panel IS mounted directly under document.body
+    expect(panel.parentElement).toBe(document.body)
+  })
+
+  it('panel uses position: fixed (not absolute) so cell width does not constrain it', () => {
+    render(<Tooltip content="hi">trigger</Tooltip>)
+    const panel = screen.getByRole('tooltip')
+    expect(panel.className).toContain('fixed')
+    expect(panel.className).not.toContain('absolute')
+    expect(panel.className).toContain('max-w-xs')
+  })
+
+  it('positions panel using viewport coords from getBoundingClientRect on open', () => {
+    vi.useFakeTimers()
+    render(<Tooltip content="hi">trigger</Tooltip>)
+    const trigger = screen.getByText('trigger').closest('span[tabindex="0"]') as HTMLElement
+    const panel = screen.getByRole('tooltip') as HTMLElement
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      top: 100, bottom: 120, left: 50, right: 90, width: 40, height: 20,
+      x: 50, y: 100, toJSON() { return {} },
+    } as DOMRect)
+
+    act(() => { fireEvent.mouseEnter(trigger) })
+    act(() => { vi.advanceTimersByTime(110) })
+
+    // top = rect.bottom + 4 (mt-1 gap), left = rect.left
+    expect(panel.style.top).toBe('124px')
+    expect(panel.style.left).toBe('50px')
+  })
+
+  it('re-measures panel position on window scroll while open', () => {
+    vi.useFakeTimers()
+    render(<Tooltip content="hi">trigger</Tooltip>)
+    const trigger = screen.getByText('trigger').closest('span[tabindex="0"]') as HTMLElement
+    const panel = screen.getByRole('tooltip') as HTMLElement
+
+    const rect = vi.spyOn(trigger, 'getBoundingClientRect')
+    rect.mockReturnValue({
+      top: 100, bottom: 120, left: 50, right: 90, width: 40, height: 20,
+      x: 50, y: 100, toJSON() { return {} },
+    } as DOMRect)
+
+    act(() => { fireEvent.mouseEnter(trigger) })
+    act(() => { vi.advanceTimersByTime(110) })
+    expect(panel.style.top).toBe('124px')
+
+    // Simulate scroll: trigger now 40px higher in viewport.
+    rect.mockReturnValue({
+      top: 60, bottom: 80, left: 50, right: 90, width: 40, height: 20,
+      x: 50, y: 60, toJSON() { return {} },
+    } as DOMRect)
+    act(() => { window.dispatchEvent(new Event('scroll')) })
+
+    expect(panel.style.top).toBe('84px')
   })
 })
