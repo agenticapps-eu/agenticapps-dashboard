@@ -28,7 +28,8 @@ class MockResizeObserver {
 
   disconnect(): void {
     for (let i = __activeObservers.length - 1; i >= 0; i--) {
-      if (__activeObservers[i].callback === this.callback) {
+      const obs = __activeObservers[i]
+      if (obs && obs.callback === this.callback) {
         __activeObservers.splice(i, 1)
       }
     }
