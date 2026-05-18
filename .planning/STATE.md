@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: shipped
-stopped_at: Phase 11.1 (impeccable p1 polish bundle) shipped via PR #36 (merge commit 8fe463a). v1.1 substantially complete — Phase 12 prepped on `feat/observability-conformance-surface`.
-last_updated: "2026-05-18T13:32:30.000Z"
+status: completed
+stopped_at: Phase 11.2 context gathered
+last_updated: "2026-05-18T16:30:57.847Z"
 last_activity: 2026-05-18
 progress:
-  total_phases: 17
-  completed_phases: 9
-  total_plans: 57
-  completed_plans: 57
+  total_phases: 18
+  completed_phases: 8
+  total_plans: 51
+  completed_plans: 51
   percent: 100
 ---
 
@@ -153,7 +153,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-16T14:28:31.887Z
-Stopped at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
-Resume file: None
+Last session: 2026-05-18T16:30:57.842Z
+Stopped at: Phase 11.2 context gathered
+Resume file: .planning/phases/DASH-11.2-impeccable-p2-polish-bundle/11.2-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
