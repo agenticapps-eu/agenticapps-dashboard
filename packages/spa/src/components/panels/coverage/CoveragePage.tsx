@@ -27,6 +27,7 @@ import {
 import { PageHeader } from '../../ui/PageHeader.js'
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { useToast } from '../../ui/Toast.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { CoverageToolbar } from './CoverageToolbar.js'
 import type { CoverageStatusFilter } from './CoverageToolbar.js'
@@ -83,6 +84,7 @@ export function CoveragePage(): React.JSX.Element {
   const query = useCoverage()
   const refresh = useCoverageRefresh()
   const navigate = useNavigate()
+  const toast = useToast()
   // URL state (strict:false — /coverage route may not have validateSearch yet; Plan 07 wires it)
   const search = useSearch({ strict: false }) as { status?: string; q?: string }
 
@@ -141,12 +143,24 @@ export function CoveragePage(): React.JSX.Element {
               action: 'gitnexus-analyze',
             })
             break
-          case 'wiki-compile-clipboard':
-            await writeToClipboard(buildWikiCompileClipboardString(context.family))
+          case 'wiki-compile-clipboard': {
+            const ok = await writeToClipboard(buildWikiCompileClipboardString(context.family))
+            toast.show(
+              ok
+                ? { message: `Copied — paste in terminal to compile the ${context.family} wiki`, variant: 'success' }
+                : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+            )
             break
-          case 'workflow-update-clipboard':
-            await writeToClipboard(buildWorkflowUpdateClipboardString())
+          }
+          case 'workflow-update-clipboard': {
+            const ok = await writeToClipboard(buildWorkflowUpdateClipboardString())
+            toast.show(
+              ok
+                ? { message: 'Copied — paste in terminal to update the workflow', variant: 'success' }
+                : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+            )
             break
+          }
           case 'claude-md-help':
             void navigate({ to: buildClaudeMdHelpUrl() as '/' })
             break
