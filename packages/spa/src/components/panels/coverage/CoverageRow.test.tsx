@@ -471,3 +471,50 @@ describe('pending state', () => {
     expect(refreshBtn.className).not.toContain('opacity-30')
   })
 })
+
+describe('refresh button touch target (D-11.2-11)', () => {
+  it('refresh button className contains min-w-[44px] and min-h-[44px] (idle state)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} />
+        </tbody>
+      </table>,
+    )
+    const button = screen.getByRole('button', { name: /refresh actions/i })
+    expect(button.className).toContain('min-w-[44px]')
+    expect(button.className).toContain('min-h-[44px]')
+  })
+
+  it('refresh button className contains p-[15px] (idle state)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} />
+        </tbody>
+      </table>,
+    )
+    const button = screen.getByRole('button', { name: /refresh actions/i })
+    expect(button.className).toContain('p-[15px]')
+    expect(button.className).not.toContain('p-0.5')
+  })
+
+  it('refresh button className keeps min-w/h 44px AND p-[15px] in pending state', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const button = screen.getByRole('button', { name: /refresh actions/i })
+    expect(button.className).toContain('min-w-[44px]')
+    expect(button.className).toContain('min-h-[44px]')
+    expect(button.className).toContain('p-[15px]')
+    // Plan 02 contract preserved
+    expect(button.className).toContain('opacity-100')
+    // animate-spin on the icon SVG (Plan 02 contract)
+    const svg = button.querySelector('svg')
+    expect(svg?.getAttribute('class') ?? '').toContain('animate-spin')
+  })
+})
