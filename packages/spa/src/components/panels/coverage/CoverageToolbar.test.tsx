@@ -163,3 +163,81 @@ describe('CoverageToolbar', () => {
     expect(screen.getByRole('button', { name: /all/i }).getAttribute('aria-pressed')).toBe('false')
   })
 })
+
+// ---------------------------------------------------------------------------
+// controlled input (D-11.2-13)
+// ---------------------------------------------------------------------------
+describe('controlled input (D-11.2-13)', () => {
+  const defaultFilter: CoverageStatusFilter = { all: true, missing: false, stale: false, fresh: false }
+
+  it('input renders with value reflecting the search prop', () => {
+    render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="dashboard"
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    expect(input.value).toBe('dashboard')
+  })
+
+  it('re-rendering with a different search prop updates the input value', () => {
+    const { rerender } = render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="initial"
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    expect(input.value).toBe('initial')
+
+    rerender(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="updated"
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    expect(input.value).toBe('updated')
+  })
+
+  it('typing in the input updates the displayed value immediately (controlled)', () => {
+    render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'agentic' } })
+    // Without advancing timers, mirror state should update synchronously
+    expect(input.value).toBe('agentic')
+  })
+
+  it('typing triggers onSearchChange after 200ms debounce (existing behaviour preserved)', () => {
+    vi.useFakeTimers()
+    const onSearchChange = vi.fn()
+    render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'agentic' } })
+    act(() => { vi.advanceTimersByTime(100) })
+    expect(onSearchChange).not.toHaveBeenCalled()
+    act(() => { vi.advanceTimersByTime(150) })
+    expect(onSearchChange).toHaveBeenCalledWith('agentic')
+    vi.useRealTimers()
+  })
+})
