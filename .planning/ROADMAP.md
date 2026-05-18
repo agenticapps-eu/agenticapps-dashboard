@@ -413,13 +413,45 @@ Plans:
 
 ### Phase 11.1: impeccable p1 polish bundle (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 11
-**Plans:** 0 plans
+**Goal:** Lift `/coverage` IMPECCABLE composite from 76 → ~82 by closing the 4 inherited P1s from `11-IMPECCABLE.md` (column-width drift in `CoverageFamilySection`, non-sticky `CoverageToolbar`, missing clipboard-write feedback, `text-text-tertiary` contrast 3.99:1 < WCAG AA 4.5:1). Produces calibration data point #3 for D-10.5-03 floor recalibration. **No daemon, auth, storage, API, or LLM surface touched — `/cso` not required.**
+
+**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05 (5 minted during `/gsd-plan-phase 11.1`, 2026-05-18 — see REQUIREMENTS.md §"Impeccable P1 polish bundle (Phase 11.1)")
+**Depends on:** Phase 11 (`/coverage` route + sticky PageHeader primitive + Coverage components)
+**Branch:** `feat/impeccable-p1-polish-bundle` (cut from `main@d1d72f0`)
+**Plans:** 6 plans
+
+**Decisions (D-11.1-01..23) — RESOLVED in brainstorming + `/gsd-discuss-phase 11.1`, 2026-05-18:**
+  1. Column-width lock approach — shared `<colgroup>` with `table-fixed` (D-11.1-01; rejected Option B CSS-Grid refactor)
+  2. Column widths defined via single SoT `coverageColumns.ts` (D-11.1-02)
+  3. CoverageToolbar moves INTO `PageHeader` `children` slot (D-11.1-03)
+  4. No separator inside sticky block — gap-only (D-11.1-04)
+  5. New `usePageHeaderHeight` hook publishes `--ph-h` CSS var (D-11.1-05)
+  6. Toast primitive: top-right portal, single-slot replace (D-11.1-06)
+  7. Toast variants: success + error only (D-11.1-07)
+  8. Toast animation: opacity-only — NO bounce/slide/scale (D-11.1-08)
+  9. ToastProvider wraps AppShellV2 (D-11.1-09)
+  10. Per-site contextual wording on toasts (D-11.1-10)
+  11. Toast z-index: `var(--z-toast)` = 2000 (D-11.1-11)
+  12. Toast ARIA: role=status + aria-live polite/assertive (D-11.1-12)
+  13. Token swap: `#807A92` → `#75708A` (~4.69:1 vs app-bg, ~4.64:1 vs sidebar-bg) (D-11.1-13)
+  14. tokens.css comment block updated with history chain (D-11.1-14)
+  15. New `verify-contrast.test.ts` invariant for all `text-*` tokens (D-11.1-15)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 11.1 to break down)
+- [ ] 11.1-01-PLAN.md — Wave 0 (TDD, foundational): `lib/contrast.ts` (WCAG calculator) + `lib/contrast.test.ts` + `styles/verify-contrast.test.ts` (token invariant) + `tokens.css` swap `--color-text-tertiary` to `#75708A`. Covers IMP-04, IMP-05. depends_on: []
+- [ ] 11.1-02-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` SoT + `coverageColumns.test.ts` + `CoverageFamilySection.tsx` `<colgroup>` + `table-fixed` + `CoverageRow.tsx` track adoption. Covers IMP-01. depends_on: 11.1-01
+- [ ] 11.1-03-PLAN.md — Wave 1 (TDD, parallel): new `ui/Toast.tsx` primitive (provider + portal + `useToast` hook, single-slot replace, opacity-only animation) + `Toast.test.tsx` (11 assertions). Covers IMP-03 (primitive half). depends_on: 11.1-01
+- [ ] 11.1-04-PLAN.md — Wave 1 (TDD, parallel): new `ui/usePageHeaderHeight.ts` (ResizeObserver → `--ph-h`) + tests + `tokens.css` `:root { --ph-h: 56px }` default + `PageHeader.tsx` binds the hook. Covers IMP-02 (measurement half). depends_on: 11.1-01
+- [ ] 11.1-05-PLAN.md — Wave 2 (TDD, sequential): `CoveragePage.tsx` move `CoverageToolbar` into `PageHeader` children + `CoverageFamilySection.tsx` switch `top-` constants from hardcoded `top-8`/`top-[5.0625rem]` to `calc(var(--ph-h) ± ...)` expressions. Closes IMP-02 (composition + consumption). depends_on: 11.1-02, 11.1-04
+- [ ] 11.1-06-PLAN.md — Wave 2 (TDD, sequential): `AppShellV2.tsx` wrap with `<ToastProvider>` + wire 6 clipboard call sites (`IndexGitNexusButton`, `InstallGitNexusButton`, `CoverageEmptyState`, `CoverageFamilySection` family-hint, `CoveragePage` wiki-compile, `CoveragePage` workflow update). Closes IMP-03 (wiring). depends_on: 11.1-03, 11.1-05
+
+**Post-phase gates:**
+- Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse)
+- `/cso` **NOT REQUIRED** (no daemon/auth/storage/api/llm touched) — confirm explicitly in REVIEW.md
+- `/qa` walkthrough on `/coverage` covering all 4 P1 surfaces + regression smoke
+- `/impeccable critique` on `/coverage` at 1440×900 → `11.1-IMPECCABLE.md` (calibration data point #3 for D-10.5-03)
+
+**Out of scope (deferred):** P2 column-header tooltips, P2 family-aggregate semantic redesign, P3 uniformly-missing column collapse, `CodeBlock.tsx`/`MaskedToken.tsx` toast wiring, iPad touch-target on row-refresh icon.
 
 ## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)
 
