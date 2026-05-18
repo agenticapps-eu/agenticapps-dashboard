@@ -65,16 +65,15 @@ function ToastView({ toast }: { toast: ActiveToast }): React.JSX.Element {
   const variant = toast.variant ?? 'success'
   const isError = variant === 'error'
   const glyph = isError ? '✕' : '✓'
-  const ariaLive = isError ? 'assertive' : 'polite'
+  const role = isError ? 'alert' : 'status'
   const opacityClass = toast.phase === 'enter' ? 'opacity-100' : 'opacity-0'
   const tintBg = isError ? 'bg-status-error/10' : 'bg-status-success/10'
   const tintText = isError ? 'text-status-error' : 'text-status-success'
 
   return (
     <div
-      role="status"
-      aria-live={ariaLive}
-      className={`fixed top-16 right-4 z-[var(--z-toast)] min-w-72 max-w-96 px-4 py-2 rounded-md shadow-card border border-current/30 ${tintBg} ${tintText} flex items-center gap-2 transition-opacity duration-150 ease-out ${opacityClass}`}
+      role={role}
+      className={`fixed top-16 right-4 z-[var(--z-toast)] min-w-72 max-w-96 px-4 py-2 rounded-md shadow-card border border-current/30 ${tintBg} ${tintText} flex items-center gap-2 motion-safe:transition-opacity motion-safe:duration-150 motion-safe:ease-out ${opacityClass}`}
     >
       <span aria-hidden="true" className="font-semibold">{glyph}</span>
       <span className="text-sm">{toast.message}</span>

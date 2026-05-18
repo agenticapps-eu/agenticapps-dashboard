@@ -30,30 +30,30 @@ export function AppShellV2(): React.JSX.Element {
   useGlobalShortcuts()
   return (
     <ToastProvider>
-    <div
-      data-testid="app-shell-v2"
-      className="grid h-screen bg-app-bg text-text-primary"
-      style={{ gridTemplateColumns: '240px 1fr' }}
-    >
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-white"
-        style={{ zIndex: 'var(--z-overlay)' }}
+      <div
+        data-testid="app-shell-v2"
+        className="grid h-screen bg-app-bg text-text-primary"
+        style={{ gridTemplateColumns: '240px 1fr' }}
       >
-        Skip to main content
-      </a>
-      <Sidebar />
-      <div className="flex min-h-0 flex-col">
-        <TopBar />
-        <div data-slot="banner-mount">
-          <RepairBanner />
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-white"
+          style={{ zIndex: 'var(--z-overlay)' }}
+        >
+          Skip to main content
+        </a>
+        <Sidebar />
+        <div className="flex min-h-0 flex-col">
+          <TopBar />
+          <div data-slot="banner-mount">
+            <RepairBanner />
+          </div>
+          <main id="main" className="flex-1 overflow-y-auto p-6">
+            <Outlet />
+          </main>
         </div>
-        <main id="main" className="flex-1 overflow-y-auto p-6">
-          <Outlet />
-        </main>
+        <CommandPalette />
       </div>
-      <CommandPalette />
-    </div>
     </ToastProvider>
   )
 }

@@ -77,9 +77,8 @@ describe('CoverageEmptyState no-gitnexus toast (IMP-03)', () => {
       </ToastProvider>,
     )
     await userEvent.click(screen.getByRole('button', { name: /copy install command/i }))
-    const statusEls = screen.getAllByRole('status')
-    const toastEl = statusEls.find((el) => el.textContent?.includes('Copy failed'))
-    expect(toastEl).toBeDefined()
-    expect(toastEl!.textContent).toContain('open the help guide for the command')
+    const toastEl = screen.getByRole('alert')
+    expect(toastEl.textContent).toContain('Copy failed')
+    expect(toastEl.textContent).toContain('open the help guide for the command')
   })
 })

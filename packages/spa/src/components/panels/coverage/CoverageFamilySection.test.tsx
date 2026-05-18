@@ -349,9 +349,8 @@ describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
       ),
     )
     await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
-    const statusEls = screen.getAllByRole('status')
-    const toastEl = statusEls.find((el) => el.textContent?.includes('Copy failed'))
-    expect(toastEl).toBeDefined()
-    expect(toastEl!.textContent).toContain('open the help guide for the command')
+    const toastEl = screen.getByRole('alert')
+    expect(toastEl.textContent).toContain('Copy failed')
+    expect(toastEl.textContent).toContain('open the help guide for the command')
   })
 })

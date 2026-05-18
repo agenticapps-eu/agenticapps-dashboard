@@ -27,32 +27,37 @@ describe('Toast primitive', () => {
   it('renders nothing initially (no toast container in DOM until show() is called)', () => {
     mount()
     expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('renders a success toast with role=status aria-live=polite after show()', () => {
+  it('renders a success toast with role=status (implicit aria-live=polite) after show()', () => {
     const toast = mount()
     act(() => {
       toast.show({ message: 'Copied', variant: 'success' })
     })
     const el = screen.getByRole('status')
     expect(el).toHaveTextContent('Copied')
-    expect(el).toHaveAttribute('aria-live', 'polite')
+    // role="status" implies aria-live="polite" per WAI-ARIA 1.2 §5.3.3 — we
+    // intentionally do NOT also set aria-live on this element (Stage 2 review).
   })
 
-  it('renders an error toast with aria-live=assertive', () => {
+  it('renders an error toast with role=alert (implicit aria-live=assertive)', () => {
     const toast = mount()
     act(() => {
       toast.show({ message: 'Copy failed', variant: 'error' })
     })
-    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'assertive')
+    // role="alert" implies aria-live="assertive" — preferred over role=status +
+    // explicit aria-live=assertive which screen readers handle inconsistently.
+    expect(screen.getByRole('alert')).toHaveTextContent('Copy failed')
   })
 
-  it('defaults variant to success when omitted', () => {
+  it('defaults variant to success (role=status) when omitted', () => {
     const toast = mount()
     act(() => {
       toast.show({ message: 'Hi' })
     })
-    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite')
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('auto-dismisses after default duration (2400ms)', () => {
@@ -96,14 +101,14 @@ describe('Toast primitive', () => {
   it('renders ✕ glyph for error', () => {
     const toast = mount()
     act(() => { toast.show({ message: 'X', variant: 'error' }) })
-    expect(screen.getByRole('status').textContent).toMatch(/✕/)
+    expect(screen.getByRole('alert').textContent).toMatch(/✕/)
   })
 
-  it('uses opacity-only transition (no bounce, no slide)', () => {
+  it('uses opacity-only transition guarded by motion-safe (no bounce, no slide)', () => {
     const toast = mount()
     act(() => { toast.show({ message: 'X' }) })
     const el = screen.getByRole('status')
-    expect(el.className).toMatch(/transition-opacity/)
+    expect(el.className).toMatch(/motion-safe:transition-opacity/)
     expect(el.className).not.toMatch(/animate-bounce/)
     expect(el.className).not.toMatch(/translate/)
   })

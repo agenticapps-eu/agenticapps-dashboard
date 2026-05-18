@@ -188,7 +188,7 @@ export function CoverageFamilySection({
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">GitNexus</th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Wiki</th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Workflow</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg pl-2 py-2 w-8">
+                <th scope="col" className={`sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg pl-2 py-2 ${COVERAGE_COL_WIDTHS.actions}`}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
