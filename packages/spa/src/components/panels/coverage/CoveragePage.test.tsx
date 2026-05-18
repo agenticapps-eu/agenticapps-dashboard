@@ -396,8 +396,10 @@ describe('CoveragePage', () => {
 // file (packages/spa/src/routes/coverage.lazy.tsx) is NOT modified — it only
 // declares the lazy route handle (REVIEWS action item 9 correction).
 //
-// Strategy: PageHeader (PH-S3 in PageHeader.test.tsx) renders the four sticky
-// tokens (`sticky top-0 z-10 bg-app-bg`) on its outer div when sticky={true}.
+// Strategy: PageHeader (PH-S3 in PageHeader.test.tsx) renders the sticky
+// stack (`sticky top-[-1.5rem] z-10 bg-app-bg -mt-6 min-h-14`) on its outer
+// div when sticky={true}. Post-UAT layering fix uses negative top-offset +
+// negative margin-top so the title sits flush with TopBar/RepairBanner.
 // We assert on the rendered DOM directly — no module mock needed, no
 // hoisting hazards, and the test breaks honestly if CoveragePage drops the
 // prop in a future refactor.
@@ -424,7 +426,7 @@ describe('CoveragePage — PLI-03 sticky PageHeader opt-in', () => {
     const outer = findStickyOuter(container)
     expect(outer).not.toBeNull()
     expect(outer!.className).toContain('sticky')
-    expect(outer!.className).toContain('top-0')
+    expect(outer!.className).toContain('top-[-1.5rem]')
     expect(outer!.className).toContain('z-10')
     expect(outer!.className).toContain('bg-app-bg')
   })
@@ -442,7 +444,7 @@ describe('CoveragePage — PLI-03 sticky PageHeader opt-in', () => {
     const outer = findStickyOuter(container)
     expect(outer).not.toBeNull()
     expect(outer!.className).toContain('sticky')
-    expect(outer!.className).toContain('top-0')
+    expect(outer!.className).toContain('top-[-1.5rem]')
     expect(outer!.className).toContain('z-10')
     expect(outer!.className).toContain('bg-app-bg')
   })
@@ -476,7 +478,7 @@ describe('CoveragePage — PLI-03 sticky PageHeader opt-in', () => {
     const outer = findStickyOuter(container)
     expect(outer).not.toBeNull()
     expect(outer!.className).toContain('sticky')
-    expect(outer!.className).toContain('top-0')
+    expect(outer!.className).toContain('top-[-1.5rem]')
     expect(outer!.className).toContain('z-10')
     expect(outer!.className).toContain('bg-app-bg')
   })

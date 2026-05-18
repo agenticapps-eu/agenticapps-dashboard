@@ -91,14 +91,22 @@ describe('PageHeader', () => {
     expect(outer.className).not.toContain('bg-app-bg')
   })
 
-  it('PH-S3: <PageHeader title="X" sticky={true} /> — outer div has all four sticky tokens (sticky, top-0, z-10, bg-app-bg)', () => {
+  it('PH-S3: <PageHeader title="X" sticky={true} /> — outer div has the sticky stack (sticky, negative top-offset, z-10, bg-app-bg, -mt-6 backstop)', () => {
     const { container } = render(<PageHeader title="All Projects" sticky={true} />)
     const outer = container.firstElementChild!
-    // All four tokens present in some order
+    // Sticky positioning + the four supporting tokens.
+    // Post-UAT layering fix: the literal `top-0` token was replaced with
+    // `top-[-1.5rem]` to lower the sticky-floor by 24px (cancelling
+    // AppShellV2 <main>'s p-6 padding-top so the title sits flush with
+    // TopBar/RepairBanner). `-mt-6` pulls natural-flow position to match
+    // the new floor. `min-h-14` guarantees the bg-app-bg backstop covers
+    // down to the family-header's stick-line at top-14.
     expect(outer.className).toContain('sticky')
-    expect(outer.className).toContain('top-0')
+    expect(outer.className).toContain('top-[-1.5rem]')
     expect(outer.className).toContain('z-10')
     expect(outer.className).toContain('bg-app-bg')
+    expect(outer.className).toContain('-mt-6')
+    expect(outer.className).toContain('min-h-14')
   })
 
   it('PH-S4: mb-6 24px bottom margin is preserved in BOTH sticky and non-sticky modes (CONTEXT §Specifics)', () => {

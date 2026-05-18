@@ -44,7 +44,24 @@ export function PageHeader({
   children,
   sticky = false,
 }: PageHeaderProps): React.JSX.Element {
-  const stickyClasses = sticky ? ' sticky top-0 z-10 bg-app-bg' : ''
+  // Sticky mode (Phase 11 PLI-01 + post-UAT layering fix):
+  // - `-mt-6` pulls the header UP by 24px in the layout flow to cancel
+  //   AppShellV2 <main>'s `p-6` padding-top so the title sits flush with
+  //   the TopBar/RepairBanner (no transparent gap above it).
+  // - `top-[-1.5rem]` is the sticky-floor: the sticky containing block is
+  //   the page-level wrapper (not <main>), and its content-box top sits
+  //   24px below <main>'s outer top. A negative top offset lowers the
+  //   stuck position by 24px so it lines up with <main>'s outer top edge,
+  //   matching the natural-flow position the `-mt-6` produces. Without
+  //   this, sticky would push the element back DOWN to the wrapper's
+  //   content-top, re-introducing the gap (UAT screenshot 2 cause).
+  // - `min-h-14` (56px) guarantees the sticky bg-app-bg backstop covers
+  //   down to the family-header's stick-line at top-14, leaving no
+  //   transparent gap between PageHeader and family-header regardless of
+  //   whether helper text is rendered.
+  // - `justify-center` vertically centers the title row when min-h-14
+  //   exceeds the content height (e.g., error/empty states without helper).
+  const stickyClasses = sticky ? ' sticky top-[-1.5rem] z-10 bg-app-bg -mt-6 min-h-14 justify-center' : ''
   return (
     <div className={`mb-6 flex flex-col gap-1${stickyClasses}`}>
       <div className="flex items-start justify-between gap-4">
