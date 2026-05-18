@@ -400,7 +400,8 @@ describe('pending state', () => {
     expect(refreshBtn.getAttribute('aria-busy')).toBeNull()
     expect(refreshBtn).not.toHaveProperty('disabled', true)
     const svg = refreshBtn.querySelector('svg')
-    expect(svg?.className ?? '').not.toContain('animate-spin')
+    // Use getAttribute('class') — SVG className is SVGAnimatedString, not a plain string
+    expect(svg?.getAttribute('class') ?? '').not.toContain('animate-spin')
   })
 
   it('when pending is false, behaviour matches pending omitted', () => {
@@ -415,7 +416,7 @@ describe('pending state', () => {
     expect(refreshBtn.getAttribute('aria-busy')).toBeNull()
     expect(refreshBtn).not.toHaveProperty('disabled', true)
     const svg = refreshBtn.querySelector('svg')
-    expect(svg?.className ?? '').not.toContain('animate-spin')
+    expect(svg?.getAttribute('class') ?? '').not.toContain('animate-spin')
   })
 
   it('when pending is true, the refresh button shows the spinning icon', () => {
@@ -428,7 +429,8 @@ describe('pending state', () => {
     )
     const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
     const svg = refreshBtn.querySelector('svg')
-    expect(svg?.className ?? '').toContain('animate-spin')
+    // Use getAttribute('class') — SVG className is SVGAnimatedString, not a plain string
+    expect(svg?.getAttribute('class') ?? '').toContain('animate-spin')
   })
 
   it('when pending is true, the refresh button has aria-busy="true" and disabled', () => {

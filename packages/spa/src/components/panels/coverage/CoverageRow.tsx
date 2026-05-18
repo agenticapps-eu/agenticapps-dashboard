@@ -31,6 +31,7 @@ export interface CoverageRowContext {
 export interface CoverageRowProps {
   row: CoverageRowData
   onRefresh?: (action: CoverageRefreshAction, context: CoverageRowContext) => void
+  pending?: boolean       // NEW — default false; when true: spinner + aria-busy + disabled + opacity-100
 }
 
 // Derive popover options from the row's column states
@@ -55,7 +56,7 @@ function getRefreshOptions(row: CoverageRowData) {
   return opts
 }
 
-export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Element {
+export function CoverageRow({ row, onRefresh, pending = false }: CoverageRowProps): React.JSX.Element {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const options = getRefreshOptions(row)
@@ -97,7 +98,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
   }, [popoverOpen])
 
   return (
-    <tr className="group hover:bg-card-bg-hover">
+    <tr {...(pending ? { 'aria-busy': true } : {})} className="group hover:bg-card-bg-hover">
       {/* Repo identity — NEVER renders absPath (CODEX HIGH-1).
           pl-4 matches the column header's px-4 left padding so body rows align
           with the "Repo" column label above. */}
@@ -155,9 +156,15 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
             type="button"
             aria-label={`Refresh actions for ${row.repo}`}
             onClick={() => setPopoverOpen((o) => !o)}
-            className="text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-30 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
+            disabled={pending}
+            {...(pending ? { 'aria-busy': true } : {})}
+            className={
+              pending
+                ? "text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-100 p-0.5"
+                : "text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-30 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
+            }
           >
-            <RefreshCw size={14} aria-hidden="true" />
+            <RefreshCw size={14} aria-hidden="true" className={pending ? 'animate-spin' : ''} />
           </button>
 
           {popoverOpen && options.length > 0 && (
