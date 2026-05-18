@@ -228,6 +228,39 @@ describe('CoverageFamilySection', () => {
   })
 })
 
+describe('CoverageFamilySection sticky stack consumes --ph-h (IMP-02)', () => {
+  it('family-header sticky top uses calc(var(--ph-h) - 1.5rem)', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const familyHeader = container.querySelector('header.sticky')
+    expect(familyHeader?.className).toMatch(/top-\[calc\(var\(--ph-h\)-1\.5rem\)\]/)
+    expect(familyHeader?.className).not.toMatch(/\btop-8\b/)
+  })
+
+  it('column-header sticky top uses calc(var(--ph-h) + 1.5625rem)', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const ths = container.querySelectorAll('thead th.sticky')
+    ths.forEach((th) => {
+      expect(th.className).toMatch(/top-\[calc\(var\(--ph-h\)\+1\.5625rem\)\]/)
+    })
+  })
+})
+
 describe('column-width lock (IMP-01)', () => {
   it('renders <colgroup> with 6 <col> elements consuming COVERAGE_COL_WIDTHS', () => {
     const fixture: CoverageRowData[] = [
