@@ -39,7 +39,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
   const show = useCallback((input: ToastInput) => {
     clearTimers()
     const id = ++idRef.current
-    const duration = input.duration ?? DEFAULT_DURATION
+    const duration = Math.max(0, input.duration ?? DEFAULT_DURATION)
     setToast({ ...input, variant: input.variant ?? 'success', id, phase: 'enter' })
     if (duration > 0) {
       dismissTimerRef.current = setTimeout(() => {
@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
   return (
     <ToastContext.Provider value={{ show }}>
       {children}
-      {toast && createPortal(<ToastView toast={toast} />, document.body)}
+      {toast && createPortal(<ToastView key={toast.id} toast={toast} />, document.body)}
     </ToastContext.Provider>
   )
 }
