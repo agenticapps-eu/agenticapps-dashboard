@@ -15,12 +15,21 @@ import React from 'react'
 import { Download } from 'lucide-react'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { useToast } from '../../ui/Toast.js'
 
 export function InstallGitNexusButton(): React.JSX.Element {
+  const toast = useToast()
   return (
     <button
       type="button"
-      onClick={() => void writeToClipboard(buildGitnexusInstallClipboardString())}
+      onClick={async () => {
+        const ok = await writeToClipboard(buildGitnexusInstallClipboardString())
+        toast.show(
+          ok
+            ? { message: 'Copied — paste in terminal to install GitNexus', variant: 'success' }
+            : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+        )
+      }}
       aria-label="Copy npm install -g gitnexus to clipboard"
       className="inline-flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-card-bg hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >

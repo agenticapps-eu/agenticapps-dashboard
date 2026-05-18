@@ -5,7 +5,7 @@
  * PD-11.1-05: timing-bound assertion via vi.useFakeTimers().
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 
@@ -58,7 +58,6 @@ describe('IndexGitNexusButton toast (IMP-03 / PD-11.1-02)', () => {
 describe('IndexGitNexusButton toast timing (IMP-03 / PD-11.1-05)', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.mocked(writeToClipboard).mockResolvedValue(true)
   })
 
   afterEach(() => {
@@ -66,14 +65,17 @@ describe('IndexGitNexusButton toast timing (IMP-03 / PD-11.1-05)', () => {
   })
 
   it('toast appears after click resolution, persists at 199ms, dismissed by 2650ms', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.mocked(writeToClipboard).mockResolvedValue(true)
+
     render(
       <ToastProvider>
         <IndexGitNexusButton />
       </ToastProvider>,
     )
 
-    await user.click(screen.getByRole('button'))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'))
+    })
 
     const statusEls = screen.getAllByRole('status')
     const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))

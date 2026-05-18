@@ -19,7 +19,7 @@ import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 
 describe('CoverageEmptyState', () => {
   it("renders no-repos empty state when kind='no-repos'", () => {
-    render(<CoverageEmptyState kind="no-repos" />)
+    render(<ToastProvider><CoverageEmptyState kind="no-repos" /></ToastProvider>)
     // Both h3 title and body contain "No git repos found" — getAllByText handles multiple matches
     const matches = screen.getAllByText(/No.*repos found/i)
     expect(matches.length).toBeGreaterThanOrEqual(1)
@@ -27,14 +27,14 @@ describe('CoverageEmptyState', () => {
   })
 
   it("renders no-gitnexus empty state when kind='no-gitnexus' with copy install command button", () => {
-    render(<CoverageEmptyState kind="no-gitnexus" />)
+    render(<ToastProvider><CoverageEmptyState kind="no-gitnexus" /></ToastProvider>)
     expect(screen.getByText(/GitNexus is not installed/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /copy install command/i })).toBeTruthy()
   })
 
   it("renders scan-failed empty state when kind='scan-failed' with retry CTA", () => {
     const onRetry = vi.fn()
-    render(<CoverageEmptyState kind="scan-failed" onRetry={onRetry} />)
+    render(<ToastProvider><CoverageEmptyState kind="scan-failed" onRetry={onRetry} /></ToastProvider>)
     expect(screen.getByText(/Coverage scan failed/i)).toBeTruthy()
     const retryBtn = screen.getByRole('button', { name: /retry/i })
     fireEvent.click(retryBtn)
@@ -43,7 +43,7 @@ describe('CoverageEmptyState', () => {
 
   it("renders no-results empty state when kind='no-results' with clear-filter CTA", () => {
     const onClearFilters = vi.fn()
-    render(<CoverageEmptyState kind="no-results" onClearFilters={onClearFilters} />)
+    render(<ToastProvider><CoverageEmptyState kind="no-results" onClearFilters={onClearFilters} /></ToastProvider>)
     expect(screen.getByText(/No repos match your filters/i)).toBeTruthy()
     const clearBtn = screen.getByRole('button', { name: /clear filters/i })
     fireEvent.click(clearBtn)
