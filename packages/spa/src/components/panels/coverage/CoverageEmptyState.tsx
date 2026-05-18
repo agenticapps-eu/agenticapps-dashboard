@@ -16,6 +16,7 @@ import { AlertTriangle, Search, RefreshCw, GitBranch } from 'lucide-react'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { useToast } from '../../ui/Toast.js'
 
 export type CoverageEmptyKind = 'no-results' | 'no-gitnexus' | 'scan-failed' | 'no-repos'
 
@@ -30,6 +31,7 @@ export function CoverageEmptyState({
   onClearFilters,
   onRetry,
 }: CoverageEmptyStateProps): React.JSX.Element {
+  const toast = useToast()
   switch (kind) {
     case 'no-results':
       return (
@@ -58,7 +60,14 @@ export function CoverageEmptyState({
           action={
             <button
               type="button"
-              onClick={() => void writeToClipboard(buildGitnexusInstallClipboardString())}
+              onClick={async () => {
+                const ok = await writeToClipboard(buildGitnexusInstallClipboardString())
+                toast.show(
+                  ok
+                    ? { message: 'Copied — paste in terminal to install GitNexus', variant: 'success' }
+                    : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+                )
+              }}
               className="mt-2 inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-card-bg hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Copy install command

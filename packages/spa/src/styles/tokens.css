@@ -16,20 +16,29 @@
 
   /* Text
    *
-   * Contrast against --color-app-bg (#FAFAF7):
-   *   --color-text-primary    →  ~13.5:1 (WCAG AAA for body text)
-   *   --color-text-secondary  →  ~6.4:1  (WCAG AA+ for body text)
-   *   --color-text-tertiary   →  ~3.9:1  (clears 3:1 detector bar; sits below the
-   *                                       4.5:1 body-text floor — only used for
-   *                                       chrome-level helper text + dimmed UI)
+   * Contrast against --color-app-bg (#FAFAF7):    --color-sidebar-bg (#F8F6F3):
+   *   --color-text-primary    →  ~16.01:1            ~15.52:1   (WCAG AAA)
+   *   --color-text-secondary  →   ~5.40:1             ~5.23:1   (WCAG AA — body text)
+   *   --color-text-tertiary   →   ~4.86:1             ~4.71:1   (WCAG AA — body text)
    *
-   * 2026-05-14 — v1.0.1 contrast bump: tertiary darkened from #9C95A8 (2.8:1)
-   * to #807A92 (3.9:1) to clear the impeccable detector's ≥ 3:1 floor. See
-   * .planning/phases/07-help-docs-v1-0/deferred-items.md (v1.0.1 follow-up).
+   * Tier-gap design: primary (AAA) > secondary (~5.40:1) > tertiary (~4.86:1)
+   * preserves a visible ~1.11:1 inter-tier delta between secondary and tertiary
+   * so the hierarchy reads. Computed via lib/contrast.ts; locked by
+   * verify-contrast.test.ts (any future regression fails CI).
+   *
+   * History:
+   *   v1.0.0 (2026-05-09): tertiary = #9C95A8  (2.8:1)  — below detector floor
+   *   v1.0.1 (2026-05-14): tertiary = #807A92  (3.92:1) — cleared detector ≥3:1 floor only
+   *   v1.1   (2026-05-18): tertiary = #706B85  (4.86:1) — clears WCAG AA body-text floor
+   *                        on BOTH backgrounds. Selected over the planned-candidate
+   *                        #75708A after PD-11.1-09 deviation: real WCAG 2.1 math
+   *                        showed #75708A only reaches 4.38:1 on sidebar-bg (< AA).
+   *                        See .planning/phases/DASH-11.1-impeccable-p1-polish-bundle/
+   *                        11.1-CONTEXT.md D-11.1-13 + 11.1-01-SUMMARY.md PD-11.1-09.
    */
   --color-text-primary:    #1F1B2E;
   --color-text-secondary:  #6B6478;
-  --color-text-tertiary:   #807A92;
+  --color-text-tertiary:   #706B85;
 
   /* Accent — purple, used sparingly */
   --color-accent:           #6B46C1;
@@ -65,8 +74,13 @@
   --text-3xl:  32px;
 }
 
-/* Z-index ladder — outside @theme (not utility-class generators) */
+/* CSS custom properties outside @theme (Tailwind 4 reserves @theme for utility-class generators).
+ * --ph-h is published by usePageHeaderHeight() at runtime; 56px is the first-paint default
+ * (single-row PageHeader without children); Coverage's title+toolbar PageHeader publishes ~110px
+ * once the ResizeObserver fires.
+ */
 :root {
+  --ph-h: 56px;
   --z-base:    0;
   --z-sticky:  10;
   --z-overlay: 100;

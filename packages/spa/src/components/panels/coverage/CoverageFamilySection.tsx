@@ -33,6 +33,8 @@ import type {
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { useToast } from '../../ui/Toast.js'
 
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
@@ -87,6 +89,7 @@ export function CoverageFamilySection({
   gitNexusInstallState,
   onRefresh,
 }: CoverageFamilySectionProps): React.JSX.Element {
+  const toast = useToast()
   const key = storageKey(family)
 
   // Restore collapse state from localStorage on mount (UI-SPEC §5)
@@ -118,7 +121,7 @@ export function CoverageFamilySection({
     // Rounded corners still render because the inner content shares bg-card-bg.
     <section className="rounded-card bg-card-bg shadow-card">
       {/* Sticky family header (UI-SPEC §3) */}
-      <header className="sticky top-8 z-20 bg-card-bg border-b border-border-subtle px-4 py-3 rounded-t-card">
+      <header className="sticky top-[calc(var(--ph-h)-1.5rem)] z-20 bg-card-bg border-b border-border-subtle px-4 py-3 rounded-t-card">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -149,7 +152,14 @@ export function CoverageFamilySection({
               GitNexus is not installed —{' '}
               <button
                 type="button"
-                onClick={() => void writeToClipboard(buildGitnexusInstallClipboardString())}
+                onClick={async () => {
+                  const ok = await writeToClipboard(buildGitnexusInstallClipboardString())
+                  toast.show(
+                    ok
+                      ? { message: 'Copied — paste in terminal to install GitNexus', variant: 'success' }
+                      : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+                  )
+                }}
                 className="underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
               >
                 Copy npm install -g gitnexus
@@ -162,25 +172,23 @@ export function CoverageFamilySection({
       {/* Body: rows visible when expanded */}
       {!collapsed && (
         <div id={bodyId} role="region" aria-label={`${family} repos`}>
-          <table className="w-full text-left">
-            {/* Column headers stick below the family header. Post-UAT layering stack:
-                PageHeader sticks at viewport-top with min-h-14 backstop (56px tall,
-                bottom at sticky-offset top-8 / 32px from wrapper-content-top because
-                of the -mt-6 + top-[-1.5rem] pair). Family header stacks at top-8
-                (32px) right below it, height 49px (py-3 + content + 1px border).
-                Column headers slot at top-[5.0625rem] (81px = 32 + 49) to sit flush
-                under the family header.
-                Applied per-<th> rather than on <tr> because tr-level sticky is unreliable
-                across browsers. z-10 keeps them above scrolling rows but below the family
-                header (z-20). */}
+          <table className="w-full table-fixed text-left">
+            <colgroup>
+              <col className={COVERAGE_COL_WIDTHS.repo} />
+              <col className={COVERAGE_COL_WIDTHS.claudeMd} />
+              <col className={COVERAGE_COL_WIDTHS.gitNexus} />
+              <col className={COVERAGE_COL_WIDTHS.wiki} />
+              <col className={COVERAGE_COL_WIDTHS.workflow} />
+              <col className={COVERAGE_COL_WIDTHS.actions} />
+            </colgroup>
             <thead>
               <tr className="text-xs text-text-tertiary border-b border-border-subtle">
-                <th scope="col" className="sticky top-[5.0625rem] z-10 bg-card-bg py-2 pr-3 px-4 font-medium">Repo</th>
-                <th scope="col" className="sticky top-[5.0625rem] z-10 bg-card-bg px-2 py-2 font-medium">CLAUDE.md</th>
-                <th scope="col" className="sticky top-[5.0625rem] z-10 bg-card-bg px-2 py-2 font-medium">GitNexus</th>
-                <th scope="col" className="sticky top-[5.0625rem] z-10 bg-card-bg px-2 py-2 font-medium">Wiki</th>
-                <th scope="col" className="sticky top-[5.0625rem] z-10 bg-card-bg px-2 py-2 font-medium">Workflow</th>
-                <th scope="col" className="sticky top-[5.0625rem] z-10 bg-card-bg pl-2 py-2 w-8">
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg py-2 pr-3 px-4 font-medium">Repo</th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">CLAUDE.md</th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">GitNexus</th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Wiki</th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Workflow</th>
+                <th scope="col" className={`sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg pl-2 py-2 ${COVERAGE_COL_WIDTHS.actions}`}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>

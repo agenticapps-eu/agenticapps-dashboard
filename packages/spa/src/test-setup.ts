@@ -2,6 +2,7 @@ import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
 import '@testing-library/jest-dom/vitest'
+import './vitest.setup'
 
 // Vitest does not auto-cleanup between tests when `globals: false`. Without
 // this, multiple `render(<App />)` calls in the same suite leave stacked DOM

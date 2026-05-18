@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
-last_updated: "2026-05-18T09:53:55.275Z"
+stopped_at: Phase 11 shipped via PR #35 (d1d72f0). Phase 11.1 (impeccable p1 polish bundle) inserted as URGENT; ready for /gsd-discuss-phase 11.1
+last_updated: "2026-05-18T12:35:00.000Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 16
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 11 — coverage-trends-skill-drift
+**Current focus:** Phase 11.1 — impeccable p1 polish bundle (inserted 2026-05-18)
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
-Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
-Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
-Status: Ready to execute
+Phase: 11.1 (INSERTED, urgent)
+Plan: Not started — `/gsd-discuss-phase 11.1` is next
+Last shipped: Phase 11 (Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle) via PR #35 on 2026-05-18
+Milestone: v1.1 — Cross-family observability — substantially complete; Phase 11.1 closes calibration debt before declaring v1.1 closed
+Status: Pre-discuss (commitment ritual emitted; agentic-apps-workflow + gsd-insert-phase invoked)
 Last activity: 2026-05-18
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [████████■■] ~80% (Phase 10/10.5/10.6/11 shipped; Phase 11.1 in flight, Phase 12 prepped)
 
 ## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
@@ -91,6 +91,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 - Phase 10 added 2026-05-13: Coverage Matrix Page — per-repo presence + freshness of CLAUDE.md, GitNexus index, family wiki, workflow version across the three client families (~/Sourcecode/{agenticapps,factiv,neuroflash}). Ships as migration 0008 in claude-workflow. Depends on Phase 7 (skips held Phases 8/9). Opens a new milestone (v1.1: cross-family observability) beyond the closed v1.0 milestone. Shipped 2026-05-13 via PR #28.
 - Phase 10.5 inserted 2026-05-13: impeccable skill-driven gate. Phase 6's CI gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`) deleted; replaced by per-phase `<N>-IMPECCABLE.md` artifact authored by running `/impeccable critique` against affected routes at 1440×900. Triggered by tool drift discovered during Phase 10 Gate 4 (`npx impeccable critique` removed in v2.1.8). 5 decisions captured (D-10.5-01..05). Shipped bundled with Phase 10 in PR #28.
 - Phase 10.6 inserted 2026-05-14: three-state GitNexus detection. Coverage scanner upgraded from `existsSync(~/.gitnexus)` boolean to a `gitNexusInstallState` enum (`not-installed` / `installed-no-registry` / `installed-with-registry`). New `detectGitNexusBinary()` probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) stat-only — no shell-out, survives launchd-spawned daemons. New `IndexGitNexusButton` for the middle state. Per-row state under `installed-no-registry` shifts from `'not-applicable'` → `'missing'`. Shipped 2026-05-14 via PR #29 (78b6b6f).
+- Phase 11.1 inserted 2026-05-18 after Phase 11: impeccable p1 polish bundle (URGENT) — addresses the 4 Phase-10-inherited P1s surfaced in `11-IMPECCABLE.md` (column-width drift in CoverageFamilySection, non-sticky CoverageToolbar, missing clipboard-write feedback, `text-text-tertiary` contrast 3.8:1 < WCAG AA 4.5:1). Estimated composite lift 76 → ~82 — produces calibration data point #3 to settle D-10.5-03 floor recalibration (Option B/C/D). Not blocking v1.1 close-out but accepted as the path to close `D-10.5-03.calibration-1` cleanly.
 
 ### Decisions
 

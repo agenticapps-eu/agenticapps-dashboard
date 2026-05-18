@@ -20,8 +20,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import type { CoverageResponse, CoverageRow } from '@agenticapps/dashboard-shared'
+import { ToastProvider } from '../../ui/Toast.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
+
+vi.mock('../../../lib/clipboardCompat.js', () => ({
+  writeToClipboard: vi.fn().mockResolvedValue(true),
+}))
 
 // Mock TanStack Router (CoveragePage uses useNavigate + useSearch)
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -130,7 +135,11 @@ function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  )
 }
 
 // ── Test setup ────────────────────────────────────────────────────────────────

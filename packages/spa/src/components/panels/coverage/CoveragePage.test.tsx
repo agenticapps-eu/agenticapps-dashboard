@@ -7,10 +7,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import type { CoverageResponse, CoverageRow } from '@agenticapps/dashboard-shared'
+import { ToastProvider } from '../../ui/Toast.js'
 
 // Mock TanStack Router hooks — CoveragePage uses useNavigate + useSearch
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -79,7 +81,11 @@ function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  )
 }
 
 beforeEach(() => {
@@ -525,5 +531,93 @@ describe('CoveragePage — PLI-03 sticky PageHeader opt-in', () => {
     const lazyPath = path.resolve(__dirname, '../../../routes/coverage.lazy.tsx')
     const content = fs.readFileSync(lazyPath, 'utf8')
     expect(content).not.toMatch(/sticky/)
+  })
+})
+
+describe('CoverageToolbar inside sticky PageHeader (IMP-02 / PD-11.1-07)', () => {
+  function setupMainRender() {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState: 'installed-with-registry' }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+    render(<CoveragePage />, { wrapper })
+  }
+
+  it('renders CoverageToolbar as a child of the sticky PageHeader subtree', () => {
+    setupMainRender()
+    const stickyHeader = screen.getByTestId('page-header-sticky')
+    const toolbar = within(stickyHeader).getByRole('group', { name: 'Filter by status' })
+    expect(toolbar).toBeTruthy()
+  })
+
+  it('does not render CoverageToolbar as a sibling of the sticky PageHeader (toolbar appears exactly once and only inside the testid subtree)', () => {
+    setupMainRender()
+    const allFilterGroups = screen.getAllByRole('group', { name: 'Filter by status' })
+    expect(allFilterGroups).toHaveLength(1)
+    const stickyHeader = screen.getByTestId('page-header-sticky')
+    expect(stickyHeader.contains(allFilterGroups[0]!)).toBe(true)
+  })
+})
+
+describe('CoveragePage handleRefresh toast (IMP-03)', () => {
+  function setupWithStaleWiki(family: 'agenticapps' | 'factiv' | 'neuroflash', repo: string) {
+    const row = makeRow(family, repo)
+    row.wiki = { kind: 'basic', state: 'stale' }
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ rows: [row] }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+    render(<CoveragePage />, { wrapper })
+  }
+
+  beforeEach(() => {
+    vi.mocked(writeToClipboard).mockResolvedValue(true)
+  })
+
+  it('wiki-compile-clipboard: fires toast with family name after successful copy (agenticapps)', async () => {
+    setupWithStaleWiki('agenticapps', 'agenticapps-dashboard')
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for agenticapps-dashboard/i }))
+    await userEvent.click(screen.getByText(/copy \/wiki-compile/i))
+    await waitFor(() => {
+      const statusEls = screen.getAllByRole('status')
+      const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))
+      expect(toastEl).toBeDefined()
+      expect(toastEl!.textContent).toContain('agenticapps')
+      expect(toastEl!.textContent).toContain('wiki')
+    })
+  })
+
+  it('workflow-update-clipboard: fires toast with update wording after successful copy', async () => {
+    const row = makeRow('agenticapps', 'agenticapps-dashboard')
+    row.workflowVersion = {
+      kind: 'workflow',
+      state: 'stale',
+      installedVersion: '1.6.0',
+      headVersion: '1.7.0',
+      detail: 'behind',
+    }
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ rows: [row] }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for agenticapps-dashboard/i }))
+    await userEvent.click(screen.getByText(/copy \/update-agenticapps-workflow/i))
+    await waitFor(() => {
+      const statusEls = screen.getAllByRole('status')
+      const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))
+      expect(toastEl).toBeDefined()
+      expect(toastEl!.textContent).toContain('update the workflow')
+    })
   })
 })

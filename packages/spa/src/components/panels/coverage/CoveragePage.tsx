@@ -27,6 +27,7 @@ import {
 import { PageHeader } from '../../ui/PageHeader.js'
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { useToast } from '../../ui/Toast.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { CoverageToolbar } from './CoverageToolbar.js'
 import type { CoverageStatusFilter } from './CoverageToolbar.js'
@@ -83,6 +84,7 @@ export function CoveragePage(): React.JSX.Element {
   const query = useCoverage()
   const refresh = useCoverageRefresh()
   const navigate = useNavigate()
+  const toast = useToast()
   // URL state (strict:false — /coverage route may not have validateSearch yet; Plan 07 wires it)
   const search = useSearch({ strict: false }) as { status?: string; q?: string }
 
@@ -141,12 +143,24 @@ export function CoveragePage(): React.JSX.Element {
               action: 'gitnexus-analyze',
             })
             break
-          case 'wiki-compile-clipboard':
-            await writeToClipboard(buildWikiCompileClipboardString(context.family))
+          case 'wiki-compile-clipboard': {
+            const ok = await writeToClipboard(buildWikiCompileClipboardString(context.family))
+            toast.show(
+              ok
+                ? { message: `Copied — paste in terminal to compile the ${context.family} wiki`, variant: 'success' }
+                : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+            )
             break
-          case 'workflow-update-clipboard':
-            await writeToClipboard(buildWorkflowUpdateClipboardString())
+          }
+          case 'workflow-update-clipboard': {
+            const ok = await writeToClipboard(buildWorkflowUpdateClipboardString())
+            toast.show(
+              ok
+                ? { message: 'Copied — paste in terminal to update the workflow', variant: 'success' }
+                : { message: 'Copy failed — open the help guide for the command.', variant: 'error' },
+            )
             break
+          }
           case 'claude-md-help':
             void navigate({ to: buildClaudeMdHelpUrl() as '/' })
             break
@@ -253,15 +267,6 @@ export function CoveragePage(): React.JSX.Element {
         helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
         sticky={true}
         actions={
-          // Primary action depends on the 3-state GitNexus install classification.
-          // 10.6: this used to be a 2-way (boolean) switch that mis-labelled the
-          // installed-but-never-indexed case as "Install GitNexus". Now:
-          //   - not-installed           → Install GitNexus (copy npm install)
-          //   - installed-no-registry   → Index with GitNexus (copy gitnexus analyze)
-          //   - installed-with-registry → Refresh N stale (normal matrix)
-          // Prior P0 (10-IMPECCABLE.md): "Refresh 0 stale" was a confidence-killer
-          // when 42 cells were red because no install existed. Three-way swap fixes
-          // the second variant of that bug (binary present, no registry yet).
           data.gitNexusInstallState === 'installed-with-registry' ? (
             <RefreshAllStaleButton
               rows={filtered}
@@ -273,14 +278,14 @@ export function CoveragePage(): React.JSX.Element {
             <InstallGitNexusButton />
           )
         }
-      />
-
-      <CoverageToolbar
-        filter={filter}
-        search={searchText}
-        onFilterChange={handleFilterChange}
-        onSearchChange={handleSearchChange}
-      />
+      >
+        <CoverageToolbar
+          filter={filter}
+          search={searchText}
+          onFilterChange={handleFilterChange}
+          onSearchChange={handleSearchChange}
+        />
+      </PageHeader>
 
       {noResults ? (
         <CoverageEmptyState

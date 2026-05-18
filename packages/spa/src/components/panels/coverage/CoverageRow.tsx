@@ -15,6 +15,7 @@ import type { CoverageRow as CoverageRowData, CoverageFamily } from '@agenticapp
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
 import { useCoverageHistory } from '../../../lib/coverageHistoryQueries.js'
+import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 
 export type CoverageRefreshAction =
   | 'gitnexus-analyze'
@@ -100,7 +101,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
       {/* Repo identity — NEVER renders absPath (CODEX HIGH-1).
           pl-4 matches the column header's px-4 left padding so body rows align
           with the "Repo" column label above. */}
-      <td className="py-2 pl-4 pr-3 text-sm font-medium text-text-primary whitespace-nowrap">
+      <td className={`${COVERAGE_COL_WIDTHS.repo} py-2 pl-4 pr-3 text-sm font-medium text-text-primary whitespace-nowrap`}>
         <div className="flex items-center gap-2">
           <span>{row.repo}</span>
           <OverrideChip
@@ -114,7 +115,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
       {/* 4 coverage cells in fixed column order. drift={cellDrifts?.X ?? null}
           fans the four cell drifts out from the single useCoverageHistory hook
           (Option C — PD-11-02). */}
-      <td className="px-2 py-2">
+      <td className={`${COVERAGE_COL_WIDTHS.claudeMd} px-2 py-2`}>
         <CoverageCell
           column="claudeMd"
           state={row.claudeMd}
@@ -122,7 +123,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
           drift={cellDrifts?.claudeMd ?? null}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={`${COVERAGE_COL_WIDTHS.gitNexus} px-2 py-2`}>
         <CoverageCell
           column="gitNexus"
           state={row.gitNexus}
@@ -130,7 +131,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
           drift={cellDrifts?.gitNexus ?? null}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={`${COVERAGE_COL_WIDTHS.wiki} px-2 py-2`}>
         <CoverageCell
           column="wiki"
           state={row.wiki}
@@ -138,7 +139,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
           drift={cellDrifts?.wiki ?? null}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={`${COVERAGE_COL_WIDTHS.workflow} px-2 py-2`}>
         <CoverageCell
           column="workflowVersion"
           state={row.workflowVersion}
@@ -148,7 +149,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
       </td>
 
       {/* Refresh action — visible on hover/focus */}
-      <td className="py-2 pl-2 w-8">
+      <td className={`${COVERAGE_COL_WIDTHS.actions} py-2 pl-2`}>
         <div ref={popoverRef} className="relative">
           <button
             type="button"

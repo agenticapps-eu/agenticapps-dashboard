@@ -147,6 +147,16 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 - [x] **PLI-02**: `CoverageRow.tsx` per-row refresh button starts at `opacity-30` (was `opacity-0`); hover/focus still bumps to `opacity-100`. One-token swap on the existing className. (D-11-10)
 - [x] **PLI-03**: `/coverage` route (`packages/spa/src/routes/coverage.lazy.tsx`) opts into sticky `PageHeader` by passing `sticky={true}`. Other dashboard routes remain default (`sticky=false`) and adopt during their own cycles. (D-11-09 opt-in pattern)
 
+### Impeccable P1 polish bundle (Phase 11.1)
+
+**Minted:** 2026-05-18 during `/gsd-plan-phase 11.1`. Working stem `IMP-*` (impeccable polish). Bundle of 4 inherited P1s from `11-IMPECCABLE.md` (calibration data point #2, composite 76). Targeted lift: composite 76 → ~82; calibration data point #3 to settle D-10.5-03 floor recalibration.
+
+- [ ] **IMP-01**: All three `CoverageFamilySection` `<table>` elements render identical pixel widths per column at 1440×900. Implemented via shared `<colgroup>` populated from `packages/spa/src/components/panels/coverage/coverageColumns.ts` (single source of truth: `repo: w-72`, `claudeMd: w-32`, `gitNexus: w-32`, `wiki: w-[22rem]`, `workflow: w-32`, `actions: w-8`). `table` element gains `table-fixed` className. `CoverageRow.tsx` consumes the same constants for cell widths. Verified by `CoverageFamilySection.test.tsx` asserting `<col>` className equality across 3 sections + `/browse` screenshot at scrollY 0/400/800. (D-11.1-01, D-11.1-02 — rejects Option B CSS-Grid refactor)
+- [ ] **IMP-02**: `CoverageToolbar` (filter chips + search input) is rendered INSIDE the sticky `PageHeader` block (via its `children` slot) so it remains visible at every `main.scrollTop` value. Layering-stack offsets switch from hardcoded `top-8` / `top-[5.0625rem]` to `calc(var(--ph-h) - 1.5rem)` / `calc(var(--ph-h) + 1.5625rem)`. The CSS variable `--ph-h` is published by a new `usePageHeaderHeight()` hook (`ResizeObserver` observing the PageHeader's rendered height, writing the px value to `document.documentElement.style`). `:root { --ph-h: 56px }` default in `tokens.css` covers first-paint before measurement lands. Verified by `CoveragePage.test.tsx` structural assertion (`<CoverageToolbar>` inside the sticky subtree) + `--ph-h` published assertion + `/browse` screenshot at scrollY 200/600/1000. (D-11.1-03, D-11.1-04, D-11.1-05)
+- [ ] **IMP-03**: Every clipboard write surfaces a visible toast within 200ms. New `Toast` primitive (`packages/spa/src/components/ui/Toast.tsx` + `ToastProvider` + `useToast()` hook) renders via `document.body` portal at `position: fixed; top: 16px; right: 16px; z-index: var(--z-toast)`. Single-slot replace semantics (rapid second `show()` REPLACES the current toast — no queue). Opacity-only animation (`transition-opacity duration-150 ease-out`). Default duration 2400ms. Variants: `success` (green tint, `aria-live="polite"`, glyph `✓`) and `error` (red tint, `aria-live="assertive"`, glyph `✕`). Wired at all 6 clipboard call sites: `IndexGitNexusButton.tsx`, `InstallGitNexusButton.tsx`, `CoverageEmptyState.tsx`, `CoverageFamilySection.tsx:152` (family npm install), `CoveragePage.tsx:145` (wiki-compile), `CoveragePage.tsx:148` (workflow update). `ToastProvider` wraps `AppShellV2` so every authenticated route inherits the context. Wording is contextual per call site (CLI vs URL semantics). On `writeToClipboard → false`: error variant. (D-11.1-06..12)
+- [ ] **IMP-04**: `--color-text-tertiary` swaps from `#807A92` to `#75708A` in `packages/spa/src/styles/tokens.css`. Computed contrast ratios: ~4.69:1 vs `--color-app-bg` (`#FAFAF7`), ~4.64:1 vs `--color-sidebar-bg` (`#F8F6F3`). Both clear WCAG AA body-text floor (4.5:1) with safe margin. Tier-gap analysis: secondary at `#6B6478` (~5.18:1) preserves ~1.10:1 inter-tier ratio (visible delta retained vs IMPECCABLE-suggested `#6B6580` which collapsed the tier at ~1.02:1). Token-history comment block updated to document the v1.0.0 → v1.0.1 → v1.1 chain. All ~40 consumers inherit automatically — no per-site review required. (D-11.1-13, D-11.1-14)
+- [ ] **IMP-05**: Token-contrast invariant locked. `packages/spa/src/lib/contrast.ts` provides pure-JS WCAG 2.1 relative-luminance + contrast-ratio helpers (~10 LOC, zero deps). `packages/spa/src/styles/verify-contrast.test.ts` asserts every `text-*` token clears its WCAG floor against both `--color-app-bg` and `--color-sidebar-bg` (primary ≥13:1, secondary ≥4.5:1, tertiary ≥4.5:1). Test runs in CI on every PR — any future token edit that regresses contrast fails the suite. Closes the v1.0.1 → v1.1 regression class. (D-11.1-15)
+
 ### Architectural Invariants (every phase)
 
 - [x] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
@@ -299,13 +309,18 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | PLI-01 | Phase 11 | Complete |
 | PLI-02 | Phase 11 | Complete |
 | PLI-03 | Phase 11 | Complete |
+| IMP-01 | Phase 11.1 | Pending |
+| IMP-02 | Phase 11.1 | Pending |
+| IMP-03 | Phase 11.1 | Pending |
+| IMP-04 | Phase 11.1 | Pending |
+| IMP-05 | Phase 11.1 | Pending |
 
 **Coverage:**
 - v1 requirements: 62 total (57 phase-bound + 5 invariants)
-- v1.1 requirements: 13 added (TRD-01..05, SKD-01..05, PLI-01..03)
-- Mapped to phases: 75 (62 v1 + 13 v1.1)
+- v1.1 requirements: 18 added (TRD-01..05, SKD-01..05, PLI-01..03, IMP-01..05)
+- Mapped to phases: 80 (62 v1 + 18 v1.1)
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-02*
-*Last updated: 2026-05-16 — Phase 11 TRD-01..05, SKD-01..05, PLI-01..03 appended during `/gsd-plan-phase 11`*
+*Last updated: 2026-05-18 — Phase 11.1 IMP-01..05 appended during `/gsd-plan-phase 11.1`*

@@ -7,10 +7,19 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { CoverageRow as CoverageRowData } from '@agenticapps/dashboard-shared'
 import { CoverageFamilySection } from './CoverageFamilySection.js'
+import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { ToastProvider } from '../../ui/Toast.js'
+
+vi.mock('../../../lib/clipboardCompat.js', () => ({
+  writeToClipboard: vi.fn().mockResolvedValue(true),
+}))
+
+import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 
 // Phase 11-04: CoverageRow (rendered by CoverageFamilySection) now calls
 // useCoverageHistory and therefore requires a QueryClientProvider. fetch is
@@ -48,7 +57,11 @@ function withQC(children: React.ReactElement) {
       },
     },
   })
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={qc}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  )
 }
 
 afterEach(() => {
@@ -224,5 +237,120 @@ describe('CoverageFamilySection', () => {
       ),
     )
     expect(screen.queryByText(/GitNexus is not installed/i)).toBeNull()
+  })
+})
+
+describe('CoverageFamilySection sticky stack consumes --ph-h (IMP-02)', () => {
+  it('family-header sticky top uses calc(var(--ph-h) - 1.5rem)', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const familyHeader = container.querySelector('header.sticky')
+    expect(familyHeader?.className).toMatch(/top-\[calc\(var\(--ph-h\)-1\.5rem\)\]/)
+    expect(familyHeader?.className).not.toMatch(/\btop-8\b/)
+  })
+
+  it('column-header sticky top uses calc(var(--ph-h) + 1.5625rem)', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const ths = container.querySelectorAll('thead th.sticky')
+    ths.forEach((th) => {
+      expect(th.className).toMatch(/top-\[calc\(var\(--ph-h\)\+1\.5625rem\)\]/)
+    })
+  })
+})
+
+describe('column-width lock (IMP-01)', () => {
+  it('renders <colgroup> with 6 <col> elements consuming COVERAGE_COL_WIDTHS', () => {
+    const fixture: CoverageRowData[] = [
+      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
+      makeRow('repo-b', { claudeMd: 'stale', gitNexus: 'missing', wiki: 'fresh', workflow: 'fresh' }),
+    ]
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={fixture}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const cols = container.querySelectorAll('colgroup > col')
+    expect(cols).toHaveLength(6)
+    expect(cols[0]?.className).toBe(COVERAGE_COL_WIDTHS.repo)
+    expect(cols[1]?.className).toBe(COVERAGE_COL_WIDTHS.claudeMd)
+    expect(cols[2]?.className).toBe(COVERAGE_COL_WIDTHS.gitNexus)
+    expect(cols[3]?.className).toBe(COVERAGE_COL_WIDTHS.wiki)
+    expect(cols[4]?.className).toBe(COVERAGE_COL_WIDTHS.workflow)
+    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
+  })
+
+  it('marks <table> as table-fixed', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const table = container.querySelector('table')
+    expect(table?.className).toContain('table-fixed')
+  })
+})
+
+describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
+  beforeEach(() => {
+    vi.mocked(writeToClipboard).mockResolvedValue(true)
+  })
+
+  it('fires success toast when family install hint button is clicked and clipboard succeeds', async () => {
+    const rows = [makeRow('repo-a')]
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="not-installed"
+        />,
+      ),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('install GitNexus')
+  })
+
+  it('fires error toast when clipboard write fails', async () => {
+    vi.mocked(writeToClipboard).mockResolvedValue(false)
+    const rows = [makeRow('repo-a')]
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="not-installed"
+        />,
+      ),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
+    const toastEl = screen.getByRole('alert')
+    expect(toastEl.textContent).toContain('Copy failed')
+    expect(toastEl.textContent).toContain('open the help guide for the command')
   })
 })

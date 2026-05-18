@@ -11,11 +11,12 @@
  * PH-S1..PH-S5: optional sticky?: boolean prop (default false — preserves
  * current behavior on every route that has not opted in).
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
 import { PageHeader } from './PageHeader.js'
+import { triggerLastResizeObserver } from '../../vitest.setup'
 
 describe('PageHeader', () => {
   it('PH1: renders title in <h1> with text-2xl font-semibold', () => {
@@ -132,5 +133,37 @@ describe('PageHeader', () => {
     expect(screen.getByText('Per-repo knowledge-layer freshness')).toBeDefined()
     expect(screen.getByTestId('refresh-btn')).toBeDefined()
     expect(screen.getByTestId('filter-chips')).toBeDefined()
+  })
+})
+
+describe('PageHeader publishes --ph-h via ResizeObserver (IMP-02)', () => {
+  beforeEach(() => {
+    document.documentElement.style.removeProperty('--ph-h')
+  })
+
+  afterEach(() => {
+    document.documentElement.style.removeProperty('--ph-h')
+  })
+
+  it('writes --ph-h to documentElement after first measurement when sticky=true', () => {
+    render(<PageHeader title="Coverage" sticky />)
+    triggerLastResizeObserver(110)
+    expect(document.documentElement.style.getPropertyValue('--ph-h')).toBe('110px')
+  })
+
+  it('writes --ph-h to documentElement after first measurement when sticky=false', () => {
+    render(<PageHeader title="Help" />)
+    triggerLastResizeObserver(56)
+    expect(document.documentElement.style.getPropertyValue('--ph-h')).toBe('56px')
+  })
+
+  it('sticky=true PageHeader gets data-testid="page-header-sticky" (PD-11.1-07)', () => {
+    render(<PageHeader title="Coverage" sticky />)
+    expect(screen.getByTestId('page-header-sticky')).toBeDefined()
+  })
+
+  it('sticky=false PageHeader gets data-testid="page-header" (PD-11.1-07)', () => {
+    render(<PageHeader title="Help" />)
+    expect(screen.getByTestId('page-header')).toBeDefined()
   })
 })

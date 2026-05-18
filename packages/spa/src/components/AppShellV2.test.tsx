@@ -8,13 +8,15 @@
  * AV5: RepairBanner appears below TopBar when setNeedsRepair(true)
  * AV6: CommandPalette listbox mounted (aria-label="Actions" present)
  * AV7: NO transition classes on shell composition
+ * AV8: ToastProvider wraps AppShellV2 (IMP-03 / PD-11.1-04)
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act, cleanup } from '@testing-library/react'
+import { render, screen, act, cleanup, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 
 import { RepairProvider, useRepair } from '../lib/repair.js'
+import { useToast } from './ui/Toast.js'
 
 // Mock commandPaletteActions (same pattern as AppShell.test.tsx)
 vi.mock('../lib/commandPaletteActions.js', () => ({
@@ -51,11 +53,13 @@ beforeEach(() => {
 
 const mockNavigate = vi.fn().mockResolvedValue(undefined)
 
+const MockOutlet = vi.fn(() => null as React.ReactNode)
+
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
-    Outlet: () => null,
+    Outlet: (...args: Parameters<typeof MockOutlet>) => MockOutlet(...args),
     Link: ({ children, to, className, 'aria-label': ariaLabel }: { children: React.ReactNode; to: string; className?: string; 'aria-label'?: string }) => (
       <a href={to} className={className} aria-label={ariaLabel}>{children}</a>
     ),
@@ -84,6 +88,7 @@ function renderAppShellV2() {
   let hookResult: ReturnType<typeof useRepair> | undefined
 
   function Consumer() {
+    // eslint-disable-next-line react-hooks/globals -- intentional test-harness pattern: expose hook value to outer scope for getHook() spy
     hookResult = useRepair()
     return null
   }
@@ -159,5 +164,29 @@ describe('AppShellV2', () => {
     const shell = container.querySelector('[data-testid="app-shell-v2"]')
     expect(shell).not.toBeNull()
     expect(shell!.className).not.toContain('transition')
+  })
+})
+
+function Probe(): React.JSX.Element {
+  const t = useToast()
+  return <button onClick={() => t.show({ message: 'probe' })}>fire</button>
+}
+
+describe('ToastProvider wraps AppShellV2 (IMP-03 / PD-11.1-04)', () => {
+  beforeEach(() => {
+    MockOutlet.mockImplementation(() => <Probe />)
+  })
+
+  afterEach(() => {
+    MockOutlet.mockImplementation(() => null)
+  })
+
+  it("useToast() works for any descendant rendered through AppShellV2's Outlet", () => {
+    renderAppShellV2()
+    fireEvent.click(screen.getByText('fire'))
+    const statusEls = screen.getAllByRole('status')
+    const toastEl = statusEls.find((el) => el.textContent?.includes('probe'))
+    expect(toastEl).toBeDefined()
+    expect(toastEl!.textContent).toContain('probe')
   })
 })
