@@ -121,13 +121,39 @@ Phases 0–6 deliver a complete, useful dashboard with zero third-party service 
 - [x] **COV-11**: Four-state per-column freshness: `fresh` (green ✓), `stale` (amber ⚠), `missing` (red ✕), `not-applicable` (gray ⚪); thresholds — GitNexus stale at > 14 days since last index, Wiki stale at > 7 days since last family compile, Workflow stale at any version below head, CLAUDE.md never stale (binary present/absent).
 - [x] **COV-12**: Migration `0008-coverage-matrix-page.md` ships in `~/Sourcecode/agenticapps/claude-workflow/migrations/` alongside the dashboard PR; frontmatter `from_version: 1.5.0`, `to_version: 1.6.0` (**re-anchored 2026-05-14** via claude-workflow PR #17 "chain integrity": coverage matrix is a dashboard surface, not a consumer-repo capability bump, so it took a smaller version slot. CLAUDE.md vendoring migration 0009 now carries the 1.6 → 1.8 jump that was originally bundled with 0008); documents the new `/coverage` route as a workflow surface (so other repos can discover where coverage is tracked); workflow scaffolder head currently at 1.9.3 (0007 gitnexus-code-graph-integration).
 
+### Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle (Phase 11)
+
+**Minted:** 2026-05-16 during `/gsd-plan-phase 11`. Working stems `TRD-*` (trends), `SKD-*` (skill drift), `PLI-*` (polish) per ROADMAP placeholder. Adopts the proposed mapping from `11-RESEARCH.md` §"Phase Requirements".
+
+#### Coverage trends (TRD-*)
+
+- [x] **TRD-01**: Daemon writes daily NDJSON snapshot to `~/.agenticapps/dashboard/coverage-history/<ISO-date>.ndjson` (UTC date). Directory created with `mode 0o700` on first use; file created with `mode 0o600`; explicit `fs.chmod(path, 0o600)` re-applied after first creation to defend against umask drift on subsequent appends. Snapshot record shape is row-per-day: one record per repo per day with the four per-column freshness states (`claudeMd`, `gitNexus`, `wiki`, `workflowVersion`) inline. Realised by `snapshotWriter.ts` reading `scanCoverageInternal()` and emitting one NDJSON line per row via `fs.appendFile(..., { flag: 'a', mode: 0o600 })`. (D-11-01, D-11-13, INV-02 generalised to directory tree)
+- [x] **TRD-02**: Snapshot pruner drops files whose ISO-date filename is older than `now - 14d`; runs lazily IMMEDIATELY before each writer tick (no second scheduler). Filename regex-validated (`/^\d{4}-\d{2}-\d{2}\.ndjson$/`) — non-matching entries are skipped, not unlinked. (D-11-01)
+- [x] **TRD-03**: `GET /api/coverage/history?repoId=&cell=` returns `CoverageHistoryResponseSchema` `{ schemaVersion: 1, repoId, cell, direction, daysSince, windowDays: 14 }` for a single (repo, cell) coordinate. Server-side drift computation: scans the 14-day NDJSON window for the most-recent state transition; returns `direction='up'` (improvement) / `'down'` (regression) / `null` (no transition in window) and the corresponding `daysSince` (or `null`). Query params Zod-validated: `repoId` matches `/^[a-z0-9\-]+\/[a-z0-9\-_]+$/`; `cell` ∈ enum `{claudeMd, gitNexus, wiki, workflowVersion}`. Cached 1h daemon-side via `coverageHistoryCache.ts` `Map<string, { value, expiresAt }>` keyed by `${repoId}:${cell}`. Bearer-auth + CORS inherited from middleware chain. (D-11-11, D-11-12)
+- [x] **TRD-04**: Daily snapshot trigger fires once per ISO date while daemon is running via an **in-process scheduler** (PD-11-01 — see Plan 02). Implementation: `setTimeout` chain anchored to next 03:00 local time, re-armed after each tick, `.unref()`'d so it does not block daemon shutdown. Errors swallowed (logged via `agentError`) so a failed write never crashes the daemon and the scheduler always re-arms. First-boot fires immediately IF `<today-UTC>.ndjson` does not yet exist; never backfills historical missed days. NO `StartCalendarInterval` added to Phase 6 launchd plist (research finding A9 — `KeepAlive=true` makes the plist incompatible with calendar triggers). (D-11-02 reinterpreted via PD-11-01)
+- [x] **TRD-05**: `CoverageCell` renders `▲Nd` / `▼Nd` inline indicator below the existing 4-state subtext when `drift` prop is present (`{ direction: 'up' | 'down'; daysSince: number }`). New component `CoverageDriftBadge.tsx` — text-only span using `text-status-success` (▲ / improvement) and `text-status-error` (▼ / regression) tokens. `aria-label` reads `"Improved N day(s) ago"` / `"Regressed N day(s) ago"`. NO new hex literals; `tokenSourceOfTruth.test.ts` continues to pass. (D-11-03 — component name MUST NOT be `InlineDrift` — Phase 6 schema-drift panel collision)
+
+#### Cross-repo skill drift (SKD-*)
+
+- [x] **SKD-01**: Daemon `scanSkillDrift()` aggregator iterates `readRegistry().projects`, calls `readLocalSkills(p.root)` per project, derives family by path-prefix matching `root` against `~/Sourcecode/{agenticapps,factiv,neuroflash}/` with `'other'` fallback for off-family roots. Uses `Promise.allSettled` partial-failure isolation (Phase 10 AGREED-2 precedent) — one project's failure produces a `degraded: <error>` column entry, never a 500. Family derivation helper `familyOf(root)` lives in `skillDriftScan.ts`; fixture-tested against `'agenticapps'`, `'factiv'`, `'neuroflash'`, and `'other'` buckets. (Registry has no family metadata — verified live: `client: null` for every entry — family MUST come from path.) (D-11-04)
+- [x] **SKD-02**: `GET /api/skills/drift` returns `SkillDriftResponseSchema` — `{ schemaVersion: 1, generatedAtIso, projects: [{projectId, projectName, family, degraded?}], rows: [{skillId, byProject: Record<projectId, SkillDriftCell>}] }`. Cached 30s daemon-side via `skillDriftCache.ts` (single-key memo, matches Phase 10 coverage-cache cadence). Bearer-auth + CORS inherited. Outbound `parseOrDrift` via `outbound()` wrapper (INV-04). (D-11-04, D-11-12)
+- [x] **SKD-03**: `POST /api/skills/drift/agentlinter` accepts body `{ projectId: string }` (Zod `.min(1)`; route schema does NOT support arrays or comma-lists — single-project-per-request enforced structurally per D-11-14). Looks up project root via `readRegistry()` — fails closed (404) on unknown `projectId`. Reuses Phase 5 `agentLinterCache` (`getAgentLinterCached` / `setAgentLinterCached` / `computeMaxMtime`) + Phase 5 `runAgentLinter(entry.root)` — same binary, same `--local` flag, same 30s timeout, same supply-chain invariant (D-5-21). Returns 200 + sync body matching Phase 5's GET shape (`AgentLinterResponseSchema`). Bearer-auth on every request. (D-11-05, D-11-14)
+- [x] **SKD-04**: New SPA route `/observability/skill-drift` (lazy + zodValidator under `_appshell` layout) renders per-skill matrix (rows = skills, columns = projects). `SkillDriftMatrix.tsx` renders one row per `SkillDriftRow.skillId`, one column per `projects[]` entry, with `SkillDriftCell.tsx` showing presence + version per (skill, project). `SkillDriftToolbar.tsx` provides per-family/cross-family filter chip (Phase 10 `CoverageToolbar` pattern: 200ms debounce + URL sync via `?scope=family|cross`; default `scope=family`). Per-row "Run AgentLinter" button POSTs to `/api/skills/drift/agentlinter` for ONE project at a time. (D-11-04, D-11-06)
+- [ ] **SKD-05**: AppShellV2 `Observability` sidebar section graduates from one entry (`Coverage`) to two peer entries: `Coverage` and `Skill drift`. Both use the existing `SidebarItem` primitive (NOT `SidebarSubItem`) so visual indent matches the established peer pattern in `Sidebar.tsx`. (D-11-08 — overrides the CONTEXT `SidebarSubItem` mention based on code-pattern review of `Sidebar.tsx:69-73`.)
+
+#### Polish bundle (PLI-*)
+
+- [x] **PLI-01**: `PageHeader` gains a `sticky?: boolean` prop (default `false` — preserves current behaviour on every route that has not opted in). When `sticky={true}`, the outer `<div>` className becomes `mb-6 flex flex-col gap-1 sticky top-0 z-10 bg-app-bg`. `z-10` matches the existing `--z-sticky: 10` token; `bg-app-bg` (`#FAFAF7`) provides the opaque backstop so scrolled content does not bleed through; the `mb-6` 24px bottom margin is preserved per CONTEXT §Specifics. (D-11-09)
+- [x] **PLI-02**: `CoverageRow.tsx` per-row refresh button starts at `opacity-30` (was `opacity-0`); hover/focus still bumps to `opacity-100`. One-token swap on the existing className. (D-11-10)
+- [x] **PLI-03**: `/coverage` route (`packages/spa/src/routes/coverage.lazy.tsx`) opts into sticky `PageHeader` by passing `sticky={true}`. Other dashboard routes remain default (`sticky=false`) and adopt during their own cycles. (D-11-09 opt-in pattern)
+
 ### Architectural Invariants (every phase)
 
-- [ ] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
-- [ ] **INV-02**: Registry, auth, env files in `~/.agenticapps/dashboard/` enforce mode `0600`; daemon refuses to start if looser
+- [x] **INV-01**: No daemon route writes to a registered project's filesystem (sole exception: `POST /api/projects/{id}/open`, user-driven)
+- [x] **INV-02**: Registry, auth, env files in `~/.agenticapps/dashboard/` enforce mode `0600`; daemon refuses to start if looser. **Generalised in Phase 11:** the policy extends to the new `coverage-history/` directory tree — directory mode `0o700`, NDJSON files mode `0o600`, symlink-escape defence via `realpathSync(snapshotDir)` once at boot.
 - [x] **INV-03**: Dashboard renders fully and gracefully when Sentry / Linear / Infisical are unconfigured
-- [ ] **INV-04**: Schema validation runs at both ends of every API call; mismatches surface as "schema drift" warnings
-- [ ] **INV-05**: No native dependencies in `packages/agent` (no `keytar`, no FFI)
+- [x] **INV-04**: Schema validation runs at both ends of every API call; mismatches surface as "schema drift" warnings
+- [x] **INV-05**: No native dependencies in `packages/agent` (no `keytar`, no FFI)
 
 ---
 
@@ -237,8 +263,8 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | POLISH-04 | Phase 6 | Complete (gate floor amended to 87 per D-6-09.v1; v1.1 lifts to 90) |
 | POLISH-05 | Phase 6 | Stage 1 complete; Stage 2 pending fresh-session review on PR #15 |
 | POLISH-06 | Phase 6 | Complete |
-| INV-01 | All phases | Pending |
-| INV-02 | Phase 1 (then upheld) | Pending |
+| INV-01 | All phases | Complete |
+| INV-02 | Phase 1 (then upheld) | Pending — generalised in Phase 11 to cover `coverage-history/` directory tree |
 | INV-03 | All phases | Complete |
 | INV-04 | All phases | Complete |
 | INV-05 | All phases | Complete |
@@ -248,12 +274,38 @@ Deferred to Phases 7+. Tracked but not in v1 roadmap.
 | HELP-04 | Phase 7 | Pending |
 | HELP-05 | Phase 7 | Pending |
 | HELP-06 | Phase 7 | Complete |
+| COV-01 | Phase 10 | Complete |
+| COV-02 | Phase 10 | Complete |
+| COV-03 | Phase 10 | Complete |
+| COV-04 | Phase 10 | Complete |
+| COV-05 | Phase 10 | Complete |
+| COV-06 | Phase 10 | Complete |
+| COV-07 | Phase 10 | Complete |
+| COV-08 | Phase 10 | Complete |
+| COV-09 | Phase 10 | Complete |
+| COV-10 | Phase 10 | Complete |
+| COV-11 | Phase 10 | Complete |
+| COV-12 | Phase 10 | Complete |
+| TRD-01 | Phase 11 | Complete |
+| TRD-02 | Phase 11 | Complete |
+| TRD-03 | Phase 11 | Complete |
+| TRD-04 | Phase 11 | Complete |
+| TRD-05 | Phase 11 | Complete |
+| SKD-01 | Phase 11 | Complete |
+| SKD-02 | Phase 11 | Complete |
+| SKD-03 | Phase 11 | Complete |
+| SKD-04 | Phase 11 | Complete |
+| SKD-05 | Phase 11 | Pending |
+| PLI-01 | Phase 11 | Complete |
+| PLI-02 | Phase 11 | Complete |
+| PLI-03 | Phase 11 | Complete |
 
 **Coverage:**
 - v1 requirements: 62 total (57 phase-bound + 5 invariants)
-- Mapped to phases: 62
+- v1.1 requirements: 13 added (TRD-01..05, SKD-01..05, PLI-01..03)
+- Mapped to phases: 75 (62 v1 + 13 v1.1)
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-02*
-*Last updated: 2026-05-11 — Phase 7 HELP-01..HELP-06 appended*
+*Last updated: 2026-05-16 — Phase 11 TRD-01..05, SKD-01..05, PLI-01..03 appended during `/gsd-plan-phase 11`*

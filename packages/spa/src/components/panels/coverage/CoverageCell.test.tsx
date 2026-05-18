@@ -10,7 +10,10 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
-import type { CoverageColumnState } from '@agenticapps/dashboard-shared'
+import type {
+  CoverageColumnState,
+  CoverageCellDrift,
+} from '@agenticapps/dashboard-shared'
 import { CoverageCell } from './CoverageCell.js'
 
 function makeBasic(state: 'fresh' | 'stale' | 'missing' | 'not-applicable', label?: string): CoverageColumnState {
@@ -118,5 +121,105 @@ describe('CoverageCell', () => {
       />,
     )
     expect(screen.getByText('No skill installed')).toBeTruthy()
+  })
+
+  // ── Phase 11-04: drift?: CoverageCellDrift extension (Option C / PD-11-02) ─
+  //
+  // CoverageCell stays PURELY PRESENTATIONAL. Drift data is owned by the
+  // parent CoverageRow (which calls useCoverageHistory once per row); cell
+  // receives the per-cell drift via prop. NO hook calls inside the cell.
+
+  it('Drift-10: drift prop undefined → cell renders WITHOUT a badge (regression guard)', () => {
+    render(
+      <CoverageCell column="claudeMd" state={makeBasic('fresh')} repoName="my-repo" />,
+    )
+    // No singular OR plural day badge present
+    expect(screen.queryByText(/▲|▼/)).toBeNull()
+  })
+
+  it('Drift-11: drift={direction:"up", daysSince:3} → renders ▲3d badge', () => {
+    const drift: CoverageCellDrift = { direction: 'up', daysSince: 3 }
+    render(
+      <CoverageCell
+        column="claudeMd"
+        state={makeBasic('fresh')}
+        repoName="my-repo"
+        drift={drift}
+      />,
+    )
+    expect(screen.getByText('▲3d')).toBeTruthy()
+  })
+
+  it('Drift-12: drift={direction:"down", daysSince:1} → renders ▼1d badge', () => {
+    const drift: CoverageCellDrift = { direction: 'down', daysSince: 1 }
+    render(
+      <CoverageCell
+        column="gitNexus"
+        state={makeBasic('stale')}
+        repoName="my-repo"
+        drift={drift}
+      />,
+    )
+    expect(screen.getByText('▼1d')).toBeTruthy()
+  })
+
+  it('Drift-13: drift={direction:null, daysSince:null} → cell renders WITHOUT a badge ("loaded but no transition")', () => {
+    const drift: CoverageCellDrift = { direction: null, daysSince: null }
+    render(
+      <CoverageCell
+        column="wiki"
+        state={makeBasic('fresh')}
+        repoName="my-repo"
+        drift={drift}
+      />,
+    )
+    expect(screen.queryByText(/▲|▼/)).toBeNull()
+  })
+
+  it('Drift-14: drift={null} (explicit null prop) → cell renders WITHOUT a badge', () => {
+    render(
+      <CoverageCell
+        column="wiki"
+        state={makeBasic('fresh')}
+        repoName="my-repo"
+        drift={null}
+      />,
+    )
+    expect(screen.queryByText(/▲|▼/)).toBeNull()
+  })
+
+  it('Drift-15: CoverageCell.tsx does NOT call useCoverageHistory / useQuery / useMutation (Option C — purely presentational)', async () => {
+    // Source-level guard: read CoverageCell.tsx and verify NO data-hook
+    // imports / calls live inside it. This locks REVIEWS action item 1
+    // Option C ownership model — CoverageRow owns the hook, the cell stays
+    // purely presentational with a `drift?` prop.
+    //
+    // CWD is `packages/spa/` when invoked via `pnpm --filter @agenticapps/dashboard-spa test`
+    // but is the repo root when invoked via `pnpm test --run` (CI's invocation).
+    // Resolve against both candidate roots so the test passes under both.
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+    const rel = 'src/components/panels/coverage/CoverageCell.tsx'
+    const candidates = [
+      path.resolve(process.cwd(), rel),
+      path.resolve(process.cwd(), 'packages/spa', rel),
+    ]
+    let source = ''
+    for (const candidate of candidates) {
+      try {
+        source = await fs.readFile(candidate, 'utf8')
+        break
+      } catch {
+        // try next candidate
+      }
+    }
+    if (!source) {
+      throw new Error(
+        `Drift-15 source guard could not locate CoverageCell.tsx from cwd ${process.cwd()} (tried: ${candidates.join(', ')})`,
+      )
+    }
+    expect(source).not.toMatch(/\buseCoverageHistory\b/)
+    expect(source).not.toMatch(/\buseQuery\b/)
+    expect(source).not.toMatch(/\buseMutation\b/)
   })
 })

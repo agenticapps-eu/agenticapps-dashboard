@@ -5,11 +5,55 @@
  * CODEX MED: worst-state-wins per row (missing > stale > fresh > not-applicable).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import React from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { CoverageRow as CoverageRowData } from '@agenticapps/dashboard-shared'
 import { CoverageFamilySection } from './CoverageFamilySection.js'
+
+// Phase 11-04: CoverageRow (rendered by CoverageFamilySection) now calls
+// useCoverageHistory and therefore requires a QueryClientProvider. fetch is
+// stubbed so the hook's network attempt does not flake. pairing is mocked so
+// apiFetch can build a URL without a real daemon.
+
+vi.mock('../../../lib/pairing.js', () => ({
+  getPairing: vi.fn(() => ({
+    agentUrl: 'http://127.0.0.1:5193',
+    token: 'test-token-1234',
+    pairedAt: '2026-01-01T00:00:00.000Z',
+  })),
+}))
+
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
+
+function makeFetchResponse(body: unknown, status = 200) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+    clone: () => ({ json: () => Promise.resolve(body) }),
+  })
+}
+
+function withQC(children: React.ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+      },
+    },
+  })
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+}
+
+afterEach(() => {
+  cleanup()
+})
 
 function makeRow(
   repo: string,
@@ -41,6 +85,28 @@ function makeRow(
 beforeEach(() => {
   // Clear localStorage between tests
   localStorage.clear()
+  mockFetch.mockReset()
+  // Stub /api/coverage/history with empty drift so CoverageRow's hook resolves
+  // cleanly. Tests in this file do NOT assert on drift behaviour — those live
+  // in CoverageRow.test.tsx.
+  mockFetch.mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/coverage/history')) {
+      const m = url.match(/repoId=([^&]+)/)
+      const repoId = m ? decodeURIComponent(m[1] ?? '') : 'unknown'
+      return makeFetchResponse({
+        schemaVersion: 1,
+        repoId,
+        windowDays: 14,
+        cells: {
+          claudeMd: { direction: null, daysSince: null },
+          gitNexus: { direction: null, daysSince: null },
+          wiki: { direction: null, daysSince: null },
+          workflowVersion: { direction: null, daysSince: null },
+        },
+      })
+    }
+    return makeFetchResponse({}, 404)
+  })
 })
 
 describe('CoverageFamilySection', () => {
@@ -50,7 +116,9 @@ describe('CoverageFamilySection', () => {
       makeRow('repo-b', { gitNexus: 'stale' }),
     ]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
     )
     expect(screen.getByText(/agenticapps/i)).toBeTruthy()
     // Should show counts
@@ -67,7 +135,9 @@ describe('CoverageFamilySection', () => {
       makeRow('repo-c', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
     ]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
     )
     // ✕ 1 (missing), ⚠ 1 (stale), ✓ 1 (fresh)
     expect(screen.getByText(/✕\s*1/)).toBeTruthy()
@@ -81,7 +151,9 @@ describe('CoverageFamilySection', () => {
       makeRow('repo-a', { claudeMd: 'missing', gitNexus: 'stale', wiki: 'fresh', workflow: 'fresh' }),
     ]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
     )
     // Must show ✕ 1 (not ✕ 1 ⚠ 1 — double counting is wrong)
     expect(screen.getByText(/✕\s*1/)).toBeTruthy()
@@ -92,7 +164,9 @@ describe('CoverageFamilySection', () => {
   it('collapse toggle button hides the table body when clicked', () => {
     const rows = [makeRow('repo-a')]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
     )
     // Rows visible initially
     expect(screen.getByText('repo-a')).toBeTruthy()
@@ -105,7 +179,9 @@ describe('CoverageFamilySection', () => {
   it("localStorage 'coverage:section-collapsed:<family>' key is written on collapse/expand toggle", () => {
     const rows = [makeRow('repo-a')]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
     )
     const toggle = screen.getByRole('button', { name: /agenticapps/i })
     fireEvent.click(toggle)
@@ -118,7 +194,9 @@ describe('CoverageFamilySection', () => {
     localStorage.setItem('coverage:section-collapsed:factiv', 'true')
     const rows = [makeRow('repo-x')]
     render(
-      <CoverageFamilySection family="factiv" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      withQC(
+        <CoverageFamilySection family="factiv" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
     )
     // repo-x should NOT be visible (section starts collapsed)
     expect(screen.queryByText('repo-x')).toBeNull()
@@ -127,7 +205,9 @@ describe('CoverageFamilySection', () => {
   it("renders GitNexus install hint inside family header when gitNexusInstallState='not-installed' (CODEX HIGH-6 Option A)", () => {
     const rows = [makeRow('repo-a')]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="not-installed" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="not-installed" />,
+      ),
     )
     expect(screen.getByText(/GitNexus is not installed/i)).toBeTruthy()
   })
@@ -139,7 +219,9 @@ describe('CoverageFamilySection', () => {
   it("does NOT render the install hint when gitNexusInstallState='installed-no-registry' (10.6)", () => {
     const rows = [makeRow('repo-a')]
     render(
-      <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-no-registry" />,
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-no-registry" />,
+      ),
     )
     expect(screen.queryByText(/GitNexus is not installed/i)).toBeNull()
   })

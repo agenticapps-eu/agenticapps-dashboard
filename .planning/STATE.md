@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: between-phases
-stopped_at: "Phase 10 (Coverage Matrix) + Phase 10.5 (skill-driven impeccable gate) + Phase 10.6 (three-state GitNexus detection) all merged to main. PRs #28 + #29. Working tree clean. Awaiting Phase 11 scoping for v1.1 close-out."
-last_updated: "2026-05-14T19:30:00Z"
-last_activity: 2026-05-14 -- Phase 10.6 merged via PR #29 (78b6b6f); reconciled STATE+ROADMAP
+status: executing
+stopped_at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
+last_updated: "2026-05-18T09:53:55.275Z"
+last_activity: 2026-05-18
 progress:
-  total_phases: 13
-  completed_phases: 11
-  total_plans: 60
-  completed_plans: 60
+  total_phases: 16
+  completed_phases: 8
+  total_plans: 51
+  completed_plans: 51
   percent: 100
 ---
 
@@ -21,15 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.1 close-out — Phase 11 scope TBD; Phase 10 + 10.5 + 10.6 shipped.
+**Current focus:** Phase 11 — coverage-trends-skill-drift
 
 ## Current Position
 
-Phase: — between phases —
+Phase: 11
+Plan: Not started
 Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
 Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
-Status: Working tree clean. Awaiting v1.1 close-out scoping.
-Last activity: 2026-05-14 -- Phase 10.6 merged + STATE/ROADMAP reconciliation
+Status: Ready to execute
+Last activity: 2026-05-18
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
 
@@ -60,6 +61,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 06.1 | 7 | - | - |
 | 06 | 7 | - | - |
 | 07 | 5 | - | - |
+| 11 | 0 | - | - |
 
 **Recent Trend:**
 
@@ -75,6 +77,10 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 05.1 P05 | resumed multi-session | 2 tasks | 47 files |
 | Phase 07 P01 | 10min | 8 tasks | 15 files |
 | Phase 07 P04 | 11min | 7 tasks | 10 files |
+| Phase 11 P01 | 4min | 3 tasks | 5 files |
+| Phase 11 P02 | 15min | 7 tasks | 17 files |
+| Phase 11 P03 | 9min | 2 tasks | 7 files |
+| Phase 11 P06 | 10min | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -114,6 +120,19 @@ Recent decisions affecting current work:
 - [Phase 10]: Coverage matrix page shipped. Migration 0008 originally bumped workflow head 1.7.0 → 1.8.0; re-anchored 2026-05-14 to 1.5.0 → 1.6.0 by claude-workflow PR #17 (chain-integrity fix — coverage is a dashboard surface, not a consumer-repo capability). The 1.6 → 1.8 bump is now carried by migration 0009 (CLAUDE.md vendoring). Dashboard tests + REQUIREMENTS COV-12 + CHANGELOG re-anchored to match. CODEX HIGH-1 (absPath strip), HIGH-2 (symlink escape guard), HIGH-3 (resolver-everywhere), HIGH-5 (refresh contract pin), HIGH-6 (per-family install hint) and 13 other review findings all landed via the --reviews replan. Stage 1 /review PASS (0 errors, 1 warning, 2 info). /cso PASS (0 errors). Stage 2, /qa, and impeccable deferred to user (fresh-context + dev server required).
 - [Phase 10.5]: D-10.5-01 — retire CI-enforced impeccable gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs` deleted). D-10.5-02 — skill-driven per-phase `<N>-IMPECCABLE.md` artifact is the gate. D-10.5-03 — composite ≥ 87 floor provisional pending 3-phase calibration. D-10.5-04 — no headless skill invocation in CI. D-10.5-05 — cross-repo update is single ADR addendum on workflow-core, no claude-workflow migration. Supersedes the CI-enforcement portions of D-6-09 / D-6-09.v1 / D-6-10 / D-6-11 / D-6-21; their score-floor commitments remain in force applied to the new artifact.
 - [Phase 10.6]: 3-state enum on wire (`gitNexusInstallState`) chosen over 2 boolean flags for semantic clarity + exhaustive switch checking. Stat-based binary detection chosen over shell-out: predictable, no shell-injection surface, survives launchd minimal PATH. eslint `argsIgnorePattern: '^_'` etc. adopted globally to align with the existing underscore-discard convention used in 6 places in phase-10 scanner code.
+- [Phase 11]: Plan 11-01: Bulk-per-repo CoverageHistoryResponseSchema (PD-11-02) — single response carries all four cells; cuts /coverage first-paint fan-out from ~168 to ~42 requests; CoverageCell stays presentational
+- [Phase 11]: Plan 11-01: Family enum locked to ['agenticapps','factiv','neuroflash','other'] — derived from path-prefix match against ~/Sourcecode/, not from registry.client (null for every live entry)
+- [Phase 11]: Plan 11-01: Literal-versioned wire fields (schemaVersion: 1, windowDays: 14) + .strict() on cells inner object — three independent structural guardrails against silent contract drift (STRIDE T-11-01-01)
+- [Phase 11]: Plan 11-02: PD-11-01 in-process scheduler honoured (setTimeout chain inside the daemon process launchd keeps alive — NO plist modification)
+- [Phase 11]: Plan 11-02: PD-11-02 bulk-per-repo endpoint honoured (GET /api/coverage/history?repoId=X returns all 4 cells in one response — cuts first-paint fan-out from ~168 to ≤42 requests)
+- [Phase 11]: Plan 11-02: REVIEWS action items 3 (data-driven repoId validation against scanCoverageInternal ∪ readRegistry — no regex), 4 (writer appends, reader collapses with last-record-wins per (date, repo, cell)), 5 (explicit disposer registry in boot.ts — LIFO + throw-isolated + idempotent + wired into all 3 shutdown branches) all addressed
+- [Phase 11]: Plan 11-02: T-11-02-03 symlink-escape boot check landed (assertSnapshotDirInDaemonHome via realpathSync — refuses to start with 'escapes daemon home' if coverage-history realpath escapes ~/.agenticapps/dashboard/)
+- [Phase 11]: Plan 11-03: D-11-04 per-skill matrix view + D-11-14 single-project-per-request enforced structurally via .strict() Zod schema + REVIEWS #6 (readLocalSkills .skills destructure), #7 (fixture isolation), #10 (shared AgentLinterResponseSchema reuse) all addressed
+- [Phase 11]: Plan 11-06: PageHeader sticky?: boolean opt-in (D-11-09) — default false preserves all non-opted-in routes
+- [Phase 11]: Plan 11-06: CoverageRow refresh button opacity-30 default (D-11-10) — hover/focus still bumps to opacity-100
+- [Phase 11]: Plan 11-06: CoveragePage opts into sticky at all 4 PageHeader render paths (PLI-03) — coverage.lazy.tsx untouched (REVIEWS #9 lock); 4 PageHeader elements verified live (plan-time count of 5 was a counting artifact)
+- [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
+- [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
 
 ### Pending Todos
 
@@ -131,7 +150,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-14T19:17:00Z
-Stopped at: Phase 10/10.5/10.6 all shipped to main; STATE+ROADMAP reconciliation completed in next session.
-Resume file: session-handoff.md (root) + `.planning/phases/DASH-10.5-.../10.5-DECISIONS.md`
+Last session: 2026-05-16T14:28:31.887Z
+Stopped at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
+Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).

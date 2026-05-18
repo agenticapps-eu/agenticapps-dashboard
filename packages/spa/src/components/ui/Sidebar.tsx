@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban, Layers } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
@@ -62,14 +62,22 @@ export function Sidebar(): React.JSX.Element {
           ))}
         </SidebarSection>
 
-        {/* Observability section — Phase 10 D-10-08.
-            v1.0 contains a single 'Coverage' entry. Single-item sections are acceptable
-            per CONTEXT.md ("section architecture that can grow"). COV-09. */}
+        {/* Observability section — Phase 10 D-10-08 introduced Coverage; Phase 11 D-11-08
+            graduates this to two peer entries (Coverage + Skill drift). Both use the
+            SidebarItem peer primitive — NOT SidebarSubItem — matching user-memory
+            feedback_sidebar_section_architecture (peer entries under a growing section).
+            Icon: Layers (lucide-react) is distinguishable from Activity (Coverage) and
+            visually evokes the per-skill stack across projects. */}
         <SidebarSection label="Observability">
           <SidebarItem
             to="/coverage"
             icon={<Activity size={16} aria-hidden="true" />}
             label="Coverage"
+          />
+          <SidebarItem
+            to="/observability/skill-drift"
+            icon={<Layers size={16} aria-hidden="true" />}
+            label="Skill drift"
           />
         </SidebarSection>
 

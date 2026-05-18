@@ -390,3 +390,140 @@ describe('CoveragePage', () => {
     expect(clipboardArg).toMatch(/neuroflash/)
   })
 })
+
+// Phase 11 PLI-03 / D-11-09 — Coverage page opts into sticky PageHeader at
+// every render path (loading / error / empty / main render). The lazy route
+// file (packages/spa/src/routes/coverage.lazy.tsx) is NOT modified — it only
+// declares the lazy route handle (REVIEWS action item 9 correction).
+//
+// Strategy: PageHeader (PH-S3 in PageHeader.test.tsx) renders the sticky
+// stack (`sticky top-[-1.5rem] z-10 bg-app-bg -mt-6 min-h-14`) on its outer
+// div when sticky={true}. Post-UAT layering fix uses negative top-offset +
+// negative margin-top so the title sits flush with TopBar/RepairBanner.
+// We assert on the rendered DOM directly — no module mock needed, no
+// hoisting hazards, and the test breaks honestly if CoveragePage drops the
+// prop in a future refactor.
+describe('CoveragePage — PLI-03 sticky PageHeader opt-in', () => {
+  function findStickyOuter(container: HTMLElement): Element | null {
+    // PageHeader's outer div carries the heading; the sticky tokens live on
+    // the same div. Find the <h1>'s grandparent (`<h1>` is inside an inner
+    // <div> for the title/helper grouping).
+    const heading = container.querySelector('h1')
+    if (!heading) return null
+    return heading.closest('.mb-6.flex.flex-col')
+  }
+
+  it('passes sticky={true} in the loading state (outer div has sticky top-0 z-10 bg-app-bg)', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      error: null,
+      isLoading: true,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+    const outer = findStickyOuter(container)
+    expect(outer).not.toBeNull()
+    expect(outer!.className).toContain('sticky')
+    expect(outer!.className).toContain('top-[-1.5rem]')
+    expect(outer!.className).toContain('z-10')
+    expect(outer!.className).toContain('bg-app-bg')
+  })
+
+  it('passes sticky={true} in the non-drift error state', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new Error('boom'),
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+    const outer = findStickyOuter(container)
+    expect(outer).not.toBeNull()
+    expect(outer!.className).toContain('sticky')
+    expect(outer!.className).toContain('top-[-1.5rem]')
+    expect(outer!.className).toContain('z-10')
+    expect(outer!.className).toContain('bg-app-bg')
+  })
+
+  it('passes sticky={true} in the empty-matrix state (no repos)', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ rows: [] }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+    const outer = findStickyOuter(container)
+    expect(outer).not.toBeNull()
+    expect(outer!.className).toContain('sticky')
+    expect(outer!.className).toContain('bg-app-bg')
+  })
+
+  it('passes sticky={true} in the main render — installed-with-registry', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState: 'installed-with-registry' }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+    const outer = findStickyOuter(container)
+    expect(outer).not.toBeNull()
+    expect(outer!.className).toContain('sticky')
+    expect(outer!.className).toContain('top-[-1.5rem]')
+    expect(outer!.className).toContain('z-10')
+    expect(outer!.className).toContain('bg-app-bg')
+  })
+
+  it('passes sticky={true} in the main render — not-installed', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState: 'not-installed' }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+    const outer = findStickyOuter(container)
+    expect(outer).not.toBeNull()
+    expect(outer!.className).toContain('sticky')
+    expect(outer!.className).toContain('bg-app-bg')
+  })
+
+  it('passes sticky={true} in the main render — installed-no-registry', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState: 'installed-no-registry' }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+    const outer = findStickyOuter(container)
+    expect(outer).not.toBeNull()
+    expect(outer!.className).toContain('sticky')
+    expect(outer!.className).toContain('bg-app-bg')
+  })
+
+  it('REVIEWS action item 9: coverage.lazy.tsx is NOT modified by this plan (contains no "sticky" reference)', async () => {
+    // Read the lazy route file as a string and grep for 'sticky'. The lazy file
+    // ONLY exports the lazy route handle (createLazyRoute) — Plan 06 modifies
+    // CoveragePage.tsx, not coverage.lazy.tsx. This test locks the correction
+    // at the test layer.
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const lazyPath = path.resolve(__dirname, '../../../routes/coverage.lazy.tsx')
+    const content = fs.readFileSync(lazyPath, 'utf8')
+    expect(content).not.toMatch(/sticky/)
+  })
+})

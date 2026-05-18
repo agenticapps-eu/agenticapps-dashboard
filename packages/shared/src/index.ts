@@ -175,6 +175,29 @@ export type {
   CoverageRefreshResponse,
   OverrideEntry,
 } from './schemas/coverage.js'
+// Phase 11 — coverage trends + skill drift (D-11-12)
+export {
+  CoverageDriftDirectionSchema,
+  CoverageCellDriftSchema,
+  CoverageHistoryResponseSchema,
+} from './schemas/coverageHistory.js'
+export type {
+  CoverageDriftDirection,
+  CoverageCellDrift,
+  CoverageHistoryResponse,
+} from './schemas/coverageHistory.js'
+
+export {
+  SkillDriftCellSchema,
+  SkillDriftRowSchema,
+  SkillDriftResponseSchema,
+} from './schemas/skillDrift.js'
+export type {
+  SkillDriftCell,
+  SkillDriftRow,
+  SkillDriftResponse,
+} from './schemas/skillDrift.js'
+
 export {
   buildWikiCompileClipboardString,
   buildWorkflowUpdateClipboardString,

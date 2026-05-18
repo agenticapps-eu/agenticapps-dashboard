@@ -7,6 +7,19 @@
  * Constraints (D-5.1-10):
  * - NO transition utilities
  * - NO cn()/clsx/CVA (RESEARCH Pattern 5)
+ *
+ * Phase 11 PLI-01 / D-11-09 — optional sticky?: boolean prop (default false).
+ * When true, the outer div gains `sticky top-0 z-10 bg-app-bg` so the header
+ * pins to the top of the AppShellV2 <main> scroll container. Opt-in per route
+ * so non-Coverage routes don't regress.
+ *
+ * Tokens (from packages/spa/src/styles/tokens.css):
+ * - `bg-app-bg` → --color-app-bg (warm paper) — opaque backstop so
+ *   scrolled content doesn't bleed through.
+ * - `z-10` → matches --z-sticky (10) — stays below --z-overlay (100) and
+ *   --z-modal (1000), so modals and overlays still float above the header.
+ * - 24px bottom margin (`mb-6`) preserved in BOTH sticky and non-sticky modes
+ *   per CONTEXT §Specifics.
  */
 import React from 'react'
 
@@ -15,11 +28,42 @@ export interface PageHeaderProps {
   helper?: string
   actions?: React.ReactNode
   children?: React.ReactNode
+  /**
+   * Phase 11 PLI-01 / D-11-09 — when true, the header sticks to the top of
+   * the AppShellV2 <main> scroll container (sticky top-0 z-10 bg-app-bg).
+   * Defaults to false to preserve current behaviour on every route that has
+   * not opted in.
+   */
+  sticky?: boolean
 }
 
-export function PageHeader({ title, helper, actions, children }: PageHeaderProps): React.JSX.Element {
+export function PageHeader({
+  title,
+  helper,
+  actions,
+  children,
+  sticky = false,
+}: PageHeaderProps): React.JSX.Element {
+  // Sticky mode (Phase 11 PLI-01 + post-UAT layering fix):
+  // - `-mt-6` pulls the header UP by 24px in the layout flow to cancel
+  //   AppShellV2 <main>'s `p-6` padding-top so the title sits flush with
+  //   the TopBar/RepairBanner (no transparent gap above it).
+  // - `top-[-1.5rem]` is the sticky-floor: the sticky containing block is
+  //   the page-level wrapper (not <main>), and its content-box top sits
+  //   24px below <main>'s outer top. A negative top offset lowers the
+  //   stuck position by 24px so it lines up with <main>'s outer top edge,
+  //   matching the natural-flow position the `-mt-6` produces. Without
+  //   this, sticky would push the element back DOWN to the wrapper's
+  //   content-top, re-introducing the gap (UAT screenshot 2 cause).
+  // - `min-h-14` (56px) guarantees the sticky bg-app-bg backstop covers
+  //   down to the family-header's stick-line at top-14, leaving no
+  //   transparent gap between PageHeader and family-header regardless of
+  //   whether helper text is rendered.
+  // - `justify-center` vertically centers the title row when min-h-14
+  //   exceeds the content height (e.g., error/empty states without helper).
+  const stickyClasses = sticky ? ' sticky top-[-1.5rem] z-10 bg-app-bg -mt-6 min-h-14 justify-center' : ''
   return (
-    <div className="mb-6 flex flex-col gap-1">
+    <div className={`mb-6 flex flex-col gap-1${stickyClasses}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary leading-tight">{title}</h1>

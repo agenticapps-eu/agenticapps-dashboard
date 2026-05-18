@@ -357,6 +357,58 @@ Plans:
 - `eslint.config.mjs` — added `argsIgnorePattern`, `varsIgnorePattern`, `caughtErrorsIgnorePattern`, `destructuredArrayIgnorePattern` all `^_`.
 **Plans:** N/A — single squashable feature (1 PR scope). Triggered as a hot-follow-up; no separate `/gsd-plan-phase` artefacts.
 
+### Phase 11: Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle
+
+**Goal:** Close v1.1 — Cross-family observability — by adding the **drift over time** half to the dashboard's observability story. Persist daily Coverage snapshots locally (NDJSON under `~/.agenticapps/dashboard/coverage-history/`) and surface per-cell drift indicators on the Coverage matrix; ship a sibling **Skill drift** page aggregating `.claude/skills/` presence + version drift across every registered project; fold the 2 Phase 10.6 IMPECCABLE polish items (sticky `PageHeader` primitive + row-refresh icon `opacity-0` → `opacity-30` discoverability). Stays read-only on project filesystems; all new writes are confined to the daemon's `~/.agenticapps/dashboard/` directory.
+**Milestone:** v1.1 — Cross-family observability (close-out)
+**Depends on:** Phase 10 (reuses `coverageScan` orchestrator, `gitNexusInstallState` enum from 10.6, 30s daemon cache, wire-schema barrel) · Phase 5 (extends per-project skills scanner into cross-repo aggregator) · Phase 10.5 (re-runs `impeccable critique` as calibration data point #2 for D-10.5-03 score floor)
+**Authoritative inputs:**
+  - `.planning/ROADMAP.md` §"Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)" — combined A+B decision recorded 2026-05-15
+  - `.planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-IMPECCABLE.md` — 2 polish items flagged "fold into Phase 11.x"
+  - `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md` — composite floor + calibration policy (D-10.5-03)
+  - `packages/agent/src/lib/scanners/` — existing coverage scanners (extension surface)
+  - `packages/shared/src/schemas/coverage.ts` — `CoverageResponseSchema` (extension surface for `history?: CoverageDrift[]`)
+  - `docs/spec/dashboard-prompt.md` — hard architectural constraints (read-only on project FS, daemon writes confined to `~/.agenticapps/dashboard/`, no native deps, bearer-auth on every route)
+**Sub-tracks:**
+  | Sub-track | Scope |
+  |---|---|
+  | Trends (Candidate A) | Daemon snapshot writer (NDJSON-append, rolling retention) under `~/.agenticapps/dashboard/coverage-history/<ISO-date>.ndjson`; `GET /api/coverage/history?repoId=&cell=` endpoint; SPA inline drift indicator on `CoverageCell` (▲14d / ▼7d) and/or 12-tick sparkline. |
+  | Skill drift (Candidate B) | New daemon aggregator scanning `.claude/skills/` across every registered project; new sidebar entry `Observability › Skill drift`; new SPA panel showing skill-presence matrix + version drift across projects. Reuses Phase 5 AgentLinter integration where available. |
+  | Polish bundle | Sticky `PageHeader` primitive (affects every dashboard route — bonus benefit beyond Coverage); row-refresh icon `opacity-0` → `opacity-30` for touchpad/keyboard discoverability. |
+  | Gates | Stage 1 `/review`, Stage 2 `superpowers:requesting-code-review`, `/cso` for daemon filesystem-write surface (new write paths cross trust boundary), `/qa` walkthrough, `impeccable:critique` post-fix re-run (calibration data point #2 for D-10.5-03 floor). |
+**Non-goals (explicit):** No cloud upload of snapshots; no family-aggregate trend views (deferred to v1.2 — open question 4 in audit); no auto-correction of registry path drift (separate hygiene task); no rewrite of Phase 10 scanner architecture; no new third-party deps (must stay native-free per spec).
+**Open scope decisions — RESOLVED in `/gsd-discuss-phase 11` (CONTEXT D-11-01..14, 2026-05-16):**
+  1. Snapshot retention window — **14 days** rolling (D-11-01)
+  2. Snapshot trigger — **daily cron only** via Phase 6 launchd / systemd install. Reinterpreted via **PD-11-01** (recorded in 11-RESEARCH.md §A9 + Plan 02) as in-process scheduler inside the running daemon — `KeepAlive=true` on the existing plist is incompatible with `StartCalendarInterval`. (D-11-02)
+  3. Drift surface — **inline indicator only** (▲Nd / ▼Nd text). No sparkline in v1.1. (D-11-03)
+  4. Family-aggregate trends — **deferred to v1.2** (Phase 12 `/observability/trend`). (D-11-07)
+  5. Skill-drift aggregation level — **per-skill matrix** as primary view (rows = skills, columns = projects). (D-11-04)
+  6. AgentLinter integration depth — **on-demand AgentLinter run per project from the matrix**; reuses Phase 5 runner + cache unchanged. (D-11-05)
+  7. Cross-family vs in-family — **both**; per-family default, cross-family via filter chip. (D-11-06)
+  8. Sidebar IA — **2 peer entries under `Observability`**: `Coverage`, `Skill drift` (using `SidebarItem` primitive, NOT `SidebarSubItem`). (D-11-08)
+
+**PLAN-DECISIONS (recorded during `/gsd-plan-phase 11`, 2026-05-16):**
+  - **PD-11-01** — Reinterpret D-11-02. The "daily cron via Phase 6 install" is realised as an **in-process `setTimeout` chain** inside the daemon process that launchd / systemd already keeps alive. NO `StartCalendarInterval` added to the plist (would either spawn duplicate daemons or be silently ignored under `KeepAlive=true`). Scheduler is `.unref()`'d, anchored to 03:00 local time, first-boot-fires-immediately when today's NDJSON file does not exist. Recorded in 11-RESEARCH.md §A9 + Plan 02 §Pattern 2. **Reviewed against `installLaunchd.ts:46` source evidence — verified incompatible with KeepAlive=true.**
+
+**Requirements (minted during `/gsd-plan-phase 11`, 2026-05-16):** TRD-01, TRD-02, TRD-03, TRD-04, TRD-05, SKD-01, SKD-02, SKD-03, SKD-04, SKD-05, PLI-01, PLI-02, PLI-03 — full descriptions in `.planning/REQUIREMENTS.md` §"Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle (Phase 11)".
+
+**Plans:** 0/0 plans complete
+
+Plans:
+- [x] 11-01-PLAN.md — Wave 0 (TDD): shared schemas `coverageHistory.ts` + `skillDrift.ts` + barrel re-export. Covers TRD-03, TRD-05, SKD-01, SKD-02, SKD-04, INV-04. Foundation for every downstream daemon + SPA plan.
+- [x] 11-02-PLAN.md — Wave 1 (TDD): Coverage trends daemon — `snapshotPaths/Writer/Pruner/Reader/Scheduler` + `coverageHistoryCache` + `GET /api/coverage/history` route + boot-wired symlink-escape defence + in-process scheduler (PD-11-01). Covers TRD-01..04, INV-01/02/04/05. depends_on: 11-01.
+- [x] 11-03-PLAN.md — Wave 1 (TDD, parallel with 02): Skill drift daemon — `skillDriftScan` aggregator (path-based familyOf with 'other' fallback) + `skillDriftCache` (30s) + `GET /api/skills/drift` + `POST /api/skills/drift/agentlinter` (single-project-per-request, .strict body). Reuses Phase 5 `agentLinterRunner` + `agentLinterCache` UNCHANGED — D-11-14 widens call-site only, not spawn surface. Covers SKD-01..03, INV-01/04/05. depends_on: 11-01.
+- [x] 11-04-PLAN.md — Wave 2 (TDD): SPA Coverage drift badge — `useCoverageHistory(repoId, cell)` hook + `CoverageDriftBadge` component (text-only ▲Nd / ▼Nd, name avoids Phase 6 `InlineDrift` collision) + `CoverageCell` extended with optional `drift` prop. Covers TRD-03, TRD-05, INV-04. depends_on: 11-01, 11-02.
+- [x] 11-05-PLAN.md — Wave 2 (TDD, parallel with 04 + 06): SPA Skill drift page — `useSkillDrift` + `useAgentLinterDrift` hooks + `SkillDriftCell/Matrix/Toolbar/Page` components + lazy route `/observability/skill-drift` + Sidebar peer-entry (`SidebarItem`, NOT `SidebarSubItem`). Covers SKD-01..05, INV-04. depends_on: 11-01, 11-03.
+- [x] 11-06-PLAN.md — Wave 2 (TDD, parallel with 04 + 05): Polish bundle — `PageHeader` sticky prop (default false, backward-compat) + `CoverageRow` opacity-30 default + `/coverage` opts into `sticky={true}`. Covers PLI-01..03. depends_on: [] (independent of all other plans).
+
+**Gates (after Wave 2 ships — Wave 3 sequential):**
+- Stage 1 `/review` on the phase diff
+- Stage 2 `superpowers:requesting-code-review`
+- `/cso` audit on D-11-13 (new write path `coverage-history/`) + D-11-14 (widened AgentLinter call-site)
+- `/qa` walkthrough on `/coverage` + `/observability/skill-drift`
+- `/impeccable critique` on `/coverage` (post-fix re-run with drift badge + sticky header + opacity polish) AND `/observability/skill-drift` (first critique) → `11-IMPECCABLE.md` composite ≥ 87 floor (calibration data point #2 per D-10.5-03)
+
 ---
 
 ## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)

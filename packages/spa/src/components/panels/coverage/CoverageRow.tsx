@@ -14,6 +14,7 @@ import { RefreshCw } from 'lucide-react'
 import type { CoverageRow as CoverageRowData, CoverageFamily } from '@agenticapps/dashboard-shared'
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
+import { useCoverageHistory } from '../../../lib/coverageHistoryQueries.js'
 
 export type CoverageRefreshAction =
   | 'gitnexus-analyze'
@@ -58,6 +59,20 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
   const popoverRef = useRef<HTMLDivElement>(null)
   const options = getRefreshOptions(row)
 
+  // Phase 11-04 (PD-11-02 + REVIEWS action item 1 — Option C):
+  // CoverageRow owns the SINGLE per-row history hook and fans the four cell
+  // drifts out as props to its four CoverageCell children. CoverageCell stays
+  // purely presentational.
+  //
+  // Performance budget (REVIEWS action item 2): TanStack dedup on
+  // ['coverageHistory', repoId] guarantees ≤ 1 fetch per registered repo on
+  // first paint of /coverage. isPending / isError → all four cells receive
+  // null drift (no badge); the row never crashes on a degraded history
+  // signal since drift is auxiliary, not core data.
+  const repoId = `${row.family}/${row.repo}`
+  const history = useCoverageHistory(repoId)
+  const cellDrifts = history.data?.cells ?? null
+
   // Close popover on outside-click
   useEffect(() => {
     if (!popoverOpen) return
@@ -96,18 +111,40 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
         </div>
       </td>
 
-      {/* 4 coverage cells in fixed column order */}
+      {/* 4 coverage cells in fixed column order. drift={cellDrifts?.X ?? null}
+          fans the four cell drifts out from the single useCoverageHistory hook
+          (Option C — PD-11-02). */}
       <td className="px-2 py-2">
-        <CoverageCell column="claudeMd" state={row.claudeMd} repoName={row.repo} />
+        <CoverageCell
+          column="claudeMd"
+          state={row.claudeMd}
+          repoName={row.repo}
+          drift={cellDrifts?.claudeMd ?? null}
+        />
       </td>
       <td className="px-2 py-2">
-        <CoverageCell column="gitNexus" state={row.gitNexus} repoName={row.repo} />
+        <CoverageCell
+          column="gitNexus"
+          state={row.gitNexus}
+          repoName={row.repo}
+          drift={cellDrifts?.gitNexus ?? null}
+        />
       </td>
       <td className="px-2 py-2">
-        <CoverageCell column="wiki" state={row.wiki} repoName={row.repo} />
+        <CoverageCell
+          column="wiki"
+          state={row.wiki}
+          repoName={row.repo}
+          drift={cellDrifts?.wiki ?? null}
+        />
       </td>
       <td className="px-2 py-2">
-        <CoverageCell column="workflowVersion" state={row.workflowVersion} repoName={row.repo} />
+        <CoverageCell
+          column="workflowVersion"
+          state={row.workflowVersion}
+          repoName={row.repo}
+          drift={cellDrifts?.workflowVersion ?? null}
+        />
       </td>
 
       {/* Refresh action — visible on hover/focus */}
@@ -117,7 +154,7 @@ export function CoverageRow({ row, onRefresh }: CoverageRowProps): React.JSX.Ele
             type="button"
             aria-label={`Refresh actions for ${row.repo}`}
             onClick={() => setPopoverOpen((o) => !o)}
-            className="text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-0 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
+            className="text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-30 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
           >
             <RefreshCw size={14} aria-hidden="true" />
           </button>
