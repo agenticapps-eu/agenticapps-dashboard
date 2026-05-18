@@ -411,6 +411,16 @@ Plans:
 
 ---
 
+### Phase 11.2: impeccable P2 polish bundle (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11.2 to break down)
+
 ### Phase 11.1: impeccable p1 polish bundle (INSERTED)
 
 **Goal:** Lift `/coverage` IMPECCABLE composite from 76 → ~82 by closing the 4 inherited P1s from `11-IMPECCABLE.md` (column-width drift in `CoverageFamilySection`, non-sticky `CoverageToolbar`, missing clipboard-write feedback, `text-text-tertiary` contrast 3.99:1 < WCAG AA 4.5:1). Produces calibration data point #3 for D-10.5-03 floor recalibration. **No daemon, auth, storage, API, or LLM surface touched — `/cso` not required.**
