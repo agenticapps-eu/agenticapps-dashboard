@@ -63,15 +63,31 @@ describe('CoverageDriftBadge', () => {
   it('B9: component does NOT emit any hex literal (verified via grep at the file level)', async () => {
     // Source-level guard: read the component file and verify no hex literals.
     // Token namespace lock (D-5.1-10) — all colors live in tokens.css.
+    //
+    // CWD is `packages/spa/` when invoked via `pnpm --filter @agenticapps/dashboard-spa test`
+    // but is the repo root when invoked via `pnpm test --run` (CI's invocation).
+    // Resolve against both candidate roots so the test passes under both.
     const fs = await import('node:fs/promises')
     const path = await import('node:path')
-    const source = await fs.readFile(
-      path.resolve(
-        process.cwd(),
-        'src/components/panels/coverage/CoverageDriftBadge.tsx',
-      ),
-      'utf8',
-    )
+    const rel = 'src/components/panels/coverage/CoverageDriftBadge.tsx'
+    const candidates = [
+      path.resolve(process.cwd(), rel),
+      path.resolve(process.cwd(), 'packages/spa', rel),
+    ]
+    let source = ''
+    for (const candidate of candidates) {
+      try {
+        source = await fs.readFile(candidate, 'utf8')
+        break
+      } catch {
+        // try next candidate
+      }
+    }
+    if (!source) {
+      throw new Error(
+        `B9 source guard could not locate CoverageDriftBadge.tsx from cwd ${process.cwd()} (tried: ${candidates.join(', ')})`,
+      )
+    }
     const hexMatches = source.match(/#[0-9a-fA-F]{3,8}\b/g)
     expect(hexMatches).toBeNull()
   })

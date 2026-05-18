@@ -193,15 +193,31 @@ describe('CoverageCell', () => {
     // imports / calls live inside it. This locks REVIEWS action item 1
     // Option C ownership model — CoverageRow owns the hook, the cell stays
     // purely presentational with a `drift?` prop.
+    //
+    // CWD is `packages/spa/` when invoked via `pnpm --filter @agenticapps/dashboard-spa test`
+    // but is the repo root when invoked via `pnpm test --run` (CI's invocation).
+    // Resolve against both candidate roots so the test passes under both.
     const fs = await import('node:fs/promises')
     const path = await import('node:path')
-    const source = await fs.readFile(
-      path.resolve(
-        process.cwd(),
-        'src/components/panels/coverage/CoverageCell.tsx',
-      ),
-      'utf8',
-    )
+    const rel = 'src/components/panels/coverage/CoverageCell.tsx'
+    const candidates = [
+      path.resolve(process.cwd(), rel),
+      path.resolve(process.cwd(), 'packages/spa', rel),
+    ]
+    let source = ''
+    for (const candidate of candidates) {
+      try {
+        source = await fs.readFile(candidate, 'utf8')
+        break
+      } catch {
+        // try next candidate
+      }
+    }
+    if (!source) {
+      throw new Error(
+        `Drift-15 source guard could not locate CoverageCell.tsx from cwd ${process.cwd()} (tried: ${candidates.join(', ')})`,
+      )
+    }
     expect(source).not.toMatch(/\buseCoverageHistory\b/)
     expect(source).not.toMatch(/\buseQuery\b/)
     expect(source).not.toMatch(/\buseMutation\b/)
