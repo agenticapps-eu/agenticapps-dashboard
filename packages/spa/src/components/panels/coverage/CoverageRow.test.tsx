@@ -386,3 +386,86 @@ describe('CoverageRow', () => {
     })
   })
 })
+
+describe('pending state', () => {
+  it('when pending is omitted, the refresh button has no animate-spin and no aria-busy', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBeNull()
+    expect(refreshBtn).not.toHaveProperty('disabled', true)
+    const svg = refreshBtn.querySelector('svg')
+    expect(svg?.className ?? '').not.toContain('animate-spin')
+  })
+
+  it('when pending is false, behaviour matches pending omitted', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={false} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBeNull()
+    expect(refreshBtn).not.toHaveProperty('disabled', true)
+    const svg = refreshBtn.querySelector('svg')
+    expect(svg?.className ?? '').not.toContain('animate-spin')
+  })
+
+  it('when pending is true, the refresh button shows the spinning icon', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    const svg = refreshBtn.querySelector('svg')
+    expect(svg?.className ?? '').toContain('animate-spin')
+  })
+
+  it('when pending is true, the refresh button has aria-busy="true" and disabled', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
+    expect(refreshBtn).toHaveProperty('disabled', true)
+  })
+
+  it('when pending is true, the row <tr> has aria-busy="true"', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const row = screen.getByRole('row')
+    expect(row.getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('when pending is true, the button className forces opacity-100 (no opacity-30)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.className).toContain('opacity-100')
+    expect(refreshBtn.className).not.toContain('opacity-30')
+  })
+})
