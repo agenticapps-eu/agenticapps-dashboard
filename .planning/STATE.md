@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
-last_updated: "2026-05-16T14:28:39.789Z"
-last_activity: 2026-05-16
+last_updated: "2026-05-18T09:53:55.275Z"
+last_activity: 2026-05-18
 progress:
   total_phases: 16
   completed_phases: 8
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 ## Current Position
 
-Phase: 11 (coverage-trends-skill-drift) — EXECUTING
-Plan: 4 of 6
+Phase: 11
+Plan: Not started
 Last shipped: Phase 10.6 (three-state GitNexus detection) via PR #29 on 2026-05-14
 Milestone: v1.1 — Cross-family observability — partially landed (Coverage Matrix shipped; close-out scope TBD)
 Status: Ready to execute
-Last activity: 2026-05-16
+Last activity: 2026-05-18
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [████■■■■■■] ~30% (Phase 10/10.5/10.6 shipped; Phase 11 TBD)
 
@@ -61,6 +61,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 06.1 | 7 | - | - |
 | 06 | 7 | - | - |
 | 07 | 5 | - | - |
+| 11 | 0 | - | - |
 
 **Recent Trend:**
 

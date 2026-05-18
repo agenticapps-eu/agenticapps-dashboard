@@ -392,7 +392,7 @@ Plans:
 
 **Requirements (minted during `/gsd-plan-phase 11`, 2026-05-16):** TRD-01, TRD-02, TRD-03, TRD-04, TRD-05, SKD-01, SKD-02, SKD-03, SKD-04, SKD-05, PLI-01, PLI-02, PLI-03 — full descriptions in `.planning/REQUIREMENTS.md` §"Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle (Phase 11)".
 
-**Plans:** 6/6 plans complete
+**Plans:** 0/0 plans complete
 
 Plans:
 - [x] 11-01-PLAN.md — Wave 0 (TDD): shared schemas `coverageHistory.ts` + `skillDrift.ts` + barrel re-export. Covers TRD-03, TRD-05, SKD-01, SKD-02, SKD-04, INV-04. Foundation for every downstream daemon + SPA plan.

@@ -1,7 +1,9 @@
 ---
 phase: 11-coverage-trends-skill-drift
 verified: 2026-05-16T17:15:00Z
-status: human_needed
+status: passed
+human_uat_resolved: 2026-05-18T11:00:00Z
+human_uat_outcome: "approved — see 11-HUMAN-UAT.md for per-item status; D-10.5-03.calibration-1 waiver applied to item #8 (IMPECCABLE composite below floor by structural reason)"
 must_haves_score: 35/35
 requirements_score: 13/13
 re_verification: false
