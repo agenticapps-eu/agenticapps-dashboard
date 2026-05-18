@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: executing
-stopped_at: Phase 11 shipped via PR #35 (d1d72f0). Phase 11.1 (impeccable p1 polish bundle) inserted as URGENT; ready for /gsd-discuss-phase 11.1
-last_updated: "2026-05-18T12:35:00.000Z"
+status: shipped
+stopped_at: Phase 11.1 (impeccable p1 polish bundle) shipped via PR #36 (merge commit 8fe463a). v1.1 substantially complete — Phase 12 prepped on `feat/observability-conformance-surface`.
+last_updated: "2026-05-18T13:32:30.000Z"
 last_activity: 2026-05-18
 progress:
-  total_phases: 16
-  completed_phases: 8
-  total_plans: 51
-  completed_plans: 51
+  total_phases: 17
+  completed_phases: 9
+  total_plans: 57
+  completed_plans: 57
   percent: 100
 ---
 
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 11.1 — impeccable p1 polish bundle (inserted 2026-05-18)
+**Current focus:** v1.1 close-out audit; next move = ratify D-10.5-03.calibration-2 ADR or open Phase 11.2 / Phase 12
 
 ## Current Position
 
-Phase: 11.1 (INSERTED, urgent)
-Plan: Not started — `/gsd-discuss-phase 11.1` is next
-Last shipped: Phase 11 (Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle) via PR #35 on 2026-05-18
-Milestone: v1.1 — Cross-family observability — substantially complete; Phase 11.1 closes calibration debt before declaring v1.1 closed
-Status: Pre-discuss (commitment ritual emitted; agentic-apps-workflow + gsd-insert-phase invoked)
+Phase: 11.1 SHIPPED (merge commit 8fe463a on main)
+Plan: 6/6 plans complete; all 5 IMP-* requirements verified
+Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
+Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
+Status: Phase complete; awaiting next-phase route
 Last activity: 2026-05-18
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [████████■■] ~80% (Phase 10/10.5/10.6/11 shipped; Phase 11.1 in flight, Phase 12 prepped)
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 
 ## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
@@ -45,7 +45,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 
 **Velocity:**
 
-- Total plans completed: 53
+- Total plans completed: 59
 - Average duration: —
 - Total execution time: 0 h
 
@@ -62,6 +62,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 06 | 7 | - | - |
 | 07 | 5 | - | - |
 | 11 | 0 | - | - |
+| 11.1 | 6 | - | - |
 
 **Recent Trend:**
 
