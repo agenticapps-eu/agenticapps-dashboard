@@ -253,15 +253,6 @@ export function CoveragePage(): React.JSX.Element {
         helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
         sticky={true}
         actions={
-          // Primary action depends on the 3-state GitNexus install classification.
-          // 10.6: this used to be a 2-way (boolean) switch that mis-labelled the
-          // installed-but-never-indexed case as "Install GitNexus". Now:
-          //   - not-installed           → Install GitNexus (copy npm install)
-          //   - installed-no-registry   → Index with GitNexus (copy gitnexus analyze)
-          //   - installed-with-registry → Refresh N stale (normal matrix)
-          // Prior P0 (10-IMPECCABLE.md): "Refresh 0 stale" was a confidence-killer
-          // when 42 cells were red because no install existed. Three-way swap fixes
-          // the second variant of that bug (binary present, no registry yet).
           data.gitNexusInstallState === 'installed-with-registry' ? (
             <RefreshAllStaleButton
               rows={filtered}
@@ -273,14 +264,14 @@ export function CoveragePage(): React.JSX.Element {
             <InstallGitNexusButton />
           )
         }
-      />
-
-      <CoverageToolbar
-        filter={filter}
-        search={searchText}
-        onFilterChange={handleFilterChange}
-        onSearchChange={handleSearchChange}
-      />
+      >
+        <CoverageToolbar
+          filter={filter}
+          search={searchText}
+          onFilterChange={handleFilterChange}
+          onSearchChange={handleSearchChange}
+        />
+      </PageHeader>
 
       {noResults ? (
         <CoverageEmptyState
