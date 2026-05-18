@@ -19,6 +19,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 // Mock the dependencies boot.ts touches so we can spy on them deterministically.
 vi.mock('../lib/pidfile.js', () => ({
@@ -44,6 +47,7 @@ import {
   clearDisposers,
   gracefulShutdown,
   _runDisposersForTests,
+  assertSnapshotDirInDaemonHome,
 } from './boot.js'
 import { removePidfile } from '../lib/pidfile.js'
 import { removeServerInfo } from '../lib/serverInfo.js'
@@ -169,12 +173,10 @@ describe('boot.ts disposer registry', () => {
 })
 
 // ── Task 7: symlink-escape boot check + scheduler wiring ──────────────────────
-
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
-import { assertSnapshotDirInDaemonHome } from './boot.js'
+// (Imports for this section moved to the top-level import block above to satisfy
+// import/no-duplicates — `assertSnapshotDirInDaemonHome` is included in the
+// './boot.js' import group at line 42, and node:fs/os/path are imported once
+// at the file scope.)
 
 describe('boot.ts assertSnapshotDirInDaemonHome (T-11-02-03)', () => {
   let originalHome: string | undefined
