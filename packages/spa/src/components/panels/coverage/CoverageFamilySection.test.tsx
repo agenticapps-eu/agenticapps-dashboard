@@ -456,8 +456,10 @@ describe('per-row pending derivation', () => {
         />,
       ),
     )
-    const dataRow = screen.getByRole('row')
-    expect(dataRow.getAttribute('aria-busy')).toBe('true')
+    // getAllByRole('row') returns header + data rows; find the data row via td presence
+    const allRows = screen.getAllByRole('row')
+    const dataRow = allRows.find((r) => r.querySelector('td'))
+    expect(dataRow?.getAttribute('aria-busy')).toBe('true')
     const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
     expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
     expect(refreshBtn).toHaveProperty('disabled', true)

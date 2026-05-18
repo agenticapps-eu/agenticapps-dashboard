@@ -29,6 +29,7 @@ import type {
   CoverageFamily,
   CoverageState,
   GitNexusInstallState,
+  CoverageRefreshRequest,
 } from '@agenticapps/dashboard-shared'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
@@ -43,6 +44,8 @@ export interface CoverageFamilySectionProps {
   rows: ReadonlyArray<CoverageRowData>  // already filtered (parent applies filter+search)
   gitNexusInstallState: GitNexusInstallState  // 10.6: 3-state replaces boolean
   onRefresh?: CoverageRowProps['onRefresh']
+  refreshIsPending?: boolean
+  refreshVariables?: CoverageRefreshRequest | undefined
 }
 
 // We reference CoverageRowProps so import it
@@ -90,6 +93,8 @@ export function CoverageFamilySection({
   rows,
   gitNexusInstallState,
   onRefresh,
+  refreshIsPending = false,
+  refreshVariables,
 }: CoverageFamilySectionProps): React.JSX.Element {
   const toast = useToast()
   const key = storageKey(family)
@@ -196,13 +201,22 @@ export function CoverageFamilySection({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {rows.map((row) => (
-                <CoverageRow
-                  key={`${row.family}-${row.repo}`}
-                  row={row}
-                  {...(onRefresh !== undefined ? { onRefresh } : {})}
-                />
-              ))}
+              {rows.map((row) => {
+                const pending = !!(
+                  refreshIsPending &&
+                  refreshVariables?.action === 'gitnexus-analyze' &&
+                  refreshVariables.family === row.family &&
+                  refreshVariables.repo === row.repo
+                )
+                return (
+                  <CoverageRow
+                    key={`${row.family}-${row.repo}`}
+                    row={row}
+                    pending={pending}
+                    {...(onRefresh !== undefined ? { onRefresh } : {})}
+                  />
+                )
+              })}
             </tbody>
           </table>
         </div>
