@@ -133,7 +133,8 @@ describe('CoverageFamilySection', () => {
         <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
       ),
     )
-    expect(screen.getByText(/agenticapps/i)).toBeTruthy()
+    // Use queryAllByText since tooltip content also contains 'agenticapps' (workflowVersion copy)
+    expect(screen.queryAllByText(/agenticapps/i).length).toBeGreaterThan(0)
     // Should show counts
     expect(screen.getByText(/✓/)).toBeTruthy()
   })
