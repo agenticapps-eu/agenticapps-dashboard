@@ -413,13 +413,50 @@ Plans:
 
 ### Phase 11.2: impeccable P2 polish bundle (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 11
-**Plans:** 0 plans
+**Goal:** Close the 5 follow-up items surfaced in `11.1-IMPECCABLE.md` §"Phase 11.2 candidate" so the `/coverage` IMPECCABLE composite lifts from ~81 → ~85–87 without invoking the calibration-2 structural-debt waiver clause. Items: P1 column-header tooltips (CLAUDE.md/GitNexus/Wiki/Workflow), P1 per-row in-flight feedback for `gitnexus-analyze` + success toast, P2 Wiki column width tightening (w-[22rem] → w-72), P2 iPad refresh-icon 44×44px touch target, P3 controlled search input, P3 PageHeader subtitle max-w-prose. **No daemon, auth, storage, API, or LLM surface touched — `/cso` not required.**
+
+**Requirements**: IMP-01..IMP-05 inherited as regression contract from Phase 11.1 (D-11.2-15). No new REQ-IDs minted — Phase 11.2 closes the 15 D-11.2-01..15 decision set without expanding the requirement surface.
+**Depends on:** Phase 11 (CoverageFamilySection + CoverageRow + CoverageToolbar + CoveragePage + PageHeader + Toast primitive) + Phase 11.1 (`<colgroup>` column-width SoT, sticky PageHeader + `--ph-h`, Toast wiring at 6 sites, contrast invariant)
+**Branch:** `feat/impeccable-p2-polish-bundle` (cut from `main` after Phase 11.1 merge `8fe463a`)
+**Plans:** 6/6 plans planned
+
+**Decisions (D-11.2-01..15) — RESOLVED in `/gsd-discuss-phase 11.2` (`--auto`-equivalent mode), 2026-05-18:**
+  1. In-house `Tooltip.tsx` primitive (~65 LOC, no Radix/shadcn) (D-11.2-01)
+  2. Tooltip API: `<Tooltip content="…">{children}</Tooltip>`; `aria-describedby` + `role=tooltip`; `z-[var(--z-overlay)]` = 100 (D-11.2-02)
+  3. Open on hover+focus (100ms delay), close on leave/blur/Escape (0ms) (D-11.2-03)
+  4. Opacity-only animation, 100ms in / 0ms out (D-11.2-04)
+  5. Column-header tooltip copy + sibling SoT `coverageColumnTooltips.ts` (D-11.2-05)
+  6. Fan-out `refresh.isPending` + `.variables` → per-row `pending` derivation (D-11.2-06)
+  7. Pending signal: spinner + `aria-busy=true` on button AND row + `disabled` + forced `opacity-100` (D-11.2-07)
+  8. Success/error toast on gitnexus-analyze settle (D-11.2-08)
+  9. Wiki column: `w-[22rem]` → `w-72` (288px) (D-11.2-09)
+  10. `coverageColumns.ts` comment-chain history pattern (D-11.2-10)
+  11. Refresh button: `min-w/h-[44px]` + `p-[15px]` (Apple HIG 44px touch target, icon stays 14px) (D-11.2-11)
+  12. Actions column: `w-8` (32px) → `w-12` (48px) (D-11.2-12)
+  13. Hybrid controlled search input — `useState(search)` + `useEffect([search])` mirror-state with debounce locality preserved (D-11.2-13)
+  14. `max-w-prose` on PageHeader subtitle `<p>` (D-11.2-14)
+  15. Regression contract: Phase 11.1 IMP-01..05 must-haves preserved (D-11.2-15)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 11.2 to break down)
+- [ ] 11.2-01-PLAN.md — Wave 1 (TDD, parallel): `ui/Tooltip.tsx` primitive (~65 LOC) + `Tooltip.test.tsx` (8 tests) + `coverageColumnTooltips.ts` SoT + `CoverageFamilySection.tsx` wires 4 `<th>` with `<Tooltip>`. Closes D-11.2-01..05. depends_on: []
+- [ ] 11.2-02-PLAN.md — Wave 2 (TDD, sequential — same file CoverageFamilySection.tsx as 01): `CoverageRow.tsx` adds `pending` prop (spinner + aria-busy + disabled + opacity-100) + `CoverageFamilySection.tsx` derives per-row pending from `refresh.isPending` + `.variables` + `CoveragePage.tsx` wires refresh handle + adds gitnexus-analyze success/error toast (7th + 8th call sites). Closes D-11.2-06..08. depends_on: 11.2-01
+- [ ] 11.2-03-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` wiki: `w-[22rem]` → `w-72` + comment chain + `coverageColumns.test.ts` regression lock. Closes D-11.2-09..10. depends_on: []
+- [ ] 11.2-04-PLAN.md — Wave 3 (TDD, sequential — single-writer to coverageColumns.ts + CoverageRow.tsx): `coverageColumns.ts` actions: `w-8` → `w-12` + `CoverageRow.tsx` refresh button `p-0.5` → `p-[15px]` + `min-w/h-[44px]` in both pending and idle branches. Closes D-11.2-11..12. depends_on: 11.2-02, 11.2-03
+- [ ] 11.2-05-PLAN.md — Wave 1 (TDD, parallel): `CoverageToolbar.tsx` switches from `defaultValue={search}` to controlled `value={inputValue}` with `useState(search)` + `useEffect([search])` mirror-state; 200ms debounce locality preserved. Closes D-11.2-13. depends_on: []
+- [ ] 11.2-06-PLAN.md — Wave 1 (TDD, parallel): `PageHeader.tsx` subtitle `<p>` gains `max-w-prose` (Tailwind 65ch utility); one-token edit applies retroactively to 4 PageHeader-using routes. Closes D-11.2-14. depends_on: []
+
+**Wave structure:**
+- Wave 1 (parallel): 11.2-01 + 11.2-03 + 11.2-05 + 11.2-06 (exclusive file ownership — Tooltip+section / coverageColumns / Toolbar / PageHeader)
+- Wave 2 (sequential): 11.2-02 (waits for 11.2-01 — both modify CoverageFamilySection.tsx)
+- Wave 3 (sequential): 11.2-04 (waits for 11.2-02 — same CoverageRow.tsx; waits for 11.2-03 — same coverageColumns.ts)
+
+**Post-phase gates:**
+- Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse)
+- `/cso` **NOT REQUIRED** (no daemon/auth/storage/api/llm touched) — confirm explicitly in REVIEW.md
+- `/qa` walkthrough on `/coverage` covering all 6 polish surfaces + regression smoke against IMP-01..05
+- `/impeccable critique` on `/coverage` at 1440×900 → `11.2-IMPECCABLE.md` (target composite ~81 → ~85–87; calibration data point #4 for D-10.5-03)
+
+**Out of scope (deferred):** Coverage responsive collapse below 768px (Phase 12 candidate), drift badge re-pass at 2-3 weeks of snapshot history, family-aggregate worst-state-wins refinement, tooltip auto-positioning / collision detection, `OverrideChip` count tooltip, multi-toast queue.
 
 ### Phase 11.1: impeccable p1 polish bundle (INSERTED)
 
