@@ -160,8 +160,8 @@ export function CoverageRow({ row, onRefresh, pending = false }: CoverageRowProp
             {...(pending ? { 'aria-busy': true } : {})}
             className={
               pending
-                ? "text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-100 p-0.5"
-                : "text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-30 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 p-0.5"
+                ? "text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-100 min-w-[44px] min-h-[44px] p-[15px]"
+                : "text-text-tertiary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md opacity-30 group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100 min-w-[44px] min-h-[44px] p-[15px]"
             }
           >
             <RefreshCw size={14} aria-hidden="true" className={pending ? 'animate-spin' : ''} />
