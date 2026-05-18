@@ -9,8 +9,8 @@
  * Anchors:
  *   - black/white → 21:1 (canonical WCAG upper bound)
  *   - mid-gray [128,128,128] → L ≈ 0.21586 (WCAG canonical example)
- *   - current tertiary #807A92 vs app-bg #FAFAF7 → ~3.99:1 (the failing case)
- *   - candidate tertiary #75708A vs app-bg #FAFAF7 → ~4.69:1 (the passing case)
+ *   - current tertiary #807A92 vs app-bg #FAFAF7 → ~3.92:1 (the failing case — below AA)
+ *   - candidate tertiary #706B85 vs app-bg #FAFAF7 → ~4.86:1 (the passing case — clears AA)
  */
 import { describe, expect, it } from 'vitest'
 
@@ -65,11 +65,11 @@ describe('contrastRatio', () => {
     expect(contrastRatio('#FFFFFF', '#FFFFFF')).toBe(1)
   })
 
-  it('returns ~3.99:1 for the current tertiary #807A92 on app-bg #FAFAF7 (failing case below AA)', () => {
-    expect(contrastRatio('#807A92', '#FAFAF7')).toBeCloseTo(3.99, 1)
+  it('returns ~3.92:1 for the current tertiary #807A92 on app-bg #FAFAF7 (failing case — below AA 4.5)', () => {
+    expect(contrastRatio('#807A92', '#FAFAF7')).toBeCloseTo(3.92, 2)
   })
 
-  it('returns ~4.69:1 for the candidate tertiary #75708A on app-bg #FAFAF7 (passing case above AA)', () => {
-    expect(contrastRatio('#75708A', '#FAFAF7')).toBeCloseTo(4.69, 1)
+  it('returns ~4.86:1 for the chosen tertiary #706B85 on app-bg #FAFAF7 (passing case — clears AA 4.5)', () => {
+    expect(contrastRatio('#706B85', '#FAFAF7')).toBeCloseTo(4.86, 2)
   })
 })
