@@ -188,4 +188,60 @@ describe('Tooltip primitive', () => {
 
     expect(panel.style.top).toBe('84px')
   })
+
+  it('re-measures panel position on window resize while open', () => {
+    vi.useFakeTimers()
+    render(<Tooltip content="hi">trigger</Tooltip>)
+    const trigger = screen.getByText('trigger').closest('span[tabindex="0"]') as HTMLElement
+    const panel = screen.getByRole('tooltip') as HTMLElement
+
+    const rect = vi.spyOn(trigger, 'getBoundingClientRect')
+    rect.mockReturnValue({
+      top: 100, bottom: 120, left: 50, right: 90, width: 40, height: 20,
+      x: 50, y: 100, toJSON() { return {} },
+    } as DOMRect)
+
+    act(() => { fireEvent.mouseEnter(trigger) })
+    act(() => { vi.advanceTimersByTime(110) })
+    expect(panel.style.top).toBe('124px')
+
+    rect.mockReturnValue({
+      top: 200, bottom: 220, left: 70, right: 110, width: 40, height: 20,
+      x: 70, y: 200, toJSON() { return {} },
+    } as DOMRect)
+    act(() => { window.dispatchEvent(new Event('resize')) })
+
+    expect(panel.style.top).toBe('224px')
+    expect(panel.style.left).toBe('70px')
+  })
+
+  it('closes instantly on blur', () => {
+    vi.useFakeTimers()
+    render(<Tooltip content="hi">trigger</Tooltip>)
+    const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
+    const panel = screen.getByRole('tooltip')
+
+    act(() => { fireEvent.focus(trigger) })
+    act(() => { vi.advanceTimersByTime(110) })
+    expect(panel.className).toContain('opacity-100')
+
+    act(() => { fireEvent.blur(trigger) })
+    expect(panel.className).toContain('opacity-0')
+  })
+
+  it('clears the open timer on unmount (no setState after unmount)', () => {
+    vi.useFakeTimers()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { unmount } = render(<Tooltip content="hi">trigger</Tooltip>)
+    const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
+
+    // Start the 100ms open timer, then unmount before it fires.
+    act(() => { fireEvent.mouseEnter(trigger) })
+    unmount()
+    act(() => { vi.advanceTimersByTime(500) })
+
+    // The cleanup must have cleared the timer — no "setState on unmounted" warning.
+    expect(errorSpy).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
 })
