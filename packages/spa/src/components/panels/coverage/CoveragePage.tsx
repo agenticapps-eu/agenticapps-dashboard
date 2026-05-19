@@ -31,7 +31,7 @@ import { useToast } from '../../ui/Toast.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { CoverageToolbar } from './CoverageToolbar.js'
 import type { CoverageStatusFilter } from './CoverageToolbar.js'
-import { CoverageFamilySection } from './CoverageFamilySection.js'
+import { CoverageFamilySection, refreshKey } from './CoverageFamilySection.js'
 import { CoverageEmptyState } from './CoverageEmptyState.js'
 import { RefreshAllStaleButton } from './RefreshAllStaleButton.js'
 import { InstallGitNexusButton } from './InstallGitNexusButton.js'
@@ -93,6 +93,15 @@ export function CoveragePage(): React.JSX.Element {
   )
   const [searchText, setSearchText] = useState(search.q ?? '')
 
+  // Set of `${family}/${repo}` keys with a gitnexus-analyze refresh currently
+  // in-flight. Replaces the prior last-write-wins read of `refresh.variables`
+  // so two concurrent row clicks each keep their own spinner+disabled state
+  // until their individual mutateAsync resolves (Phase 11.2 stage-1 /review
+  // cross-model finding — Claude F4 / Codex #1).
+  const [inFlightRefreshes, setInFlightRefreshes] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+
   // Sync filter to URL
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = navigate as unknown as (opts: { search: Record<string, unknown>; replace: boolean }) => void
@@ -136,7 +145,13 @@ export function CoveragePage(): React.JSX.Element {
     ) => {
       void (async () => {
         switch (action) {
-          case 'gitnexus-analyze':
+          case 'gitnexus-analyze': {
+            const key = refreshKey(context.family, context.repo)
+            setInFlightRefreshes((prev) => {
+              const next = new Set(prev)
+              next.add(key)
+              return next
+            })
             try {
               // CoverageRefreshResponseSchema is a discriminated union: the
               // daemon can resolve with ok:false (kind: 'not-installed' |
@@ -166,8 +181,15 @@ export function CoveragePage(): React.JSX.Element {
                 message: `Indexing failed: ${reason}`,
                 variant: 'error',
               })
+            } finally {
+              setInFlightRefreshes((prev) => {
+                const next = new Set(prev)
+                next.delete(key)
+                return next
+              })
             }
             break
+          }
           case 'wiki-compile-clipboard': {
             const ok = await writeToClipboard(buildWikiCompileClipboardString(context.family))
             toast.show(
@@ -330,8 +352,7 @@ export function CoveragePage(): React.JSX.Element {
               rows={byFamily[family]}
               gitNexusInstallState={data.gitNexusInstallState}
               onRefresh={handleRefresh}
-              refreshIsPending={refresh.isPending}
-              refreshVariables={refresh.variables}
+              inFlightRefreshes={inFlightRefreshes}
             />
           ))}
         </div>

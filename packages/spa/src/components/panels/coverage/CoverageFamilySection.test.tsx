@@ -403,38 +403,17 @@ describe('column-header tooltips', () => {
   })
 })
 
-describe('per-row pending derivation', () => {
+describe('per-row pending derivation (Set-based inFlightRefreshes)', () => {
   const mockRow = makeRow('repo-a')
 
-  it('when refreshIsPending is false, no row receives pending=true', () => {
+  it('when inFlightRefreshes is empty/undefined, no row receives pending=true', () => {
     render(
       withQC(
         <CoverageFamilySection
           family="agenticapps"
           rows={[mockRow]}
           gitNexusInstallState="installed-with-registry"
-          refreshIsPending={false}
-          refreshVariables={undefined}
-        />,
-      ),
-    )
-    // Expand section (starts expanded by default)
-    const rows = screen.getAllByRole('row')
-    // No row should have aria-busy
-    for (const row of rows) {
-      expect(row.getAttribute('aria-busy')).toBeNull()
-    }
-  })
-
-  it('when refreshIsPending is true but refreshVariables.action is NOT gitnexus-analyze, no row receives pending=true', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[mockRow]}
-          gitNexusInstallState="installed-with-registry"
-          refreshIsPending={true}
-          refreshVariables={{ family: 'agenticapps', repo: mockRow.repo, action: 'wiki-compile-clipboard' as never }}
+          inFlightRefreshes={new Set()}
         />,
       ),
     )
@@ -444,19 +423,35 @@ describe('per-row pending derivation', () => {
     }
   })
 
-  it('when refreshIsPending is true AND variables matches the row family+repo, that row receives pending=true', () => {
+  it('when inFlightRefreshes contains a non-matching key, no row receives pending=true', () => {
     render(
       withQC(
         <CoverageFamilySection
           family="agenticapps"
           rows={[mockRow]}
           gitNexusInstallState="installed-with-registry"
-          refreshIsPending={true}
-          refreshVariables={{ family: 'agenticapps', repo: mockRow.repo, action: 'gitnexus-analyze' }}
+          // Different family — must not light up agenticapps rows.
+          inFlightRefreshes={new Set([`factiv/${mockRow.repo}`])}
         />,
       ),
     )
-    // getAllByRole('row') returns header + data rows; find the data row via td presence
+    const rows = screen.getAllByRole('row')
+    for (const row of rows) {
+      expect(row.getAttribute('aria-busy')).toBeNull()
+    }
+  })
+
+  it('when inFlightRefreshes has the row key, that row receives pending=true (spinner + aria-busy + disabled)', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set([`agenticapps/${mockRow.repo}`])}
+        />,
+      ),
+    )
     const allRows = screen.getAllByRole('row')
     const dataRow = allRows.find((r) => r.querySelector('td'))
     expect(dataRow?.getAttribute('aria-busy')).toBe('true')
@@ -465,7 +460,7 @@ describe('per-row pending derivation', () => {
     expect(refreshBtn).toHaveProperty('disabled', true)
   })
 
-  it('when refreshIsPending is true but variables.repo matches a DIFFERENT row, only that row receives pending', () => {
+  it('Concurrent in-flight refreshes: BOTH matching rows stay pending — last-write-wins is fixed (stage-1 /review cross-model finding)', () => {
     const mockRowA = makeRow('repo-a')
     const mockRowB = makeRow('repo-b')
     render(
@@ -474,13 +469,40 @@ describe('per-row pending derivation', () => {
           family="agenticapps"
           rows={[mockRowA, mockRowB]}
           gitNexusInstallState="installed-with-registry"
-          refreshIsPending={true}
-          refreshVariables={{ family: 'agenticapps', repo: mockRowB.repo, action: 'gitnexus-analyze' }}
+          inFlightRefreshes={new Set([
+            `agenticapps/${mockRowA.repo}`,
+            `agenticapps/${mockRowB.repo}`,
+          ])}
         />,
       ),
     )
     const allRows = screen.getAllByRole('row')
-    // The data rows are the ones after the header row
+    const dataRows = allRows.filter((r) => r.querySelector('td'))
+    const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
+    const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
+    // Both rows must keep their own spinner+disabled state. Under the old
+    // refresh.variables pattern, only the last-written variables would mark
+    // a row pending — the other row would silently lose its disabled state
+    // even though its mutateAsync was still in flight, enabling duplicate
+    // submits.
+    expect(rowA?.getAttribute('aria-busy')).toBe('true')
+    expect(rowB?.getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('Set membership picks only matching rows: pending for repo-b leaves repo-a alone', () => {
+    const mockRowA = makeRow('repo-a')
+    const mockRowB = makeRow('repo-b')
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRowA, mockRowB]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set([`agenticapps/${mockRowB.repo}`])}
+        />,
+      ),
+    )
+    const allRows = screen.getAllByRole('row')
     const dataRows = allRows.filter((r) => r.querySelector('td'))
     const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
     const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))

@@ -29,27 +29,37 @@ import type {
   CoverageFamily,
   CoverageState,
   GitNexusInstallState,
-  CoverageRefreshRequest,
 } from '@agenticapps/dashboard-shared'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
+import type { CoverageRowProps } from './CoverageRow.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { useToast } from '../../ui/Toast.js'
 import { Tooltip } from '../../ui/Tooltip.js'
 
+/**
+ * Stable key for a row's in-flight refresh slot. Same convention used in
+ * CoveragePage when adding/removing entries from the inFlightRefreshes Set.
+ */
+export function refreshKey(family: CoverageFamily, repo: string): string {
+  return `${family}/${repo}`
+}
+
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
   rows: ReadonlyArray<CoverageRowData>  // already filtered (parent applies filter+search)
   gitNexusInstallState: GitNexusInstallState  // 10.6: 3-state replaces boolean
   onRefresh?: CoverageRowProps['onRefresh']
-  refreshIsPending?: boolean
-  refreshVariables?: CoverageRefreshRequest | undefined
+  /**
+   * Set of `${family}/${repo}` keys currently in-flight for a gitnexus-analyze
+   * refresh. Replaces the prior `refreshIsPending`+`refreshVariables` pair so
+   * concurrent row refreshes each retain their own pending+disabled state.
+   * Phase 11.2 stage-1 /review cross-model finding (Claude F4 / Codex #1).
+   */
+  inFlightRefreshes?: ReadonlySet<string>
 }
-
-// We reference CoverageRowProps so import it
-import type { CoverageRowProps } from './CoverageRow.js'
 
 // UI-SPEC §5: localStorage key format (locked)
 function storageKey(family: CoverageFamily): string {
@@ -93,8 +103,7 @@ export function CoverageFamilySection({
   rows,
   gitNexusInstallState,
   onRefresh,
-  refreshIsPending = false,
-  refreshVariables,
+  inFlightRefreshes,
 }: CoverageFamilySectionProps): React.JSX.Element {
   const toast = useToast()
   const key = storageKey(family)
@@ -202,12 +211,7 @@ export function CoverageFamilySection({
             </thead>
             <tbody className="divide-y divide-border-subtle">
               {rows.map((row) => {
-                const pending = !!(
-                  refreshIsPending &&
-                  refreshVariables?.action === 'gitnexus-analyze' &&
-                  refreshVariables.family === row.family &&
-                  refreshVariables.repo === row.repo
-                )
+                const pending = !!inFlightRefreshes?.has(refreshKey(row.family, row.repo))
                 return (
                   <CoverageRow
                     key={`${row.family}-${row.repo}`}

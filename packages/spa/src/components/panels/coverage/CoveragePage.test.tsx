@@ -768,16 +768,27 @@ describe('gitnexus-analyze toast wiring', () => {
     })
   })
 
-  it('refreshIsPending + refreshVariables are passed through to family sections', async () => {
+  // Stage-1 /review cross-model finding (Claude F4 / Codex #1): CoveragePage
+  // now owns a Set<string> of in-flight refresh keys instead of reading
+  // refresh.variables. This test exercises a deferred mutateAsync so we can
+  // observe the row going pending after the click and clearing after resolve.
+  it('per-row in-flight tracking: clicking gitnexus-analyze marks ONLY that row pending until the mutation resolves', async () => {
+    let resolveMutate: (val: unknown) => void = () => {}
+    const mutateAsync = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveMutate = resolve
+        }),
+    )
     vi.mocked(useCoverageRefresh).mockReturnValue({
       mutate: vi.fn(),
-      mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
-      isPending: true,
+      mutateAsync,
+      isPending: false,
       isError: false,
       isSuccess: false,
-      isIdle: false,
-      status: 'pending',
-      variables: { family: 'agenticapps', repo: 'dashboard', action: 'gitnexus-analyze' },
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
       data: undefined,
       error: null,
       reset: vi.fn(),
@@ -803,14 +814,33 @@ describe('gitnexus-analyze toast wiring', () => {
 
     render(<CoveragePage />, { wrapper })
 
-    // The agenticapps/dashboard row should have aria-busy=true
+    // Open the dashboard row's refresh popover and click gitnexus-analyze.
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    // Dashboard row goes pending (aria-busy=true) while the mutation is in flight.
     await waitFor(() => {
       const allRows = screen.getAllByRole('row')
-      const dashboardRow = allRows.find((r) => r.textContent?.includes('dashboard') && r.querySelector('td'))
+      const dashboardRow = allRows.find(
+        (r) => r.textContent?.includes('dashboard') && r.querySelector('td'),
+      )
       expect(dashboardRow?.getAttribute('aria-busy')).toBe('true')
-      // The cparx row should NOT have aria-busy
-      const cparxRow = allRows.find((r) => r.textContent?.includes('cparx') && r.querySelector('td'))
+      // The cparx row stays NOT-pending — no last-write-wins bleed across rows.
+      const cparxRow = allRows.find(
+        (r) => r.textContent?.includes('cparx') && r.querySelector('td'),
+      )
       expect(cparxRow?.getAttribute('aria-busy')).toBeNull()
+    })
+
+    // Resolve the mutation — pending state must clear in the finally block.
+    resolveMutate({ ok: true, kind: 'ok', updatedRow: makeRow('agenticapps', 'dashboard', 'fresh') })
+
+    await waitFor(() => {
+      const allRows = screen.getAllByRole('row')
+      const dashboardRow = allRows.find(
+        (r) => r.textContent?.includes('dashboard') && r.querySelector('td'),
+      )
+      expect(dashboardRow?.getAttribute('aria-busy')).toBeNull()
     })
   })
 })
