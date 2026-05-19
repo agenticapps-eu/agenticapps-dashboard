@@ -260,4 +260,42 @@ describe('controlled input (D-11.2-13)', () => {
     expect(onSearchChange).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
+
+  // Stage-1 /review cross-model finding: a prop-driven search reset (URL
+  // back-button or "Clear filters") must also cancel any in-flight debounce.
+  // Otherwise a pending 0-200ms keystroke can fire AFTER the reset and
+  // resurrect the stale value into the parent's URL state.
+  it('cancels any in-flight debounce when the search prop changes (no stale keystroke after reset)', () => {
+    vi.useFakeTimers()
+    const onSearchChange = vi.fn()
+    // Initial render with a non-empty search prop so the parent-driven reset
+    // below is an actual prop change ("foo" → "") that fires useEffect([search]).
+    const { rerender } = render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="foo"
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    // User types — debounce starts at 200ms with "fooba".
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'fooba' } })
+    // Parent resets the search prop before the 200ms elapses (e.g. Clear filters
+    // or back-button to a route with no q param).
+    rerender(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    act(() => { vi.advanceTimersByTime(500) })
+    // The pending keystroke MUST NOT fire after the reset; otherwise it would
+    // resurrect "fooba" into the URL after the user already cleared it.
+    expect(onSearchChange).not.toHaveBeenCalled()
+    // Mirror state was re-seeded from the (empty) prop.
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('')
+    vi.useRealTimers()
+  })
 })

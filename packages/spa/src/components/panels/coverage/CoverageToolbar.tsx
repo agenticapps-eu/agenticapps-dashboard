@@ -59,9 +59,16 @@ export function CoverageToolbar({
   // D-11.2-13: hybrid controlled input — mirror state synced from prop.
   // The 200ms debounce stays inside this component (Phase 10 isolation
   // preserved). The useEffect([search]) re-seeds inputValue when the URL
-  // back-button changes the search prop.
+  // back-button OR an external reset (Clear filters / route change) updates
+  // the search prop. When the prop changes we also cancel any in-flight
+  // debounce so a pending keystroke can't fire afterwards and resurrect the
+  // stale value (Phase 11.2 stage-1 /review cross-model finding).
   const [inputValue, setInputValue] = useState(search)
   useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
     setInputValue(search)
   }, [search])
 
