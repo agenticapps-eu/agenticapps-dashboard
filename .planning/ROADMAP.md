@@ -283,6 +283,10 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 10. Coverage Matrix Page | 9/9 | ✅ Complete (PR #28) | 2026-05-13 |
 | 10.5. Impeccable skill-driven gate (inserted) | 5 deliverables / 5 | ✅ Complete (PR #28) | 2026-05-13 |
 | 10.6. Three-state GitNexus detection (inserted) | 1/1 | ✅ Complete (PR #29) | 2026-05-14 |
+| 11. Coverage trends + Skill drift + 10.6 polish | 6/6 | ✅ Complete (PR #35) | 2026-05-18 |
+| 11.1. Impeccable P1 polish bundle (inserted) | 6/6 | ✅ Complete (PR #36) | 2026-05-18 |
+| 11.2. Impeccable P2 polish bundle (inserted) | 6/6 | ✅ Complete (PR #38) | 2026-05-19 |
+| 12. Observability Conformance Surface | 0/TBD | 🚧 Discussing | - |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
@@ -499,6 +503,41 @@ Plans:
 - `/impeccable critique` on `/coverage` at 1440×900 → `11.1-IMPECCABLE.md` (calibration data point #3 for D-10.5-03)
 
 **Out of scope (deferred):** P2 column-header tooltips, P2 family-aggregate semantic redesign, P3 uniformly-missing column collapse, `CodeBlock.tsx`/`MaskedToken.tsx` toast wiring, iPad touch-target on row-refresh icon.
+
+### Phase 12: Observability Conformance Surface
+
+**Goal:** Open v1.2 by graduating the Observability section from two surfaces (Coverage point-in-time + Skill drift cross-cut) to three by adding `/observability/conformance` — a fleet-level "how conformant is every registered project to the AgenticApps standard, and how is conformance trending?" view. Two primary deliveries: (a) a 90-day **fleet-aggregate trend chart** (pure SVG, no chart library — matches Phase 11 D-11-03's zero-third-party-JS stance), reading from the existing `~/.agenticapps/dashboard/coverage-history/` NDJSON store that Phase 11 stood up; (b) per-family **conformance score** (% of cells green across CLAUDE.md / GitNexus / Wiki / Workflow, weighted by Phase 10's column definitions), surfaced as a 3-up family card row above the trend chart. Bundles in two registry-hygiene polish items: registry path drift auto-correction (Phase 11 carry-over per D-12-09 anticipation) + Coverage responsive collapse below 768px (Phase 11/11.1/11.2 carry-over).
+**Milestone:** v1.2 — Fleet conformance & drift visibility (opens v1.2)
+**Depends on:** Phase 11 (consumes `coverage-history` NDJSON store + `coverageHistory.ts` schema barrel + sibling-route precedent) · Phase 10/10.6 (column SoT + 3-state GitNexus enum for the conformance-score weighting) · Phase 5.1 (sidebar section pattern — graduates `Observability` from 2 → 3 entries) · Phase 11.x (sticky `PageHeader` primitive + Toast wiring for path-drift "fix all" affordance)
+**Authoritative inputs:**
+  - `.planning/phases/DASH-11-coverage-trends-skill-drift/11-CONTEXT.md` §"Phase 12 anticipation" — D-11-07 (family-aggregate deferred to Phase 12 `/observability/trend`) + D-11-08 (sidebar IA — Phase 12 adds Conformance as 3rd entry) + D-11-11 (sibling-endpoint pattern)
+  - `.planning/phases/DASH-11.2-impeccable-p2-polish-bundle/11.2-CONTEXT.md` §"Out of scope" — Coverage responsive collapse below 768px (Phase 12 candidate); family-aggregate worst-state-wins refinement (Phase 12 candidate)
+  - `packages/agent/src/lib/scanners/coverageScan.ts` + `packages/shared/src/schemas/coverageHistory.ts` — extension surfaces for aggregate roll-up
+  - `docs/spec/dashboard-prompt.md` — hard architectural constraints (read-only on project FS, daemon writes confined to `~/.agenticapps/dashboard/`, no native deps, bearer-auth on every route)
+**Sub-tracks:**
+  | Sub-track | Scope |
+  |---|---|
+  | Conformance route | New `/observability/conformance` route + sidebar entry. `ConformancePage` composes 3-up family cards + 90-day fleet trend chart + path-drift "Fix all" affordance. Reuses `PageHeader` (sticky variant), `Toast` (single-slot), and the Phase 11 `coverageHistory` query hook. |
+  | Fleet trend chart | Pure-SVG `FleetTrendChart` primitive (≤120 LOC, no Recharts/Chart.js/D3). Daily ticks on a 90-day x-axis, one polyline per family (3 polylines: agenticapps / factiv / neuroflash) + one fleet-aggregate polyline. Y-axis = conformance score (0–100%). Renders text labels for last-tick values; hover/focus reveals a per-day breakdown panel (touch-compatible — no hover-only disclosure per Phase 11 D-11-02). |
+  | Conformance score | New `lib/conformanceScore.ts` — given a `CoverageResponse`, return per-family `{green, amber, red, total, score}` (score = green-weighted %). New daemon roll-up endpoint `GET /api/observability/conformance` that returns current-day score + last-14d delta + last-90d series (bulk-per-family, mirrors Phase 11 PD-11-02 bulk-per-repo refinement). |
+  | Registry path drift | Daemon-side detector: scan `~/.agenticapps/dashboard/registry.json` against actual `<root>` symlink/realpath state; surface drifted entries on conformance page with one-click "Fix path" affordance that calls a new daemon route `POST /api/admin/registry/fix-path` (writes confined to `~/.agenticapps/dashboard/`, mode `0600`). |
+  | Coverage responsive collapse | Coverage page card-per-row layout below 768px viewport (iPad-portrait via Tailscale). New `useViewportBreakpoint` hook publishes `--vp-bp` CSS var; CoverageFamilySection switches table → cards under `xs:` breakpoint. |
+  | Gates | Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse) · `/cso` REQUIRED (new daemon route + filesystem write surface — registry path mutation) · `/qa` walkthrough on `/observability/conformance` covering trend chart, score cards, path-drift fix flow, responsive collapse · `/impeccable critique` on `/observability/conformance` at 1440×900 → `12-IMPECCABLE.md` (calibration data point #5 for D-10.5-03) |
+**Requirements**: TBD — minted during `/gsd-plan-phase 12` after CONTEXT.md gray-area resolution.
+**Plans**: TBD — sketched at ~7-9 plans across 4-5 waves; final shape after `/gsd-plan-phase 12`.
+
+**Anticipated decision set (D-12-01..09) — provisional from Phase 11 forward references; ratify/revise during `/gsd-discuss-phase 12`:**
+  1. D-12-01 — Sidebar IA: `Conformance` as 3rd entry under `Observability` (Coverage / Skill drift / Conformance)
+  2. D-12-02 — Sibling routes (NOT widening Phase 5's `/observability` aggregator)
+  3. D-12-03 — Conformance score weighting: equal-weight across 4 Coverage columns (no per-column priority) — to be ratified
+  4. D-12-04 — Pure-SVG chart primitive, ≤120 LOC, no chart-library dep — matches Phase 11 D-11-03's zero-third-party-JS stance
+  5. D-12-05 — 90-day x-axis window (matches Phase 11 `coverage-history` retention); discuss if 30/60/90 toggle is needed
+  6. D-12-06 — Hover + focus + keyboard reveal for per-day breakdown (no hover-only — touch-compatible, mirrors Phase 11 D-11-02)
+  7. D-12-07 — Daemon roll-up endpoint shape: bulk-per-family (NOT per-(family, day) cell) — mirrors Phase 11 PD-11-02 bulk-per-repo refinement
+  8. D-12-08 — Conformance score range: 0–100% integer, with status tier mapping (≥90 green / 70–89 amber / <70 red) — to be ratified
+  9. D-12-09 — Registry path drift auto-correction shipped in Phase 12 (carry-over) — surfaces fix affordance on conformance page; daemon endpoint `POST /api/admin/registry/fix-path` confined to `~/.agenticapps/dashboard/` writes
+
+**Out of scope (deferred to v1.2.x or later):** Per-skill conformance weighting (skill drift not folded into score for v1.2.0; revisit if dogfooding asks) · Per-project drill-down on the trend chart (3-family aggregate is the primary; per-repo drill-down would duplicate the Coverage matrix) · Export to CSV/PNG (no export workflow yet — v1.3+ candidate) · Slack/email notifications on conformance regression (push surfaces are Phase 8 territory) · Custom conformance thresholds per project (universal thresholds for v1.2.0).
 
 ## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)
 
