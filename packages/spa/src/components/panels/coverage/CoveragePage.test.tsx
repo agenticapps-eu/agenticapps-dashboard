@@ -713,6 +713,61 @@ describe('gitnexus-analyze toast wiring', () => {
     })
   })
 
+  // Stage-1 /review cross-model finding (Codex #3): the daemon's
+  // CoverageRefreshResponseSchema is a discriminated union — kind:
+  // 'not-installed' | 'timeout' | 'error' resolve with ok:false WITHOUT
+  // throwing. The toast must route those to error, not lie with "Indexed".
+  it('gitnexus-analyze ok:false (soft failure) fires error toast — NOT a success toast', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({
+      ok: false,
+      kind: 'timeout',
+      exitCode: 124,
+    })
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('agenticapps', 'dashboard', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    await waitFor(() => {
+      const alertEls = screen.queryAllByRole('alert')
+      const errorToast = alertEls.find((el) => el.textContent?.includes('Indexing failed'))
+      expect(errorToast).toBeDefined()
+      expect(errorToast!.textContent).toContain('timeout')
+      // Must NOT show a success toast.
+      const statusEls = screen.queryAllByRole('status')
+      const successToast = statusEls.find((el) => el.textContent?.includes('Indexed'))
+      expect(successToast).toBeUndefined()
+    })
+  })
+
   it('refreshIsPending + refreshVariables are passed through to family sections', async () => {
     vi.mocked(useCoverageRefresh).mockReturnValue({
       mutate: vi.fn(),

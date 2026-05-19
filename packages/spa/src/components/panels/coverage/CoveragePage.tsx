@@ -138,16 +138,29 @@ export function CoveragePage(): React.JSX.Element {
         switch (action) {
           case 'gitnexus-analyze':
             try {
-              await refresh.mutateAsync({
+              // CoverageRefreshResponseSchema is a discriminated union: the
+              // daemon can resolve with ok:false (kind: 'not-installed' |
+              // 'timeout' | 'error') WITHOUT throwing. Route those to the
+              // error toast — only ok:true is a success (Phase 11.2 stage-1
+              // /review cross-model finding).
+              const res = await refresh.mutateAsync({
                 family: context.family,
                 repo: context.repo,
                 action: 'gitnexus-analyze',
               })
-              toast.show({
-                message: `Indexed ${context.family}/${context.repo}`,
-                variant: 'success',
-              })
+              if (res.ok) {
+                toast.show({
+                  message: `Indexed ${context.family}/${context.repo}`,
+                  variant: 'success',
+                })
+              } else {
+                toast.show({
+                  message: `Indexing failed (${res.kind})`,
+                  variant: 'error',
+                })
+              }
             } catch (err) {
+              // Network/schema-drift errors still throw via mutateAsync.
               const reason = err instanceof Error ? err.message : String(err)
               toast.show({
                 message: `Indexing failed: ${reason}`,
