@@ -39,15 +39,28 @@ describe('Tooltip primitive', () => {
     expect(panel.textContent).toBe('Project AI instructions file.')
   })
 
-  it('aria-describedby on trigger matches id on panel', () => {
+  it('aria-describedby is absent on initial render and set to panel id only when open (a11y: do not leak hidden tooltip text to screen readers)', () => {
+    vi.useFakeTimers()
     render(<Tooltip content="hi">label</Tooltip>)
     const trigger = screen.getByText('label').closest('span[tabindex="0"]')
     const panel = screen.getByRole('tooltip')
     expect(trigger).not.toBeNull()
+
+    // Closed: aria-describedby is absent so screen readers do not announce the
+    // hidden description on focus before the 100ms open delay elapses.
+    expect(trigger!.hasAttribute('aria-describedby')).toBe(false)
+
+    // Open via focus + 110ms: aria-describedby points at the panel id.
+    act(() => { fireEvent.focus(trigger!) })
+    act(() => { vi.advanceTimersByTime(110) })
     const describedBy = trigger!.getAttribute('aria-describedby')
     expect(describedBy).toBeTruthy()
     expect(describedBy).not.toBe('undefined')
     expect(panel.getAttribute('id')).toBe(describedBy)
+
+    // Close via blur: attribute is removed again.
+    act(() => { fireEvent.blur(trigger!) })
+    expect(trigger!.hasAttribute('aria-describedby')).toBe(false)
   })
 
   it('opens on mouseenter after 100ms delay', () => {

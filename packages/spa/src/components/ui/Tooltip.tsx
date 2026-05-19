@@ -102,12 +102,17 @@ export function Tooltip({ content, children }: TooltipProps): React.JSX.Element 
     </span>
   )
 
+  // ARIA: only advertise aria-describedby while the tooltip is open. The panel
+  // stays mounted under document.body for animation continuity, but pointing the
+  // trigger at a permanently-present description would cause assistive tech
+  // (NVDA, VoiceOver) to announce the description on every focus regardless of
+  // the visual 100ms open delay (Phase 11.2 stage-1 /review cross-model finding).
   return (
     <span className="relative inline-block">
       <span
         ref={triggerRef}
         tabIndex={0}
-        aria-describedby={tooltipId}
+        {...(open ? { 'aria-describedby': tooltipId } : {})}
         className="border-b border-dotted border-text-tertiary cursor-default"
         onMouseEnter={scheduleOpen}
         onMouseLeave={closeNow}
