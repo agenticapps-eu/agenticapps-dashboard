@@ -136,6 +136,32 @@ describe('PageHeader', () => {
   })
 })
 
+describe('subtitle line length (D-11.2-14)', () => {
+  it('subtitle paragraph applies max-w-prose (65ch line-length cap)', () => {
+    render(
+      <PageHeader
+        title="Coverage"
+        helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
+      />,
+    )
+    const helperEl = screen.getByText(/Per-repo knowledge-layer freshness/i)
+    expect(helperEl.className).toContain('max-w-prose')
+  })
+
+  it('subtitle paragraph preserves existing classes (mt-1, text-sm, text-text-tertiary)', () => {
+    render(
+      <PageHeader
+        title="Coverage"
+        helper="Per-repo knowledge-layer freshness across agenticapps, factiv, and neuroflash families"
+      />,
+    )
+    const helperEl = screen.getByText(/Per-repo knowledge-layer freshness/i)
+    expect(helperEl.className).toContain('mt-1')
+    expect(helperEl.className).toContain('text-sm')
+    expect(helperEl.className).toContain('text-text-tertiary')
+  })
+})
+
 describe('PageHeader publishes --ph-h via ResizeObserver (IMP-02)', () => {
   beforeEach(() => {
     document.documentElement.style.removeProperty('--ph-h')

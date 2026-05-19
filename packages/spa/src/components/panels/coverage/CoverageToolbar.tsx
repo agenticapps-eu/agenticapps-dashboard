@@ -16,7 +16,7 @@
  * - NO hex literals
  * - NO shadcn aliases
  */
-import React, { useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 
 export interface CoverageStatusFilter {
@@ -56,6 +56,29 @@ export function CoverageToolbar({
 }: CoverageToolbarProps): React.JSX.Element {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // D-11.2-13: hybrid controlled input — mirror state synced from prop.
+  // The 200ms debounce stays inside this component (Phase 10 isolation
+  // preserved). The useEffect([search]) re-seeds inputValue when the URL
+  // back-button OR an external reset (Clear filters / route change) updates
+  // the search prop. When the prop changes we also cancel any in-flight
+  // debounce so a pending keystroke can't fire afterwards and resurrect the
+  // stale value (Phase 11.2 stage-1 /review cross-model finding).
+  const [inputValue, setInputValue] = useState(search)
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    setInputValue(search)
+  }, [search])
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    },
+    [],
+  )
+
   function handleChipClick(key: ChipKey) {
     if (key === 'all') {
       // 'all' clicked → deselect everything else, select 'all'
@@ -80,6 +103,7 @@ export function CoverageToolbar({
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value
+    setInputValue(value)               // update mirror state synchronously
     // 200ms debounce (UI-SPEC §5)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -119,7 +143,7 @@ export function CoverageToolbar({
           role="searchbox"
           aria-label="Search repos"
           placeholder="Search repos…"
-          defaultValue={search}
+          value={inputValue}
           onChange={handleSearchChange}
           className="w-48 md:w-64 bg-card-bg-hover border border-border-subtle rounded-md pl-8 pr-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />

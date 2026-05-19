@@ -32,6 +32,28 @@ describe('COVERAGE_COL_WIDTHS', () => {
   it('the constants object is frozen (as const — immutable at runtime)', () => {
     expect(Object.isFrozen(COVERAGE_COL_WIDTHS)).toBe(true)
   })
+
+  // Regression lock — these 5 entries are unchanged in Phase 11.2 Plan 03
+  it('repo column width is w-72 (288px)', () => {
+    expect(COVERAGE_COL_WIDTHS.repo).toBe('w-72')
+  })
+  it('claudeMd column width is w-32 (128px)', () => {
+    expect(COVERAGE_COL_WIDTHS.claudeMd).toBe('w-32')
+  })
+  it('gitNexus column width is w-36 (144px)', () => {
+    expect(COVERAGE_COL_WIDTHS.gitNexus).toBe('w-36')
+  })
+  it('workflow column width is w-32 (128px)', () => {
+    expect(COVERAGE_COL_WIDTHS.workflow).toBe('w-32')
+  })
+  it('actions column width is w-12 (48px) — widened from w-8 for 44×44px button per D-11.2-12', () => {
+    expect(COVERAGE_COL_WIDTHS.actions).toBe('w-12')
+  })
+
+  // Plan 03 (D-11.2-09): wiki tightening
+  it('wiki column width is w-72 (288px) — tightened from w-[22rem] per D-11.2-09', () => {
+    expect(COVERAGE_COL_WIDTHS.wiki).toBe('w-72')
+  })
 })
 
 describe('CoverageFamilySection consumes COVERAGE_COL_WIDTHS', () => {

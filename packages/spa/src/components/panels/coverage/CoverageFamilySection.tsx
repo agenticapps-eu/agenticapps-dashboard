@@ -32,19 +32,34 @@ import type {
 } from '@agenticapps/dashboard-shared'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
+import type { CoverageRowProps } from './CoverageRow.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { useToast } from '../../ui/Toast.js'
+import { Tooltip } from '../../ui/Tooltip.js'
+
+/**
+ * Stable key for a row's in-flight refresh slot. Same convention used in
+ * CoveragePage when adding/removing entries from the inFlightRefreshes Set.
+ */
+export function refreshKey(family: CoverageFamily, repo: string): string {
+  return `${family}/${repo}`
+}
 
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
   rows: ReadonlyArray<CoverageRowData>  // already filtered (parent applies filter+search)
   gitNexusInstallState: GitNexusInstallState  // 10.6: 3-state replaces boolean
   onRefresh?: CoverageRowProps['onRefresh']
+  /**
+   * Set of `${family}/${repo}` keys currently in-flight for a gitnexus-analyze
+   * refresh. Replaces the prior `refreshIsPending`+`refreshVariables` pair so
+   * concurrent row refreshes each retain their own pending+disabled state.
+   * Phase 11.2 stage-1 /review cross-model finding (Claude F4 / Codex #1).
+   */
+  inFlightRefreshes?: ReadonlySet<string>
 }
-
-// We reference CoverageRowProps so import it
-import type { CoverageRowProps } from './CoverageRow.js'
 
 // UI-SPEC §5: localStorage key format (locked)
 function storageKey(family: CoverageFamily): string {
@@ -88,6 +103,7 @@ export function CoverageFamilySection({
   rows,
   gitNexusInstallState,
   onRefresh,
+  inFlightRefreshes,
 }: CoverageFamilySectionProps): React.JSX.Element {
   const toast = useToast()
   const key = storageKey(family)
@@ -184,23 +200,27 @@ export function CoverageFamilySection({
             <thead>
               <tr className="text-xs text-text-tertiary border-b border-border-subtle">
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg py-2 pr-3 px-4 font-medium">Repo</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">CLAUDE.md</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">GitNexus</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Wiki</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Workflow</th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.claudeMd}>CLAUDE.md</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.gitNexus}>GitNexus</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.wiki}>Wiki</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.workflowVersion}>Workflow</Tooltip></th>
                 <th scope="col" className={`sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg pl-2 py-2 ${COVERAGE_COL_WIDTHS.actions}`}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {rows.map((row) => (
-                <CoverageRow
-                  key={`${row.family}-${row.repo}`}
-                  row={row}
-                  {...(onRefresh !== undefined ? { onRefresh } : {})}
-                />
-              ))}
+              {rows.map((row) => {
+                const pending = !!inFlightRefreshes?.has(refreshKey(row.family, row.repo))
+                return (
+                  <CoverageRow
+                    key={`${row.family}-${row.repo}`}
+                    row={row}
+                    pending={pending}
+                    {...(onRefresh !== undefined ? { onRefresh } : {})}
+                  />
+                )
+              })}
             </tbody>
           </table>
         </div>

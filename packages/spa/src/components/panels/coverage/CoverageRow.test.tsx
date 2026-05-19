@@ -386,3 +386,135 @@ describe('CoverageRow', () => {
     })
   })
 })
+
+describe('pending state', () => {
+  it('when pending is omitted, the refresh button has no animate-spin and no aria-busy', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBeNull()
+    expect(refreshBtn).not.toHaveProperty('disabled', true)
+    const svg = refreshBtn.querySelector('svg')
+    // Use getAttribute('class') — SVG className is SVGAnimatedString, not a plain string
+    expect(svg?.getAttribute('class') ?? '').not.toContain('animate-spin')
+  })
+
+  it('when pending is false, behaviour matches pending omitted', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={false} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBeNull()
+    expect(refreshBtn).not.toHaveProperty('disabled', true)
+    const svg = refreshBtn.querySelector('svg')
+    expect(svg?.getAttribute('class') ?? '').not.toContain('animate-spin')
+  })
+
+  it('when pending is true, the refresh button shows the spinning icon', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    const svg = refreshBtn.querySelector('svg')
+    // Use getAttribute('class') — SVG className is SVGAnimatedString, not a plain string
+    expect(svg?.getAttribute('class') ?? '').toContain('animate-spin')
+  })
+
+  it('when pending is true, the refresh button has aria-busy="true" and disabled', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
+    expect(refreshBtn).toHaveProperty('disabled', true)
+  })
+
+  it('when pending is true, the row <tr> has aria-busy="true"', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const row = screen.getByRole('row')
+    expect(row.getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('when pending is true, the button className forces opacity-100 (no opacity-30)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.className).toContain('opacity-100')
+    expect(refreshBtn.className).not.toContain('opacity-30')
+  })
+})
+
+describe('refresh button touch target (D-11.2-11)', () => {
+  it('refresh button className contains min-w-[44px] and min-h-[44px] (idle state)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} />
+        </tbody>
+      </table>,
+    )
+    const button = screen.getByRole('button', { name: /refresh actions/i })
+    expect(button.className).toContain('min-w-[44px]')
+    expect(button.className).toContain('min-h-[44px]')
+  })
+
+  it('refresh button className contains p-[15px] (idle state)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} />
+        </tbody>
+      </table>,
+    )
+    const button = screen.getByRole('button', { name: /refresh actions/i })
+    expect(button.className).toContain('p-[15px]')
+    expect(button.className).not.toContain('p-0.5')
+  })
+
+  it('refresh button className keeps min-w/h 44px AND p-[15px] in pending state', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow()} pending={true} />
+        </tbody>
+      </table>,
+    )
+    const button = screen.getByRole('button', { name: /refresh actions/i })
+    expect(button.className).toContain('min-w-[44px]')
+    expect(button.className).toContain('min-h-[44px]')
+    expect(button.className).toContain('p-[15px]')
+    // Plan 02 contract preserved
+    expect(button.className).toContain('opacity-100')
+    // animate-spin on the icon SVG (Plan 02 contract)
+    const svg = button.querySelector('svg')
+    expect(svg?.getAttribute('class') ?? '').toContain('animate-spin')
+  })
+})

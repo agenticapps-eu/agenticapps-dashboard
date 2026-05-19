@@ -163,3 +163,139 @@ describe('CoverageToolbar', () => {
     expect(screen.getByRole('button', { name: /all/i }).getAttribute('aria-pressed')).toBe('false')
   })
 })
+
+// ---------------------------------------------------------------------------
+// controlled input (D-11.2-13)
+// ---------------------------------------------------------------------------
+describe('controlled input (D-11.2-13)', () => {
+  const defaultFilter: CoverageStatusFilter = { all: true, missing: false, stale: false, fresh: false }
+
+  it('input renders with value reflecting the search prop', () => {
+    render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="dashboard"
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    expect(input.value).toBe('dashboard')
+  })
+
+  it('re-rendering with a different search prop updates the input value', () => {
+    const { rerender } = render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="initial"
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    expect(input.value).toBe('initial')
+
+    rerender(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="updated"
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    expect(input.value).toBe('updated')
+  })
+
+  it('typing in the input updates the displayed value immediately (controlled)', () => {
+    render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'agentic' } })
+    // Without advancing timers, mirror state should update synchronously
+    expect(input.value).toBe('agentic')
+  })
+
+  it('typing triggers onSearchChange after 200ms debounce (existing behaviour preserved)', () => {
+    vi.useFakeTimers()
+    const onSearchChange = vi.fn()
+    render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    const input = screen.getByRole('searchbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'agentic' } })
+    act(() => { vi.advanceTimersByTime(100) })
+    expect(onSearchChange).not.toHaveBeenCalled()
+    act(() => { vi.advanceTimersByTime(150) })
+    expect(onSearchChange).toHaveBeenCalledWith('agentic')
+    vi.useRealTimers()
+  })
+
+  // WR-01 regression: pending debounce timer must be cleared on unmount so
+  // route-change races do not fire onSearchChange against an unmounted parent.
+  it('clears the debounce timer on unmount (no onSearchChange after unmount)', () => {
+    vi.useFakeTimers()
+    const onSearchChange = vi.fn()
+    const { unmount } = render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'agentic' } })
+    unmount()
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(onSearchChange).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  // Stage-1 /review cross-model finding: a prop-driven search reset (URL
+  // back-button or "Clear filters") must also cancel any in-flight debounce.
+  // Otherwise a pending 0-200ms keystroke can fire AFTER the reset and
+  // resurrect the stale value into the parent's URL state.
+  it('cancels any in-flight debounce when the search prop changes (no stale keystroke after reset)', () => {
+    vi.useFakeTimers()
+    const onSearchChange = vi.fn()
+    // Initial render with a non-empty search prop so the parent-driven reset
+    // below is an actual prop change ("foo" → "") that fires useEffect([search]).
+    const { rerender } = render(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search="foo"
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    // User types — debounce starts at 200ms with "fooba".
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'fooba' } })
+    // Parent resets the search prop before the 200ms elapses (e.g. Clear filters
+    // or back-button to a route with no q param).
+    rerender(
+      <CoverageToolbar
+        filter={defaultFilter}
+        search=""
+        onFilterChange={vi.fn()}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    act(() => { vi.advanceTimersByTime(500) })
+    // The pending keystroke MUST NOT fire after the reset; otherwise it would
+    // resurrect "fooba" into the URL after the user already cleared it.
+    expect(onSearchChange).not.toHaveBeenCalled()
+    // Mirror state was re-seeded from the (empty) prop.
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('')
+    vi.useRealTimers()
+  })
+})

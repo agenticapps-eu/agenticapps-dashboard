@@ -621,3 +621,226 @@ describe('CoveragePage handleRefresh toast (IMP-03)', () => {
     })
   })
 })
+
+describe('gitnexus-analyze toast wiring', () => {
+  it('gitnexus-analyze success fires toast with "Indexed {family}/{repo}"', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({
+      ok: true,
+      kind: 'ok',
+      updatedRow: makeRow('agenticapps', 'dashboard'),
+    })
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('agenticapps', 'dashboard', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    await waitFor(() => {
+      const statusEls = screen.getAllByRole('status')
+      const toastEl = statusEls.find((el) => el.textContent?.includes('Indexed'))
+      expect(toastEl).toBeDefined()
+      expect(toastEl!.textContent).toContain('Indexed agenticapps/dashboard')
+    })
+  })
+
+  it('gitnexus-analyze error fires toast with "Indexing failed: {reason}"', async () => {
+    const mutateAsync = vi.fn().mockRejectedValue(new Error('exit code 1: spawn ENOENT'))
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('agenticapps', 'dashboard', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    await waitFor(() => {
+      const alertEls = screen.getAllByRole('alert')
+      const toastEl = alertEls.find((el) => el.textContent?.includes('Indexing failed'))
+      expect(toastEl).toBeDefined()
+      expect(toastEl!.textContent).toContain('Indexing failed: exit code 1: spawn ENOENT')
+    })
+  })
+
+  // Stage-1 /review cross-model finding (Codex #3): the daemon's
+  // CoverageRefreshResponseSchema is a discriminated union — kind:
+  // 'not-installed' | 'timeout' | 'error' resolve with ok:false WITHOUT
+  // throwing. The toast must route those to error, not lie with "Indexed".
+  it('gitnexus-analyze ok:false (soft failure) fires error toast — NOT a success toast', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({
+      ok: false,
+      kind: 'timeout',
+      exitCode: 124,
+    })
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [makeRow('agenticapps', 'dashboard', 'stale')],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    await waitFor(() => {
+      const alertEls = screen.queryAllByRole('alert')
+      const errorToast = alertEls.find((el) => el.textContent?.includes('Indexing failed'))
+      expect(errorToast).toBeDefined()
+      expect(errorToast!.textContent).toContain('timeout')
+      // Must NOT show a success toast.
+      const statusEls = screen.queryAllByRole('status')
+      const successToast = statusEls.find((el) => el.textContent?.includes('Indexed'))
+      expect(successToast).toBeUndefined()
+    })
+  })
+
+  // Stage-1 /review cross-model finding (Claude F4 / Codex #1): CoveragePage
+  // now owns a Set<string> of in-flight refresh keys instead of reading
+  // refresh.variables. This test exercises a deferred mutateAsync so we can
+  // observe the row going pending after the click and clearing after resolve.
+  it('per-row in-flight tracking: clicking gitnexus-analyze marks ONLY that row pending until the mutation resolves', async () => {
+    let resolveMutate: (val: unknown) => void = () => {}
+    const mutateAsync = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveMutate = resolve
+        }),
+    )
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({
+        rows: [
+          makeRow('agenticapps', 'dashboard', 'stale'),
+          makeRow('factiv', 'cparx', 'fresh'),
+        ],
+      }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    render(<CoveragePage />, { wrapper })
+
+    // Open the dashboard row's refresh popover and click gitnexus-analyze.
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions for dashboard/i }))
+    fireEvent.click(screen.getByText(/run gitnexus analyze/i))
+
+    // Dashboard row goes pending (aria-busy=true) while the mutation is in flight.
+    await waitFor(() => {
+      const allRows = screen.getAllByRole('row')
+      const dashboardRow = allRows.find(
+        (r) => r.textContent?.includes('dashboard') && r.querySelector('td'),
+      )
+      expect(dashboardRow?.getAttribute('aria-busy')).toBe('true')
+      // The cparx row stays NOT-pending — no last-write-wins bleed across rows.
+      const cparxRow = allRows.find(
+        (r) => r.textContent?.includes('cparx') && r.querySelector('td'),
+      )
+      expect(cparxRow?.getAttribute('aria-busy')).toBeNull()
+    })
+
+    // Resolve the mutation — pending state must clear in the finally block.
+    resolveMutate({ ok: true, kind: 'ok', updatedRow: makeRow('agenticapps', 'dashboard', 'fresh') })
+
+    await waitFor(() => {
+      const allRows = screen.getAllByRole('row')
+      const dashboardRow = allRows.find(
+        (r) => r.textContent?.includes('dashboard') && r.querySelector('td'),
+      )
+      expect(dashboardRow?.getAttribute('aria-busy')).toBeNull()
+    })
+  })
+})

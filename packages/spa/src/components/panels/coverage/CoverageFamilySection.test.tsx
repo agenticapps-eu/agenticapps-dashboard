@@ -133,7 +133,8 @@ describe('CoverageFamilySection', () => {
         <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
       ),
     )
-    expect(screen.getByText(/agenticapps/i)).toBeTruthy()
+    // Use queryAllByText since tooltip content also contains 'agenticapps' (workflowVersion copy)
+    expect(screen.queryAllByText(/agenticapps/i).length).toBeGreaterThan(0)
     // Should show counts
     expect(screen.getByText(/✓/)).toBeTruthy()
   })
@@ -352,5 +353,160 @@ describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
     const toastEl = screen.getByRole('alert')
     expect(toastEl.textContent).toContain('Copy failed')
     expect(toastEl.textContent).toContain('open the help guide for the command')
+  })
+})
+
+describe('column-header tooltips', () => {
+  it('the CLAUDE.md <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Project AI instructions file. Must exist in repo root for AI coding agents to pick up project conventions.')).toBeInTheDocument()
+  })
+
+  it('the GitNexus <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Local code index for repo-aware AI search. Built by `gitnexus analyze`; stored under `~/.gitnexus`.')).toBeInTheDocument()
+  })
+
+  it('the Wiki <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Compiled knowledge base from CLAUDE.md, ADRs, READMEs. Built by `/wiki-compile`.')).toBeInTheDocument()
+  })
+
+  it('the Workflow <th> renders a tooltip with the D-11.2-05 copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText('Installed version of `agenticapps-workflow`. Compared against the current scaffolder release.')).toBeInTheDocument()
+  })
+
+  it('the Repo and Actions <th> elements do NOT render tooltips — only 4 tooltips total', () => {
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.queryAllByRole('tooltip')).toHaveLength(4)
+  })
+})
+
+describe('per-row pending derivation (Set-based inFlightRefreshes)', () => {
+  const mockRow = makeRow('repo-a')
+
+  it('when inFlightRefreshes is empty/undefined, no row receives pending=true', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set()}
+        />,
+      ),
+    )
+    const rows = screen.getAllByRole('row')
+    for (const row of rows) {
+      expect(row.getAttribute('aria-busy')).toBeNull()
+    }
+  })
+
+  it('when inFlightRefreshes contains a non-matching key, no row receives pending=true', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          // Different family — must not light up agenticapps rows.
+          inFlightRefreshes={new Set([`factiv/${mockRow.repo}`])}
+        />,
+      ),
+    )
+    const rows = screen.getAllByRole('row')
+    for (const row of rows) {
+      expect(row.getAttribute('aria-busy')).toBeNull()
+    }
+  })
+
+  it('when inFlightRefreshes has the row key, that row receives pending=true (spinner + aria-busy + disabled)', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRow]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set([`agenticapps/${mockRow.repo}`])}
+        />,
+      ),
+    )
+    const allRows = screen.getAllByRole('row')
+    const dataRow = allRows.find((r) => r.querySelector('td'))
+    expect(dataRow?.getAttribute('aria-busy')).toBe('true')
+    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
+    expect(refreshBtn).toHaveProperty('disabled', true)
+  })
+
+  it('Concurrent in-flight refreshes: BOTH matching rows stay pending — last-write-wins is fixed (stage-1 /review cross-model finding)', () => {
+    const mockRowA = makeRow('repo-a')
+    const mockRowB = makeRow('repo-b')
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRowA, mockRowB]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set([
+            `agenticapps/${mockRowA.repo}`,
+            `agenticapps/${mockRowB.repo}`,
+          ])}
+        />,
+      ),
+    )
+    const allRows = screen.getAllByRole('row')
+    const dataRows = allRows.filter((r) => r.querySelector('td'))
+    const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
+    const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
+    // Both rows must keep their own spinner+disabled state. Under the old
+    // refresh.variables pattern, only the last-written variables would mark
+    // a row pending — the other row would silently lose its disabled state
+    // even though its mutateAsync was still in flight, enabling duplicate
+    // submits.
+    expect(rowA?.getAttribute('aria-busy')).toBe('true')
+    expect(rowB?.getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('Set membership picks only matching rows: pending for repo-b leaves repo-a alone', () => {
+    const mockRowA = makeRow('repo-a')
+    const mockRowB = makeRow('repo-b')
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[mockRowA, mockRowB]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set([`agenticapps/${mockRowB.repo}`])}
+        />,
+      ),
+    )
+    const allRows = screen.getAllByRole('row')
+    const dataRows = allRows.filter((r) => r.querySelector('td'))
+    const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
+    const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
+    expect(rowA?.getAttribute('aria-busy')).toBeNull()
+    expect(rowB?.getAttribute('aria-busy')).toBe('true')
   })
 })

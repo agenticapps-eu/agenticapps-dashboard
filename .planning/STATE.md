@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: shipped
-stopped_at: Phase 11.1 (impeccable p1 polish bundle) shipped via PR #36 (merge commit 8fe463a). v1.1 substantially complete — Phase 12 prepped on `feat/observability-conformance-surface`.
-last_updated: "2026-05-18T13:32:30.000Z"
+status: executing
+stopped_at: Phase 11.2 UI-SPEC approved
+last_updated: "2026-05-18T18:49:33.081Z"
 last_activity: 2026-05-18
 progress:
-  total_phases: 17
-  completed_phases: 9
-  total_plans: 57
-  completed_plans: 57
+  total_phases: 18
+  completed_phases: 8
+  total_plans: 51
+  completed_plans: 51
   percent: 100
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 ## Current Position
 
-Phase: 11.1 SHIPPED (merge commit 8fe463a on main)
-Plan: 6/6 plans complete; all 5 IMP-* requirements verified
+Phase: 11.2
+Plan: Not started
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Phase complete; awaiting next-phase route
+Status: Ready to execute
 Last activity: 2026-05-18
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
@@ -45,7 +45,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 
 **Velocity:**
 
-- Total plans completed: 59
+- Total plans completed: 65
 - Average duration: —
 - Total execution time: 0 h
 
@@ -63,6 +63,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 07 | 5 | - | - |
 | 11 | 0 | - | - |
 | 11.1 | 6 | - | - |
+| 11.2 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -93,6 +94,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 - Phase 10.5 inserted 2026-05-13: impeccable skill-driven gate. Phase 6's CI gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`) deleted; replaced by per-phase `<N>-IMPECCABLE.md` artifact authored by running `/impeccable critique` against affected routes at 1440×900. Triggered by tool drift discovered during Phase 10 Gate 4 (`npx impeccable critique` removed in v2.1.8). 5 decisions captured (D-10.5-01..05). Shipped bundled with Phase 10 in PR #28.
 - Phase 10.6 inserted 2026-05-14: three-state GitNexus detection. Coverage scanner upgraded from `existsSync(~/.gitnexus)` boolean to a `gitNexusInstallState` enum (`not-installed` / `installed-no-registry` / `installed-with-registry`). New `detectGitNexusBinary()` probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) stat-only — no shell-out, survives launchd-spawned daemons. New `IndexGitNexusButton` for the middle state. Per-row state under `installed-no-registry` shifts from `'not-applicable'` → `'missing'`. Shipped 2026-05-14 via PR #29 (78b6b6f).
 - Phase 11.1 inserted 2026-05-18 after Phase 11: impeccable p1 polish bundle (URGENT) — addresses the 4 Phase-10-inherited P1s surfaced in `11-IMPECCABLE.md` (column-width drift in CoverageFamilySection, non-sticky CoverageToolbar, missing clipboard-write feedback, `text-text-tertiary` contrast 3.8:1 < WCAG AA 4.5:1). Estimated composite lift 76 → ~82 — produces calibration data point #3 to settle D-10.5-03 floor recalibration (Option B/C/D). Not blocking v1.1 close-out but accepted as the path to close `D-10.5-03.calibration-1` cleanly.
+- Phase 11.2 inserted 2026-05-18 after Phase 11.1: impeccable P2 polish bundle (URGENT) — closes the 5 follow-ups surfaced in `11.1-IMPECCABLE.md` §"Phase 11.2 candidate" (column-header tooltips P1 carry-over from Phase 10/11/11.1, per-row in-flight feedback for `gitnexus-analyze` P1, Wiki column width tightening P2 + iPad refresh-icon touch target P2, controlled search input P3, `max-w-prose` PageHeader subtitle P3). Estimated composite lift ~81 → ~85–87 (may hit legacy ≥87 floor without invoking calibration-2 waiver clause). Scopes OUT Coverage responsive collapse below 768px (stays a Phase 12 candidate).
 
 ### Decisions
 
@@ -152,7 +154,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-16T14:28:31.887Z
-Stopped at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
-Resume file: None
+Last session: 2026-05-18T16:54:28.340Z
+Stopped at: Phase 11.2 UI-SPEC approved
+Resume file: .planning/phases/DASH-11.2-impeccable-p2-polish-bundle/11.2-UI-SPEC.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
