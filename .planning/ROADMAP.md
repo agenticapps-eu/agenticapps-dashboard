@@ -286,7 +286,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 11. Coverage trends + Skill drift + 10.6 polish | 6/6 | ✅ Complete (PR #35) | 2026-05-18 |
 | 11.1. Impeccable P1 polish bundle (inserted) | 6/6 | ✅ Complete (PR #36) | 2026-05-18 |
 | 11.2. Impeccable P2 polish bundle (inserted) | 6/6 | ✅ Complete (PR #38) | 2026-05-19 |
-| 12. Observability Conformance Surface | 0/TBD | 🚧 Discussing | - |
+| 12. Observability Conformance Surface | 0/7 | 🚧 Planned (7 plans, 6 waves) | - |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
@@ -523,8 +523,26 @@ Plans:
   | Registry path drift | Daemon-side detector: scan `~/.agenticapps/dashboard/registry.json` against actual `<root>` symlink/realpath state; surface drifted entries on conformance page with one-click "Fix path" affordance that calls a new daemon route `POST /api/admin/registry/fix-path` (writes confined to `~/.agenticapps/dashboard/`, mode `0600`). |
   | Coverage responsive collapse | Coverage page card-per-row layout below 768px viewport (iPad-portrait via Tailscale). New `useViewportBreakpoint` hook publishes `--vp-bp` CSS var; CoverageFamilySection switches table → cards under `xs:` breakpoint. |
   | Gates | Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse) · `/cso` REQUIRED (new daemon route + filesystem write surface — registry path mutation) · `/qa` walkthrough on `/observability/conformance` covering trend chart, score cards, path-drift fix flow, responsive collapse · `/impeccable critique` on `/observability/conformance` at 1440×900 → `12-IMPECCABLE.md` (calibration data point #5 for D-10.5-03) |
-**Requirements**: TBD — minted during `/gsd-plan-phase 12` after CONTEXT.md gray-area resolution.
-**Plans**: TBD — sketched at ~7-9 plans across 4-5 waves; final shape after `/gsd-plan-phase 12`.
+**Requirements**: REQ-12-FOUNDATION-01, REQ-12-CON-01..05, REQ-12-FCH-01..05, REQ-12-RPD-01..04, REQ-12-RVP-01..03, REQ-12-PAGE-01..02, REQ-12-NAV-01, REQ-12-IMP-01 — 22 minted during `/gsd-plan-phase 12` (2026-05-19); full descriptions in `.planning/REQUIREMENTS.md` §"Observability Conformance Surface (Phase 12)".
+**Plans**: 7 plans across 6 waves (minted during `/gsd-plan-phase 12`).
+
+Plans:
+- [ ] 12-00-PLAN.md — Wave 0 (TDD foundations): shared `conformance.ts` schema + `tierOf` + `RETENTION_DAYS` 14→90 bump + `useViewportBreakpoint` matchMedia hook. Covers REQ-12-CON-01, REQ-12-FOUNDATION-01, REQ-12-RVP-01. depends_on: []
+- [ ] 12-01-PLAN.md — Wave 1 (TDD daemon pure primitives): `conformanceScore.ts` (equal-weight, Pitfalls 2/3) + `snapshotFleetReader.ts` (90-day NDJSON walk, per-day per-family scores). Covers REQ-12-CON-02, REQ-12-CON-03, REQ-12-CON-05. depends_on: [12-00]
+- [ ] 12-02-PLAN.md — Wave 2 (TDD daemon wire surface): `conformanceCache.ts` (30s TTL) + `registryPathDrift.ts` (detector + inference via fs.readFile + regex, no subprocess) + `conformanceScan.ts` orchestrator + `GET /api/observability/conformance` + `POST /api/admin/registry/fix-path` (9 threat mitigations: T-12-PATH-TRAVERSAL/SYMLINK-ESCAPE/CONCURRENT-WRITE/CSRF/AUTH/INFO-DISCLOSURE/REGISTRY-CORRUPTION/DENIAL-OF-SERVICE/SUPPLY-CHAIN). Covers REQ-12-CON-04, REQ-12-CON-05, REQ-12-RPD-01..03. depends_on: [12-00, 12-01]
+- [ ] 12-03-PLAN.md — Wave 3 (TDD SPA primitives): `conformanceQueries.ts` (`useConformance` + `useRegistryFixPath`, 30s staleTime) + `FleetTrendChart.tsx` (pure SVG ≤120 LOC, 4 polylines, hover+focus+keyboard+touch, SR-only mirror) + `FamilyCard.tsx` (score + 14d delta + tier pill) + `PathDriftPanel.tsx` (Fix-path affordance, inFlightRefreshes Set, error code mapping). Covers REQ-12-FCH-01..05, REQ-12-RPD-04, REQ-12-CON-04. depends_on: [12-00, 12-02]
+- [ ] 12-04-PLAN.md — Wave 4 (TDD page composition + nav): `ConformancePage.tsx` (loading/error/schemaDrift/empty/happy branches) + lazy route `/observability/conformance` + router.tsx registration + Sidebar.tsx 3rd entry (Coverage → Skill drift → Conformance order). Covers REQ-12-PAGE-01, REQ-12-PAGE-02, REQ-12-NAV-01. depends_on: [12-00, 12-02, 12-03]
+- [ ] 12-05-PLAN.md — Wave 5 (TDD coverage responsive collapse): `CoverageFamilySectionMobile.tsx` (card-per-row, 44×44 touch targets) + branch CoverageFamilySection.tsx on `useViewportBreakpoint() === 'xs'`. Preserves Phase 11.1 `<colgroup>` invariant (desktop branch unchanged) + Phase 11.2 D-11.2-11 touch target. Covers REQ-12-RVP-02, REQ-12-RVP-03. depends_on: [12-00]
+- [ ] 12-06-PLAN.md — Wave 6 (gates, sequential, autonomous: false): Stage 1 /review + /cso audit + Stage 2 superpowers:requesting-code-review + /qa walkthrough (5 scenarios per D-12-28) + impeccable critique at 1440×900 → `12-IMPECCABLE.md` (calibration data point #5 for D-10.5-03) + REQUIREMENTS.md tick-off. Covers REQ-12-IMP-01. depends_on: [12-00..12-05]
+
+**Wave structure:**
+- Wave 0 (12-00): foundations
+- Wave 1 (12-01): depends on 12-00
+- Wave 2 (12-02): depends on 12-00 + 12-01 (daemon wire surface — registryFixPath is the threat surface /cso audits)
+- Wave 3 (12-03): depends on 12-00 + 12-02 (SPA primitives; parallel-eligible with 12-05 since file sets are disjoint)
+- Wave 4 (12-04): depends on 12-00 + 12-02 + 12-03 (composition + router + sidebar)
+- Wave 5 (12-05): depends on 12-00 only (parallel-eligible with 12-02/12-03; file set is disjoint — only touches coverage panels)
+- Wave 6 (12-06): depends on all 5 prior plans (gates run on the merged surface)
 
 **Anticipated decision set (D-12-01..09) — provisional from Phase 11 forward references; ratify/revise during `/gsd-discuss-phase 12`:**
   1. D-12-01 — Sidebar IA: `Conformance` as 3rd entry under `Observability` (Coverage / Skill drift / Conformance)
