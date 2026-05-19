@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Phase 11.2 UI-SPEC approved
-last_updated: "2026-05-18T18:49:33.081Z"
+stopped_at: Phase 12 context gathered
+last_updated: "2026-05-19T16:17:00.802Z"
 last_activity: 2026-05-18
 progress:
-  total_phases: 18
+  total_phases: 19
   completed_phases: 8
   total_plans: 51
   completed_plans: 51
@@ -154,7 +154,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-18T16:54:28.340Z
-Stopped at: Phase 11.2 UI-SPEC approved
-Resume file: .planning/phases/DASH-11.2-impeccable-p2-polish-bundle/11.2-UI-SPEC.md
+Last session: 2026-05-19T16:17:00.795Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/DASH-12-observability-conformance-surface/12-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
