@@ -287,7 +287,7 @@ describe('PathDriftPanel', () => {
   })
 
   it('P11: concurrent — two clicks on different rows produce independent in-flight states', async () => {
-    let resolvers: Array<(v: unknown) => void> = []
+    const resolvers: Array<(v: unknown) => void> = []
     mockFetch.mockImplementation(
       () =>
         new Promise((resolve) => {

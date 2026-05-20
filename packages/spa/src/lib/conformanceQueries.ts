@@ -78,7 +78,7 @@ export function useConformance(): UseQueryResult<ConformanceResponse, Error> {
 
 // ── useRegistryFixPath ────────────────────────────────────────────────────────
 
-export interface UseRegistryFixPathVariables extends RegistryFixPathRequest {}
+export type UseRegistryFixPathVariables = RegistryFixPathRequest
 
 /**
  * useRegistryFixPath — wraps POST /api/admin/registry/fix-path.
