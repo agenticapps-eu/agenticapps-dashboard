@@ -531,6 +531,24 @@ describe('CoverageFamilySection viewport branching (12-05)', () => {
     expect(container.querySelector('table')).toBeNull()
   })
 
+  it('renders mobile card layout in the sm range (640-767px) — plan-12-05 <768px contract', () => {
+    // Regression for the previous xs-only branch. sm range (640-767px,
+    // Android landscape, iPad portrait borderline) must use card layout
+    // per Plan 12-05 "<768px". Only the 640px query matches; 768/1024 do not.
+    installMatchMedia((q) => q === '(min-width: 640px)')
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    expect(container.querySelectorAll('article').length).toBe(1)
+    expect(container.querySelector('table')).toBeNull()
+  })
+
   it('does NOT render <table> in mobile branch', () => {
     installMatchMedia(() => false)
     const { container } = render(

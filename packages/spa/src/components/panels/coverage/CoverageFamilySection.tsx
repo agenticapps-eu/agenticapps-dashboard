@@ -141,7 +141,12 @@ export function CoverageFamilySection({
     }
   }, [collapsed, key])
 
-  if (breakpoint === 'xs') {
+  // D-12-23 / Plan 12-05: "card-per-row layout under <768px". Tailwind's
+  // `xs` is <640px and `sm` is 640–767px — the plan's "<768px" threshold
+  // covers both. Previously this branched only on 'xs', leaving the 640–
+  // 767px range (Android phones in landscape, small tablets, iPad portrait
+  // at 768px is borderline) stuck on the desktop table.
+  if (breakpoint === 'xs' || breakpoint === 'sm') {
     return (
       <CoverageFamilySectionMobile
         family={family}
