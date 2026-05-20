@@ -174,31 +174,38 @@ registryFixPathRoute.post(
     type Result = { kind: 'ok'; entry: Entry } | EarlyExit
     let lockResult: Result
     try {
-      lockResult = await withRegistryLock(async (): Promise<Result> => {
-        // Step 6: lookup project by id.
-        const reg = readRegistry(registryFile)
-        const entry = reg.projects.find((p) => p.id === body.id)
-        if (!entry) return { kind: 'project_not_found' }
+      // Lock path must follow the route's registryFile, not the global
+      // REGISTRY_FILE constant — fixture tests pass a tmp registry path
+      // and rely on the lock living next to it.
+      const lockFile = registryFile ? `${registryFile}.lock` : undefined
+      lockResult = await withRegistryLock(
+        async (): Promise<Result> => {
+          // Step 6: lookup project by id.
+          const reg = readRegistry(registryFile)
+          const entry = reg.projects.find((p) => p.id === body.id)
+          if (!entry) return { kind: 'project_not_found' }
 
-        // Step 6a: target-is-a-repo check. Prevent silent misdirection —
-        // a token holder could otherwise repoint project-A to project-B's
-        // directory, or to project-B/src.
-        if (!existsSync(join(canonical, '.git'))) {
-          return { kind: 'newPath_not_a_repo' }
-        }
-        const oldOrigin = await readGitOrigin(entry.root)
-        if (oldOrigin) {
-          const newOrigin = await readGitOrigin(canonical)
-          if (!newOrigin || newOrigin !== oldOrigin) {
-            return { kind: 'newPath_origin_mismatch' }
+          // Step 6a: target-is-a-repo check. Prevent silent misdirection —
+          // a token holder could otherwise repoint project-A to project-B's
+          // directory, or to project-B/src.
+          if (!existsSync(join(canonical, '.git'))) {
+            return { kind: 'newPath_not_a_repo' }
           }
-        }
+          const oldOrigin = await readGitOrigin(entry.root)
+          if (oldOrigin) {
+            const newOrigin = await readGitOrigin(canonical)
+            if (!newOrigin || newOrigin !== oldOrigin) {
+              return { kind: 'newPath_origin_mismatch' }
+            }
+          }
 
-        // Step 7: mutate + atomic write. writeRegistry invalidates caches.
-        entry.root = canonical
-        writeRegistry(reg, registryFile)
-        return { kind: 'ok', entry }
-      })
+          // Step 7: mutate + atomic write. writeRegistry invalidates caches.
+          entry.root = canonical
+          writeRegistry(reg, registryFile)
+          return { kind: 'ok', entry }
+        },
+        lockFile ? { lockFile } : {},
+      )
     } catch (err) {
       const msg = (err as Error).message ?? ''
       if (msg.startsWith('registry_lock_timeout')) {
