@@ -50,18 +50,36 @@ const SCANNED_FAMILIES = ['agenticapps', 'factiv', 'neuroflash'] as const
 type ScannedFamily = (typeof SCANNED_FAMILIES)[number]
 
 /**
- * Regex: capture the `url = …` value of the `[remote "origin"]` section.
- * `[\s\S]*?` is a non-greedy run that may span newlines (Git config files
- * are line-based but the section may contain other keys before `url`).
- * Anchored to whitespace + `=` + whitespace to tolerate tab/space formatting.
+ * Section header detection — a `.git/config` section begins with `[` at the
+ * start of a line. We split on this anchor and scan the section whose header
+ * is `remote "origin"`; the url key MUST live inside that section.
+ *
+ * A previous single-regex version (`/\[remote "origin"\][\s\S]*?url\s*=\s*…/`)
+ * was vulnerable to cross-section overrun: a config with `[remote "origin"]`
+ * (no url) followed by `[remote "upstream"]\n\turl = …` returned the upstream
+ * URL as origin's. Per-section parsing is the only correctness-preserving fix.
  */
-const REMOTE_ORIGIN_URL_RE = /\[remote "origin"\][\s\S]*?url\s*=\s*([^\s]+)/
+const SECTION_SPLIT_RE = /^\[/m
+const ORIGIN_SECTION_HEADER = 'remote "origin"]'
+const SECTION_URL_RE = /^\s*url\s*=\s*([^\s]+)/m
 
-/** Best-effort parse — returns the trimmed URL or null on no match. */
+/**
+ * Best-effort parse — returns the trimmed origin URL or null on no match.
+ * Scans only inside the `[remote "origin"]` section; will not borrow a `url`
+ * from a sibling `[remote "*"]` section.
+ */
 function parseOriginUrl(configText: string): string | null {
-  const match = REMOTE_ORIGIN_URL_RE.exec(configText)
-  if (!match || !match[1]) return null
-  return match[1].trim()
+  // SECTION_SPLIT_RE eats the leading `[`, so each chunk after the first
+  // starts with the section header content (e.g. `remote "origin"]\n…`).
+  const chunks = configText.split(SECTION_SPLIT_RE)
+  for (const chunk of chunks) {
+    if (!chunk.startsWith(ORIGIN_SECTION_HEADER)) continue
+    const body = chunk.slice(ORIGIN_SECTION_HEADER.length)
+    const match = body.match(SECTION_URL_RE)
+    if (!match || !match[1]) return null
+    return match[1].trim()
+  }
+  return null
 }
 
 /**

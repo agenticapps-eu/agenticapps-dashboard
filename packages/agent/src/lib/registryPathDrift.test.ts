@@ -281,4 +281,24 @@ describe('registryPathDrift › inferSuggestedPath', () => {
     const result = await inferSuggestedPath('git@github.com:anyone/anywhere.git')
     expect(result).toBeNull()
   })
+
+  it('does NOT cross section boundaries when parsing .git/config (REGRESSION)', async () => {
+    // Regression for the previous single-regex parser that would return
+    // the upstream URL as origin's when origin had no `url =` line. A
+    // section-anchored parser must return null here, NOT the upstream URL.
+    const family = join(tmpRoot, 'fake-agenticapps-crosssec')
+    mkdirSync(family)
+    const candidate = join(family, 'crosssec')
+    mkdirSync(join(candidate, '.git'), { recursive: true })
+    writeFileSync(
+      join(candidate, '.git', 'config'),
+      // origin has NO url, upstream does — must not be borrowed.
+      '[remote "origin"]\n[remote "upstream"]\n\turl = git@github.com:other/x.git\n',
+    )
+    pointFamilyRoot('agenticapps', family)
+
+    // The upstream URL should NOT be discovered as a match for origin.
+    const result = await inferSuggestedPath('git@github.com:other/x.git')
+    expect(result).toBeNull()
+  })
 })
