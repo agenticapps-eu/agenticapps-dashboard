@@ -221,6 +221,25 @@ describe('conformanceScan › scanConformance', () => {
     expect(result.today.neuroflash).toBe(100) // unaffected
   })
 
+  it('partialFailures lists failed sub-scans when readDailySeriesForFleet rejects', async () => {
+    // Regression for the silent-failure mask. A defensive empty payload is
+    // indistinguishable from real-zero data without an explicit failure
+    // marker. The SPA needs `partialFailures: ['series']` to surface a
+    // banner instead of misreporting "no history".
+    vi.mocked(readDailySeriesForFleet).mockRejectedValue(new Error('synthetic ndjson failure'))
+
+    const result = await scanConformance()
+    expect(result.series).toEqual([])
+    expect(result.partialFailures).toEqual(['series'])
+  })
+
+  it('partialFailures is omitted from the payload when all sub-scans succeed', async () => {
+    // Field is `.optional()` on the schema — absent on healthy responses
+    // so v1 clients that ignore it stay clean.
+    const result = await scanConformance()
+    expect(result.partialFailures).toBeUndefined()
+  })
+
   it('partial failure: scanCoverageInternal throws → returns defensive empty payload (does not raise)', async () => {
     vi.mocked(scanCoverageInternal).mockRejectedValue(new Error('synthetic scan failure'))
     const result = await scanConformance()

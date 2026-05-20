@@ -119,6 +119,17 @@ export const ConformanceResponseSchema = z
       .strict(),
     series: z.array(ConformanceDayPointSchema), // 90 entries steady-state; 0..89 while warming
     drifted: z.array(PathDriftEntrySchema),
+    /**
+     * Names of upstream sub-scans that rejected during this aggregation.
+     * The orchestrator never raises (so a sub-failure does not 500 the
+     * route), but the payload must distinguish "real zero scores" from
+     * "scanner crashed". When non-empty, the SPA can surface a banner.
+     *
+     * Possible entries: 'coverage' (scanCoverageInternal failed),
+     * 'drift' (detectPathDrift failed), 'series' (readDailySeriesForFleet
+     * failed). Optional for back-compat with v1 clients that ignore it.
+     */
+    partialFailures: z.array(z.string()).optional(),
   })
   .strict()
 export type ConformanceResponse = z.infer<typeof ConformanceResponseSchema>

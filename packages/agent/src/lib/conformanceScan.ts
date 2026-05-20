@@ -36,6 +36,7 @@ import type {
 
 import { computeConformanceScores } from './conformanceScore.js'
 import { scanCoverageInternal } from './coverageScan.js'
+import { agentError } from './logging.js'
 import { detectPathDrift } from './registryPathDrift.js'
 import { readDailySeriesForFleet } from './snapshots/snapshotFleetReader.js'
 import { COVERAGE_ROOTS } from './paths.js'
@@ -108,6 +109,13 @@ export async function scanConformance(
   const now = opts.now ?? new Date()
   const asOf = now.toISOString()
 
+  // Failures from sub-scans are logged AND surfaced on the response as
+  // `partialFailures: string[]` so the SPA can distinguish "real zero
+  // scores" from "scanner crashed". Without this, defensive payloads
+  // were indistinguishable from healthy zeros — a silent debugging
+  // nightmare cached for 30s.
+  const partialFailures: string[] = []
+
   // 1. Parallelise the two slowest reads (coverage scan + drift detection).
   //    Both are independent: drift only needs the registry; coverage scan
   //    fans out per-repo scanners that don't touch the registry directly.
@@ -116,6 +124,10 @@ export async function scanConformance(
     detectPathDrift(),
   ])
 
+  if (driftedResult.status !== 'fulfilled') {
+    agentError(`scanConformance.drift_failed: ${String(driftedResult.reason)}`)
+    partialFailures.push('drift')
+  }
   const driftedEntries: PathDriftEntry[] =
     driftedResult.status === 'fulfilled' ? driftedResult.value : []
 
@@ -129,7 +141,12 @@ export async function scanConformance(
   // 3. Coverage scan failure → defensive payload (drifted entries still
   //    returned so the SPA can offer the fix-path affordance).
   if (coverageResult.status !== 'fulfilled') {
-    return defensivePayload(asOf, driftedEntries)
+    agentError(
+      `scanConformance.coverage_failed: ${String(coverageResult.reason)}`,
+    )
+    partialFailures.push('coverage')
+    const payload = defensivePayload(asOf, driftedEntries)
+    return { ...payload, partialFailures }
   }
   const coverage = coverageResult.value.response
 
@@ -159,7 +176,9 @@ export async function scanConformance(
       factiv: day.factiv,
       neuroflash: day.neuroflash,
     }))
-  } catch {
+  } catch (err) {
+    agentError(`scanConformance.series_failed: ${String((err as Error).message ?? err)}`)
+    partialFailures.push('series')
     series = []
   }
 
@@ -197,13 +216,17 @@ export async function scanConformance(
     }
   }
 
-  return {
+  const result: ConformanceResponse = {
     schemaVersion: 1 as const,
     today,
     delta14d,
     series,
     drifted: driftedEntries,
   }
+  if (partialFailures.length > 0) {
+    result.partialFailures = partialFailures
+  }
+  return result
 }
 
 // Re-export the family list for downstream consumers (route logging, tests).
