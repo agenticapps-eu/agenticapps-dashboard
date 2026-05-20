@@ -44,8 +44,10 @@ function workflow(state: CoverageState): WorkflowCol {
   }
 }
 
+type Family = 'agenticapps' | 'factiv' | 'neuroflash'
+
 interface RowSpec {
-  family?: 'agenticapps' | 'factiv' | 'neuroflash'
+  family?: Family
   repo?: string
   claudeMd: CoverageState
   gitNexus: CoverageState
@@ -66,7 +68,7 @@ function row(spec: RowSpec): CoverageRow {
   }
 }
 
-function allFresh(family: RowSpec['family'], repo: string): CoverageRow {
+function allFresh(family: Family, repo: string): CoverageRow {
   return row({
     family,
     repo,
@@ -77,7 +79,7 @@ function allFresh(family: RowSpec['family'], repo: string): CoverageRow {
   })
 }
 
-function allMissing(family: RowSpec['family'], repo: string): CoverageRow {
+function allMissing(family: Family, repo: string): CoverageRow {
   return row({
     family,
     repo,
