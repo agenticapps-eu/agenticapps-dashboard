@@ -27,7 +27,7 @@ Set in **Settings → Environment variables → Production AND Preview** (apply 
 
 | Variable | Value | Why |
 |---|---|---|
-| `NODE_VERSION` | `20` | Override CF Pages build image default; matches `.nvmrc`. |
+| `NODE_VERSION` | `22` | Override CF Pages build image default; matches `.nvmrc`. |
 | `PNPM_VERSION` | `10` | Match local pnpm version; ensures catalog feature is available (catalog requires pnpm >= 9.5; we run 10). |
 
 CF Pages v3 build image defaults to Node 22 / pnpm 10.11.1. Setting these explicitly is belt-and-suspenders against build-image upgrades that change defaults.
