@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-05-19T19:18:02.520Z"
-last_activity: 2026-05-19 -- Phase 12 planning complete
+last_updated: "2026-05-20T05:28:05.991Z"
+last_activity: 2026-05-20 -- Phase 12 execution started
 progress:
   total_phases: 19
   completed_phases: 8
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.1 close-out audit; next move = ratify D-10.5-03.calibration-2 ADR or open Phase 11.2 / Phase 12
+**Current focus:** Phase 12 — observability-conformance-surface
 
 ## Current Position
 
-Phase: 11.2
-Plan: Not started
+Phase: 12 (observability-conformance-surface) — EXECUTING
+Plan: 1 of 7
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Ready to execute
-Last activity: 2026-05-19 -- Phase 12 planning complete
+Status: Executing Phase 12
+Last activity: 2026-05-20 -- Phase 12 execution started
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 
