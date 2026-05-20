@@ -186,13 +186,25 @@ export async function readDailySeriesForFleet(
       byFamily[rec.family as Family].push(rec)
     }
 
-    const agenticappsScore = scoreFamilyRecords(byFamily.agenticapps)
-    const factivScore = scoreFamilyRecords(byFamily.factiv)
-    const neuroflashScore = scoreFamilyRecords(byFamily.neuroflash)
-    // Pitfall 3 / A8: fleet = mean of 3 family scores.
-    const fleetScore = Math.round(
-      (agenticappsScore + factivScore + neuroflashScore) / 3,
-    )
+    // For the fleet roll-up we need (score, populated?) per family. Empty
+    // families (zero records that day) MUST be excluded from the fleet
+    // divisor — see conformanceScore.ts for the matching live-data formula.
+    // Treating them as "0% conformance" would drag the daily fleet point
+    // down to ~33% for single-family installs (silent metric distortion
+    // visible in every point of the trend chart).
+    const families = [
+      { records: byFamily.agenticapps, score: scoreFamilyRecords(byFamily.agenticapps) },
+      { records: byFamily.factiv, score: scoreFamilyRecords(byFamily.factiv) },
+      { records: byFamily.neuroflash, score: scoreFamilyRecords(byFamily.neuroflash) },
+    ]
+    const agenticappsScore = families[0]!.score
+    const factivScore = families[1]!.score
+    const neuroflashScore = families[2]!.score
+    const populated = families.filter((f) => f.records.length > 0)
+    const fleetScore =
+      populated.length === 0
+        ? 0
+        : Math.round(populated.reduce((s, f) => s + f.score, 0) / populated.length)
 
     result.push({
       date,

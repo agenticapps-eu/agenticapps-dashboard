@@ -105,17 +105,25 @@ export function computeConformanceScores(
   const factiv = scoreRows(byFamily.factiv)
   const neuroflash = scoreRows(byFamily.neuroflash)
 
-  // Pitfall 3 + A8: fleet = mean of 3 family SCORES, not sum-over-rows.
-  const fleetScore = Math.round(
-    (agenticapps.score + factiv.score + neuroflash.score) / 3,
-  )
+  // Pitfall 3 + A8: fleet = mean of POPULATED family scores, NOT sum-over-rows
+  // and NOT mean-of-3-including-zeros. A family with zero rows (single-family
+  // install, or transient state during onboarding) was previously treated as
+  // "0% conformance" and dragged the fleet aggregate down to ~33% when the
+  // other two families were healthy — primary metric silently lying.
+  // The correct semantic is "not-applicable": exclude empty families from
+  // the divisor, same way Pitfall 2 excludes not-applicable cells.
+  const populated = [agenticapps, factiv, neuroflash].filter((f) => f.total > 0)
+  const fleetScore =
+    populated.length === 0
+      ? 0
+      : Math.round(populated.reduce((s, f) => s + f.score, 0) / populated.length)
 
   const fleet: FamilyScore = {
     green: agenticapps.green + factiv.green + neuroflash.green,
     amber: agenticapps.amber + factiv.amber + neuroflash.amber,
     red: agenticapps.red + factiv.red + neuroflash.red,
     total: agenticapps.total + factiv.total + neuroflash.total,
-    score: fleetScore, // mean-of-3, NOT recomputed from totals
+    score: fleetScore, // mean over populated families, NOT mean-of-3
   }
 
   return { agenticapps, factiv, neuroflash, fleet }

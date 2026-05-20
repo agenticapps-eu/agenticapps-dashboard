@@ -288,6 +288,49 @@ describe('snapshotFleetReader.readDailySeriesForFleet', () => {
     expect(result[0]?.fleet).not.toBe(88)
   })
 
+  it('single-family snapshot: fleet = 100 when only agenticapps has records (NOT 33)', async () => {
+    // Regression for daily-series fleet collapse. A snapshot with only
+    // agenticapps records must NOT report fleet=round((100+0+0)/3)=33 —
+    // factiv + neuroflash families with zero records that day are
+    // not-applicable for the fleet roll-up, same as conformanceScore.ts.
+    writeSnapshot(dir, '2026-05-20', [
+      baseRecord({ family: 'agenticapps', repo: 'a1' }),
+      baseRecord({ family: 'agenticapps', repo: 'a2' }),
+    ])
+    const result = await readDailySeriesForFleet({ dir, now, windowDays: 90 })
+    expect(result).toHaveLength(1)
+    expect(result[0]?.agenticapps).toBe(100)
+    expect(result[0]?.factiv).toBe(0)
+    expect(result[0]?.neuroflash).toBe(0)
+    // CRITICAL: fleet = mean over populated (1 family) = 100, NOT 33.
+    expect(result[0]?.fleet).toBe(100)
+    expect(result[0]?.fleet).not.toBe(33)
+  })
+
+  it('two-family snapshot: fleet = mean of two populated, not divided by 3', async () => {
+    // agenticapps 100% + factiv 50% + neuroflash empty.
+    // Old (broken): round((100 + 50 + 0) / 3) = 50.
+    // New (fixed): round((100 + 50) / 2) = 75.
+    writeSnapshot(dir, '2026-05-20', [
+      baseRecord({ family: 'agenticapps', repo: 'a1' }),
+      baseRecord({ family: 'factiv', repo: 'f1' }),
+      baseRecord({
+        family: 'factiv',
+        repo: 'f2',
+        claudeMd: 'missing',
+        gitNexus: 'missing',
+        wiki: 'missing',
+        workflowVersion: 'missing',
+      }),
+    ])
+    const result = await readDailySeriesForFleet({ dir, now, windowDays: 90 })
+    expect(result).toHaveLength(1)
+    expect(result[0]?.agenticapps).toBe(100)
+    expect(result[0]?.factiv).toBe(50)
+    expect(result[0]?.neuroflash).toBe(0)
+    expect(result[0]?.fleet).toBe(75)
+  })
+
   it('returns integer scores per entry (D-12-05)', async () => {
     // 1/3 cells green → 33 per family (round of 33.333…). All integer.
     writeSnapshot(dir, '2026-05-20', [

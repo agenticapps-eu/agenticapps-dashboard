@@ -427,6 +427,38 @@ describe('computeConformanceScores — D-12-06 / D-12-07 + Pitfall 3 fleet aggre
     expect(result.fleet.score).toBe(33)
   })
 
+  it('single-family install: empty families excluded from fleet divisor (NOT (X+0+0)/3)', () => {
+    // Regression for the fleet-score collapse. A user with only agenticapps
+    // registered (no factiv, no neuroflash repos) should see fleet === 100
+    // when agenticapps is 100, NOT round((100+0+0)/3) = 33.
+    // factiv + neuroflash families have ZERO rows; they are not-applicable
+    // for the fleet roll-up.
+    const rows = [allFresh('agenticapps', 'r1')]
+    const result = computeConformanceScores(coverage(rows), new Set())
+    expect(result.agenticapps.score).toBe(100)
+    expect(result.factiv.total).toBe(0)
+    expect(result.neuroflash.total).toBe(0)
+    // CRITICAL: fleet = mean over POPULATED families (1) = 100.
+    expect(result.fleet.score).toBe(100)
+    expect(result.fleet.score).not.toBe(33)
+  })
+
+  it('two populated families: fleet = mean of the two, not divided by 3', () => {
+    // agenticapps 100% + factiv 50%, neuroflash empty.
+    // Old (broken): round((100 + 50 + 0) / 3) = 50.
+    // New (fixed): round((100 + 50) / 2) = 75.
+    const rows = [
+      allFresh('agenticapps', 'r1'),
+      allFresh('factiv', 'r1'),
+      allMissing('factiv', 'r2'),
+    ]
+    const result = computeConformanceScores(coverage(rows), new Set())
+    expect(result.agenticapps.score).toBe(100)
+    expect(result.factiv.score).toBe(50)
+    expect(result.neuroflash.total).toBe(0)
+    expect(result.fleet.score).toBe(75)
+  })
+
   it('all rows drifted → fleet score 0 (no applicable rows)', () => {
     const rows = [
       allFresh('agenticapps', 'r1'),
