@@ -403,6 +403,144 @@ describe('column-header tooltips', () => {
   })
 })
 
+// Phase 12 Plan 12-05 (D-12-23 + D-12-24): CoverageFamilySection branches
+// on useViewportBreakpoint() === 'xs' and renders CoverageFamilySectionMobile
+// when true; otherwise the existing desktop <table> render is unchanged. The
+// jsdom default viewport has matchMedia return matches:false for everything,
+// so without mocking, useViewportBreakpoint returns 'xs' and the mobile
+// branch is chosen. We install matchMedia mocks per-test to control which
+// branch executes.
+
+interface MockMQ {
+  matches: boolean
+  media: string
+  addEventListener: ReturnType<typeof vi.fn>
+  removeEventListener: ReturnType<typeof vi.fn>
+  addListener: ReturnType<typeof vi.fn>
+  removeListener: ReturnType<typeof vi.fn>
+  onchange: null
+  dispatchEvent: ReturnType<typeof vi.fn>
+}
+
+function installMatchMedia(match: (query: string) => boolean): void {
+  const factory = (query: string): MockMQ => ({
+    get matches() {
+      return match(query)
+    },
+    set matches(_: boolean) {
+      /* getter-backed — no-op */
+    },
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    onchange: null,
+    dispatchEvent: vi.fn(),
+  })
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (q: string) => factory(q),
+  })
+}
+
+describe('CoverageFamilySection viewport branching (12-05)', () => {
+  afterEach(() => {
+    // Each test installs its own matchMedia. cleanup() above handles render
+    // teardown; vi.unstubAllGlobals isn't enough because we install via
+    // Object.defineProperty.
+  })
+
+  it('renders desktop <table> layout when viewport >= sm (Phase 11.1 regression contract)', () => {
+    // Simulate >=lg: matches true for lg, md, sm.
+    installMatchMedia(
+      (q) =>
+        q === '(min-width: 1024px)' ||
+        q === '(min-width: 768px)' ||
+        q === '(min-width: 640px)',
+    )
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    expect(container.querySelector('table')).not.toBeNull()
+  })
+
+  it('renders <colgroup> in desktop branch (Phase 11.1 IMP-01 regression — re-confirmed under viewport branch)', () => {
+    installMatchMedia(
+      (q) =>
+        q === '(min-width: 1024px)' ||
+        q === '(min-width: 768px)' ||
+        q === '(min-width: 640px)',
+    )
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const cols = container.querySelectorAll('colgroup > col')
+    expect(cols).toHaveLength(6)
+  })
+
+  it('renders mobile card layout when matchMedia mock forces xs (no min-width queries match)', () => {
+    installMatchMedia(() => false)
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    // Mobile branch renders <article> per row, no <table>.
+    expect(container.querySelectorAll('article').length).toBe(1)
+    expect(container.querySelector('table')).toBeNull()
+  })
+
+  it('does NOT render <table> in mobile branch', () => {
+    installMatchMedia(() => false)
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a'), makeRow('repo-b')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    expect(container.querySelectorAll('table').length).toBe(0)
+    expect(container.querySelectorAll('article').length).toBe(2)
+  })
+
+  it('passes inFlightRefreshes through to mobile branch (refresh button gets disabled + aria-busy)', () => {
+    installMatchMedia(() => false)
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+          inFlightRefreshes={new Set(['agenticapps/repo-a'])}
+        />,
+      ),
+    )
+    const refreshBtn = screen.getByRole('button', { name: /refresh.*repo-a/i })
+    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
+    expect(refreshBtn).toHaveProperty('disabled', true)
+  })
+})
+
 describe('per-row pending derivation (Set-based inFlightRefreshes)', () => {
   const mockRow = makeRow('repo-a')
 
