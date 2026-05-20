@@ -230,16 +230,20 @@ describe('ConformancePage', () => {
           factiv: 73,      // distinct value so we can assert it appears
           neuroflash: 64,  // distinct value (red tier) so we can assert it appears
         },
+        // Empty series → no FleetTrendChart sr-only table competing for the
+        // same numeric text. The chart shows the building-state placeholder.
+        series: [],
       }),
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useConformance>)
 
-    render(<ConformancePage />, { wrapper })
+    const { container } = render(<ConformancePage />, { wrapper })
 
-    // Each score appears as a large numeric in its card.
-    expect(screen.getByText('91')).toBeTruthy()
-    expect(screen.getByText('73')).toBeTruthy()
-    expect(screen.getByText('64')).toBeTruthy()
+    // Each score appears as a large numeric inside its FamilyCard <article>.
+    const cardScores = Array.from(container.querySelectorAll('article')).map(
+      (a) => a.querySelector('span.text-4xl')?.textContent,
+    )
+    expect(cardScores).toEqual(['91', '73', '64'])
   })
 
   it('P7: passes delta14d.{family} as delta14d to each FamilyCard', () => {
