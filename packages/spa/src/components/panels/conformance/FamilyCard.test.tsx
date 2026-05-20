@@ -52,9 +52,10 @@ describe('FamilyCard', () => {
   })
 
   it('F6: renders up-arrow + N for positive delta14d (text-status-success)', () => {
-    const { container } = render(<FamilyCard family="agenticapps" score={88} delta14d={4} />)
+    const { container } = render(<FamilyCard family="agenticapps" score={88} delta14d={5} />)
     expect(screen.getByText(/▲/)).toBeTruthy()
-    expect(screen.getByText(/4/)).toBeTruthy()
+    // Delta value 5 is rendered (score 88 + "14d trend" don't contain 5).
+    expect(screen.getByText(/5/)).toBeTruthy()
     // delta wrapper carries text-status-success
     const html = container.innerHTML
     expect(html).toMatch(/text-status-success/)
@@ -63,7 +64,7 @@ describe('FamilyCard', () => {
   it('F7: renders down-arrow + N for negative delta14d (text-status-error)', () => {
     const { container } = render(<FamilyCard family="agenticapps" score={88} delta14d={-3} />)
     expect(screen.getByText(/▼/)).toBeTruthy()
-    // Displays absolute value 3 (not -3)
+    // Displays absolute value 3 (not -3). Score 88 + "14d trend" don't contain 3.
     expect(screen.getByText(/3/)).toBeTruthy()
     expect(container.innerHTML).toMatch(/text-status-error/)
   })

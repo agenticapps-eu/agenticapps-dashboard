@@ -220,11 +220,12 @@ describe('PathDriftPanel', () => {
 
   it('P10: in-flight — button disabled + aria-busy=true for that row', async () => {
     // Defer the fetch resolution so we can observe the in-flight state.
-    let resolveFetch: ((v: unknown) => void) | null = null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resolverHolder: { fn: ((v: unknown) => void) | null } = { fn: null }
     mockFetch.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolveFetch = resolve
+          resolverHolder.fn = resolve
         }),
     )
     const { wrapper } = makeWrapper()
@@ -239,7 +240,7 @@ describe('PathDriftPanel', () => {
       expect(btn.getAttribute('aria-busy')).toBe('true')
     })
     // Resolve to let test clean up
-    resolveFetch?.({
+    resolverHolder.fn?.({
       ok: true,
       status: 200,
       json: () => Promise.resolve(REGISTRY_ENTRY_BODY),
