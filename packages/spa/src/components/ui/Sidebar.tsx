@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, Layers } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban, Layers, TrendingUp } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
@@ -63,11 +63,15 @@ export function Sidebar(): React.JSX.Element {
         </SidebarSection>
 
         {/* Observability section — Phase 10 D-10-08 introduced Coverage; Phase 11 D-11-08
-            graduates this to two peer entries (Coverage + Skill drift). Both use the
-            SidebarItem peer primitive — NOT SidebarSubItem — matching user-memory
-            feedback_sidebar_section_architecture (peer entries under a growing section).
-            Icon: Layers (lucide-react) is distinguishable from Activity (Coverage) and
-            visually evokes the per-skill stack across projects. */}
+            added Skill drift as a peer; Phase 12 D-12-01 graduates the section to 3 peer
+            entries: Coverage / Skill drift / Conformance. Order preserves existing IA
+            (user-memory feedback_sidebar_section_architecture: additive growth over
+            reorder — documented deviation from RESEARCH OQ3 which suggested
+            Coverage → Conformance → Skill drift; we keep Phase 11's anchor in place to
+            avoid retraining users already familiar with the existing pattern).
+            All three use the SidebarItem peer primitive (NOT SidebarSubItem).
+            Icons: Activity (Coverage), Layers (Skill drift), TrendingUp (Conformance) —
+            visually distinct lucide-react glyphs. */}
         <SidebarSection label="Observability">
           <SidebarItem
             to="/coverage"
@@ -78,6 +82,11 @@ export function Sidebar(): React.JSX.Element {
             to="/observability/skill-drift"
             icon={<Layers size={16} aria-hidden="true" />}
             label="Skill drift"
+          />
+          <SidebarItem
+            to="/observability/conformance"
+            icon={<TrendingUp size={16} aria-hidden="true" />}
+            label="Conformance"
           />
         </SidebarSection>
 
