@@ -263,15 +263,24 @@ export interface AddResult {
   alreadyRegistered: boolean
 }
 
+export interface RegistryMutationLockOpts {
+  /** Override the per-call lock timeout (ms). Defaults to withRegistryLock's
+   *  5000ms ceiling. Exposed so callers under heavy contention — and tests —
+   *  can pick a different ceiling. */
+  maxWaitMs?: number
+}
+
 /**
  * Add a project to the registry. Idempotent on path collision (D-10).
  * Slug collisions get -2, -3 suffixes.
  */
-export function addProject(
+export async function addProject(
   pathArg: string,
   opts: { name?: string; client?: string | null; tags?: string[] } = {},
   filePath: string = REGISTRY_FILE,
-): AddResult {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _lockOpts: RegistryMutationLockOpts = {},
+): Promise<AddResult> {
   const root = canonicaliseRoot(pathArg)
   assertRegistrationAllowed(root)
   const reg = readRegistry(filePath)
@@ -308,10 +317,12 @@ export function addProject(
  * always works even when the filesystem path is gone. Walk-up canonicalisation
  * is a possible future improvement; not blocking the v1 ship.
  */
-export function removeProject(
+export async function removeProject(
   idOrPath: string,
   filePath: string = REGISTRY_FILE,
-): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _lockOpts: RegistryMutationLockOpts = {},
+): Promise<boolean> {
   const reg = readRegistry(filePath)
   // Try both the canonical (realpath-resolved when reachable) AND the plain
   // resolve() form, so the user can remove with the same path string they used
@@ -327,11 +338,13 @@ export function removeProject(
   return true
 }
 
-export function renameProject(
+export async function renameProject(
   id: string,
   newName: string,
   filePath: string = REGISTRY_FILE,
-): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _lockOpts: RegistryMutationLockOpts = {},
+): Promise<boolean> {
   const reg = readRegistry(filePath)
   const entry = reg.projects.find((p) => p.id === id)
   if (!entry) return false
@@ -340,11 +353,13 @@ export function renameProject(
   return true
 }
 
-export function setTags(
+export async function setTags(
   id: string,
   tags: string[],
   filePath: string = REGISTRY_FILE,
-): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _lockOpts: RegistryMutationLockOpts = {},
+): Promise<boolean> {
   const reg = readRegistry(filePath)
   const entry = reg.projects.find((p) => p.id === id)
   if (!entry) return false

@@ -61,9 +61,9 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
     tags: opts.tag ?? [],
   }
   if (opts.name !== undefined) addOpts.name = opts.name
-  let result: ReturnType<typeof addProject>
+  let result: Awaited<ReturnType<typeof addProject>>
   try {
-    result = addProject(pathArg, addOpts)
+    result = await addProject(pathArg, addOpts)
   } catch (err) {
     if (err instanceof RegistrationPathBlocked) {
       agentError(`refusing to register ${err.target}: ${err.reason}`)
@@ -85,7 +85,7 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
 
 export async function runUnregister(idOrPath: string): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const removed = removeProject(idOrPath)
+  const removed = await removeProject(idOrPath)
   if (removed) {
     agentLog(pc.green(`unregistered ${idOrPath}`))
     process.exit(0)

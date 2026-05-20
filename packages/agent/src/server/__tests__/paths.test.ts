@@ -22,7 +22,7 @@ describe('path-allow-list-rejects-traversal (mandatory TDD)', () => {
   let projectId: string
   let registryFile: string
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const tmp = makeTmpHome()
     cleanup = tmp.cleanup
     registryFile = join(tmp.configDir, 'registry.json')
@@ -32,7 +32,7 @@ describe('path-allow-list-rejects-traversal (mandatory TDD)', () => {
 
     const proj = makeTmpProject()
     projectCleanup = proj.cleanup
-    const result = addProject(proj.root, {}, registryFile)
+    const result = await addProject(proj.root, {}, registryFile)
     projectId = result.entry.id
   })
 
@@ -62,7 +62,7 @@ describe('path-allow-list-rejects-absolute', () => {
   let projectId: string
   let registryFile: string
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const tmp = makeTmpHome()
     cleanup = tmp.cleanup
     registryFile = join(tmp.configDir, 'registry.json')
@@ -72,7 +72,7 @@ describe('path-allow-list-rejects-absolute', () => {
 
     const proj = makeTmpProject()
     projectCleanup = proj.cleanup
-    const result = addProject(proj.root, {}, registryFile)
+    const result = await addProject(proj.root, {}, registryFile)
     projectId = result.entry.id
   })
 
@@ -102,7 +102,7 @@ describe('path-allow-list-allows-planning', () => {
   let registryFile: string
   let projRoot: string
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const tmp = makeTmpHome()
     cleanup = tmp.cleanup
     registryFile = join(tmp.configDir, 'registry.json')
@@ -116,7 +116,7 @@ describe('path-allow-list-allows-planning', () => {
     // Write a file inside .planning so the read route can return it
     mkdirSync(join(projRoot, '.planning'), { recursive: true })
     writeFileSync(join(projRoot, '.planning', 'PROJECT.md'), '# test project')
-    const result = addProject(projRoot, {}, registryFile)
+    const result = await addProject(projRoot, {}, registryFile)
     projectId = result.entry.id
   })
 

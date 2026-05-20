@@ -78,7 +78,7 @@ registryRoute.post(
   zValidator('json', RegisterBodySchema, (result, c) => {
     if (!result.success) return validationError(c)
   }),
-  (c) => {
+  async (c) => {
     const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
 
     // F-005: legacy /register was missed by the A-01 sweep that covered
@@ -103,7 +103,7 @@ registryRoute.post(
     }
     if (body.name !== undefined) opts.name = body.name
     if (body.tags !== undefined) opts.tags = body.tags
-    const result = addProject(body.path, opts, registryFile)
+    const result = await addProject(body.path, opts, registryFile)
     const status = result.alreadyRegistered ? 200 : 201
     return outbound(
       c,
@@ -119,10 +119,10 @@ registryRoute.post(
   zValidator('json', UnregisterBodySchema, (result, c) => {
     if (!result.success) return validationError(c)
   }),
-  (c) => {
+  async (c) => {
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
-    const removed = removeProject(body.id, registryFile)
+    const removed = await removeProject(body.id, registryFile)
     if (removed) {
       evictOverviewCache(body.id) // T-03-03-05 cache hygiene
       evictPhaseCacheProject(body.id) // T-04-03-07 Phase 4 cache hygiene
@@ -229,7 +229,7 @@ registryRoute.post(
   zValidator('json', RegisterConfirmRequestSchema, (result, c) => {
     if (!result.success) return validationError(c)
   }),
-  (c) => {
+  async (c) => {
     const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
 
     // A-01: rate limit (per token hash, sliding 10s window, cap 10)
@@ -275,7 +275,7 @@ registryRoute.post(
     opts.name = body.name ?? entry.suggestedName
     if (body.tags !== undefined) opts.tags = body.tags
 
-    const result = addProject(entry.canonicalRoot, opts, registryFile)
+    const result = await addProject(entry.canonicalRoot, opts, registryFile)
     const status = result.alreadyRegistered ? 200 : 201
     return outbound(
       c,
@@ -293,7 +293,7 @@ registryRoute.post(
   zValidator('json', RenameRequestSchema, (result, c) => {
     if (!result.success) return validationError(c)
   }),
-  (c) => {
+  async (c) => {
     const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
 
     // A-01: rate limit (per token hash, sliding 10s window, cap 10)
@@ -311,7 +311,7 @@ registryRoute.post(
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
-    const ok = renameProject(id, body.name, registryFile)
+    const ok = await renameProject(id, body.name, registryFile)
     if (!ok) {
       return c.json(
         { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
@@ -330,7 +330,7 @@ registryRoute.post(
   zValidator('json', TagsRequestSchema, (result, c) => {
     if (!result.success) return validationError(c)
   }),
-  (c) => {
+  async (c) => {
     const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
 
     // A-01: rate limit (per token hash, sliding 10s window, cap 10)
@@ -348,7 +348,7 @@ registryRoute.post(
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
-    const ok = setTags(id, body.tags, registryFile)
+    const ok = await setTags(id, body.tags, registryFile)
     if (!ok) {
       return c.json(
         { ok: false, error: 'project_not_found', requestId: c.get('requestId') },
