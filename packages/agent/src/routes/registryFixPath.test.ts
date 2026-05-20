@@ -304,6 +304,25 @@ describe('POST /api/admin/registry/fix-path', () => {
     }
   })
 
+  it('Test 8a [newPath_unresolvable]: returns 422 when newPath does not exist on disk', async () => {
+    // Regression for the canonicaliseRoot silent-fallback bug. The route
+    // must call realpath() at the boundary and reject ENOENT explicitly —
+    // a non-existent path must NEVER land in registry.json.
+    const ghostPath = join(ctx.familyRootReal, 'does-not-exist-' + Date.now())
+    const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/api/admin/registry/fix-path',
+      {
+        method: 'POST',
+        headers: authHeaders(ctx.token),
+        body: JSON.stringify({ id: ctx.projectId, newPath: ghostPath }),
+      },
+    )
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe('newPath_unresolvable')
+  })
+
   it('Test 9 [project_not_found]: returns 404 when id is not in the registry', async () => {
     const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
     const res = await app.request(

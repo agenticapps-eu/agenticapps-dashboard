@@ -10,7 +10,7 @@
  * Validation pipeline (ALL must pass; first failure short-circuits):
  *   1. Zod body parse (RegistryFixPathRequestSchema.strict)        → 422 invalid_request
  *   2. Rate limit per token-hash (10 req / 10s — Phase 1 A-01)     → 429 rate_limited
- *   3. canonicaliseRoot(newPath) — realpath + abs                  → 422 newPath_unresolvable
+ *   3. realpath(newPath) — explicit existence + symlink resolution → 422 newPath_unresolvable
  *   4. assertRegistrationAllowed(canonical) — system + secret bl   → 422 newPath_blocked
  *   5. Family-root containment check (realpath of each COVERAGE_ROOT,
  *      compare canonical === r || canonical.startsWith(r + sep))   → 422 newPath_outside_family_roots
@@ -53,7 +53,6 @@ import {
 import {
   readRegistry,
   writeRegistry,
-  canonicaliseRoot,
   assertRegistrationAllowed,
   RegistrationPathBlocked,
 } from '../lib/registry.js'
@@ -121,12 +120,14 @@ registryFixPathRoute.post(
     const registryFile = c.get('registryFile') as string | undefined
 
     // ── Step 3: canonicalise newPath (realpath + abs) ───────────────────
-    // canonicaliseRoot is defensive — falls back to plain resolve() when
-    // realpath fails (e.g. dangling symlink). Either way the result is an
-    // absolute path that the blocklist + containment checks can reason about.
+    // Explicit realpath check at the route boundary. canonicaliseRoot
+    // (registry.ts) silently falls back to plain resolve() on ENOENT,
+    // which would let a non-existent path land in registry.json (silent
+    // corruption, dead-code 422 branch). Here we resolve first and require
+    // the path to actually exist on disk before delegating to the helper.
     let canonical: string
     try {
-      canonical = canonicaliseRoot(body.newPath)
+      canonical = await realpath(body.newPath)
     } catch {
       return c.json({ ok: false, error: 'newPath_unresolvable', requestId }, 422)
     }
