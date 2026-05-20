@@ -69,7 +69,9 @@ afterEach(() => {
 })
 
 function pointFamilyRoot(family: 'agenticapps' | 'factiv' | 'neuroflash', dir: string): void {
-  vi.mocked(COVERAGE_ROOTS)[family] = () => dir
+  // COVERAGE_ROOTS is `as const` in the real module — the mock is mutable
+  // for testability; cast away readonly to mirror per-test overrides.
+  ;(COVERAGE_ROOTS as unknown as Record<string, () => string>)[family] = () => dir
 }
 
 function makeRegistryEntry(id: string, root: string) {
