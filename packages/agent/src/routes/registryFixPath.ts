@@ -41,7 +41,7 @@
  */
 import { existsSync } from 'node:fs'
 import { realpath } from 'node:fs/promises'
-import { join, sep } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 
 import { Hono } from 'hono'
 import type { Context } from 'hono'
@@ -120,12 +120,31 @@ registryFixPathRoute.post(
     const body = c.req.valid('json')
     const registryFile = c.get('registryFile') as string | undefined
 
-    // ── Step 3: canonicalise newPath (realpath + abs) ───────────────────
-    // Explicit realpath check at the route boundary. canonicaliseRoot
-    // (registry.ts) silently falls back to plain resolve() on ENOENT,
-    // which would let a non-existent path land in registry.json (silent
-    // corruption, dead-code 422 branch). Here we resolve first and require
-    // the path to actually exist on disk before delegating to the helper.
+    // ── Step 3a: blocklist defence on resolved (not yet realpath'd) ────
+    // Block secret/system prefixes EARLY — before any FS check that
+    // requires the path to exist. Otherwise a request like ~/.ssh on a
+    // host where ~/.ssh doesn't exist (CI runner) would get
+    // newPath_unresolvable instead of newPath_blocked, hiding the
+    // blocklist intent. The blocklist works on string prefixes; it does
+    // not need the path to exist.
+    const resolved = resolve(body.newPath)
+    try {
+      assertRegistrationAllowed(resolved)
+    } catch (err) {
+      if (err instanceof RegistrationPathBlocked) {
+        return c.json(
+          { ok: false, error: 'newPath_blocked', reason: err.reason, requestId },
+          422,
+        )
+      }
+      throw err
+    }
+
+    // ── Step 3b: realpath enforces existence + symlink resolution ─────
+    // canonicaliseRoot (registry.ts) silently falls back to plain
+    // resolve() on ENOENT, which let non-existent paths land in
+    // registry.json (silent corruption, dead-code 422 branch). Explicit
+    // realpath() at the boundary closes that.
     let canonical: string
     try {
       canonical = await realpath(body.newPath)
@@ -133,13 +152,15 @@ registryFixPathRoute.post(
       return c.json({ ok: false, error: 'newPath_unresolvable', requestId }, 422)
     }
 
-    // ── Step 4: blocklist defence ───────────────────────────────────────
+    // ── Step 4: blocklist defence on the realpath result ────────────────
+    // Catches symlink-escape: a symlink inside the family root pointing to
+    // ~/.ssh (or any blocklisted path) is blocked here even though step 3a
+    // accepted the source path. Step 5 (family-root containment) provides
+    // additional defence.
     try {
       assertRegistrationAllowed(canonical)
     } catch (err) {
       if (err instanceof RegistrationPathBlocked) {
-        // Echo the blocked reason — it's about the user-supplied input,
-        // NOT a server internal (matches Phase 1 register-prepare pattern).
         return c.json(
           { ok: false, error: 'newPath_blocked', reason: err.reason, requestId },
           422,
