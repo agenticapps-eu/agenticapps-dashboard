@@ -286,7 +286,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 11. Coverage trends + Skill drift + 10.6 polish | 6/6 | ✅ Complete (PR #35) | 2026-05-18 |
 | 11.1. Impeccable P1 polish bundle (inserted) | 6/6 | ✅ Complete (PR #36) | 2026-05-18 |
 | 11.2. Impeccable P2 polish bundle (inserted) | 6/6 | ✅ Complete (PR #38) | 2026-05-19 |
-| 12. Observability Conformance Surface | 2/7 | In Progress|  |
+| 12. Observability Conformance Surface | 3/7 | In Progress|  |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
@@ -529,7 +529,7 @@ Plans:
 Plans:
 - [x] 12-00-PLAN.md — Wave 0 (TDD foundations): shared `conformance.ts` schema + `tierOf` + `RETENTION_DAYS` 14→90 bump + `useViewportBreakpoint` matchMedia hook. Covers REQ-12-CON-01, REQ-12-FOUNDATION-01, REQ-12-RVP-01. depends_on: []
 - [x] 12-01-PLAN.md — Wave 1 (TDD daemon pure primitives): `conformanceScore.ts` (equal-weight, Pitfalls 2/3) + `snapshotFleetReader.ts` (90-day NDJSON walk, per-day per-family scores). Covers REQ-12-CON-02, REQ-12-CON-03, REQ-12-CON-05. depends_on: [12-00]
-- [ ] 12-02-PLAN.md — Wave 2 (TDD daemon wire surface): `conformanceCache.ts` (30s TTL) + `registryPathDrift.ts` (detector + inference via fs.readFile + regex, no subprocess) + `conformanceScan.ts` orchestrator + `GET /api/observability/conformance` + `POST /api/admin/registry/fix-path` (9 threat mitigations: T-12-PATH-TRAVERSAL/SYMLINK-ESCAPE/CONCURRENT-WRITE/CSRF/AUTH/INFO-DISCLOSURE/REGISTRY-CORRUPTION/DENIAL-OF-SERVICE/SUPPLY-CHAIN). Covers REQ-12-CON-04, REQ-12-CON-05, REQ-12-RPD-01..03. depends_on: [12-00, 12-01]
+- [x] 12-02-PLAN.md — Wave 2 (TDD daemon wire surface): `conformanceCache.ts` (30s TTL) + `registryPathDrift.ts` (detector + inference via fs.readFile + regex, no subprocess) + `conformanceScan.ts` orchestrator + `GET /api/observability/conformance` + `POST /api/admin/registry/fix-path` (9 threat mitigations: T-12-PATH-TRAVERSAL/SYMLINK-ESCAPE/CONCURRENT-WRITE/CSRF/AUTH/INFO-DISCLOSURE/REGISTRY-CORRUPTION/DENIAL-OF-SERVICE/SUPPLY-CHAIN). Covers REQ-12-CON-04, REQ-12-CON-05, REQ-12-RPD-01..03. depends_on: [12-00, 12-01]
 - [ ] 12-03-PLAN.md — Wave 3 (TDD SPA primitives): `conformanceQueries.ts` (`useConformance` + `useRegistryFixPath`, 30s staleTime) + `FleetTrendChart.tsx` (pure SVG ≤120 LOC, 4 polylines, hover+focus+keyboard+touch, SR-only mirror) + `FamilyCard.tsx` (score + 14d delta + tier pill) + `PathDriftPanel.tsx` (Fix-path affordance, inFlightRefreshes Set, error code mapping). Covers REQ-12-FCH-01..05, REQ-12-RPD-04, REQ-12-CON-04. depends_on: [12-00, 12-02]
 - [ ] 12-04-PLAN.md — Wave 4 (TDD page composition + nav): `ConformancePage.tsx` (loading/error/schemaDrift/empty/happy branches) + lazy route `/observability/conformance` + router.tsx registration + Sidebar.tsx 3rd entry (Coverage → Skill drift → Conformance order). Covers REQ-12-PAGE-01, REQ-12-PAGE-02, REQ-12-NAV-01. depends_on: [12-00, 12-02, 12-03]
 - [ ] 12-05-PLAN.md — Wave 5 (TDD coverage responsive collapse): `CoverageFamilySectionMobile.tsx` (card-per-row, 44×44 touch targets) + branch CoverageFamilySection.tsx on `useViewportBreakpoint() === 'xs'`. Preserves Phase 11.1 `<colgroup>` invariant (desktop branch unchanged) + Phase 11.2 D-11.2-11 touch target. Covers REQ-12-RVP-02, REQ-12-RVP-03. depends_on: [12-00]
