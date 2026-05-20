@@ -39,8 +39,9 @@
  * A7 ratified: assertRegistrationAllowed's existing blocklist (18 system
  * roots + 9 secret dirs + CONFIG_DIR) is sufficient for newPath validation.
  */
+import { existsSync } from 'node:fs'
 import { realpath } from 'node:fs/promises'
-import { sep } from 'node:path'
+import { join, sep } from 'node:path'
 
 import { Hono } from 'hono'
 import type { Context } from 'hono'
@@ -60,6 +61,7 @@ import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { COVERAGE_ROOTS } from '../lib/paths.js'
 import { invalidateConformanceCache } from '../lib/conformanceCache.js'
 import { invalidateCoverageCache } from '../lib/coverageCache.js'
+import { readGitOrigin } from '../lib/registryPathDrift.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
@@ -164,6 +166,35 @@ registryFixPathRoute.post(
     const entry = reg.projects.find((p) => p.id === body.id)
     if (!entry) {
       return c.json({ ok: false, error: 'project_not_found', requestId }, 404)
+    }
+
+    // ── Step 6a: target-is-a-repo check ─────────────────────────────────
+    // Prevent silent misdirection: a token holder could otherwise repoint
+    // project-A to project-B's directory, or to project-B/src, and the
+    // dashboard would silently report B's git history as A's.
+    //
+    // (a) newPath must contain a `.git` entry (file for worktree, dir for
+    //     normal repo). Without this, fix-path can accept any random
+    //     directory under a family root.
+    // (b) If the entry's CURRENT root still has a readable .git/config,
+    //     newPath's origin URL must match. When the original drift was
+    //     'missing', the old config is unreadable — we accept any repo
+    //     under the family root (best effort, the user picked it).
+    if (!existsSync(join(canonical, '.git'))) {
+      return c.json(
+        { ok: false, error: 'newPath_not_a_repo', requestId },
+        422,
+      )
+    }
+    const oldOrigin = await readGitOrigin(entry.root)
+    if (oldOrigin) {
+      const newOrigin = await readGitOrigin(canonical)
+      if (!newOrigin || newOrigin !== oldOrigin) {
+        return c.json(
+          { ok: false, error: 'newPath_origin_mismatch', requestId },
+          422,
+        )
+      }
     }
 
     // ── Step 7: mutate + atomic write ───────────────────────────────────

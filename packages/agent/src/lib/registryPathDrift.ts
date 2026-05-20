@@ -86,8 +86,11 @@ function parseOriginUrl(configText: string): string | null {
  * Read `<rootPath>/.git/config` and extract the `[remote "origin"]` URL.
  * Returns null on ANY failure (file missing, unreadable, malformed) — caller
  * treats null as "no remote known", which is the safest default.
+ *
+ * Exported so other modules (registryFixPath.ts) can verify the fix-path
+ * target matches the entry's current origin without duplicating the parser.
  */
-async function readGitOrigin(rootPath: string): Promise<string | null> {
+export async function readGitOrigin(rootPath: string): Promise<string | null> {
   try {
     const text = await readFile(join(rootPath, '.git', 'config'), 'utf8')
     return parseOriginUrl(text)

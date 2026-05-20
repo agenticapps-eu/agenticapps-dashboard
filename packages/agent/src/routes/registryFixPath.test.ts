@@ -89,12 +89,25 @@ async function buildFixture(): Promise<FixtureContext> {
   const fresh = ensureAuthFile(authFile)
   setActiveToken(fresh.token)
 
-  // Build an in-sandbox family root with two project dirs.
+  // Build an in-sandbox family root with two project dirs. Both carry a
+  // `.git` entry so the route's target-is-a-repo check passes; the
+  // origin-mismatch test seeds them with DIFFERENT origins to assert
+  // newPath_origin_mismatch, the happy-path test seeds the SAME origin
+  // to assert the 200 case.
+  const { writeFileSync, chmodSync } = await import('node:fs')
   const familyRoot = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-family-')))
   const projectRoot = join(familyRoot, 'stale-project')
-  mkdirSync(projectRoot)
+  mkdirSync(join(projectRoot, '.git'), { recursive: true })
+  writeFileSync(
+    join(projectRoot, '.git', 'config'),
+    '[remote "origin"]\n\turl = git@github.com:org/dashboard.git\n',
+  )
   const newRealProjectPath = join(familyRoot, 'corrected-project')
-  mkdirSync(newRealProjectPath)
+  mkdirSync(join(newRealProjectPath, '.git'), { recursive: true })
+  writeFileSync(
+    join(newRealProjectPath, '.git', 'config'),
+    '[remote "origin"]\n\turl = git@github.com:org/dashboard.git\n',
+  )
 
   // Stash original COVERAGE_ROOTS factory + point agenticapps at the sandbox.
   const originalAgenticappsRoot = COVERAGE_ROOTS.agenticapps
@@ -116,7 +129,6 @@ async function buildFixture(): Promise<FixtureContext> {
       },
     ],
   }
-  const { writeFileSync, chmodSync } = await import('node:fs')
   writeFileSync(registryFile, JSON.stringify(seedRegistry, null, 2))
   chmodSync(registryFile, 0o600)
 
@@ -302,6 +314,53 @@ describe('POST /api/admin/registry/fix-path', () => {
     } finally {
       rmSync(outsideTarget, { recursive: true, force: true })
     }
+  })
+
+  it('Test 8b [newPath_not_a_repo]: returns 422 when newPath exists but has no .git', async () => {
+    // Regression for the missing repo-validation check. A token holder
+    // could otherwise repoint a project to any random directory under a
+    // family root — the dashboard would silently report wrong git data.
+    const { mkdirSync } = await import('node:fs')
+    const nonRepo = join(ctx.familyRootReal, 'not-a-repo-' + Date.now())
+    mkdirSync(nonRepo)
+    const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/api/admin/registry/fix-path',
+      {
+        method: 'POST',
+        headers: authHeaders(ctx.token),
+        body: JSON.stringify({ id: ctx.projectId, newPath: nonRepo }),
+      },
+    )
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe('newPath_not_a_repo')
+  })
+
+  it('Test 8c [newPath_origin_mismatch]: returns 422 when newPath origin differs from current entry origin', async () => {
+    // Regression for the missing origin-match check. When the entry's
+    // current root has a readable .git/config, fix-path MUST verify that
+    // the new path is the SAME repository (matching origin URL). Otherwise
+    // a token holder can silently redirect project-A to project-B.
+    const { mkdirSync, writeFileSync } = await import('node:fs')
+    const otherRepo = join(ctx.familyRootReal, 'different-repo-' + Date.now())
+    mkdirSync(join(otherRepo, '.git'), { recursive: true })
+    writeFileSync(
+      join(otherRepo, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:other/elsewhere.git\n',
+    )
+    const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/api/admin/registry/fix-path',
+      {
+        method: 'POST',
+        headers: authHeaders(ctx.token),
+        body: JSON.stringify({ id: ctx.projectId, newPath: otherRepo }),
+      },
+    )
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe('newPath_origin_mismatch')
   })
 
   it('Test 8a [newPath_unresolvable]: returns 422 when newPath does not exist on disk', async () => {

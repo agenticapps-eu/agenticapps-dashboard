@@ -45,6 +45,10 @@ function errorCodeToMessage(code: string | undefined): string {
       return 'Path is blocked (system or secret dir)'
     case 'newPath_unresolvable':
       return 'Path does not exist on disk'
+    case 'newPath_not_a_repo':
+      return 'Path does not contain a git repository'
+    case 'newPath_origin_mismatch':
+      return 'Path is a different repository (origin URL does not match)'
     case 'project_not_found':
       return 'Project no longer in registry'
     case 'rate_limited':
