@@ -1,4 +1,12 @@
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs'
+import {
+  closeSync,
+  constants as fsConstants,
+  mkdtempSync,
+  openSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+} from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -392,6 +400,103 @@ describe('assertRegistrationAllowed (B2 confused-deputy stopgap)', () => {
       // Registry stays empty
       expect(readRegistry(regFile).projects).toHaveLength(0)
     } finally {
+      cleanup()
+    }
+  })
+})
+
+describe('registry mutation lock', () => {
+  // Regression for Codex F4 followup (TODOS.md) + the symmetric daemon-route
+  // gap noted in writeRegistry's comment.
+  //
+  // Each of the four mutation functions must wrap its read-modify-write in
+  // withRegistryLock so a concurrent CLI invocation cannot clobber a daemon
+  // write last-writer-wins (and vice versa). To prove this without spinning up
+  // two processes, we manually pre-acquire `<registry>.lock` with O_EXCL —
+  // which is exactly what withRegistryLock itself does — then call the
+  // mutation with a tight maxWaitMs and assert it surfaces a timeout error.
+  //
+  // If the function had bypassed the lock, the pre-existing lock file would
+  // be irrelevant and the call would succeed; the test would fail. That's
+  // the bypass-detector.
+  function holdLock(regFile: string): { release: () => void } {
+    const lockFile = `${regFile}.lock`
+    const fd = openSync(
+      lockFile,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
+      0o600,
+    )
+    return {
+      release: () => {
+        try { closeSync(fd) } catch { /* already closed */ }
+        try { unlinkSync(lockFile) } catch { /* already gone */ }
+      },
+    }
+  }
+
+  it('addProject waits for the registry lock and surfaces registry_lock_timeout', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const held = holdLock(regFile)
+    try {
+      await expect(
+        addProject('/Users/x/proj', {}, regFile, { maxWaitMs: 100 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+      // Pre-existing lock blocked the write, so the registry is untouched.
+      expect(readRegistry(regFile).projects).toHaveLength(0)
+    } finally {
+      held.release()
+      cleanup()
+    }
+  })
+
+  it('removeProject waits for the registry lock and surfaces registry_lock_timeout', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    // Seed a project to remove, BEFORE acquiring the lock.
+    const { entry } = await addProject('/Users/x/proj', {}, regFile)
+    const held = holdLock(regFile)
+    try {
+      await expect(
+        removeProject(entry.id, regFile, { maxWaitMs: 100 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+      expect(readRegistry(regFile).projects).toHaveLength(1)
+    } finally {
+      held.release()
+      cleanup()
+    }
+  })
+
+  it('renameProject waits for the registry lock and surfaces registry_lock_timeout', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const { entry } = await addProject('/Users/x/proj', {}, regFile)
+    const held = holdLock(regFile)
+    try {
+      await expect(
+        renameProject(entry.id, 'should-not-stick', regFile, { maxWaitMs: 100 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+      // Name unchanged because the write was blocked.
+      expect(readRegistry(regFile).projects[0]!.name).toBe(entry.name)
+    } finally {
+      held.release()
+      cleanup()
+    }
+  })
+
+  it('setTags waits for the registry lock and surfaces registry_lock_timeout', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const { entry } = await addProject('/Users/x/proj', { tags: ['old'] }, regFile)
+    const held = holdLock(regFile)
+    try {
+      await expect(
+        setTags(entry.id, ['new'], regFile, { maxWaitMs: 100 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+      // Tags unchanged because the write was blocked.
+      expect(readRegistry(regFile).projects[0]!.tags).toEqual(['old'])
+    } finally {
+      held.release()
       cleanup()
     }
   })
