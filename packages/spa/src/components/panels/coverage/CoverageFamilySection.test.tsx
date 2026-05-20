@@ -99,6 +99,29 @@ beforeEach(() => {
   // Clear localStorage between tests
   localStorage.clear()
   mockFetch.mockReset()
+  // Phase 12 Plan 12-05: stub matchMedia to simulate a desktop-sized viewport
+  // (>=lg) by default so the new viewport-branching logic in
+  // CoverageFamilySection renders the DESKTOP <table> path. This keeps the
+  // pre-existing Phase 11.1 IMP-01 + Phase 11.2 tests passing under the new
+  // viewport-aware render. Individual viewport-branching tests in the
+  // 12-05 describe block install their own matchMedia override.
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (q: string) => ({
+      matches:
+        q === '(min-width: 1024px)' ||
+        q === '(min-width: 768px)' ||
+        q === '(min-width: 640px)',
+      media: q,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      onchange: null,
+      dispatchEvent: vi.fn(),
+    }),
+  })
   // Stub /api/coverage/history with empty drift so CoverageRow's hook resolves
   // cleanly. Tests in this file do NOT assert on drift behaviour — those live
   // in CoverageRow.test.tsx.

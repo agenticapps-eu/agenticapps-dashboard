@@ -33,11 +33,13 @@ import type {
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
 import type { CoverageRowProps } from './CoverageRow.js'
+import { CoverageFamilySectionMobile } from './CoverageFamilySectionMobile.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { useToast } from '../../ui/Toast.js'
 import { Tooltip } from '../../ui/Tooltip.js'
+import { useViewportBreakpoint } from '../../../lib/useViewportBreakpoint.js'
 
 /**
  * Stable key for a row's in-flight refresh slot. Same convention used in
@@ -105,6 +107,19 @@ export function CoverageFamilySection({
   onRefresh,
   inFlightRefreshes,
 }: CoverageFamilySectionProps): React.JSX.Element {
+  // Phase 12 Plan 12-05 (D-12-23 + D-12-24): viewport branch — at xs (<640px
+  // Tailwind 4) render the card-per-row sibling; otherwise the desktop
+  // table + col-group render below is untouched (Phase 11.1 IMP-01 +
+  // 11.2 D-11.2-11 invariants preserved).
+  //
+  // Rules of Hooks compliance: ALL hooks run unconditionally before the
+  // viewport branch's early return. The breakpoint change therefore never
+  // shortens the hook list across re-renders of the same instance — only
+  // the JSX path diverges. The desktop branch's useState/useEffect still
+  // initialise their localStorage-backed `collapsed` state even when mobile
+  // renders, which is fine: that state is cheap and is consumed on a future
+  // viewport crossing back to >= sm.
+  const breakpoint = useViewportBreakpoint()
   const toast = useToast()
   const key = storageKey(family)
 
@@ -125,6 +140,18 @@ export function CoverageFamilySection({
       // ignore localStorage errors (private browsing etc.)
     }
   }, [collapsed, key])
+
+  if (breakpoint === 'xs') {
+    return (
+      <CoverageFamilySectionMobile
+        family={family}
+        rows={rows}
+        gitNexusInstallState={gitNexusInstallState}
+        {...(onRefresh !== undefined ? { onRefresh } : {})}
+        {...(inFlightRefreshes !== undefined ? { inFlightRefreshes } : {})}
+      />
+    )
+  }
 
   const { miss, stale, fresh } = computeCounts(rows)
   const bodyId = `family-${family}-body`
