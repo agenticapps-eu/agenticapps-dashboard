@@ -8,6 +8,13 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly requestId: string | undefined,
     message: string,
+    /**
+     * Daemon-supplied error code from ErrorResponseSchema.error (e.g.
+     * `newPath_blocked`, `newPath_outside_family_roots`). Undefined when
+     * the response body is not JSON or does not match the error schema.
+     * Consumers map this to user-facing copy.
+     */
+    public readonly code?: string,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -91,7 +98,24 @@ export async function apiFetch<S extends z.ZodTypeAny>(
     throw new ApiError(401, requestId, 'unauthorized')
   }
   if (!res.ok) {
-    throw new ApiError(res.status, undefined, `HTTP ${res.status}`)
+    // Read the body and surface the daemon-supplied error code if present.
+    // Without this, callers see only `HTTP 422` and cannot distinguish e.g.
+    // newPath_blocked from newPath_outside_family_roots — the daemon ships
+    // structured codes for exactly this reason (PathDriftPanel maps them
+    // to user-friendly toast copy).
+    let requestId: string | undefined
+    let code: string | undefined
+    try {
+      const body = await res.clone().json()
+      const parsed = ErrorResponseSchema.safeParse(body)
+      if (parsed.success) {
+        requestId = parsed.data.requestId
+        code = parsed.data.error
+      }
+    } catch {
+      /* body might not be JSON; leave code/requestId undefined */
+    }
+    throw new ApiError(res.status, requestId, `HTTP ${res.status}`, code)
   }
   const json = await res.json()
   return parseOrDrift(schema, json)

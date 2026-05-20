@@ -203,7 +203,12 @@ describe('PathDriftPanel', () => {
   })
 
   it('P9: error mutation — shows red error toast with mapped message', async () => {
-    mockFetch.mockReturnValue(makeFetchResponse({ error: 'newPath_blocked' }, 422))
+    mockFetch.mockReturnValue(
+      makeFetchResponse(
+        { ok: false, error: 'newPath_blocked', requestId: 'req-1' },
+        422,
+      ),
+    )
     const { wrapper } = makeWrapper()
     render(<PathDriftPanel drifted={ONE_WITH_SUGGESTION} />, { wrapper })
     const btn = screen.getByRole('button', { name: /fix path/i })
@@ -215,8 +220,40 @@ describe('PathDriftPanel', () => {
     })
     const toast = screen.getByRole('alert')
     // mapped error string (NOT raw error.message which could leak FS paths)
+    // After the apiFetch JSON-body fix, the specific code surfaces; assert
+    // BOTH the generic prefix AND the code-specific copy.
     expect(toast.textContent).toMatch(/Failed to fix path/i)
+    expect(toast.textContent).toMatch(/blocked/i)
   })
+
+  // P9a..P9d: each 422 code maps to its specific user-facing message.
+  // Regression for the dead-code bug where extractErrorCode only read
+  // HTTP status (429/404) and ALL 422 codes collapsed to "Fix failed".
+  const code422 = [
+    { code: 'newPath_outside_family_roots', expected: /outside the family roots/i },
+    { code: 'newPath_unresolvable', expected: /does not exist on disk/i },
+    { code: 'invalid_request', expected: /invalid request/i },
+  ] as const
+
+  for (const { code, expected } of code422) {
+    it(`P9-${code}: maps 422 ${code} to specific toast copy`, async () => {
+      mockFetch.mockReturnValue(
+        makeFetchResponse({ ok: false, error: code, requestId: 'req-1' }, 422),
+      )
+      const { wrapper } = makeWrapper()
+      render(<PathDriftPanel drifted={ONE_WITH_SUGGESTION} />, { wrapper })
+      const btn = screen.getByRole('button', { name: /fix path/i })
+      await act(async () => {
+        fireEvent.click(btn)
+      })
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeTruthy()
+      })
+      const toast = screen.getByRole('alert')
+      expect(toast.textContent).toMatch(/Failed to fix path/i)
+      expect(toast.textContent).toMatch(expected)
+    })
+  }
 
   it('P10: in-flight — button disabled + aria-busy=true for that row', async () => {
     // Defer the fetch resolution so we can observe the in-flight state.

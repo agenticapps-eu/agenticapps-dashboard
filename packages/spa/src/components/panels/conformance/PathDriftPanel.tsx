@@ -25,6 +25,7 @@ import { useState, type ReactElement } from 'react'
 import type { PathDriftEntry } from '@agenticapps/dashboard-shared'
 
 import { useRegistryFixPath } from '../../../lib/conformanceQueries.js'
+import { ApiError } from '../../../lib/api.js'
 import { useToast } from '../../ui/Toast.js'
 
 export interface PathDriftPanelProps {
@@ -55,11 +56,24 @@ function errorCodeToMessage(code: string | undefined): string {
   }
 }
 
-/** Extract a daemon error code from an error message of the form `HTTP 422`. */
+/**
+ * Extract a daemon error code from the thrown ApiError.
+ *
+ * ApiError carries the daemon-supplied `code` (from ErrorResponseSchema.error
+ * — e.g. `newPath_blocked`, `newPath_outside_family_roots`) since the apiFetch
+ * fix that reads the response body. Falls back to HTTP-status inference for
+ * 429/404 when the body is absent or unparseable.
+ */
 function extractErrorCode(err: unknown): string | undefined {
+  if (err instanceof ApiError) {
+    if (err.code) return err.code
+    if (err.status === 429) return 'rate_limited'
+    if (err.status === 404) return 'project_not_found'
+    return undefined
+  }
+  // Non-ApiError (e.g. mutation threw a different Error) — fall back to legacy
+  // message-regex inference for backward-compat with existing tests.
   if (err instanceof Error) {
-    // ApiError messages are `HTTP 422` etc. Without the body, we cannot
-    // recover the code field — toast then uses the default-case message.
     const m = err.message.match(/HTTP (\d+)/)
     if (m && m[1] === '429') return 'rate_limited'
     if (m && m[1] === '404') return 'project_not_found'
