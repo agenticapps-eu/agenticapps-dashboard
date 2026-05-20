@@ -54,6 +54,7 @@ import {
 import {
   readRegistry,
   writeRegistry,
+  withRegistryLock,
   assertRegistrationAllowed,
   RegistrationPathBlocked,
 } from '../lib/registry.js'
@@ -159,50 +160,64 @@ registryFixPathRoute.post(
       )
     }
 
-    // ── Step 6: lookup project by id ───────────────────────────────────
-    const reg = readRegistry(registryFile)
-    const entry = reg.projects.find((p) => p.id === body.id)
-    if (!entry) {
+    // ── Steps 6/6a/7: read-modify-write under an advisory cross-process
+    //    lock. Without this, a concurrent CLI mutation (register/unregister/
+    //    rename/tag) landing between readRegistry and writeRegistry would
+    //    clobber the daemon's change last-writer-wins. withRegistryLock
+    //    acquires `<registry>.lock` with O_EXCL, retries on contention,
+    //    times out after 5s. writeRegistry inside handles cache invalidation.
+    type Entry = ReturnType<typeof readRegistry>['projects'][number]
+    type EarlyExit =
+      | { kind: 'project_not_found' }
+      | { kind: 'newPath_not_a_repo' }
+      | { kind: 'newPath_origin_mismatch' }
+    type Result = { kind: 'ok'; entry: Entry } | EarlyExit
+    let lockResult: Result
+    try {
+      lockResult = await withRegistryLock(async (): Promise<Result> => {
+        // Step 6: lookup project by id.
+        const reg = readRegistry(registryFile)
+        const entry = reg.projects.find((p) => p.id === body.id)
+        if (!entry) return { kind: 'project_not_found' }
+
+        // Step 6a: target-is-a-repo check. Prevent silent misdirection —
+        // a token holder could otherwise repoint project-A to project-B's
+        // directory, or to project-B/src.
+        if (!existsSync(join(canonical, '.git'))) {
+          return { kind: 'newPath_not_a_repo' }
+        }
+        const oldOrigin = await readGitOrigin(entry.root)
+        if (oldOrigin) {
+          const newOrigin = await readGitOrigin(canonical)
+          if (!newOrigin || newOrigin !== oldOrigin) {
+            return { kind: 'newPath_origin_mismatch' }
+          }
+        }
+
+        // Step 7: mutate + atomic write. writeRegistry invalidates caches.
+        entry.root = canonical
+        writeRegistry(reg, registryFile)
+        return { kind: 'ok', entry }
+      })
+    } catch (err) {
+      const msg = (err as Error).message ?? ''
+      if (msg.startsWith('registry_lock_timeout')) {
+        return c.json({ ok: false, error: 'registry_lock_timeout', requestId }, 503)
+      }
+      throw err
+    }
+
+    if (lockResult.kind === 'project_not_found') {
       return c.json({ ok: false, error: 'project_not_found', requestId }, 404)
     }
-
-    // ── Step 6a: target-is-a-repo check ─────────────────────────────────
-    // Prevent silent misdirection: a token holder could otherwise repoint
-    // project-A to project-B's directory, or to project-B/src, and the
-    // dashboard would silently report B's git history as A's.
-    //
-    // (a) newPath must contain a `.git` entry (file for worktree, dir for
-    //     normal repo). Without this, fix-path can accept any random
-    //     directory under a family root.
-    // (b) If the entry's CURRENT root still has a readable .git/config,
-    //     newPath's origin URL must match. When the original drift was
-    //     'missing', the old config is unreadable — we accept any repo
-    //     under the family root (best effort, the user picked it).
-    if (!existsSync(join(canonical, '.git'))) {
-      return c.json(
-        { ok: false, error: 'newPath_not_a_repo', requestId },
-        422,
-      )
+    if (lockResult.kind === 'newPath_not_a_repo') {
+      return c.json({ ok: false, error: 'newPath_not_a_repo', requestId }, 422)
     }
-    const oldOrigin = await readGitOrigin(entry.root)
-    if (oldOrigin) {
-      const newOrigin = await readGitOrigin(canonical)
-      if (!newOrigin || newOrigin !== oldOrigin) {
-        return c.json(
-          { ok: false, error: 'newPath_origin_mismatch', requestId },
-          422,
-        )
-      }
+    if (lockResult.kind === 'newPath_origin_mismatch') {
+      return c.json({ ok: false, error: 'newPath_origin_mismatch', requestId }, 422)
     }
-
-    // ── Step 7: mutate + atomic write ───────────────────────────────────
-    // writeRegistry() handles cache invalidation (T-12-CACHE-STALE) for
-    // every registry write path now — see registry.ts. No explicit
-    // invalidate calls needed here.
-    entry.root = canonical
-    writeRegistry(reg, registryFile)
 
     // ── Step 8: outbound — schema-drift defence ─────────────────────────
-    return outbound(c, RegistryEntrySchema.parse.bind(RegistryEntrySchema), entry)
+    return outbound(c, RegistryEntrySchema.parse.bind(RegistryEntrySchema), lockResult.entry)
   },
 )
