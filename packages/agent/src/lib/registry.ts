@@ -29,6 +29,8 @@ import {
 import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { invalidateConformanceCache } from './conformanceCache.js'
+import { invalidateCoverageCache } from './coverageCache.js'
 import { parseOrCorrupt } from './stateCorruption.js'
 
 export type { RegistryEntry, RegistryFile, RegistryListItem }
@@ -184,6 +186,14 @@ export function writeRegistry(reg: RegistryFile, filePath: string = REGISTRY_FIL
   const validated = RegistryFileSchema.parse(reg)
   ensureConfigDir(dirname(filePath))
   atomicWriteFile(filePath, JSON.stringify(validated, null, 2), 0o600)
+  // Every registry mutation can change the conformance + coverage view —
+  // invalidate the per-process caches HERE so the next GET re-scans. Previously
+  // only the fix-path route invalidated, leaving register/unregister/rename/tag
+  // (CLI + /api/registry/register-confirm) able to serve stale data for up to
+  // 30s. Cache modules are singletons per process; invalidation from the CLI
+  // is a no-op (its cache instance is never populated), so this is safe.
+  invalidateConformanceCache()
+  invalidateCoverageCache()
 }
 
 export interface AddResult {

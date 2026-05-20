@@ -59,8 +59,6 @@ import {
 } from '../lib/registry.js'
 import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { COVERAGE_ROOTS } from '../lib/paths.js'
-import { invalidateConformanceCache } from '../lib/conformanceCache.js'
-import { invalidateCoverageCache } from '../lib/coverageCache.js'
 import { readGitOrigin } from '../lib/registryPathDrift.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
@@ -198,14 +196,13 @@ registryFixPathRoute.post(
     }
 
     // ── Step 7: mutate + atomic write ───────────────────────────────────
+    // writeRegistry() handles cache invalidation (T-12-CACHE-STALE) for
+    // every registry write path now — see registry.ts. No explicit
+    // invalidate calls needed here.
     entry.root = canonical
     writeRegistry(reg, registryFile)
 
-    // ── Step 8: cache invalidation (T-12-CACHE-STALE) ──────────────────
-    invalidateConformanceCache()
-    invalidateCoverageCache()
-
-    // ── Step 9: outbound — schema-drift defence ─────────────────────────
+    // ── Step 8: outbound — schema-drift defence ─────────────────────────
     return outbound(c, RegistryEntrySchema.parse.bind(RegistryEntrySchema), entry)
   },
 )
