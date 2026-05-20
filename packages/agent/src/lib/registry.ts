@@ -271,40 +271,67 @@ export interface RegistryMutationLockOpts {
 }
 
 /**
+ * Build the withRegistryLock opts for a given registry path + caller overrides.
+ * Keeps the lockFile derivation in one place so it always tracks the registry
+ * file (never the global REGISTRY_FILE constant when the caller passed a
+ * fixture path).
+ */
+function lockOptsFor(
+  filePath: string,
+  lockOpts: RegistryMutationLockOpts,
+): { lockFile: string; maxWaitMs?: number } {
+  const out: { lockFile: string; maxWaitMs?: number } = {
+    lockFile: `${filePath}.lock`,
+  }
+  if (lockOpts.maxWaitMs !== undefined) out.maxWaitMs = lockOpts.maxWaitMs
+  return out
+}
+
+/**
  * Add a project to the registry. Idempotent on path collision (D-10).
  * Slug collisions get -2, -3 suffixes.
+ *
+ * Wraps the read-modify-write in withRegistryLock so a concurrent CLI or
+ * daemon mutation cannot clobber this addition last-writer-wins. Path
+ * validation (canonicaliseRoot + assertRegistrationAllowed) runs OUTSIDE the
+ * lock — it is pure and benefits no one by serialising. Errors from those
+ * (RegistrationPathBlocked) reach the caller without ever taking the lock.
  */
 export async function addProject(
   pathArg: string,
   opts: { name?: string; client?: string | null; tags?: string[] } = {},
   filePath: string = REGISTRY_FILE,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _lockOpts: RegistryMutationLockOpts = {},
+  lockOpts: RegistryMutationLockOpts = {},
 ): Promise<AddResult> {
   const root = canonicaliseRoot(pathArg)
   assertRegistrationAllowed(root)
-  const reg = readRegistry(filePath)
-  const existing = reg.projects.find((p) => p.root === root)
-  if (existing) return { entry: existing, alreadyRegistered: true }
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const existing = reg.projects.find((p) => p.root === root)
+      if (existing) return { entry: existing, alreadyRegistered: true }
 
-  const baseSlug = slugify(opts.name ?? basename(root))
-  let id = baseSlug
-  let n = 2
-  while (reg.projects.some((p) => p.id === id)) {
-    id = `${baseSlug}-${n}`
-    n += 1
-  }
-  const entry: RegistryEntry = RegistryEntrySchema.parse({
-    id,
-    name: opts.name ?? basename(root),
-    root,
-    client: opts.client ?? null,
-    addedAt: new Date().toISOString(),
-    tags: opts.tags ?? [],
-  })
-  reg.projects.push(entry)
-  writeRegistry(reg, filePath)
-  return { entry, alreadyRegistered: false }
+      const baseSlug = slugify(opts.name ?? basename(root))
+      let id = baseSlug
+      let n = 2
+      while (reg.projects.some((p) => p.id === id)) {
+        id = `${baseSlug}-${n}`
+        n += 1
+      }
+      const entry: RegistryEntry = RegistryEntrySchema.parse({
+        id,
+        name: opts.name ?? basename(root),
+        root,
+        client: opts.client ?? null,
+        addedAt: new Date().toISOString(),
+        tags: opts.tags ?? [],
+      })
+      reg.projects.push(entry)
+      writeRegistry(reg, filePath)
+      return { entry, alreadyRegistered: false }
+    },
+    lockOptsFor(filePath, lockOpts),
+  )
 }
 
 /**
@@ -320,52 +347,64 @@ export async function addProject(
 export async function removeProject(
   idOrPath: string,
   filePath: string = REGISTRY_FILE,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _lockOpts: RegistryMutationLockOpts = {},
+  lockOpts: RegistryMutationLockOpts = {},
 ): Promise<boolean> {
-  const reg = readRegistry(filePath)
   // Try both the canonical (realpath-resolved when reachable) AND the plain
   // resolve() form, so the user can remove with the same path string they used
   // at registration even if it later became unreachable.
   const targetCanonical = canonicaliseRoot(idOrPath)
   const targetResolved = resolve(idOrPath)
-  const before = reg.projects.length
-  reg.projects = reg.projects.filter(
-    (p) => p.id !== idOrPath && p.root !== targetCanonical && p.root !== targetResolved,
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const before = reg.projects.length
+      reg.projects = reg.projects.filter(
+        (p) => p.id !== idOrPath && p.root !== targetCanonical && p.root !== targetResolved,
+      )
+      if (reg.projects.length === before) return false
+      writeRegistry(reg, filePath)
+      return true
+    },
+    lockOptsFor(filePath, lockOpts),
   )
-  if (reg.projects.length === before) return false
-  writeRegistry(reg, filePath)
-  return true
 }
 
 export async function renameProject(
   id: string,
   newName: string,
   filePath: string = REGISTRY_FILE,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _lockOpts: RegistryMutationLockOpts = {},
+  lockOpts: RegistryMutationLockOpts = {},
 ): Promise<boolean> {
-  const reg = readRegistry(filePath)
-  const entry = reg.projects.find((p) => p.id === id)
-  if (!entry) return false
-  entry.name = newName
-  writeRegistry(reg, filePath)
-  return true
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const entry = reg.projects.find((p) => p.id === id)
+      if (!entry) return false
+      entry.name = newName
+      writeRegistry(reg, filePath)
+      return true
+    },
+    lockOptsFor(filePath, lockOpts),
+  )
 }
 
 export async function setTags(
   id: string,
   tags: string[],
   filePath: string = REGISTRY_FILE,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _lockOpts: RegistryMutationLockOpts = {},
+  lockOpts: RegistryMutationLockOpts = {},
 ): Promise<boolean> {
-  const reg = readRegistry(filePath)
-  const entry = reg.projects.find((p) => p.id === id)
-  if (!entry) return false
-  entry.tags = tags
-  writeRegistry(reg, filePath)
-  return true
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const entry = reg.projects.find((p) => p.id === id)
+      if (!entry) return false
+      entry.tags = tags
+      writeRegistry(reg, filePath)
+      return true
+    },
+    lockOptsFor(filePath, lockOpts),
+  )
 }
 
 /**
