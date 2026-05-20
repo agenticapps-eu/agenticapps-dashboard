@@ -122,8 +122,12 @@ describe('conformanceScan › scanConformance', () => {
     expect(result.drifted).toEqual(drifted)
   })
 
-  it('delta14d = today − series[length-15] when 15+ entries exist', async () => {
-    // Fixture: series.length === 15; baseline (series[0]) = 75; today is 100 (all-fresh).
+  it('delta14d uses date-anchored baseline (today − entry dated 14d ago)', async () => {
+    // Anchor: now = 2026-05-15. Target = 2026-05-01.
+    // series spans 2026-05-01..2026-05-15. Baseline must be the 2026-05-01
+    // entry (score 75); rest are 80. Today is 100 (all-fresh fixture).
+    // Delta = 100 − 75 = 25.
+    const now = new Date('2026-05-15T00:00:00.000Z')
     const series = Array.from({ length: 15 }, (_, i) => {
       const baseline = i === 0 ? 75 : 80
       return {
@@ -136,17 +140,19 @@ describe('conformanceScan › scanConformance', () => {
     })
     vi.mocked(readDailySeriesForFleet).mockResolvedValue(series)
 
-    const result = await scanConformance()
-    // today = 100 (all-fresh fixture); baseline = series[15 - 15] = series[0] = 75
+    const result = await scanConformance({ now })
     expect(result.delta14d.fleet).toBe(25)
     expect(result.delta14d.agenticapps).toBe(25)
     expect(result.delta14d.factiv).toBe(25)
     expect(result.delta14d.neuroflash).toBe(25)
   })
 
-  it('delta14d = 0 when series.length < 15 (window not built yet)', async () => {
+  it('delta14d = 0 when no series entry is old enough (cold start)', async () => {
+    // Anchor 2026-05-15; series only spans 2026-05-11..2026-05-15 (5 entries).
+    // None are ≤ target (2026-05-01), so baseline=null → delta=0.
+    const now = new Date('2026-05-15T00:00:00.000Z')
     const series = Array.from({ length: 5 }, (_, i) => ({
-      date: `2026-05-${String(i + 1).padStart(2, '0')}`,
+      date: `2026-05-${String(i + 11).padStart(2, '0')}`,
       fleet: 50,
       agenticapps: 50,
       factiv: 50,
@@ -154,11 +160,40 @@ describe('conformanceScan › scanConformance', () => {
     }))
     vi.mocked(readDailySeriesForFleet).mockResolvedValue(series)
 
-    const result = await scanConformance()
+    const result = await scanConformance({ now })
     expect(result.delta14d.fleet).toBe(0)
     expect(result.delta14d.agenticapps).toBe(0)
     expect(result.delta14d.factiv).toBe(0)
     expect(result.delta14d.neuroflash).toBe(0)
+  })
+
+  it('delta14d tolerates calendar gaps (uses closest older entry, not array position)', async () => {
+    // Regression for the position-based bug. Anchor 2026-05-15;
+    // target=2026-05-01. Series has only TWO entries: 2026-04-20 (score 60)
+    // and 2026-05-15 (score 100). Position-based would index series[-13],
+    // which is invalid. Date-based picks 2026-04-20 (closest entry whose
+    // date ≤ target). Delta = 100 − 60 = 40.
+    const now = new Date('2026-05-15T00:00:00.000Z')
+    const series = [
+      {
+        date: '2026-04-20',
+        fleet: 60,
+        agenticapps: 60,
+        factiv: 60,
+        neuroflash: 60,
+      },
+      {
+        date: '2026-05-15',
+        fleet: 100,
+        agenticapps: 100,
+        factiv: 100,
+        neuroflash: 100,
+      },
+    ]
+    vi.mocked(readDailySeriesForFleet).mockResolvedValue(series)
+
+    const result = await scanConformance({ now })
+    expect(result.delta14d.fleet).toBe(40)
   })
 
   it('drifted repo IDs flow into computeConformanceScores (excluded from denominator)', async () => {

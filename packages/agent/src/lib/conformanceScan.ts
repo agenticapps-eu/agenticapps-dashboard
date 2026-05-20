@@ -163,13 +163,32 @@ export async function scanConformance(
     series = []
   }
 
-  // 6. delta14d: today − series[length - 15] when at least 15 entries exist.
-  //    When fewer, the window is still building and any delta we'd compute
-  //    would be misleading — zero by design (D-12-13 empty-state covers the
-  //    chart; the family-card delta tile shows 0 with no arrow).
+  // 6. delta14d: today − the series entry dated closest to (now - 14d).
+  //    Position-based indexing (series[length-15]) silently lied when the
+  //    series had calendar gaps — after a daemon outage, "14d delta" would
+  //    actually compare against ~28 days ago because there were fewer
+  //    entries than calendar days. The wire field name is `delta14d`, so
+  //    we resolve by date.
+  //
+  //    Algorithm: target = now - 14 days. Walk series backwards (newest
+  //    first); the first entry with date <= targetDate is the baseline.
+  //    Tolerate gaps — if the exact target date is missing we still
+  //    return the closest older entry's delta.
+  //
+  //    Fallback to zero if no entry old enough exists yet (cold-start
+  //    window still warming up). Matches the D-12-13 empty-state.
   let delta14d: ConformanceResponse['delta14d'] = zeroDelta()
-  if (series.length >= 15) {
-    const baseline = series[series.length - 15] as ConformanceDayPoint
+  const targetMs = now.getTime() - 14 * 24 * 60 * 60 * 1000
+  const targetDate = new Date(targetMs).toISOString().slice(0, 10)
+  let baseline: ConformanceDayPoint | null = null
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    const candidate = series[i] as ConformanceDayPoint
+    if (candidate.date <= targetDate) {
+      baseline = candidate
+      break
+    }
+  }
+  if (baseline) {
     delta14d = {
       fleet: today.fleet - baseline.fleet,
       agenticapps: today.agenticapps - baseline.agenticapps,
