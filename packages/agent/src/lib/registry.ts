@@ -6,12 +6,16 @@
  * interpret it as shell tokens. execa uses argv arrays — no shell injection. (T-01-02-10)
  */
 import {
+  closeSync,
+  constants as fsConstants,
   existsSync,
   mkdirSync,
+  openSync,
   readFileSync,
   realpathSync,
   statSync,
   readdirSync,
+  unlinkSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve, sep } from 'node:path'
@@ -29,6 +33,8 @@ import {
 import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { invalidateConformanceCache } from './conformanceCache.js'
+import { invalidateCoverageCache } from './coverageCache.js'
 import { parseOrCorrupt } from './stateCorruption.js'
 
 export type { RegistryEntry, RegistryFile, RegistryListItem }
@@ -184,6 +190,72 @@ export function writeRegistry(reg: RegistryFile, filePath: string = REGISTRY_FIL
   const validated = RegistryFileSchema.parse(reg)
   ensureConfigDir(dirname(filePath))
   atomicWriteFile(filePath, JSON.stringify(validated, null, 2), 0o600)
+  // Every registry mutation can change the conformance + coverage view —
+  // invalidate the per-process caches HERE so the next GET re-scans. Previously
+  // only the fix-path route invalidated, leaving register/unregister/rename/tag
+  // (CLI + /api/registry/register-confirm) able to serve stale data for up to
+  // 30s. Cache modules are singletons per process; invalidation from the CLI
+  // is a no-op (its cache instance is never populated), so this is safe.
+  invalidateConformanceCache()
+  invalidateCoverageCache()
+}
+
+/**
+ * Cross-process advisory lock for the read-modify-write window over
+ * registry.json. atomicWriteFile() guarantees each write is atomic, but a
+ * concurrent CLI mutation (`agentic-dashboard register`) that lands between
+ * the daemon's readRegistry and writeRegistry would clobber the daemon's
+ * change. The plan's A4 ratification claimed POSIX-rename serialised
+ * concurrent writes — that is wrong; rename is atomic per call, not across
+ * RMW. This helper closes that window with an O_EXCL lock file.
+ *
+ * Implementation: open `<registry>.lock` with O_EXCL — fails with EEXIST
+ * when another holder has it. Retry every 25ms up to maxWaitMs (default
+ * 5s). On success, run fn(), then unlink the lock on the way out.
+ *
+ * Stale-lock risk: if a holder crashes between open and unlink, the lock
+ * file lingers and subsequent acquirers time out. The 5s ceiling means at
+ * worst the next caller surfaces a clear timeout error rather than silently
+ * waiting forever; operators can `rm registry.json.lock` manually. A
+ * PID-aware stale-detection layer is a follow-up (out of scope for the
+ * Codex F4 fix).
+ *
+ * Usage: any read-modify-write over the registry should wrap its three
+ * steps in this helper. fix-path uses it; CLI commands (register etc.)
+ * should adopt it in a follow-up since they currently RMW without locking.
+ */
+export async function withRegistryLock<T>(
+  fn: () => Promise<T> | T,
+  opts: { lockFile?: string; maxWaitMs?: number } = {},
+): Promise<T> {
+  const lockFile = opts.lockFile ?? `${REGISTRY_FILE}.lock`
+  const maxWaitMs = opts.maxWaitMs ?? 5000
+  const start = Date.now()
+  let fd: number | null = null
+  while (true) {
+    try {
+      fd = openSync(
+        lockFile,
+        fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
+        0o600,
+      )
+      break
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+      if (Date.now() - start > maxWaitMs) {
+        throw new Error(`registry_lock_timeout: ${lockFile}`)
+      }
+      await new Promise((r) => setTimeout(r, 25))
+    }
+  }
+  try {
+    return await fn()
+  } finally {
+    if (fd !== null) {
+      try { closeSync(fd) } catch { /* already closed */ }
+    }
+    try { unlinkSync(lockFile) } catch { /* best-effort cleanup */ }
+  }
 }
 
 export interface AddResult {

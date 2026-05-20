@@ -198,6 +198,25 @@ export type {
   SkillDriftResponse,
 } from './schemas/skillDrift.js'
 
+// Phase 12 — observability conformance surface (D-12-14/15/16)
+export {
+  ConformanceTierSchema,
+  tierOf,
+  ConformanceDayPointSchema,
+  PathDriftReasonSchema,
+  PathDriftEntrySchema,
+  ConformanceResponseSchema,
+  RegistryFixPathRequestSchema,
+} from './schemas/conformance.js'
+export type {
+  ConformanceTier,
+  ConformanceDayPoint,
+  PathDriftReason,
+  PathDriftEntry,
+  ConformanceResponse,
+  RegistryFixPathRequest,
+} from './schemas/conformance.js'
+
 export {
   buildWikiCompileClipboardString,
   buildWorkflowUpdateClipboardString,

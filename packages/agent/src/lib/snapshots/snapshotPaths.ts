@@ -13,8 +13,16 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-/** D-11-01 retention window — referenced by writer/pruner/reader windows. */
-export const RETENTION_DAYS = 14
+/**
+ * D-12-09 (Phase 12): retention extended 14 → 90 to power the 90-day fleet
+ * conformance trend chart. Phase 11 drift-summary window
+ * (`CoverageHistoryResponseSchema.windowDays: z.literal(14)`) is semantically
+ * independent — that literal is the drift-detection window, NOT retention.
+ * Pruner picks up the new value automatically (snapshotWriter.ts:75 passes
+ * RETENTION_DAYS; snapshotPruner.test.ts uses an explicit literal `14` arg
+ * for its boundary semantics and remains unchanged).
+ */
+export const RETENTION_DAYS = 90
 
 /**
  * Anchored regex: exactly YYYY-MM-DD.ndjson, no leading/trailing junk.

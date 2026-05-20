@@ -29,6 +29,8 @@ import { integrationsRoute } from '../routes/integrations.js'
 import { coverageRoute } from '../routes/coverage.js'
 import { coverageHistoryRoute } from '../routes/coverageHistory.js'
 import { skillDriftRoute } from '../routes/skillDrift.js'
+import { conformanceRoute } from '../routes/conformance.js'
+import { registryFixPathRoute } from '../routes/registryFixPath.js'
 
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
@@ -135,6 +137,8 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api', coverageRoute)
   app.route('/api', coverageHistoryRoute) // Phase 11 TRD-03 (PD-11-02 bulk-per-repo)
   app.route('/api', skillDriftRoute) // Phase 11 SKD-02, SKD-03 (D-11-14 single-project-per-request)
+  app.route('/api', conformanceRoute) // Phase 12 D-12-14: GET /api/observability/conformance
+  app.route('/api/admin', registryFixPathRoute) // Phase 12 D-12-19, D-12-26: POST /api/admin/registry/fix-path
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)

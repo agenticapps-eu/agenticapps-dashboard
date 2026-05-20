@@ -128,6 +128,19 @@ const observabilitySkillDriftRoute = createRoute({
 }).lazy(() => import('./routes/observability.skill-drift.lazy.js').then((m) => m.Route))
 
 /**
+ * conformanceRoute — /observability/conformance page under the _appshell layout.
+ * Phase 12 D-12-01: Observability sidebar section graduates from 2 → 3 peer
+ * entries (Coverage / Skill drift / Conformance).
+ * D-12-02: sibling route (NOT widening Phase 5's /observability aggregator).
+ * NO validateSearch for v1.2.0 — deep-link to a specific day (`?date=...`) is
+ * deferred per RESEARCH §REQ-12-PAGE-01.
+ */
+const conformanceRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/observability/conformance',
+}).lazy(() => import('./routes/observability.conformance.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -170,6 +183,7 @@ const routeTree = rootRoute.addChildren([
     projectsIdRoute,
     coverageRoute, // Phase 10 D-10-08 — /coverage under _appshell
     observabilitySkillDriftRoute, // Phase 11 D-11-08 — /observability/skill-drift under _appshell
+    conformanceRoute, // Phase 12 D-12-01 — /observability/conformance under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

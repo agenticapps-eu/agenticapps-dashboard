@@ -54,6 +54,52 @@ describe('readRegistry / writeRegistry', () => {
       cleanup()
     }
   })
+
+  it('writeRegistry invalidates conformance + coverage caches (every write path, not just fix-path)', async () => {
+    // Regression for the cache-stale bug. CLI register/unregister/rename/tag
+    // and /api/registry/register-confirm all go through writeRegistry —
+    // each must invalidate the per-process caches so the next GET re-scans.
+    // Previously only the fix-path route invalidated, leaving up to 30s
+    // of stale data after every other registry mutation.
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const conformance = await import('./conformanceCache.js')
+    const coverage = await import('./coverageCache.js')
+    try {
+      // Prime both caches with a sentinel value.
+      conformance.setConformanceCache({
+        schemaVersion: 1,
+        today: {
+          asOf: '2026-05-15T00:00:00.000Z',
+          fleet: 50,
+          agenticapps: 50,
+          factiv: 50,
+          neuroflash: 50,
+        },
+        delta14d: { fleet: 0, agenticapps: 0, factiv: 0, neuroflash: 0 },
+        series: [],
+        drifted: [],
+      })
+      coverage.setCoverageCache({
+        schemaVersion: 1,
+        generatedAtIso: '2026-05-15T00:00:00.000Z',
+        gitNexusInstallState: 'installed-no-registry',
+        workflowHeadVersion: null,
+        rows: [],
+      })
+      expect(conformance.getConformanceCache()).not.toBeNull()
+      expect(coverage.getCoverageCache()).not.toBeNull()
+
+      // Any write through writeRegistry must invalidate.
+      const reg = readRegistry(regFile)
+      writeRegistry(reg, regFile)
+
+      expect(conformance.getConformanceCache()).toBeNull()
+      expect(coverage.getCoverageCache()).toBeNull()
+    } finally {
+      cleanup()
+    }
+  })
 })
 
 describe('addProject', () => {

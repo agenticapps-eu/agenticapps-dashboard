@@ -16,6 +16,18 @@
  * S10 (Phase 11 D-11-08): Observability section contains BOTH Coverage AND Skill drift items
  * S11 (Phase 11 D-11-08): Skill drift is the SECOND peer entry — Coverage first, Skill drift second
  * S12 (Phase 11 D-11-08): Both items use the SidebarItem peer primitive — Sidebar source contains no SidebarSubItem use inside the Observability section
+ *
+ * Phase 12 Plan 12-04 (D-12-01 / REQ-12-NAV-01) — graduates the Observability
+ * section from 2 → 3 peer entries:
+ *
+ * S13: Observability section contains 3 entries (Coverage, Skill drift, Conformance)
+ * S14: Conformance entry routes to /observability/conformance
+ * S15: Observability order is Coverage → Skill drift → Conformance (additive — Phase 11
+ *      D-11-08 order preserved; documented deviation from RESEARCH OQ3)
+ * S16: Conformance entry uses the SidebarItem peer primitive (NOT SidebarSubItem) —
+ *      matches D-12-01 + D-11-08
+ * S17: Sidebar source imports TrendingUp from lucide-react (icon used for Conformance,
+ *      visually distinct from Activity / Layers)
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -179,5 +191,67 @@ describe('Sidebar', () => {
     expect(skillDriftLink.className).toContain('px-3')
     expect(skillDriftLink.className).toContain('py-2')
     expect(skillDriftLink.className).toContain('text-sm')
+  })
+
+  it('S13: Observability section contains 3 entries (Coverage, Skill drift, Conformance) — Phase 12 D-12-01', () => {
+    render(<Sidebar />)
+    const coverageLink = screen.getByRole('link', { name: /^Coverage$/i })
+    const skillDriftLink = screen.getByRole('link', { name: /^Skill drift$/i })
+    const conformanceLink = screen.getByRole('link', { name: /^Conformance$/i })
+    expect(coverageLink).toBeDefined()
+    expect(skillDriftLink).toBeDefined()
+    expect(conformanceLink).toBeDefined()
+  })
+
+  it('S14: Conformance entry routes to /observability/conformance (Phase 12 REQ-12-NAV-01)', () => {
+    render(<Sidebar />)
+    const conformanceLink = screen.getByRole('link', { name: /^Conformance$/i })
+    expect(conformanceLink.getAttribute('href')).toBe('/observability/conformance')
+  })
+
+  it('S15: Observability order is Coverage → Skill drift → Conformance (Phase 11 IA preserved)', () => {
+    const { container } = render(<Sidebar />)
+    const text = container.textContent ?? ''
+    const obsIdx = text.indexOf('Observability')
+    const covIdx = text.indexOf('Coverage', obsIdx)
+    const skdIdx = text.indexOf('Skill drift', obsIdx)
+    const conIdx = text.indexOf('Conformance', obsIdx)
+    expect(obsIdx).toBeGreaterThanOrEqual(0)
+    expect(covIdx).toBeGreaterThan(obsIdx)
+    expect(skdIdx).toBeGreaterThan(covIdx)
+    // Conformance is the THIRD entry — must appear AFTER Skill drift.
+    expect(conIdx).toBeGreaterThan(skdIdx)
+  })
+
+  it('S16: Conformance link uses SidebarItem peer primitive (not SidebarSubItem) — D-12-01 + D-11-08', () => {
+    render(<Sidebar />)
+    const conformanceLink = screen.getByRole('link', { name: /^Conformance$/i })
+    expect(conformanceLink.className).toContain('px-3')
+    expect(conformanceLink.className).toContain('py-2')
+    expect(conformanceLink.className).toContain('text-sm')
+  })
+
+  it('S17: Sidebar source imports TrendingUp from lucide-react (Conformance icon)', async () => {
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+    const candidates = [
+      path.resolve(process.cwd(), 'src/components/ui/Sidebar.tsx'),
+      path.resolve(process.cwd(), 'packages/spa/src/components/ui/Sidebar.tsx'),
+    ]
+    let source: string | null = null
+    for (const c of candidates) {
+      try {
+        source = await fs.readFile(c, 'utf8')
+        break
+      } catch {
+        // continue
+      }
+    }
+    if (source === null) throw new Error('Sidebar.tsx not found')
+    // TrendingUp appears in the lucide-react import line AND in the JSX usage.
+    const matches = source.match(/TrendingUp/g) ?? []
+    expect(matches.length).toBeGreaterThanOrEqual(2)
+    // Import statement contains TrendingUp.
+    expect(source).toMatch(/from ['"]lucide-react['"][\s\S]*?TrendingUp|TrendingUp[\s\S]*?from ['"]lucide-react['"]/)
   })
 })
