@@ -8,8 +8,9 @@ the source agent and the finding's confidence at review time.
 
 ### Backend
 
-- **[INFORMATIONAL] (Security #4 / Testing #7, confidence 7/10)** — `/api/observability/conformance` has no rate-limit and no single-flight dedup. On cold cache N concurrent GETs from the same token each invoke `scanConformance()` (every call reads every family's `.git/config` + registry + 90 days of NDJSON). Add `rlConsume(tokenHashOf(token))` at route entry OR wrap `scanConformance` in an inflight-promise singleton.
-  - File: `packages/agent/src/routes/conformance.ts:35`
+- ~~**[INFORMATIONAL] (Security #4 / Testing #7, confidence 7/10)** — `/api/observability/conformance` has no rate-limit and no single-flight dedup. On cold cache N concurrent GETs from the same token each invoke `scanConformance()` (every call reads every family's `.git/config` + registry + 90 days of NDJSON). Add `rlConsume(tokenHashOf(token))` at route entry OR wrap `scanConformance` in an inflight-promise singleton.~~
+  - ~~File: `packages/agent/src/routes/conformance.ts:35`~~
+  - **CLOSED 2026-05-21** by `fix/dash-12-conformance-inflight-dedup`. Took the inflight-promise singleton option (not the rate-limit) since it's the closer fit for "N concurrent callers run scanConformance once" and doesn't add per-token state. `getOrComputeConformance(compute)` lives in `lib/conformanceCache.ts` and owns the cache + inflight slot together; route collapses to `await getOrComputeConformance(() => scanConformance())`. Failure resets the inflight slot (try/finally) so rejected scans don't poison subsequent calls. Tests: 5 helper-level + 2 route-level (RED concurrent-fan-out + retry-after-reject). Rate-limit-style protection against a single misbehaving token is a separate concern; not added here.
 - **[INFORMATIONAL] (Adversarial F3, confidence 7/10)** — `conformanceScan.pathToRepoId` compares against the raw `COVERAGE_ROOTS[family]()` value, not its realpath. On macOS where `/Users` ≠ `/private/Users` for `/tmp`, drift detection and scoring disagree silently. Realpath family roots once at module init.
   - File: `packages/agent/src/lib/conformanceScan.ts:59-72`
 - **[INFORMATIONAL] (Security #5, confidence 6/10)** — fix-path family-root containment allows `canonical === root` (i.e. registering a family root itself). Tighten to strict `canonical.startsWith(root + sep)`.
