@@ -65,14 +65,19 @@ function pathToRepoId(storedPath: string): string | null {
     // storedPath is canonical (registry.addProject runs canonicaliseRoot →
     // realpathSync), so the comparison root must also be realpath'd or any
     // symlink in the COVERAGE_ROOTS factory (e.g. macOS /tmp → /private/tmp)
-    // makes the prefix-match silently fail. Defensive: an absent family root
-    // is treated as no-match — we never throw out of a hot drift-translation
-    // loop. TODOS Adversarial F3 / Test 13.
+    // makes the prefix-match silently fail. TODOS Adversarial F3.
+    //
+    // ENOENT fallback: if the family dir doesn't exist on this machine
+    // (common on CI runners + in tests that synthesise paths under a
+    // non-existent root), realpath throws — fall back to the raw value so
+    // string-level prefix matches still resolve. We only LOSE the
+    // symlink-resolution property for absent roots, which can't have
+    // symlinks anyway because they don't exist.
     let root: string
     try {
       root = realpathSync(raw)
     } catch {
-      continue
+      root = raw
     }
     // Exact match would mean the registry entry IS a family root — unlikely
     // for a real repo but cheap to handle.

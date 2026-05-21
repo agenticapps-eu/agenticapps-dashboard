@@ -297,6 +297,66 @@ describe('conformanceScan › scanConformance', () => {
     }
   })
 
+  it('Adversarial F3 ENOENT fallback — absent family root still produces correct repo IDs (CI parity)', async () => {
+    // When the family root directory doesn't exist on this machine (common
+    // on CI runners that don't pre-create `~/Sourcecode/...`), realpath
+    // throws ENOENT. We MUST fall back to the raw COVERAGE_ROOTS value so
+    // string-level prefix matches continue to work — otherwise every test
+    // that synthesises a storedPath under a non-existent root would regress
+    // to "drift not excluded → score 100" the way CI regressed when this PR
+    // first shipped without the ENOENT fallback.
+    //
+    // We invoke this through scanConformance with the default factiv root
+    // (homedir() + '/Sourcecode/factiv') and an `f-1` storedPath under it.
+    // Even if /home/runner/Sourcecode/factiv doesn't exist (CI case), the
+    // raw-string match still finds it.
+    const { homedir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { COVERAGE_ROOTS } = await import('./paths.js')
+
+    // Point at a guaranteed-absent path so we exercise the ENOENT branch
+    // even on a dev machine where /Sourcecode/factiv does exist.
+    const absentRoot = '/this/path/definitely/does/not/exist/factiv'
+    const originalFactiv = COVERAGE_ROOTS.factiv
+    ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).factiv = () =>
+      absentRoot
+
+    try {
+      vi.mocked(detectPathDrift).mockResolvedValue([
+        {
+          id: 'f-1',
+          storedPath: join(absentRoot, 'f-1'),
+          suggestedPath: null,
+          reason: 'missing',
+        },
+      ])
+      vi.mocked(scanCoverageInternal).mockResolvedValue({
+        response: makeCoverage([
+          makeRow('agenticapps', 'aa-1'),
+          makeRow('factiv', 'f-1'),
+          makeRow('neuroflash', 'n-1'),
+        ]),
+        internalRows: [],
+      })
+      const result = await scanConformance()
+      // Drift exclusion must still work under ENOENT fallback → factiv has
+      // no countable rows → score 0.
+      expect(result.today.factiv).toBe(0)
+      // agenticapps + neuroflash unaffected.
+      expect(result.today.agenticapps).toBe(100)
+      expect(result.today.neuroflash).toBe(100)
+
+      // Silence unused-import lint by demonstrating the homedir fallback
+      // root would also work — kept as a comment to avoid the test
+      // depending on machine state. (homedir() exercised in the
+      // non-fallback test at line 199.)
+      void homedir
+    } finally {
+      ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).factiv =
+        originalFactiv
+    }
+  })
+
   it('partialFailures lists failed sub-scans when readDailySeriesForFleet rejects', async () => {
     // Regression for the silent-failure mask. A defensive empty payload is
     // indistinguishable from real-zero data without an explicit failure
