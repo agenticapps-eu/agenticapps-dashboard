@@ -221,6 +221,82 @@ describe('conformanceScan › scanConformance', () => {
     expect(result.today.neuroflash).toBe(100) // unaffected
   })
 
+  it('Adversarial F3 — pathToRepoId resolves family roots through symlinks (realpath parity with storedPath)', async () => {
+    // storedPath in the registry is canonical (registry.addProject runs
+    // canonicaliseRoot → realpathSync). COVERAGE_ROOTS[family]() can return
+    // a path containing a symlink — on macOS, `/tmp` → `/private/tmp` is the
+    // natural example; cross-platform we plant our own symlink. If
+    // pathToRepoId compares them raw, the prefix match fails and drift
+    // detection silently disagrees with scoring (the drift never reaches
+    // the per-family denominator-exclusion set).
+    //
+    // Setup:
+    //   /tmp/X-/agenticapps/repo-1   ← real
+    //   /tmp/Y-/agenticapps           → symlink to /tmp/X-/agenticapps
+    //   COVERAGE_ROOTS.agenticapps = /tmp/Y-/agenticapps
+    //   storedPath (from registry, canonical) = realpath(/tmp/X-)/agenticapps/repo-1
+    //
+    // Today: pathToRepoId compares `/tmp/X-/.../repo-1` (realpath) vs
+    //   `/tmp/Y-/agenticapps` (raw, symlinked) → no prefix match → null →
+    //   driftedRepoIds is empty → repo NOT excluded from denominator →
+    //   coverage row (all-fresh) is counted → agenticapps score = 100.
+    // After fix: pathToRepoId realpaths COVERAGE_ROOTS first → match →
+    //   driftedRepoIds = {agenticapps/repo-1} → excluded → no rows → score 0.
+    const { mkdtempSync, mkdirSync, symlinkSync, realpathSync } = await import(
+      'node:fs'
+    )
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { COVERAGE_ROOTS } = await import('./paths.js')
+
+    const realParent = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-f3-real-')))
+    const symParent = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-f3-sym-')))
+    const realFamilyRoot = join(realParent, 'agenticapps')
+    mkdirSync(realFamilyRoot, { recursive: true })
+    // Plant the family root as a symlink: /tmp/SYM/agenticapps -> /tmp/REAL/agenticapps
+    const symFamilyRoot = join(symParent, 'agenticapps')
+    symlinkSync(realFamilyRoot, symFamilyRoot)
+
+    // Project lives at the REAL path; storedPath in the registry is the
+    // canonicalised version, which is the real-parent form.
+    const storedPath = join(realFamilyRoot, 'repo-1')
+    mkdirSync(storedPath, { recursive: true })
+
+    // Override COVERAGE_ROOTS.agenticapps to return the SYMLINK path. Same
+    // pattern as registryFixPath.test.ts.
+    const originalAgenticapps = COVERAGE_ROOTS.agenticapps
+    ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).agenticapps =
+      () => symFamilyRoot
+
+    try {
+      vi.mocked(detectPathDrift).mockResolvedValue([
+        {
+          id: 'repo-1',
+          storedPath,
+          suggestedPath: null,
+          reason: 'missing',
+        },
+      ])
+      vi.mocked(scanCoverageInternal).mockResolvedValue({
+        response: makeCoverage([
+          makeRow('agenticapps', 'repo-1'),
+          // factiv + neuroflash unaffected.
+          makeRow('factiv', 'f-1'),
+          makeRow('neuroflash', 'n-1'),
+        ]),
+        internalRows: [],
+      })
+
+      const result = await scanConformance()
+      // Post-fix: drift exclusion works → agenticapps has no countable
+      // rows → score 0. Today (RED) this is 100.
+      expect(result.today.agenticapps).toBe(0)
+    } finally {
+      ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).agenticapps =
+        originalAgenticapps
+    }
+  })
+
   it('partialFailures lists failed sub-scans when readDailySeriesForFleet rejects', async () => {
     // Regression for the silent-failure mask. A defensive empty payload is
     // indistinguishable from real-zero data without an explicit failure
