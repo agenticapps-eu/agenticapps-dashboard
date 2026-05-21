@@ -221,6 +221,142 @@ describe('conformanceScan › scanConformance', () => {
     expect(result.today.neuroflash).toBe(100) // unaffected
   })
 
+  it('Adversarial F3 — pathToRepoId resolves family roots through symlinks (realpath parity with storedPath)', async () => {
+    // storedPath in the registry is canonical (registry.addProject runs
+    // canonicaliseRoot → realpathSync). COVERAGE_ROOTS[family]() can return
+    // a path containing a symlink — on macOS, `/tmp` → `/private/tmp` is the
+    // natural example; cross-platform we plant our own symlink. If
+    // pathToRepoId compares them raw, the prefix match fails and drift
+    // detection silently disagrees with scoring (the drift never reaches
+    // the per-family denominator-exclusion set).
+    //
+    // Setup:
+    //   /tmp/X-/agenticapps/repo-1   ← real
+    //   /tmp/Y-/agenticapps           → symlink to /tmp/X-/agenticapps
+    //   COVERAGE_ROOTS.agenticapps = /tmp/Y-/agenticapps
+    //   storedPath (from registry, canonical) = realpath(/tmp/X-)/agenticapps/repo-1
+    //
+    // Today: pathToRepoId compares `/tmp/X-/.../repo-1` (realpath) vs
+    //   `/tmp/Y-/agenticapps` (raw, symlinked) → no prefix match → null →
+    //   driftedRepoIds is empty → repo NOT excluded from denominator →
+    //   coverage row (all-fresh) is counted → agenticapps score = 100.
+    // After fix: pathToRepoId realpaths COVERAGE_ROOTS first → match →
+    //   driftedRepoIds = {agenticapps/repo-1} → excluded → no rows → score 0.
+    const { mkdtempSync, mkdirSync, symlinkSync, realpathSync } = await import(
+      'node:fs'
+    )
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { COVERAGE_ROOTS } = await import('./paths.js')
+
+    const realParent = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-f3-real-')))
+    const symParent = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-f3-sym-')))
+    const realFamilyRoot = join(realParent, 'agenticapps')
+    mkdirSync(realFamilyRoot, { recursive: true })
+    // Plant the family root as a symlink: /tmp/SYM/agenticapps -> /tmp/REAL/agenticapps
+    const symFamilyRoot = join(symParent, 'agenticapps')
+    symlinkSync(realFamilyRoot, symFamilyRoot)
+
+    // Project lives at the REAL path; storedPath in the registry is the
+    // canonicalised version, which is the real-parent form.
+    const storedPath = join(realFamilyRoot, 'repo-1')
+    mkdirSync(storedPath, { recursive: true })
+
+    // Override COVERAGE_ROOTS.agenticapps to return the SYMLINK path. Same
+    // pattern as registryFixPath.test.ts.
+    const originalAgenticapps = COVERAGE_ROOTS.agenticapps
+    ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).agenticapps =
+      () => symFamilyRoot
+
+    try {
+      vi.mocked(detectPathDrift).mockResolvedValue([
+        {
+          id: 'repo-1',
+          storedPath,
+          suggestedPath: null,
+          reason: 'missing',
+        },
+      ])
+      vi.mocked(scanCoverageInternal).mockResolvedValue({
+        response: makeCoverage([
+          makeRow('agenticapps', 'repo-1'),
+          // factiv + neuroflash unaffected.
+          makeRow('factiv', 'f-1'),
+          makeRow('neuroflash', 'n-1'),
+        ]),
+        internalRows: [],
+      })
+
+      const result = await scanConformance()
+      // Post-fix: drift exclusion works → agenticapps has no countable
+      // rows → score 0. Today (RED) this is 100.
+      expect(result.today.agenticapps).toBe(0)
+    } finally {
+      ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).agenticapps =
+        originalAgenticapps
+    }
+  })
+
+  it('Adversarial F3 ENOENT fallback — absent family root still produces correct repo IDs (CI parity)', async () => {
+    // When the family root directory doesn't exist on this machine (common
+    // on CI runners that don't pre-create `~/Sourcecode/...`), realpath
+    // throws ENOENT. We MUST fall back to the raw COVERAGE_ROOTS value so
+    // string-level prefix matches continue to work — otherwise every test
+    // that synthesises a storedPath under a non-existent root would regress
+    // to "drift not excluded → score 100" the way CI regressed when this PR
+    // first shipped without the ENOENT fallback.
+    //
+    // We invoke this through scanConformance with the default factiv root
+    // (homedir() + '/Sourcecode/factiv') and an `f-1` storedPath under it.
+    // Even if /home/runner/Sourcecode/factiv doesn't exist (CI case), the
+    // raw-string match still finds it.
+    const { homedir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { COVERAGE_ROOTS } = await import('./paths.js')
+
+    // Point at a guaranteed-absent path so we exercise the ENOENT branch
+    // even on a dev machine where /Sourcecode/factiv does exist.
+    const absentRoot = '/this/path/definitely/does/not/exist/factiv'
+    const originalFactiv = COVERAGE_ROOTS.factiv
+    ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).factiv = () =>
+      absentRoot
+
+    try {
+      vi.mocked(detectPathDrift).mockResolvedValue([
+        {
+          id: 'f-1',
+          storedPath: join(absentRoot, 'f-1'),
+          suggestedPath: null,
+          reason: 'missing',
+        },
+      ])
+      vi.mocked(scanCoverageInternal).mockResolvedValue({
+        response: makeCoverage([
+          makeRow('agenticapps', 'aa-1'),
+          makeRow('factiv', 'f-1'),
+          makeRow('neuroflash', 'n-1'),
+        ]),
+        internalRows: [],
+      })
+      const result = await scanConformance()
+      // Drift exclusion must still work under ENOENT fallback → factiv has
+      // no countable rows → score 0.
+      expect(result.today.factiv).toBe(0)
+      // agenticapps + neuroflash unaffected.
+      expect(result.today.agenticapps).toBe(100)
+      expect(result.today.neuroflash).toBe(100)
+
+      // Silence unused-import lint by demonstrating the homedir fallback
+      // root would also work — kept as a comment to avoid the test
+      // depending on machine state. (homedir() exercised in the
+      // non-fallback test at line 199.)
+      void homedir
+    } finally {
+      ;(COVERAGE_ROOTS as unknown as Record<string, () => string>).factiv =
+        originalFactiv
+    }
+  })
+
   it('partialFailures lists failed sub-scans when readDailySeriesForFleet rejects', async () => {
     // Regression for the silent-failure mask. A defensive empty payload is
     // indistinguishable from real-zero data without an explicit failure
