@@ -116,37 +116,78 @@ describe('FleetTrendChart', () => {
 
   it('S9: hover reveal — onMouseEnter on a per-day rect shows breakdown panel', () => {
     const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
-    const rects = container.querySelectorAll('rect[tabindex="0"]')
+    // F12 — per-day rects are non-tabbable (tabIndex=-1). They still
+    // receive mouse + touch events but the chart has ONE tab stop (the SVG).
+    const rects = container.querySelectorAll('rect[tabindex="-1"]')
     expect(rects.length).toBe(90)
     fireEvent.mouseEnter(rects[10]!)
     const day = NINETY[10]!
-    // Breakdown panel's date header should be visible (also appears in SR-only
-    // table — getAllByText counts both).
     expect(screen.getAllByText(day.date).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/Fleet:/i)).toBeTruthy()
   })
 
-  it('S10: focus reveal — onFocus shows breakdown panel (keyboard nav)', () => {
+  it('S10: keyboard reveal — ArrowRight from the focused SVG advances the cursor and shows panel (F12)', () => {
+    // F12 — chart has ONE tab stop (the SVG). Arrow keys drive a cursor
+    // through the days; previously 90 sequential tab stops created a
+    // mouse/keyboard state-machine bug.
     const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
-    const rects = container.querySelectorAll('rect[tabindex="0"]')
-    fireEvent.focus(rects[20]!)
+    const svg = container.querySelector('svg')!
+    expect(svg.getAttribute('tabindex')).toBe('0')
+    // No prior cursor → cursorIdx defaults to (n-1). ArrowLeft moves to n-2.
+    fireEvent.keyDown(svg, { key: 'ArrowLeft' })
     expect(screen.getByText(/Fleet:/i)).toBeTruthy()
+    // Date in the panel matches series[n-2].
+    expect(screen.getAllByText(NINETY[88]!.date).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('S10b: keyboard cursor — Home jumps to first day, End to last (F12)', () => {
+    const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
+    const svg = container.querySelector('svg')!
+    fireEvent.keyDown(svg, { key: 'Home' })
+    expect(screen.getAllByText(NINETY[0]!.date).length).toBeGreaterThanOrEqual(1)
+    fireEvent.keyDown(svg, { key: 'End' })
+    expect(screen.getAllByText(NINETY[89]!.date).length).toBeGreaterThanOrEqual(1)
   })
 
   it('S11: pointerdown reveal — onPointerDown shows breakdown panel (touch device)', () => {
     const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
-    const rects = container.querySelectorAll('rect[tabindex="0"]')
+    const rects = container.querySelectorAll('rect[tabindex="-1"]')
     fireEvent.pointerDown(rects[5]!)
     expect(screen.getByText(/Fleet:/i)).toBeTruthy()
   })
 
-  it('S12: Escape key on focused rect closes the panel', () => {
+  it('S12: Escape on the SVG closes the keyboard-cursor panel (F12)', () => {
     const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
-    const rects = container.querySelectorAll('rect[tabindex="0"]')
-    fireEvent.focus(rects[3]!)
+    const svg = container.querySelector('svg')!
+    fireEvent.keyDown(svg, { key: 'ArrowLeft' })
     expect(screen.queryByText(/Fleet:/i)).toBeTruthy()
-    fireEvent.keyDown(rects[3]!, { key: 'Escape' })
+    fireEvent.keyDown(svg, { key: 'Escape' })
     expect(screen.queryByText(/Fleet:/i)).toBeNull()
+  })
+
+  it('S12b: mouse hover wins over keyboard cursor when both are set (F12 multi-modality fix)', () => {
+    // Previously a tab-focused rect + mouse-hovered DIFFERENT rect would
+    // overwrite the panel last-write-wins. Now hover and cursor live in
+    // separate state and hover is the priority while the mouse is over a
+    // rect — the keyboard cursor takes back over once the mouse leaves.
+    const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
+    const svg = container.querySelector('svg')!
+    const rects = container.querySelectorAll('rect[tabindex="-1"]')
+    // Move keyboard cursor to day 50.
+    fireEvent.keyDown(svg, { key: 'Home' }) // idx 0
+    // Now hover day 30 — panel should show day 30 (hover wins).
+    fireEvent.mouseEnter(rects[30]!)
+    expect(screen.getAllByText(NINETY[30]!.date).length).toBeGreaterThanOrEqual(1)
+    // Mouse leaves — panel falls back to the keyboard cursor at idx 0.
+    fireEvent.mouseLeave(rects[30]!)
+    expect(screen.getAllByText(NINETY[0]!.date).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('S12c: chart has exactly ONE tab stop (F12 — was previously 90)', () => {
+    const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
+    const tabStops = container.querySelectorAll('[tabindex="0"]')
+    expect(tabStops.length).toBe(1)
+    expect(tabStops[0]!.tagName.toLowerCase()).toBe('svg')
   })
 
   it('S13: SR-only table mirrors SVG data with one row per day (Pitfall 8)', () => {
