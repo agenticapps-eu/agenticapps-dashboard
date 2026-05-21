@@ -5,11 +5,12 @@
  * type swap CoverageResponse → ConformanceResponse. D-12-17 / Pattern 2 in 12-RESEARCH.md.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   getConformanceCache,
   setConformanceCache,
   invalidateConformanceCache,
+  getOrComputeConformance,
   _resetConformanceCacheForTests,
   TTL_MS,
 } from './conformanceCache.js'
@@ -105,5 +106,83 @@ describe('conformanceCache', () => {
     const value = makeFakeResponse()
     setConformanceCache(value)
     expect(getConformanceCache()).toBe(value)
+  })
+})
+
+describe('getOrComputeConformance (inflight singleton)', () => {
+  beforeEach(() => {
+    _resetConformanceCacheForTests()
+  })
+
+  it('cache hit short-circuits: compute is not invoked', async () => {
+    const value = makeFakeResponse()
+    const t = Date.now()
+    setConformanceCache(value, t)
+    const compute = vi.fn(async () => makeFakeResponse())
+    const result = await getOrComputeConformance(compute, t)
+    expect(result).toBe(value)
+    expect(compute).not.toHaveBeenCalled()
+  })
+
+  it('cold cache: compute runs once and result is cached for subsequent calls', async () => {
+    const value = makeFakeResponse()
+    const compute = vi.fn(async () => value)
+    const first = await getOrComputeConformance(compute)
+    const second = await getOrComputeConformance(compute)
+    expect(first).toBe(value)
+    expect(second).toBe(value)
+    expect(compute).toHaveBeenCalledTimes(1)
+  })
+
+  it('concurrent cold-cache callers share a single compute promise', async () => {
+    // Deferred promise so all N callers reach the inflight slot before resolve.
+    let resolve!: (v: ConformanceResponse) => void
+    const shared = new Promise<ConformanceResponse>((r) => {
+      resolve = r
+    })
+    const compute = vi.fn(() => shared)
+    const N = 4
+    const inflightCalls = Array.from({ length: N }, () =>
+      getOrComputeConformance(compute),
+    )
+    resolve(makeFakeResponse())
+    const results = await Promise.all(inflightCalls)
+    expect(compute).toHaveBeenCalledTimes(1)
+    // All callers receive the same resolved value (referential equality).
+    for (const r of results) expect(r).toBe(results[0])
+  })
+
+  it('failed compute does NOT cache the failure — next call retries with a fresh compute', async () => {
+    const compute = vi
+      .fn<() => Promise<ConformanceResponse>>()
+      .mockRejectedValueOnce(new Error('compute exploded'))
+      .mockResolvedValueOnce(makeFakeResponse())
+    await expect(getOrComputeConformance(compute)).rejects.toThrow(
+      'compute exploded',
+    )
+    // Without the `inflight = null` reset in finally{}, the second call would
+    // get the SAME rejected promise instead of triggering a fresh compute.
+    const second = await getOrComputeConformance(compute)
+    expect(second).toMatchObject({ schemaVersion: 1 })
+    expect(compute).toHaveBeenCalledTimes(2)
+  })
+
+  it('invalidateConformanceCache during inflight does not prevent the inflight from settling', async () => {
+    // Mid-scan cache invalidation (e.g. fix-path route) must not kill the
+    // currently-running compute. The inflight promise still resolves and
+    // populates the next 30s window with fresh data.
+    let resolve!: (v: ConformanceResponse) => void
+    const compute = vi.fn(
+      () =>
+        new Promise<ConformanceResponse>((r) => {
+          resolve = r
+        }),
+    )
+    const pending = getOrComputeConformance(compute)
+    invalidateConformanceCache()
+    const fresh = makeFakeResponse()
+    resolve(fresh)
+    expect(await pending).toBe(fresh)
+    expect(getConformanceCache(Date.now())).toBe(fresh)
   })
 })
