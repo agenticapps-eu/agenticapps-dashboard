@@ -69,7 +69,7 @@ The dashboard is a single repo, three packages, two deployment targets:
 - No analytics, no telemetry, no third-party JS beyond above
 
 ### Daemon (`packages/agent`)
-- Node 20+ (LTS)
+- Node 22+ (LTS — pnpm 10 uses `node:sqlite`, available since Node 22.5)
 - Hono (small HTTP server)
 - TypeScript with strict tsconfig
 - Zod for response shapes (shared schema with SPA)
