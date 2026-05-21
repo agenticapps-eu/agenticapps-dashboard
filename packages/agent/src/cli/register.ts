@@ -3,6 +3,7 @@ import pc from 'picocolors'
 import { agentError, agentLog } from '../lib/logging.js'
 import { addProject, RegistrationPathBlocked, removeProject } from '../lib/registry.js'
 import { ensureAuthFile } from '../lib/auth.js'
+import { exitOnRegistryLockTimeout } from '../lib/cliErrors.js'
 
 import { discoverProjects, registerInteractive, type RegisterInteractiveOpts } from './discover.js'
 
@@ -39,7 +40,13 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
     }
     if (opts.yes !== undefined) interactiveOpts.yes = opts.yes
     if (opts.dryRun !== undefined) interactiveOpts.dryRun = opts.dryRun
-    const results = await registerInteractive(matches, interactiveOpts)
+    let results: Awaited<ReturnType<typeof registerInteractive>>
+    try {
+      results = await registerInteractive(matches, interactiveOpts)
+    } catch (err) {
+      exitOnRegistryLockTimeout(err)
+      throw err
+    }
     for (const r of results) {
       if (r.reason === 'new') agentLog(pc.green(`registered ${r.match.name} (${r.match.root})`))
       else if (r.reason === 'already')
@@ -69,6 +76,7 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
       agentError(`refusing to register ${err.target}: ${err.reason}`)
       process.exit(1)
     }
+    exitOnRegistryLockTimeout(err)
     throw err
   }
   if (result.alreadyRegistered) {
@@ -85,7 +93,13 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
 
 export async function runUnregister(idOrPath: string): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const removed = await removeProject(idOrPath)
+  let removed: boolean
+  try {
+    removed = await removeProject(idOrPath)
+  } catch (err) {
+    exitOnRegistryLockTimeout(err)
+    throw err
+  }
   if (removed) {
     agentLog(pc.green(`unregistered ${idOrPath}`))
     process.exit(0)

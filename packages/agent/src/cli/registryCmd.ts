@@ -2,6 +2,7 @@ import { RegistryListResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { agentError, agentLog } from '../lib/logging.js'
 import { ensureAuthFile } from '../lib/auth.js'
+import { exitOnRegistryLockTimeout } from '../lib/cliErrors.js'
 import { listProjectsWithStatus, renameProject, setTags } from '../lib/registry.js'
 
 export async function runList(opts: { json?: boolean }): Promise<void> {
@@ -45,7 +46,13 @@ export async function runList(opts: { json?: boolean }): Promise<void> {
 
 export async function runRename(id: string, newName: string): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const ok = await renameProject(id, newName)
+  let ok: boolean
+  try {
+    ok = await renameProject(id, newName)
+  } catch (err) {
+    exitOnRegistryLockTimeout(err)
+    throw err
+  }
   if (!ok) {
     agentError(`not found: ${id}`)
     process.exit(1)
@@ -56,7 +63,13 @@ export async function runRename(id: string, newName: string): Promise<void> {
 
 export async function runTag(id: string, tags: string[]): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const ok = await setTags(id, tags)
+  let ok: boolean
+  try {
+    ok = await setTags(id, tags)
+  } catch (err) {
+    exitOnRegistryLockTimeout(err)
+    throw err
+  }
   if (!ok) {
     agentError(`not found: ${id}`)
     process.exit(1)
