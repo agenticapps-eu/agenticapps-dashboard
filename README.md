@@ -86,7 +86,7 @@ Full spec: [`docs/spec/dashboard-prompt.md`](docs/spec/dashboard-prompt.md). Dep
 
 ## Development
 
-Requirements: Node 20+, pnpm 9.5+.
+Requirements: Node 22+ (LTS — `.nvmrc` pins major 22, satisfies pnpm 10's `node:sqlite` minimum), pnpm 9.5+.
 
 ```bash
 pnpm install
