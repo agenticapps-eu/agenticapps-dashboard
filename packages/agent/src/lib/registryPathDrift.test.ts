@@ -20,7 +20,7 @@ import {
   realpathSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
@@ -50,6 +50,18 @@ vi.mock('./paths.js', async () => {
   }
 })
 
+// Spy on fs.promises.readFile so the F9 perf test can count how many times
+// candidate `.git/config` files get read across one detectPathDrift cycle.
+// Call-through preserves behaviour for every other test.
+vi.mock('node:fs/promises', async () => {
+  const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+  return {
+    ...actual,
+    readFile: vi.fn(actual.readFile),
+  }
+})
+
+import { readFile as mockedReadFile } from 'node:fs/promises'
 import { detectPathDrift, inferSuggestedPath } from './registryPathDrift.js'
 import { readRegistry } from './registry.js'
 import { COVERAGE_ROOTS } from './paths.js'
@@ -60,6 +72,8 @@ let cleanup: () => void
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // clearAllMocks resets the spy state but keeps the call-through implementation
+  // (vi.fn(actual.readFile) at module-mock time). No need to re-wire here.
   tmpRoot = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-drift-')))
   cleanup = () => rmSync(tmpRoot, { recursive: true, force: true })
 })
@@ -300,5 +314,123 @@ describe('registryPathDrift › inferSuggestedPath', () => {
     // The upstream URL should NOT be discovered as a match for origin.
     const result = await inferSuggestedPath('git@github.com:other/x.git')
     expect(result).toBeNull()
+  })
+})
+
+/**
+ * F9 (Adversarial, confidence 7/10) — `inferSuggestedPath` is O(F × M × readFile)
+ * per drift cycle. With many drifted entries, each call re-scans every family
+ * root and re-reads every candidate `.git/config`. Total cost balloons to
+ * O(D × F × M × readFile) per drift cycle.
+ *
+ * Fix shape: build the origin-URL → realpath index ONCE per `detectPathDrift`
+ * cycle and reuse it for every drifted entry's lookup.
+ */
+describe('registryPathDrift › F9: per-cycle origin-index reuse', () => {
+  it('reads each candidate .git/config at most once per detectPathDrift cycle, regardless of how many drifted entries exist', async () => {
+    // Family root with two candidate dirs, distinct origin URLs.
+    const family = join(tmpRoot, 'fake-agenticapps-perf')
+    mkdirSync(family)
+    const c1 = join(family, 'c1')
+    mkdirSync(join(c1, '.git'), { recursive: true })
+    writeFileSync(
+      join(c1, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:org/c1.git\n',
+    )
+    const c2 = join(family, 'c2')
+    mkdirSync(join(c2, '.git'), { recursive: true })
+    writeFileSync(
+      join(c2, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:org/c2.git\n',
+    )
+    pointFamilyRoot('agenticapps', family)
+
+    // Three drifted orphan repos OUTSIDE any family root, each pointing at
+    // c1's origin URL — every one of them will request inferSuggestedPath.
+    const orphans = ['o1', 'o2', 'o3'].map((id) => {
+      const dir = join(tmpRoot, `orphan-${id}`)
+      mkdirSync(join(dir, '.git'), { recursive: true })
+      writeFileSync(
+        join(dir, '.git', 'config'),
+        '[remote "origin"]\n\turl = git@github.com:org/c1.git\n',
+      )
+      return { id, dir }
+    })
+    vi.mocked(readRegistry).mockReturnValue({
+      version: 1,
+      projects: orphans.map((o) => makeRegistryEntry(o.id, o.dir)),
+    })
+
+    const result = await detectPathDrift()
+    expect(result).toHaveLength(3)
+    expect(result.every((e) => e.suggestedPath === realpathSync(c1))).toBe(true)
+
+    // Count how many times the family-root candidate `.git/config` files were
+    // read during this cycle. With per-cycle index reuse, each candidate is
+    // scanned ONCE for the entire cycle (M reads total). Without the fix,
+    // each drifted entry re-scans → D × M reads.
+    const familyRealpath = realpathSync(family)
+    const candidateConfigReads = vi.mocked(mockedReadFile).mock.calls.filter(([p]) => {
+      if (typeof p !== 'string') return false
+      return p.startsWith(familyRealpath + sep) && p.endsWith(`${sep}.git${sep}config`)
+    }).length
+    expect(candidateConfigReads).toBeLessThanOrEqual(2)
+  })
+})
+
+/**
+ * F10 (Adversarial, confidence 5/10) — `inferSuggestedPath` calls `readFile`
+ * (via readGitOrigin) and `realpath` on candidates discovered through
+ * `readdirSync(familyRoot)`. A symlink candidate inside a family root would
+ * be followed, allowing an attacker who can write to the family root to plant
+ * a symlink whose target carries a chosen origin URL and trick the detector
+ * into "suggesting" an out-of-family path.
+ *
+ * Fix shape: `lstat` each candidate before descent and skip if
+ * `isSymbolicLink()` returns true.
+ */
+describe('registryPathDrift › F10: skip symlink candidates inside a family root', () => {
+  it('inferSuggestedPath ignores a symlink candidate even when its target carries the matching origin URL', async () => {
+    // Family root contains ONLY a symlink. The symlink target is a real repo
+    // OUTSIDE the family root with a matching origin URL.
+    const family = join(tmpRoot, 'fake-agenticapps-symlink')
+    mkdirSync(family)
+    const realOutside = join(tmpRoot, 'outside-real-repo')
+    mkdirSync(join(realOutside, '.git'), { recursive: true })
+    writeFileSync(
+      join(realOutside, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:attacker/match.git\n',
+    )
+    symlinkSync(realOutside, join(family, 'linked'))
+    pointFamilyRoot('agenticapps', family)
+
+    const result = await inferSuggestedPath('git@github.com:attacker/match.git')
+    expect(result).toBeNull()
+  })
+
+  it('inferSuggestedPath still finds a non-symlink candidate alongside a symlink in the same family root', async () => {
+    // Mixed family root: one symlink (must be skipped) + one real repo with
+    // a matching URL (must be found).
+    const family = join(tmpRoot, 'fake-agenticapps-mixed')
+    mkdirSync(family)
+
+    const realOutside = join(tmpRoot, 'outside-real-repo-2')
+    mkdirSync(join(realOutside, '.git'), { recursive: true })
+    writeFileSync(
+      join(realOutside, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:lure/match.git\n',
+    )
+    symlinkSync(realOutside, join(family, 'lure'))
+
+    const realInside = join(family, 'real-inside')
+    mkdirSync(join(realInside, '.git'), { recursive: true })
+    writeFileSync(
+      join(realInside, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:org/legit.git\n',
+    )
+    pointFamilyRoot('agenticapps', family)
+
+    expect(await inferSuggestedPath('git@github.com:lure/match.git')).toBeNull()
+    expect(await inferSuggestedPath('git@github.com:org/legit.git')).toBe(realpathSync(realInside))
   })
 })
