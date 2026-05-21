@@ -45,7 +45,7 @@ export async function runList(opts: { json?: boolean }): Promise<void> {
 
 export async function runRename(id: string, newName: string): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const ok = renameProject(id, newName)
+  const ok = await renameProject(id, newName)
   if (!ok) {
     agentError(`not found: ${id}`)
     process.exit(1)
@@ -56,7 +56,7 @@ export async function runRename(id: string, newName: string): Promise<void> {
 
 export async function runTag(id: string, tags: string[]): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const ok = setTags(id, tags)
+  const ok = await setTags(id, tags)
   if (!ok) {
     agentError(`not found: ${id}`)
     process.exit(1)

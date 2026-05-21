@@ -22,8 +22,9 @@ the source agent and the finding's confidence at review time.
   - File: `packages/agent/src/lib/registryPathDrift.ts:115`
 - **[INFORMATIONAL] (followup from withRegistryLock fix #9)** — `withRegistryLock` does not detect stale lock files (crashed holder leaves `<registry>.lock` until the next 5s timeout). Add a PID-aware staleness check: if the lockfile is older than 30s AND the PID inside is dead, evict it.
   - File: `packages/agent/src/lib/registry.ts` (after fix #9)
-- **[INFORMATIONAL] (Codex F4 followup)** — CLI commands (`agentic-dashboard register/unregister/rename/tag`) still RMW the registry without `withRegistryLock`. The daemon's lock means nothing if CLI bypasses it. Wrap each CLI mutation site in `withRegistryLock`.
-  - Files: `packages/agent/src/cli/register.ts`, `packages/agent/src/cli/registryCmd.ts`
+- ~~**[INFORMATIONAL] (Codex F4 followup)** — CLI commands (`agentic-dashboard register/unregister/rename/tag`) still RMW the registry without `withRegistryLock`. The daemon's lock means nothing if CLI bypasses it. Wrap each CLI mutation site in `withRegistryLock`.~~
+  - ~~Files: `packages/agent/src/cli/register.ts`, `packages/agent/src/cli/registryCmd.ts`~~
+  - **CLOSED 2026-05-20** by `feat/dash-12.1-registry-lock-everywhere`. Wider fix than the TODO described: `withRegistryLock` is now pushed INSIDE `addProject`/`removeProject`/`renameProject`/`setTags`, so all callers (CLI commands AND the daemon's `/register`, `/unregister`, `/register-confirm`, `/:id/rename`, `/:id/tags` routes — which had the same symmetric gap) inherit the lock through the API surface. Impossible to bypass by adding a new callsite.
 
 ### Frontend
 
