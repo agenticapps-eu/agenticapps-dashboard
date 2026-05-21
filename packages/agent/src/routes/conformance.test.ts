@@ -176,7 +176,74 @@ describe('GET /api/observability/conformance', () => {
     expect(res.headers.get('access-control-allow-origin')).toBe(DEV_ORIGIN)
   })
 
-  it('Test 9: schema drift — malformed scanConformance return → 500 schema_drift', async () => {
+  it('Test 10: N concurrent cold-cache GETs invoke scanConformance exactly once (inflight dedup)', async () => {
+    // RED: today's route does `cached ?? (await scanConformance())` with no
+    // serialisation. On cold cache, N concurrent requests each see cached==null
+    // and each invoke scanConformance. scanConformance fans out scanCoverage +
+    // detectPathDrift + 90d series read — running it N times in parallel is the
+    // pathology this test is built to prevent.
+    //
+    // Use ONE shared deferred so every mock invocation returns the SAME
+    // pending promise. If we created a fresh promise per mock call, only the
+    // last call's `resolveScan` ref would survive — earlier requests would
+    // hang forever even after we resolve. Sharing the promise both lets us
+    // measure invocation count cleanly AND mirrors what the inflight singleton
+    // will do post-GREEN (one promise, N waiters).
+    let resolveScan!: (v: ReturnType<typeof fakePayload>) => void
+    const sharedScan = new Promise<ReturnType<typeof fakePayload>>((r) => {
+      resolveScan = r
+    })
+    vi.mocked(scanConformance).mockImplementation(() => sharedScan)
+
+    const app = createApp({ authFile })
+    const N = 5
+    const inflightRequests = Array.from({ length: N }, () =>
+      app.request('http://127.0.0.1:5193/api/observability/conformance', {
+        headers: authHeaders(token),
+      }),
+    )
+
+    // Yield event-loop ticks so all N route handlers reach the
+    // cache-miss → scan-call point. setImmediate twice — once for the
+    // mock to run, once for awaits to settle. setTimeout(0) is a more
+    // robust round-trip.
+    await new Promise((r) => setTimeout(r, 0))
+
+    resolveScan(fakePayload())
+    const results = await Promise.all(inflightRequests)
+    for (const res of results) expect(res.status).toBe(200)
+    expect(scanConformance).toHaveBeenCalledTimes(1)
+  })
+
+  it('Test 11: failed scan does NOT cache failure — next call retries (inflight reset on reject)', async () => {
+    // Regression guard for the inflight implementation: if the inflight
+    // promise reference is stored without a `.finally(() => inflight = null)`
+    // reset, a rejected scan would be returned to every future caller forever.
+    // Verify rejection clears the inflight slot so the next call retries.
+    vi.mocked(scanConformance)
+      .mockRejectedValueOnce(new Error('first scan exploded'))
+      .mockResolvedValueOnce(fakePayload())
+
+    const app = createApp({ authFile })
+
+    // First call: scan throws → route's outbound error path returns 500.
+    const r1 = await app.request(
+      'http://127.0.0.1:5193/api/observability/conformance',
+      { headers: authHeaders(token) },
+    )
+    expect(r1.status).toBe(500)
+
+    // Second call: inflight must have been cleared on rejection → fresh scan
+    // runs and now succeeds.
+    const r2 = await app.request(
+      'http://127.0.0.1:5193/api/observability/conformance',
+      { headers: authHeaders(token) },
+    )
+    expect(r2.status).toBe(200)
+    expect(scanConformance).toHaveBeenCalledTimes(2)
+  })
+
+  it('Test 12: schema drift — malformed scanConformance return → 500 schema_drift', async () => {
     // Return a payload that does NOT satisfy the strict schema (extra key).
     vi.mocked(scanConformance).mockResolvedValue({
       ...fakePayload(),
