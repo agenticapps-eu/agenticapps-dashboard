@@ -591,6 +591,61 @@ describe('POST /api/admin/registry/fix-path', () => {
     expect(onDisk.projects.find((p) => p.id === ctx.projectId)?.root).toBe(json2.root)
   })
 
+  // ── Testing #8 — concurrent fix-path race serializes through withRegistryLock ─
+  //
+  // Two parallel POSTs targeting the same project id with two DIFFERENT but
+  // both-valid newPaths. withRegistryLock (centralised inside addProject /
+  // removeProject / renameProject / setTags by PR #40) means the two
+  // mutations serialise within the 5s lock timeout — both calls return 200,
+  // the final registry root is one of the two newPaths (NOT a torn write
+  // mixing both).
+  it('Testing #8 [concurrent fix-path race]: two parallel POSTs serialize via withRegistryLock', async () => {
+    // Build a SECOND valid target alongside the existing newRealProjectPath.
+    // Same origin URL so the origin-match check passes for both targets.
+    const secondTarget = join(ctx.familyRootReal, 'corrected-project-2')
+    mkdirSync(join(secondTarget, '.git'), { recursive: true })
+    writeFileSync(
+      join(secondTarget, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:org/dashboard.git\n',
+    )
+
+    const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
+    const body1 = JSON.stringify({ id: ctx.projectId, newPath: ctx.newRealProjectPath })
+    const body2 = JSON.stringify({ id: ctx.projectId, newPath: secondTarget })
+
+    // Fire both in the same microtask tick — both contend for the registry lock.
+    const [res1, res2] = await Promise.all([
+      app.request('http://127.0.0.1:5193/api/admin/registry/fix-path', {
+        method: 'POST',
+        headers: authHeaders(ctx.token),
+        body: body1,
+      }),
+      app.request('http://127.0.0.1:5193/api/admin/registry/fix-path', {
+        method: 'POST',
+        headers: authHeaders(ctx.token),
+        body: body2,
+      }),
+    ])
+
+    // Both must complete; neither raised an unhandled error. The
+    // serialisation contract is: both return 200 (the lock has a 5s
+    // timeout and each mutation completes in ms), OR one returns 200
+    // and the other returns 422 `registry_lock_timeout` (acceptable
+    // fallback if the OS scheduler somehow stalls).
+    expect([200, 422]).toContain(res1.status)
+    expect([200, 422]).toContain(res2.status)
+    // At least ONE must have committed (otherwise the lock is broken).
+    expect([res1.status, res2.status]).toContain(200)
+
+    // Whichever ran last wins; final registry root must equal one of the
+    // two targets exactly — never a torn intermediate state.
+    const onDisk = JSON.parse(readFileSync(ctx.registryFile, 'utf8')) as {
+      projects: Array<{ id: string; root: string }>
+    }
+    const finalRoot = onDisk.projects.find((p) => p.id === ctx.projectId)?.root
+    expect([realpathSync(ctx.newRealProjectPath), realpathSync(secondTarget)]).toContain(finalRoot)
+  })
+
   it('Test 17 [schema_drift]: monkey-patched writeRegistry → 500 schema_drift', async () => {
     // Mock RegistryEntrySchema.parse to throw — simulates schema drift in
     // the route's output.

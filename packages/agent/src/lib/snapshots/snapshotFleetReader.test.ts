@@ -16,11 +16,23 @@
  *   - Window cutoff: files older than windowDays are not included in the series.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+// Spy on fs.readFileSync so the T-12-RACE-PRUNER test (Testing #5) can plant
+// an ENOENT for one file mid-walk while letting every other call through.
+// Call-through preserves the existing read-side behaviour for every other test.
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs')
+  return {
+    ...actual,
+    readFileSync: vi.fn(actual.readFileSync),
+  }
+})
+
+import { readFileSync as mockedReadFileSync } from 'node:fs'
 import { readDailySeriesForFleet } from './snapshotFleetReader.js'
 import { RETENTION_DAYS } from './snapshotPaths.js'
 
@@ -400,6 +412,69 @@ describe('snapshotFleetReader.readDailySeriesForFleet', () => {
     expect(result).toHaveLength(1)
     expect(result[0]?.fleet).toBe(0)
     expect(Number.isFinite(result[0]?.fleet)).toBe(true)
+  })
+
+  // ── Testing #4 — windowDays cutoff boundary (inclusive lower bound) ─────────
+  //
+  // The filter at snapshotFleetReader.ts:145 uses `>=` against cutoffIso, so a
+  // file dated EXACTLY cutoffIso must be included and cutoffIso-1 must be
+  // excluded. Both window sizes get pinned because the cutoff math has bitten
+  // in the past (off-by-one between days vs ms).
+  it('Testing #4 [windowDays=7]: file at the cutoff boundary is included; cutoff-1 is excluded', async () => {
+    // Anchor 2026-05-20T12:00:00Z, windowDays=7 → cutoff Date = 2026-05-13T12:00:00Z
+    // → cutoffIso = '2026-05-13'. So 2026-05-13 ∈ result, 2026-05-12 ∉.
+    writeSnapshot(dir, '2026-05-12', [baseRecord({ family: 'agenticapps' })])
+    writeSnapshot(dir, '2026-05-13', [baseRecord({ family: 'agenticapps' })])
+    writeSnapshot(dir, '2026-05-20', [baseRecord({ family: 'agenticapps' })])
+
+    const result = await readDailySeriesForFleet({ dir, now, windowDays: 7 })
+
+    expect(result.map((e) => e.date)).toEqual(['2026-05-13', '2026-05-20'])
+  })
+
+  it('Testing #4 [windowDays=90]: file at the cutoff boundary is included; cutoff-1 is excluded', async () => {
+    // Anchor 2026-05-20T12:00:00Z, windowDays=90 → cutoffIso = '2026-02-19'.
+    // So 2026-02-19 ∈ result, 2026-02-18 ∉.
+    writeSnapshot(dir, '2026-02-18', [baseRecord({ family: 'agenticapps' })])
+    writeSnapshot(dir, '2026-02-19', [baseRecord({ family: 'agenticapps' })])
+    writeSnapshot(dir, '2026-05-20', [baseRecord({ family: 'agenticapps' })])
+
+    const result = await readDailySeriesForFleet({ dir, now, windowDays: 90 })
+
+    expect(result.map((e) => e.date)).toEqual(['2026-02-19', '2026-05-20'])
+  })
+
+  // ── Testing #5 — T-12-RACE-PRUNER mid-walk ENOENT skip ─────────────────────
+  //
+  // snapshotFleetReader.ts:153-159 wraps readFileSync in try/catch so a file
+  // unlinked by the retention pruner between readdir and readFile yields a
+  // silently-skipped day. The catch path was previously unexercised; this
+  // test spies on readFileSync to throw ENOENT for one specific file and
+  // asserts (a) the affected day is absent from the series, (b) other days
+  // are present, (c) no throw escapes.
+  it('Testing #5 [T-12-RACE-PRUNER]: readFileSync ENOENT mid-walk skips that day silently', async () => {
+    writeSnapshot(dir, '2026-05-18', [baseRecord({ family: 'agenticapps', repo: 'a1' })])
+    writeSnapshot(dir, '2026-05-19', [baseRecord({ family: 'factiv', repo: 'f1' })])
+    writeSnapshot(dir, '2026-05-20', [baseRecord({ family: 'neuroflash', repo: 'n1' })])
+
+    const realReadFileSync = vi.mocked(mockedReadFileSync).getMockImplementation()!
+    vi.mocked(mockedReadFileSync).mockImplementation(((path: unknown, ...args: unknown[]) => {
+      if (typeof path === 'string' && path.endsWith('2026-05-19.ndjson')) {
+        const err = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException
+        err.code = 'ENOENT'
+        throw err
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (realReadFileSync as any)(path, ...args)
+    }) as typeof mockedReadFileSync)
+
+    try {
+      const result = await readDailySeriesForFleet({ dir, now, windowDays: 90 })
+      // Affected day skipped; surrounding days survive.
+      expect(result.map((e) => e.date)).toEqual(['2026-05-18', '2026-05-20'])
+    } finally {
+      vi.mocked(mockedReadFileSync).mockImplementation(realReadFileSync as typeof mockedReadFileSync)
+    }
   })
 
   it('multi-day series computes per-day mean-of-3 independently', async () => {
