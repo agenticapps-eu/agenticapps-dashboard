@@ -33,8 +33,9 @@ the source agent and the finding's confidence at review time.
 
 - **[INFORMATIONAL] (Adversarial F12, confidence 7/10)** — `FleetTrendChart` hover/focus state machine has multi-modality bugs: tab-focusing one cell + mouse-hovering another overwrites the panel; 90 sequential `tabIndex=0` rects create 90 tab stops. Replace with a single keyboard navigator (arrow keys move a cursor, Enter opens panel).
   - File: `packages/spa/src/components/panels/conformance/FleetTrendChart.tsx:74-89`
-- **[INFORMATIONAL] (Adversarial F13)** — `PathDriftPanel` manual-path input has no client-side family-root validation hint. Combined with the rate-limit, users can blow through 10 bad paste attempts in 10 seconds with no actionable guidance. Add inline help text listing the three family roots, or surface the family-root list from the daemon.
-  - File: `packages/spa/src/components/panels/conformance/PathDriftPanel.tsx:157-167`
+- ~~**[INFORMATIONAL] (Adversarial F13)** — `PathDriftPanel` manual-path input has no client-side family-root validation hint. Combined with the rate-limit, users can blow through 10 bad paste attempts in 10 seconds with no actionable guidance. Add inline help text listing the three family roots, or surface the family-root list from the daemon.~~
+  - ~~File: `packages/spa/src/components/panels/conformance/PathDriftPanel.tsx:157-167`~~
+  - **CLOSED 2026-05-21** by `fix/path-drift-panel-inline-help`. Took the inline-help option over the daemon-side endpoint because (a) the standard AgenticApps layout `~/Sourcecode/<family>` is documented and conventional, (b) avoiding a new API surface keeps the daemon's read footprint unchanged, (c) the daemon will still reject non-standard layouts via `newPath_outside_family_roots` so users with a non-conventional layout still get a useful error — just one round-trip later, not in advance. Help text appears as a `<span id="drift-help-{entry.id}">` directly below the manual-path input, wired via `aria-describedby` so AT users hear it together with the input label. Help is NOT rendered when a suggestedPath is available (no manual input → no help). Two new tests: P6b pins the help text presence + content (mentions all three families), P6c pins the absence of help when no manual input is shown.
 
 ### Test coverage gaps (from testing specialist)
 
