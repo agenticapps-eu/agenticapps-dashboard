@@ -20,20 +20,17 @@ import { Hono } from 'hono'
 import { ConformanceResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { scanConformance } from '../lib/conformanceScan.js'
-import {
-  getConformanceCache,
-  setConformanceCache,
-} from '../lib/conformanceCache.js'
+import { getOrComputeConformance } from '../lib/conformanceCache.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
 export const conformanceRoute = new Hono<Env>()
 
 conformanceRoute.get('/observability/conformance', async (c) => {
-  // 30s cache short-circuit (D-12-17).
-  const cached = getConformanceCache()
-  const data = cached ?? (await scanConformance())
-  if (!cached) setConformanceCache(data)
+  // 30s cache short-circuit (D-12-17) + cold-cache inflight dedup: N
+  // concurrent cold-window callers share a single scanConformance() call
+  // via the cache module's inflight singleton (see getOrComputeConformance).
+  const data = await getOrComputeConformance(() => scanConformance())
 
   // outbound() applies ConformanceResponseSchema.parse — schema drift in the
   // route's output surfaces as 500 schema_drift rather than a leaked-shape 200.

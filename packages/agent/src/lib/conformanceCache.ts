@@ -27,6 +27,16 @@ export const TTL_MS = 30_000
 let cache: ConformanceCacheEntry | null = null
 
 /**
+ * Inflight singleton for the cold-cache → scanConformance() compute path.
+ * When set, every caller in the cache-miss window awaits the same promise
+ * instead of fanning out N independent scanConformance() invocations.
+ * Cleared on settle (success OR failure) so a rejected scan doesn't poison
+ * the slot. See getOrComputeConformance() and its RED test (Test 10/11 in
+ * conformance.test.ts) for the thundering-herd shape this prevents.
+ */
+let inflight: Promise<ConformanceResponse> | null = null
+
+/**
  * Return the cached ConformanceResponse if it exists and has not expired.
  * Returns null on cache miss or expiry — caller is responsible for recomputing.
  *
@@ -64,9 +74,48 @@ export function invalidateConformanceCache(): void {
 }
 
 /**
+ * Resolve a ConformanceResponse via cache → inflight singleton → compute.
+ *
+ * Three branches:
+ *   1. Fresh cache hit: return cached value (no compute, no inflight).
+ *   2. Cache miss with inflight in progress: await the existing inflight
+ *      promise — every concurrent caller in the cold window shares it.
+ *   3. Cache miss with no inflight: kick off a new compute, store the
+ *      inflight ref so subsequent callers in this tick share it, populate
+ *      the cache on success, and ALWAYS clear the inflight ref on settle
+ *      (try/finally) so a rejected scan doesn't poison the slot.
+ *
+ * The helper owns both cache reads and writes for the compute path so the
+ * route handler doesn't have to coordinate inflight + cache + outbound. The
+ * fix-path route's `invalidateConformanceCache()` still works as before —
+ * it only clears `cache`, not `inflight`, so an in-progress scan finishes
+ * and populates the next 30s window with fresh data.
+ */
+export async function getOrComputeConformance(
+  compute: () => Promise<ConformanceResponse>,
+  now: number = Date.now(),
+): Promise<ConformanceResponse> {
+  const cached = getConformanceCache(now)
+  if (cached) return cached
+  if (inflight) return inflight
+  inflight = (async () => {
+    try {
+      const value = await compute()
+      setConformanceCache(value, Date.now())
+      return value
+    } finally {
+      inflight = null
+    }
+  })()
+  return inflight
+}
+
+/**
  * Test-only backdoor: reset module-scoped cache state.
  * Mirrors the _resetForTests() pattern in coverageCache.ts.
+ * Also clears the inflight ref so tests start from a clean slate.
  */
 export function _resetConformanceCacheForTests(): void {
   cache = null
+  inflight = null
 }
