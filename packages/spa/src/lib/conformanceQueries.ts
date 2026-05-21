@@ -54,8 +54,8 @@ export const CONFORMANCE_STALE_TIME_MS = 30_000
 /**
  * useConformance — wraps GET /api/observability/conformance.
  *
- * Returns the full ConformanceResponse (schemaVersion 1, today, delta14d,
- * 90-day series, drifted entries). On schema drift, parseOrDrift surfaces via
+ * Returns the full ConformanceResponse (schemaVersion 1, today, baselineDays,
+ * deltaBaseline, 90-day series, drifted entries). On schema drift, parseOrDrift surfaces via
  * the existing Phase 2/4 SchemaDriftState mechanism: queryFn throws
  * `Error('schema_drift:<path>')` which bubbles to QueryCache.onError →
  * per-panel <SchemaDriftState> (D-09 pattern).

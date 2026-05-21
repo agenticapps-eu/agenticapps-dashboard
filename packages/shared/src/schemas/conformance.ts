@@ -95,7 +95,10 @@ export type PathDriftEntry = z.infer<typeof PathDriftEntrySchema>
  *
  * `series` carries up to 90 entries when the window is full and fewer while
  * the NDJSON store is still building (cold-start empty state per D-12-13).
- * `delta14d` carries SIGNED score-point deltas (range -100..+100).
+ * `deltaBaseline` carries SIGNED score-point deltas (range -100..+100) vs
+ * the entry dated closest to `now - baselineDays`. The window size lives
+ * in `baselineDays` rather than being baked into the field name so future
+ * 30d/60d toggles do not require a wire-format break (F14, v1.3).
  */
 export const ConformanceResponseSchema = z
   .object({
@@ -109,7 +112,8 @@ export const ConformanceResponseSchema = z
         neuroflash: ScoreSchema,
       })
       .strict(),
-    delta14d: z
+    baselineDays: z.number().int().positive(), // window size for deltaBaseline (14 today; future 30d/60d toggles change this, not the field name)
+    deltaBaseline: z
       .object({
         fleet: z.number().int(), // signed delta in score points (-100..+100)
         agenticapps: z.number().int(),

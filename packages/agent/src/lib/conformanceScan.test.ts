@@ -7,7 +7,7 @@
  *   - today scores from computeConformanceScores(coverage, driftedSet)
  *   - series from readDailySeriesForFleet (90 days when populated)
  *   - drifted from detectPathDrift
- *   - delta14d computed from today − series[length-15] when ≥15 entries exist
+ *   - deltaBaseline computed from today − series[length-15] when ≥15 entries exist
  *   - schemaVersion = 1; asOf = ISO datetime
  *   - DEFENSIVE: partial failures yield empty payload, not 500
  */
@@ -122,7 +122,7 @@ describe('conformanceScan › scanConformance', () => {
     expect(result.drifted).toEqual(drifted)
   })
 
-  it('delta14d uses date-anchored baseline (today − entry dated 14d ago)', async () => {
+  it('deltaBaseline uses date-anchored baseline (today − entry dated 14d ago)', async () => {
     // Anchor: now = 2026-05-15. Target = 2026-05-01.
     // series spans 2026-05-01..2026-05-15. Baseline must be the 2026-05-01
     // entry (score 75); rest are 80. Today is 100 (all-fresh fixture).
@@ -141,13 +141,13 @@ describe('conformanceScan › scanConformance', () => {
     vi.mocked(readDailySeriesForFleet).mockResolvedValue(series)
 
     const result = await scanConformance({ now })
-    expect(result.delta14d.fleet).toBe(25)
-    expect(result.delta14d.agenticapps).toBe(25)
-    expect(result.delta14d.factiv).toBe(25)
-    expect(result.delta14d.neuroflash).toBe(25)
+    expect(result.deltaBaseline.fleet).toBe(25)
+    expect(result.deltaBaseline.agenticapps).toBe(25)
+    expect(result.deltaBaseline.factiv).toBe(25)
+    expect(result.deltaBaseline.neuroflash).toBe(25)
   })
 
-  it('delta14d = 0 when no series entry is old enough (cold start)', async () => {
+  it('deltaBaseline = 0 when no series entry is old enough (cold start)', async () => {
     // Anchor 2026-05-15; series only spans 2026-05-11..2026-05-15 (5 entries).
     // None are ≤ target (2026-05-01), so baseline=null → delta=0.
     const now = new Date('2026-05-15T00:00:00.000Z')
@@ -161,13 +161,13 @@ describe('conformanceScan › scanConformance', () => {
     vi.mocked(readDailySeriesForFleet).mockResolvedValue(series)
 
     const result = await scanConformance({ now })
-    expect(result.delta14d.fleet).toBe(0)
-    expect(result.delta14d.agenticapps).toBe(0)
-    expect(result.delta14d.factiv).toBe(0)
-    expect(result.delta14d.neuroflash).toBe(0)
+    expect(result.deltaBaseline.fleet).toBe(0)
+    expect(result.deltaBaseline.agenticapps).toBe(0)
+    expect(result.deltaBaseline.factiv).toBe(0)
+    expect(result.deltaBaseline.neuroflash).toBe(0)
   })
 
-  it('delta14d tolerates calendar gaps (uses closest older entry, not array position)', async () => {
+  it('deltaBaseline tolerates calendar gaps (uses closest older entry, not array position)', async () => {
     // Regression for the position-based bug. Anchor 2026-05-15;
     // target=2026-05-01. Series has only TWO entries: 2026-04-20 (score 60)
     // and 2026-05-15 (score 100). Position-based would index series[-13],
@@ -193,7 +193,7 @@ describe('conformanceScan › scanConformance', () => {
     vi.mocked(readDailySeriesForFleet).mockResolvedValue(series)
 
     const result = await scanConformance({ now })
-    expect(result.delta14d.fleet).toBe(40)
+    expect(result.deltaBaseline.fleet).toBe(40)
   })
 
   it('drifted repo IDs flow into computeConformanceScores (excluded from denominator)', async () => {
@@ -383,7 +383,7 @@ describe('conformanceScan › scanConformance', () => {
     expect(result.today.agenticapps).toBe(0)
     expect(result.today.factiv).toBe(0)
     expect(result.today.neuroflash).toBe(0)
-    expect(result.delta14d.fleet).toBe(0)
+    expect(result.deltaBaseline.fleet).toBe(0)
     expect(result.series).toEqual([])
     expect(result.drifted).toEqual([])
     // Schema still satisfied.
