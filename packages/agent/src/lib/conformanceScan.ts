@@ -34,6 +34,8 @@ import type {
   PathDriftEntry,
 } from '@agenticapps/dashboard-shared'
 
+import { realpathSync } from 'node:fs'
+
 import { computeConformanceScores } from './conformanceScore.js'
 import { scanCoverageInternal } from './coverageScan.js'
 import { agentError } from './logging.js'
@@ -59,7 +61,19 @@ type ScannedFamily = (typeof SCANNED_FAMILIES)[number]
  */
 function pathToRepoId(storedPath: string): string | null {
   for (const family of SCANNED_FAMILIES) {
-    const root = COVERAGE_ROOTS[family]()
+    const raw = COVERAGE_ROOTS[family]()
+    // storedPath is canonical (registry.addProject runs canonicaliseRoot →
+    // realpathSync), so the comparison root must also be realpath'd or any
+    // symlink in the COVERAGE_ROOTS factory (e.g. macOS /tmp → /private/tmp)
+    // makes the prefix-match silently fail. Defensive: an absent family root
+    // is treated as no-match — we never throw out of a hot drift-translation
+    // loop. TODOS Adversarial F3 / Test 13.
+    let root: string
+    try {
+      root = realpathSync(raw)
+    } catch {
+      continue
+    }
     // Exact match would mean the registry entry IS a family root — unlikely
     // for a real repo but cheap to handle.
     if (storedPath === root) return null
