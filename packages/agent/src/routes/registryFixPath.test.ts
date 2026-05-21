@@ -31,6 +31,7 @@ import {
   statSync,
   readFileSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import { join } from 'node:path'
@@ -314,6 +315,38 @@ describe('POST /api/admin/registry/fix-path', () => {
     } finally {
       rmSync(outsideTarget, { recursive: true, force: true })
     }
+  })
+
+  it('Test 8c [Security #5 strict family-root containment]: returns 422 newPath_outside_family_roots when newPath IS a family root itself', async () => {
+    // A family root is a container of projects, never a project itself.
+    // Today the containment check accepts `canonical === r` — i.e. an
+    // attacker (or fat-fingered admin) can repoint a registered project
+    // at the family root directory itself, after which every read in
+    // the daemon would scan from there instead of an individual repo.
+    //
+    // The family root in the fixture is a tmp dir without a `.git/config`,
+    // so to make this test meaningful (i.e. to confirm that the new
+    // containment rule is what blocks the path — not the target-is-a-repo
+    // check downstream) we plant a `.git/config` directly in the family
+    // root. Post-fix, the response MUST be `newPath_outside_family_roots`
+    // and MUST NOT reach the repo-validity branch.
+    mkdirSync(join(ctx.familyRootReal, '.git'), { recursive: true })
+    writeFileSync(
+      join(ctx.familyRootReal, '.git', 'config'),
+      '[remote "origin"]\n\turl = git@github.com:org/dashboard.git\n',
+    )
+    const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
+    const res = await app.request(
+      'http://127.0.0.1:5193/api/admin/registry/fix-path',
+      {
+        method: 'POST',
+        headers: authHeaders(ctx.token),
+        body: JSON.stringify({ id: ctx.projectId, newPath: ctx.familyRootReal }),
+      },
+    )
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe('newPath_outside_family_roots')
   })
 
   it('Test 8b [newPath_not_a_repo]: returns 422 when newPath exists but has no .git', async () => {

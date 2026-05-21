@@ -170,10 +170,12 @@ registryFixPathRoute.post(
     }
 
     // ── Step 5: family-root containment (Pitfall 7 — realpath-everywhere) ─
+    // Strict: a family root is a container, never a project itself. Allowing
+    // `canonical === r` would let a token holder repoint a registered project
+    // at the family root, after which every read would walk the container.
+    // (Security #5 — TODOS.md.)
     const roots = (await realFamilyRoots()).filter((r): r is string => r !== null)
-    const insideFamily = roots.some(
-      (r) => canonical === r || canonical.startsWith(r + sep),
-    )
+    const insideFamily = roots.some((r) => canonical.startsWith(r + sep))
     if (!insideFamily) {
       return c.json(
         { ok: false, error: 'newPath_outside_family_roots', requestId },
