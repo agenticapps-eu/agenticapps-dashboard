@@ -163,6 +163,8 @@ export function CoverageFamilySection({
         family={family}
         rows={rows}
         gitNexusInstallState={gitNexusInstallState}
+        gitnexusInstalled={gitnexusInstalled}
+        gitnexusCanScan={gitnexusCanScan}
         {...(onRefresh !== undefined ? { onRefresh } : {})}
         {...(inFlightRefreshes !== undefined ? { inFlightRefreshes } : {})}
       />
