@@ -50,7 +50,9 @@ export interface CoverageRowProps {
 // Derive popover options from the row's column states
 function getRefreshOptions(row: CoverageRowData) {
   const opts: Array<{ label: string; action: CoverageRefreshAction }> = []
-  if (row.gitNexus.state === 'stale' || row.gitNexus.state === 'missing') {
+  // D-13-08 + I-4: missing rows use ScanPill; popover only for stale to avoid
+  // duplicate dispatch surfaces for the same row+action.
+  if (row.gitNexus.state === 'stale') {
     opts.push({ label: 'Run gitnexus analyze for this repo', action: 'gitnexus-analyze' })
   }
   if (row.wiki.state === 'stale' || row.wiki.state === 'missing') {

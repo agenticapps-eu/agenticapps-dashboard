@@ -638,4 +638,43 @@ describe('Phase 13 ScanPill wiring in gitNexus cell (D-13-08)', () => {
     expect(screen.queryByTestId('scan-pill')).toBeNull()
     expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
   })
+
+  // I-4 (Stage-2 review): for state='missing' the ScanPill is the canonical
+  // surface — the refresh popover must NOT also offer 'Run gitnexus analyze',
+  // otherwise the user has two parallel ways to trigger the same scan.
+  it("I-4: refresh popover does NOT offer gitnexus-analyze for state='missing' (ScanPill is the only entry)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions/i }))
+    // ScanPill is present (state='missing' + installed)
+    expect(screen.getByTestId('scan-pill')).toBeTruthy()
+    // Popover does NOT contain a duplicate gitnexus-analyze entry
+    expect(screen.queryByText(/gitnexus analyze/i)).toBeNull()
+  })
+
+  it("I-4: refresh popover STILL offers gitnexus-analyze for state='stale' (no ScanPill in that case)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'stale' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions/i }))
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByText(/gitnexus analyze/i)).toBeTruthy()
+  })
 })
