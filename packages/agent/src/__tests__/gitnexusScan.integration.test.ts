@@ -7,9 +7,11 @@
  * so no real gitnexus process is spawned. The stub binary controls exit code,
  * delay, and stderr via env vars (see packages/agent/test-fixtures/stub-gitnexus.sh).
  *
- * Repo directories under ~/Sourcecode/{family}/_inttest-* are created per test
- * and cleaned up in afterEach. This ensures cwd exists for execa and
- * derivedRepoId() resolves correctly against the real homedir().
+ * Hermeticity (I-1 / Stage-2 review): makeTmpHome({ overrideHomeEnv: true })
+ * sets process.env.HOME to a tmpdir for the test's lifetime so
+ * derivedRepoId() (which reads os.homedir()) resolves there. Test repo dirs
+ * are created under the tmp home — NEVER under the user's real ~/Sourcecode
+ * tree. tmp.cleanup() restores HOME and rms the whole tree.
  *
  * Test cases:
  *   1. Happy path — stub exits 0 → GET polls until state='done'
@@ -18,9 +20,8 @@
  *   4. Family partial success — stub fails on 2nd invocation → completed=2, failed=1
  */
 import { join, sep } from 'node:path'
-import { mkdtempSync, mkdirSync, chmodSync, writeFileSync, rmSync, existsSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, chmodSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
-import { randomUUID } from 'node:crypto'
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
@@ -30,7 +31,6 @@ import { makeTmpHome } from '../lib/__fixtures__/tmpHome.js'
 import { _resetForTests, _setGitnexusBinForTests } from '../lib/gitnexusScan.js'
 import type { RegistryFile } from '../lib/registry.js'
 
-const HOME = homedir()
 const FIXTURES_DIR = join(new URL('../../test-fixtures', import.meta.url).pathname)
 const STUB_GITNEXUS = join(FIXTURES_DIR, 'stub-gitnexus.sh')
 
@@ -43,8 +43,13 @@ function authHeaders(token: string) {
   }
 }
 
-function makeRegistryEntry(family: string, repo: string) {
-  const root = `${HOME}${sep}Sourcecode${sep}${family}${sep}${repo}`
+/**
+ * Build a registry entry rooted under the per-test tmp HOME (NOT the user's
+ * real home). The tmp HOME is what derivedRepoId() resolves against because
+ * makeTmpHome({ overrideHomeEnv: true }) sets process.env.HOME for the test.
+ */
+function makeRegistryEntry(home: string, family: string, repo: string) {
+  const root = `${home}${sep}Sourcecode${sep}${family}${sep}${repo}`
   return {
     id: `${family}-${repo}`,
     name: repo,
@@ -59,9 +64,12 @@ function writeRegistry(registryFile: string, projects: RegistryFile['projects'])
   writeFileSync(registryFile, JSON.stringify({ version: 1, projects }, null, 2), 'utf8')
 }
 
-/** Create a directory under ~/Sourcecode/{family}/{repo} for execa cwd to exist. */
-function createRepoDir(family: string, repo: string): string {
-  const dir = `${HOME}${sep}Sourcecode${sep}${family}${sep}${repo}`
+/**
+ * Create {home}/Sourcecode/{family}/{repo} for execa cwd to exist. Lives
+ * entirely inside the tmp HOME so cleanup() drops it with the rest of the tree.
+ */
+function createRepoDir(home: string, family: string, repo: string): string {
+  const dir = `${home}${sep}Sourcecode${sep}${family}${sep}${repo}`
   mkdirSync(dir, { recursive: true })
   return dir
 }
@@ -101,16 +109,19 @@ describe('gitnexusScan integration tests (stub binary)', () => {
   let authFile: string
   let token: string
   let app: ReturnType<typeof createApp>
-  let createdDirs: string[] = []
+  let tmpHome: string
   let tmpBinDir: string
 
   beforeEach(() => {
     _resetForTests()
     _setGitnexusBinForTests(STUB_GITNEXUS)
-    createdDirs = []
 
-    const tmp = makeTmpHome()
+    // I-1: overrideHomeEnv:true makes process.env.HOME point at the tmp dir
+    // so derivedRepoId() — which reads os.homedir() — resolves into the
+    // sandbox. Repo dirs created under tmpHome are dropped by cleanup().
+    const tmp = makeTmpHome({ overrideHomeEnv: true })
     cleanup = tmp.cleanup
+    tmpHome = tmp.homeDir
     registryFile = join(tmp.configDir, 'registry.json')
     authFile = join(tmp.configDir, 'auth.json')
     tmpBinDir = mkdtempSync(join(tmpdir(), 'gitnexus-bin-'))
@@ -124,22 +135,27 @@ describe('gitnexusScan integration tests (stub binary)', () => {
   afterEach(() => {
     _resetForTests()
     _setGitnexusBinForTests(null)
-    cleanup()
-    // Remove created repo dirs
-    for (const dir of createdDirs) {
-      try { rmSync(dir, { recursive: true, force: true }) } catch { /* ignore */ }
-    }
+    cleanup()  // also restores process.env.HOME
     rmSync(tmpBinDir, { recursive: true, force: true })
+  })
+
+  // ── I-1 hermeticity guard ─────────────────────────────────────────────────
+  // Defensive: protects against future regressions of the makeTmpHome HOME
+  // override or `homedir()` call-site changes that would route tests back
+  // into the user's real ~/Sourcecode tree.
+  it('I-1 guard: process.env.HOME is overridden to a tmpdir; homedir() resolves into the sandbox', () => {
+    expect(tmpHome).toMatch(/agentic-test-/)
+    expect(homedir()).toBe(tmpHome)
+    expect(homedir().startsWith(tmpdir())).toBe(true)
   })
 
   // ── Test 1: Happy path ────────────────────────────────────────────────────
 
   it('Test 1: happy path — stub exits 0, GET polls until state=done', async () => {
-    const repoName = `_inttest-happy-${Date.now()}`
-    const repoDir = createRepoDir('agenticapps', repoName)
-    createdDirs.push(repoDir)
+    const repoName = `inttest-happy`
+    createRepoDir(tmpHome, 'agenticapps', repoName)
 
-    writeRegistry(registryFile, [makeRegistryEntry('agenticapps', repoName)])
+    writeRegistry(registryFile, [makeRegistryEntry(tmpHome, 'agenticapps', repoName)])
 
     const postRes = await app.request('http://localhost/api/gitnexus/scan', {
       method: 'POST',
@@ -171,11 +187,10 @@ describe('gitnexusScan integration tests (stub binary)', () => {
     chmodSync(failBin, 0o755)
     _setGitnexusBinForTests(failBin)
 
-    const repoName = `_inttest-fail-${Date.now()}`
-    const repoDir = createRepoDir('agenticapps', repoName)
-    createdDirs.push(repoDir)
+    const repoName = `inttest-fail`
+    createRepoDir(tmpHome, 'agenticapps', repoName)
 
-    writeRegistry(registryFile, [makeRegistryEntry('agenticapps', repoName)])
+    writeRegistry(registryFile, [makeRegistryEntry(tmpHome, 'agenticapps', repoName)])
 
     const postRes = await app.request('http://localhost/api/gitnexus/scan', {
       method: 'POST',
@@ -216,15 +231,14 @@ describe('gitnexusScan integration tests (stub binary)', () => {
     chmodSync(slowBin, 0o755)
     _setGitnexusBinForTests(slowBin)
 
-    const repoA = `_inttest-lock-a-${Date.now()}`
-    const repoB = `_inttest-lock-b-${Date.now()}`
-    const dirA = createRepoDir('agenticapps', repoA)
-    const dirB = createRepoDir('factiv', repoB)
-    createdDirs.push(dirA, dirB)
+    const repoA = `inttest-lock-a`
+    const repoB = `inttest-lock-b`
+    createRepoDir(tmpHome, 'agenticapps', repoA)
+    createRepoDir(tmpHome, 'factiv', repoB)
 
     writeRegistry(registryFile, [
-      makeRegistryEntry('agenticapps', repoA),
-      makeRegistryEntry('factiv', repoB),
+      makeRegistryEntry(tmpHome, 'agenticapps', repoA),
+      makeRegistryEntry(tmpHome, 'factiv', repoB),
     ])
 
     const t0 = Date.now()
@@ -288,13 +302,11 @@ describe('gitnexusScan integration tests (stub binary)', () => {
     _setGitnexusBinForTests(failBin)
 
     // 3 repos in agenticapps — alphabetical: alpha, beta, gamma
-    const prefix = `_inttest-fam-${Date.now()}`
-    const repoNames = [`${prefix}-alpha`, `${prefix}-beta`, `${prefix}-gamma`]
+    const repoNames = ['inttest-fam-alpha', 'inttest-fam-beta', 'inttest-fam-gamma']
     for (const r of repoNames) {
-      const dir = createRepoDir('agenticapps', r)
-      createdDirs.push(dir)
+      createRepoDir(tmpHome, 'agenticapps', r)
     }
-    writeRegistry(registryFile, repoNames.map((r) => makeRegistryEntry('agenticapps', r)))
+    writeRegistry(registryFile, repoNames.map((r) => makeRegistryEntry(tmpHome, 'agenticapps', r)))
 
     const postRes = await app.request('http://localhost/api/gitnexus/scan', {
       method: 'POST',
