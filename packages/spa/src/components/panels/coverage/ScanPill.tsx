@@ -159,7 +159,7 @@ export function ScanPill({ scope, target, canScan, installed }: ScanPillProps) {
           })
         }
       }}
-      className="inline-flex items-center gap-1 text-xs rounded-pill bg-accent-soft px-2 py-0.5 hover:bg-accent-softer focus:outline focus:outline-2 focus:outline-accent"
+      className="inline-flex items-center gap-1 text-xs rounded-full bg-accent/10 px-2 py-0.5 hover:bg-accent/20 focus:outline focus:outline-2 focus:outline-accent"
     >
       <Sparkles size={12} aria-hidden="true" /> Scan
     </button>
