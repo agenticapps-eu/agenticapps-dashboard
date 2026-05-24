@@ -878,22 +878,25 @@ The phase WILL need these created before Wave 1 implementation can begin:
 
 **All `[ASSUMED]` items above are low-risk and verifiable in the first task that touches them. No user confirmation needed before planning.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the route mount at `/api/gitnexus` or `/api/admin/gitnexus`?**
    - What we know: Phase 12's `registryFixPath` mounted at `/api/admin/registry/fix-path` (cf. `app.ts:141`). The "admin" prefix signals mutations.
    - What's unclear: Is gitnexus scan an "admin" surface or a "regular feature" surface from a route-organisation standpoint?
    - Recommendation: Mount at `/api/gitnexus/scan` (NOT admin-prefixed). Rationale: this is a per-repo user action, not a daemon-admin operation. Phase 12's `/api/admin/registry/fix-path` is admin because it mutates the registry; Phase 13 just spawns a subprocess. Matches the conceptual scope of `POST /api/coverage/refresh` (also non-admin in Phase 10).
+   - **RESOLVED:** Mounted at `/api/gitnexus` (non-admin prefix) — see Plan 13-02 `<interfaces>` block `app.route('/api/gitnexus', gitnexusScanRoute)` and Task 3 step 2 (CoveragePage line reference ~141 in `app.ts`).
 
 2. **Should the family-scan POST take `familyId` or `repoIds[]`?**
    - What we know: D-13-04 says sequential, alphabetical, all repos in the family.
    - What's unclear: Does the SPA want to drive a custom-subset scan (e.g. "scan only the 3 missing ones in this family")?
    - Recommendation: For v1.3.0, accept ONLY `{ familyId }` — server enumerates. If a custom-subset need surfaces in dogfooding, fold into v1.3.x with `{ familyId, repoIds?: string[] }`.
+   - **RESOLVED:** Plan 13-00 schema accepts `{scope:'family', target: familyId}` only — the daemon enumerates repos server-side via `startFamilyScan(...)` (see Plan 13-02 Task 2). Custom-subset deferred to v1.3.x.
 
 3. **Does the post-Phase-13 SPA still need `IndexGitNexusButton.tsx` as a file?**
    - What we know: D-13-06 removes the page-header mount. The CONTEXT §"Reusable Assets" line says "keep `InstallGitNexusButton` … delete `IndexGitNexusButton`".
    - What's unclear: Was the comment ambiguous? Re-reading carefully: "keep `InstallGitNexusButton` as-is (binary-missing fallback per D-13-07); delete `IndexGitNexusButton` (replaced by per-row/per-family Scan affordances per D-13-06)." — unambiguous.
    - Recommendation: **Delete `IndexGitNexusButton.tsx`** outright. The "indexing" affordance moves into the per-row + per-family Scan pills. See Pitfall 8.
+   - **RESOLVED:** `IndexGitNexusButton.tsx` + `.test.tsx` deleted in Plan 13-03 Task 4 via `git rm`; grep verification asserts zero remaining references in `packages/spa/src/`.
 
 ## Sources
 
