@@ -35,12 +35,17 @@ import { registryFixPathRoute } from '../routes/registryFixPath.js'
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
 
+/** Daemon bind mode — set at startup via CLI --bind flag, immutable per daemon lifetime. */
+export type BindMode = 'loopback' | 'tailscale' | '0.0.0.0'
+
 export type Variables = {
   requestId: string
   /** Override registry file path (for tests). Defaults to REGISTRY_FILE constant. */
   registryFile?: string
   /** Override auth file path (for tests). Defaults to AUTH_FILE constant. */
   authFile?: string
+  /** Daemon bind mode — loopback | tailscale | 0.0.0.0. Set from CLI --bind flag at startup. */
+  bindMode: BindMode
 }
 export type Env = { Bindings: HttpBindings; Variables: Variables }
 
@@ -50,6 +55,8 @@ export interface CreateAppOptions {
   registryFile?: string
   /** Override auth file path (for isolated testing). */
   authFile?: string
+  /** Daemon bind mode — defaults to 'loopback' (safest; refuses scan routes). */
+  bindMode?: BindMode
 }
 
 /**
@@ -70,14 +77,16 @@ export interface CreateAppOptions {
  *   7. onError         — errorHandler (D-06 NODE_ENV-gated verbosity)
  */
 export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
+  const bindMode: BindMode = opts.bindMode ?? 'loopback'
   const app = new Hono<Env>()
 
   // 1. Logger
   app.use(logger())
 
-  // 2. requestId injection + optional file-path overrides (for isolated testing)
+  // 2. requestId injection + bindMode + optional file-path overrides (for isolated testing)
   app.use(async (c, next) => {
     c.set('requestId', generateRequestId())
+    c.set('bindMode', bindMode)
     if (opts.registryFile) c.set('registryFile', opts.registryFile)
     if (opts.authFile) c.set('authFile', opts.authFile)
     await next()

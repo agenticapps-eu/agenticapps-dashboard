@@ -29,4 +29,40 @@ describe('HealthResponseSchema', () => {
   it('still accepts old shape (only ok + version)', () => {
     expect(() => HealthResponseSchema.parse({ ok: true, version: '0.0.1' })).not.toThrow()
   })
+
+  // Phase 13 D-13-11b: gitnexus composite field
+  it('parses a response WITH gitnexus field (installed + canScan)', () => {
+    const valid = {
+      ok: true,
+      version: '1.0.0',
+      daemonVersion: '1.0.0',
+      registryCount: 3,
+      paired: true,
+      gitnexus: { installed: true, canScan: true },
+    }
+    const parsed = HealthResponseSchema.parse(valid)
+    expect(parsed.gitnexus).toEqual({ installed: true, canScan: true })
+  })
+
+  it('parses gitnexus with canScan=false (tailscale bind mode)', () => {
+    const valid = {
+      ok: true,
+      version: '1.0.0',
+      daemonVersion: '1.0.0',
+      registryCount: 0,
+      paired: false,
+      gitnexus: { installed: true, canScan: false },
+    }
+    const parsed = HealthResponseSchema.parse(valid)
+    expect(parsed.gitnexus).toEqual({ installed: true, canScan: false })
+  })
+
+  it('rejects gitnexus with unknown extra fields (inner .strict() enforcement)', () => {
+    const invalid = {
+      ok: true,
+      version: '1.0.0',
+      gitnexus: { installed: true, canScan: false, extra: 'should-fail' },
+    }
+    expect(() => HealthResponseSchema.parse(invalid)).toThrow()
+  })
 })
