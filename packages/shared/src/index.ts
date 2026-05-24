@@ -217,6 +217,20 @@ export type {
   RegistryFixPathRequest,
 } from './schemas/conformance.js'
 
+// Phase 13 — gitnexus scoped scan actions (D-13-01..11)
+export {
+  GitnexusScanErrorCodeSchema,
+  GitnexusScanRequestSchema,
+  GitnexusScanResponseSchema,
+  GitnexusScanProgressSchema,
+} from './schemas/gitnexusScan.js'
+export type {
+  GitnexusScanErrorCode,
+  GitnexusScanRequest,
+  GitnexusScanResponse,
+  GitnexusScanProgress,
+} from './schemas/gitnexusScan.js'
+
 export {
   buildWikiCompileClipboardString,
   buildWorkflowUpdateClipboardString,
