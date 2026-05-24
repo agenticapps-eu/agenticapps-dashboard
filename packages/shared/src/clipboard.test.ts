@@ -51,8 +51,19 @@ describe('buildGitnexusInstallClipboardString', () => {
   })
 })
 
-describe('buildGitnexusIndexClipboardString (10.6)', () => {
-  it('returns the gitnexus analyze command — what the user runs in any repo to seed the registry', () => {
-    expect(buildGitnexusIndexClipboardString()).toBe('gitnexus analyze')
+describe('buildGitnexusIndexClipboardString (10.6 / 13-00)', () => {
+  it('returns { string, argv } shape — D-13-10 single source of truth for gitnexus invocation', () => {
+    expect(buildGitnexusIndexClipboardString()).toEqual({ string: 'gitnexus analyze', argv: ['analyze'] })
+  })
+
+  it('string field is a string', () => {
+    const cmd = buildGitnexusIndexClipboardString()
+    expect(typeof cmd.string).toBe('string')
+  })
+
+  it('argv field is an array of strings', () => {
+    const cmd = buildGitnexusIndexClipboardString()
+    expect(Array.isArray(cmd.argv)).toBe(true)
+    expect(cmd.argv).toEqual(['analyze'])
   })
 })
