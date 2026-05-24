@@ -104,7 +104,7 @@ export async function runStart(opts: StartOpts): Promise<void> {
   // D-18: CIDR enforcement ON by default for non-loopback binds; opt-out via --no-enforce-cidr
   const enforceCIDR = bindMode !== 'loopback' && opts.enforceCidr !== false
 
-  const app = createApp({ enforceCIDR })
+  const app = createApp({ enforceCIDR, bindMode })
   await bootDaemon({
     app,
     host,
