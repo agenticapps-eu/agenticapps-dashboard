@@ -16,7 +16,7 @@
  * Mirrors Phase 12 useRegistryFixPath shape from conformanceQueries.ts:100-124.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   GitnexusScanRequestSchema,
   GitnexusScanResponseSchema,
@@ -79,10 +79,7 @@ export function useGitnexusScan() {
  * CONSUMER via useEffect on terminal state, not inside this hook.
  */
 export function useGitnexusScanProgress(scanId: string | null) {
-  // qc is imported for potential consumer use, but NOT used directly in the hook.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const qc = useQueryClient()
-  const query = useQuery({
+  return useQuery({
     queryKey: ['gitnexusScan', scanId],
     queryFn: async () => {
       const r = await apiFetch(`/api/gitnexus/scan/${scanId}`, GitnexusScanProgressSchema)
@@ -96,6 +93,9 @@ export function useGitnexusScanProgress(scanId: string | null) {
     },
     enabled: scanId !== null,
     refetchInterval: (q) => {
+      // Halt polling on terminal error (e.g. 404 SCAN_NOT_FOUND after TTL eviction)
+      // to avoid infinite re-fetch when the scan ID has been evicted server-side.
+      if (q.state.status === 'error') return false
       const job = q.state.data
       if (!job) return 1500
       return job.state === 'running' ? 1500 : false
@@ -104,9 +104,6 @@ export function useGitnexusScanProgress(scanId: string | null) {
     gcTime: 60_000,
     refetchOnWindowFocus: false,
   })
-  // NOTE: invalidation is triggered by the CONSUMER via useEffect on terminal state,
-  // not inside this hook. See ScanPill / CoverageFamilySection usage below.
-  return query
 }
 
 // ── scanErrorCodeToMessage ────────────────────────────────────────────────────
