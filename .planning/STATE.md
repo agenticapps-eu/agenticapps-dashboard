@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-05-24T10:35:23.711Z"
-last_activity: 2026-05-24 -- Phase 13 execution started
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-05-24T11:23:20.573Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 20
   completed_phases: 8
   total_plans: 56
-  completed_plans: 51
-  percent: 91
+  completed_plans: 54
+  percent: 96
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 13 (gitnexus-scoped-scan-actions-coverage-matrix) — EXECUTING
-Plan: 1 of 5
+Plan: 2 of 5
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Executing Phase 13
-Last activity: 2026-05-24 -- Phase 13 execution started
+Status: Ready to execute
+Last activity: 2026-05-24
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 
@@ -83,6 +83,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 11 P02 | 15min | 7 tasks | 17 files |
 | Phase 11 P03 | 9min | 2 tasks | 7 files |
 | Phase 11 P06 | 10min | 1 tasks | 6 files |
+| Phase 13 P02 | 90 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-06: CoveragePage opts into sticky at all 4 PageHeader render paths (PLI-03) — coverage.lazy.tsx untouched (REVIEWS #9 lock); 4 PageHeader elements verified live (plan-time count of 5 was a counting artifact)
 - [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
+- [Phase 13]: D-13-EXT-01 global scan lock uses while-loop not single-await to handle simultaneous wakeups
+- [Phase 13]: registryFile isolation: startFamilyScan accepts and passes opts.registryFile to child startScan calls
+- [Phase 13]: bindMode refusal returned BEFORE rate-limit in POST /api/gitnexus/scan to minimise attack surface (D-13-11)
 
 ### Pending Todos
 
@@ -154,7 +158,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-24T09:41:36.060Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-gitnexus-scoped-scan-actions-coverage-matrix/13-CONTEXT.md
+Last session: 2026-05-24T11:23:20.570Z
+Stopped at: Completed 13-02-PLAN.md
+Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
