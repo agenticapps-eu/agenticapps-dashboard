@@ -591,6 +591,25 @@ Plans:
   10. D-13-10 — Command construction: reuse `buildGitnexusIndexClipboardString` from `@agenticapps/dashboard-shared` (so the clipboard fallback + daemon scan invoke the **same** command shape) vs daemon-side independent construction. Recommend: reuse the shared builder — single source of truth for "what gitnexus analyze command do we run".
   11. D-13-11 — Bind-mode posture: `gitnexus analyze` spawned by the daemon inherits the daemon process env. When daemon is bound to `tailscale` or `0.0.0.0` (remote-device access), a remote browser could trigger a local subprocess. Recommend: gate scan routes behind a "local-bind-only" check OR an explicit `--allow-remote-scan` flag set at daemon start; default to refusing scan requests when bind != 127.0.0.1.
 
+
+**Requirements:** none (Phase 13 has no REQ-IDs — phase_req_ids: null. Acceptance behaviours B-13-01..13 minted during `/gsd-plan-phase 13`, 2026-05-24; full descriptions in `.planning/REQUIREMENTS.md` §"GitNexus scoped scan actions (Phase 13)" once the gates plan lands).
+
+**Plans:** 5 plans across 5 waves (minted during `/gsd-plan-phase 13`, 2026-05-24).
+
+Plans:
+- [ ] 13-00-PLAN.md — Wave 0 (TDD foundations): extend `buildGitnexusIndexClipboardString` to return `{string, argv}` (D-13-10); shared Zod schemas for `GitnexusScanRequest/Response/Progress/ErrorCode` (D-13-EXT-06 11-code taxonomy); stub-gitnexus.sh + stub-gitnexus-failing.sh test fixtures; 6 RED test scaffolds for downstream waves. depends_on: []
+- [ ] 13-01-PLAN.md — Wave 1 (TDD daemon plumbing): bindMode threaded through `Env.Variables` → `CreateAppOptions` → `boot.ts` → `cli/start.ts` (Pitfall 2); extend `HealthResponseSchema` + `/health` route with `gitnexus: { installed, canScan }` (D-13-11b). depends_on: [00]
+- [ ] 13-02-PLAN.md — Wave 2 (TDD daemon route + lib): `lib/gitnexusScan.ts` (Map + per-repo lock + global scan-serialisation lock D-13-EXT-01 + 60s TTL eviction + fire-and-forget spawn via execa argv-array); `lib/gitnexusFamilyScan.ts` (sequential, alphabetical, partial-success per D-13-04/05); `routes/gitnexusScan.ts` (POST + GET, mounted at `/api/gitnexus`, mirror Phase 12 `registryFixPath` shape, full threat model with 9 STRIDE patterns + ~/.gitnexus carve-out); integration test with stub binary. depends_on: [00, 01]
+- [ ] 13-03-PLAN.md — Wave 3 (TDD SPA): `useGitnexusScan` mutation + `useGitnexusScanProgress` polling query (1500ms while running, gcTime 60s) + `scanErrorCodeToMessage` mapping (D-13-EXT-05/06); `ScanPill.tsx` primitive (4 states: enabled/scanning/disabled+tooltip/null) with consumer-side invalidation of ['coverage'] + ['conformance'] (D-13-09); wire into `CoverageRow.tsx` (per-repo, D-13-08) + `CoverageFamilySection.tsx` (per-family); DELETE `IndexGitNexusButton.tsx` + companion test (D-13-06, Pitfall 8); `InstallGitNexusButton.tsx` UNTOUCHED (D-13-07). depends_on: [00, 01, 02]
+- [ ] 13-04-PLAN.md — Wave 4 (gates, autonomous: false): `/cso` audit on subprocess-exec surface + ~/.gitnexus carve-out → 13-CSO.md; Stage 1 /review (gstack) → 13-REVIEW.md "Stage 1"; Stage 2 superpowers:requesting-code-review (FRESH context) → 13-REVIEW.md "Stage 2" (do NOT collapse); /qa walkthrough on 6 manual scenarios → 13-UAT.md; impeccable:critique at 1440×900 → 13-IMPECCABLE.md (calibration data point #6 for D-10.5-03 floor); REQUIREMENTS.md acceptance-proxy tick-off + STATE.md/ROADMAP.md closure. depends_on: [00, 01, 02, 03]
+
+**Wave structure:**
+- Wave 0 (13-00): foundations — shared contracts + stub fixtures + test scaffolds
+- Wave 1 (13-01): depends on 13-00 (uses HealthResponseSchema; needs no Wave 0 lib)
+- Wave 2 (13-02): depends on 13-00 + 13-01 (consumes bindMode from Env.Variables; consumes shared schemas)
+- Wave 3 (13-03): depends on 13-00 + 13-01 + 13-02 (consumes daemon route + shared schemas + health response)
+- Wave 4 (13-04): depends on all (gates run on merged surface)
+
 **Out of scope (deferred to v1.3.x or later):** Per-skill / per-language scan targeting (just scan the whole repo) · Scan scheduling / cron from the dashboard (one-shot only — schedule lives in user's launchd) · Cancelable scans (let it run; ~10s–2min per repo is tolerable) · Cross-host scan (the daemon scans only repos in its own registry) · Streaming gitnexus stderr to the UI (final status + retry affordance is enough for v1.3.0).
 
 ## Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)
