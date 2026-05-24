@@ -49,6 +49,36 @@ vi.mock('../../../lib/pairing.js', () => ({
   })),
 }))
 
+// Phase 13: mock ScanPill so it renders a deterministic test-id without
+// requiring ToastProvider / QueryClientProvider nesting. The wiring tests
+// assert the correct props were forwarded — not ScanPill's internal states.
+vi.mock('./ScanPill.js', () => ({
+  ScanPill: ({
+    scope,
+    target,
+    canScan,
+    installed,
+  }: {
+    scope: string
+    target: string
+    canScan: boolean
+    installed: boolean
+  }) => {
+    if (!installed) return null
+    return React.createElement(
+      'button',
+      {
+        'data-testid': 'scan-pill',
+        'data-scope': scope,
+        'data-target': target,
+        'data-can-scan': String(canScan),
+        disabled: !canScan || undefined,
+      },
+      'Scan',
+    )
+  },
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
@@ -516,5 +546,96 @@ describe('refresh button touch target (D-11.2-11)', () => {
     // animate-spin on the icon SVG (Plan 02 contract)
     const svg = button.querySelector('svg')
     expect(svg?.getAttribute('class') ?? '').toContain('animate-spin')
+  })
+})
+
+// ── Phase 13 D-13-08: ScanPill wiring in gitNexus cell ──────────────────────
+
+describe('Phase 13 ScanPill wiring in gitNexus cell (D-13-08)', () => {
+  it("renders ScanPill in gitNexus cell when state='missing' AND gitnexusInstalled=true AND canScan=true", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-scope')).toBe('repo')
+    expect(pill.getAttribute('data-target')).toBe('agenticapps/agenticapps-dashboard')
+    expect(pill.getAttribute('data-can-scan')).toBe('true')
+  })
+
+  it("renders ScanPill in gitNexus cell when state='not-applicable' AND gitnexusInstalled=true AND canScan=true", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'not-applicable' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-target')).toBe('agenticapps/agenticapps-dashboard')
+  })
+
+  it("renders ScanPill disabled (canScan=false) when gitnexusInstalled=true AND canScan=false (Tailscale D-13-11b)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={false}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill).toBeDisabled()
+    expect(pill.getAttribute('data-can-scan')).toBe('false')
+  })
+
+  it("does NOT render ScanPill when gitnexusInstalled=false — existing cell renders instead", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={false}
+            gitnexusCanScan={false}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    // The normal CoverageCell should still render (aria-label on the figure)
+    expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
+  })
+
+  it("does NOT render ScanPill when row.gitNexus.state='fresh' (already indexed — no scan needed)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'fresh' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
   })
 })

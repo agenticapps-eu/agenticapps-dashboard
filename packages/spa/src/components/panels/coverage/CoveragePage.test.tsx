@@ -30,6 +30,17 @@ vi.mock('../../../lib/coverageQueries.js', () => ({
   useCoverageRefresh: vi.fn(),
 }))
 
+// Mock useHealth — Phase 13 D-13-08: CoveragePage now calls useHealth to get
+// gitnexus.{installed,canScan} for ScanPill props. Default: not installed.
+vi.mock('../../../lib/healthQueries.js', () => ({
+  useHealth: vi.fn(() => ({
+    data: { ok: true, version: '1.0.0', gitnexus: { installed: false, canScan: false } },
+    isPending: false,
+    isError: false,
+    error: null,
+  })),
+}))
+
 // Mock writeToClipboard so per-row clipboard tests can assert the payload
 vi.mock('../../../lib/clipboardCompat.js', () => ({
   writeToClipboard: vi.fn().mockResolvedValue(undefined),
@@ -335,10 +346,10 @@ describe('CoveragePage', () => {
     expect(screen.queryByRole('button', { name: /^copy gitnexus analyze to clipboard$/i })).toBeNull()
   })
 
-  // 10.6: third state — binary present but registry absent. The CTA must be
-  // "Index with GitNexus" (gitnexus analyze), not "Install GitNexus" (the
-  // pre-10.6 bug where every installed-but-never-indexed user saw wrong advice).
-  it("primary action is 'Index with GitNexus' when gitNexusInstallState === 'installed-no-registry' (10.6)", () => {
+  // D-13-06: IndexGitNexusButton removed — per-row + per-family ScanPill (Phase 13)
+  // handles the installed-no-registry scan affordance. The page header shows
+  // InstallGitNexusButton for both not-installed AND installed-no-registry states.
+  it("page header shows InstallGitNexusButton (not IndexGitNexusButton) for 'installed-no-registry' after D-13-06 deletion", () => {
     vi.mocked(useCoverage).mockReturnValue({
       data: makeData({ gitNexusInstallState: 'installed-no-registry' }),
       isPending: false,
@@ -348,8 +359,10 @@ describe('CoveragePage', () => {
     } as ReturnType<typeof useCoverage>)
 
     render(<CoveragePage />, { wrapper })
-    expect(screen.getByRole('button', { name: /^copy gitnexus analyze to clipboard$/i })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeNull()
+    // InstallGitNexusButton is the page-header action for this state
+    expect(screen.getByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeTruthy()
+    // IndexGitNexusButton is GONE (D-13-06 — deleted outright per Pitfall 8)
+    expect(screen.queryByRole('button', { name: /^copy gitnexus analyze to clipboard$/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /refresh.*stale/i })).toBeNull()
   })
 
@@ -842,5 +855,45 @@ describe('gitnexus-analyze toast wiring', () => {
       )
       expect(dashboardRow?.getAttribute('aria-busy')).toBeNull()
     })
+  })
+})
+
+// ── Phase 13 D-13-06 regression: IndexGitNexusButton NEVER rendered ──────────
+
+describe('D-13-06 regression: IndexGitNexusButton never rendered in any state', () => {
+  const indexAriaLabel = /^copy gitnexus analyze to clipboard$/i
+
+  function setupCoverage(gitNexusInstallState: 'not-installed' | 'installed-no-registry' | 'installed-with-registry') {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: makeData({ gitNexusInstallState }),
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+  }
+
+  it("IndexGitNexusButton is NOT rendered when gitNexusInstallState='not-installed'", () => {
+    setupCoverage('not-installed')
+    render(<CoveragePage />, { wrapper })
+    expect(screen.queryByRole('button', { name: indexAriaLabel })).toBeNull()
+  })
+
+  it("IndexGitNexusButton is NOT rendered when gitNexusInstallState='installed-no-registry'", () => {
+    setupCoverage('installed-no-registry')
+    render(<CoveragePage />, { wrapper })
+    expect(screen.queryByRole('button', { name: indexAriaLabel })).toBeNull()
+  })
+
+  it("IndexGitNexusButton is NOT rendered when gitNexusInstallState='installed-with-registry'", () => {
+    setupCoverage('installed-with-registry')
+    render(<CoveragePage />, { wrapper })
+    expect(screen.queryByRole('button', { name: indexAriaLabel })).toBeNull()
+  })
+
+  it('InstallGitNexusButton IS present for not-installed state (D-13-07 binary-not-installed fallback preserved)', () => {
+    setupCoverage('not-installed')
+    render(<CoveragePage />, { wrapper })
+    expect(screen.getByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeTruthy()
   })
 })

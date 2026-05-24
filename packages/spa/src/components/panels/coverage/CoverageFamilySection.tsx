@@ -33,6 +33,7 @@ import type {
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
 import type { CoverageRowProps } from './CoverageRow.js'
+import { ScanPill } from './ScanPill.js'
 import { CoverageFamilySectionMobile } from './CoverageFamilySectionMobile.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
@@ -61,6 +62,14 @@ export interface CoverageFamilySectionProps {
    * Phase 11.2 stage-1 /review cross-model finding (Claude F4 / Codex #1).
    */
   inFlightRefreshes?: ReadonlySet<string>
+  /**
+   * Phase 13 D-13-08 + D-13-11b: gitnexus health props for per-family ScanPill
+   * and for passing down to each CoverageRow's per-repo ScanPill.
+   * Sourced from GET /health response.gitnexus — passed down from CoveragePage.
+   * Defaults to false when health data is unavailable (safe fallback: no Scan pill shown).
+   */
+  gitnexusInstalled?: boolean
+  gitnexusCanScan?: boolean
 }
 
 // UI-SPEC §5: localStorage key format (locked)
@@ -106,6 +115,8 @@ export function CoverageFamilySection({
   gitNexusInstallState,
   onRefresh,
   inFlightRefreshes,
+  gitnexusInstalled = false,
+  gitnexusCanScan = false,
 }: CoverageFamilySectionProps): React.JSX.Element {
   // Phase 12 Plan 12-05 (D-12-23 + D-12-24): viewport branch — at xs (<640px
   // Tailwind 4) render the card-per-row sibling; otherwise the desktop
@@ -191,6 +202,19 @@ export function CoverageFamilySection({
             <span className="text-sm text-status-success">✓ {fresh}</span>
           </button>
 
+          {/* Phase 13 D-13-08: per-family ScanPill in header bar — next to aggregate chips.
+              Gated on gitnexusInstalled (binary present). ScanPill handles canScan=false
+              with a disabled+tooltip state (D-13-11b). Returns null when installed=false
+              so the install hint below remains the only affordance in that case (D-13-07). */}
+          {gitnexusInstalled && (
+            <ScanPill
+              scope="family"
+              target={family}
+              canScan={gitnexusCanScan}
+              installed={gitnexusInstalled}
+            />
+          )}
+
           {/* CODEX HIGH-6 Option A: per-family GitNexus install hint (not page-level banner).
               10.6: only fires for 'not-installed' — when binary is present but registry
               isn't yet ('installed-no-registry'), the page-level "Index with GitNexus"
@@ -249,6 +273,8 @@ export function CoverageFamilySection({
                     key={`${row.family}-${row.repo}`}
                     row={row}
                     pending={pending}
+                    gitnexusInstalled={gitnexusInstalled}
+                    gitnexusCanScan={gitnexusCanScan}
                     {...(onRefresh !== undefined ? { onRefresh } : {})}
                   />
                 )

@@ -34,6 +34,36 @@ vi.mock('../../../lib/pairing.js', () => ({
   })),
 }))
 
+// Phase 13: mock ScanPill so tests don't require full ToastProvider nesting
+// for every CoverageFamilySection render. The wiring tests assert the correct
+// props are forwarded — ScanPill's internal states are tested in ScanPill.test.tsx.
+vi.mock('./ScanPill.js', () => ({
+  ScanPill: ({
+    scope,
+    target,
+    canScan,
+    installed,
+  }: {
+    scope: string
+    target: string
+    canScan: boolean
+    installed: boolean
+  }) => {
+    if (!installed) return null
+    return React.createElement(
+      'button',
+      {
+        'data-testid': 'scan-pill',
+        'data-scope': scope,
+        'data-target': target,
+        'data-can-scan': String(canScan),
+        disabled: !canScan || undefined,
+      },
+      'Scan',
+    )
+  },
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
@@ -687,5 +717,81 @@ describe('per-row pending derivation (Set-based inFlightRefreshes)', () => {
     const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
     expect(rowA?.getAttribute('aria-busy')).toBeNull()
     expect(rowB?.getAttribute('aria-busy')).toBe('true')
+  })
+})
+
+// ── Phase 13 D-13-08: per-family ScanPill in header bar ─────────────────────
+
+describe('Phase 13 per-family ScanPill in header bar (D-13-08, D-13-11b)', () => {
+  it('header bar mounts ScanPill with scope=family when gitnexusInstalled=true and canScan=true', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={true}
+        />,
+      ),
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-scope')).toBe('family')
+    expect(pill.getAttribute('data-target')).toBe('agenticapps')
+    expect(pill.getAttribute('data-can-scan')).toBe('true')
+  })
+
+  it('ScanPill is disabled (canScan=false) when gitnexusInstalled=true but canScan=false (D-13-11b)', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={false}
+        />,
+      ),
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill).toBeDisabled()
+    expect(pill.getAttribute('data-can-scan')).toBe('false')
+  })
+
+  it('ScanPill is hidden when gitnexusInstalled=false (parent shows InstallGitNexusButton hint instead, D-13-07)', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="not-installed"
+          gitnexusInstalled={false}
+          gitnexusCanScan={false}
+        />,
+      ),
+    )
+    // ScanPill returns null when installed=false
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    // But the install hint should still render
+    expect(screen.getByText(/GitNexus is not installed/i)).toBeTruthy()
+  })
+
+  it('clicking ScanPill fires useGitnexusScan({scope:family, target:familyId}) — mock asserts prop forwarding', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="factiv"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={true}
+        />,
+      ),
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill.getAttribute('data-scope')).toBe('family')
+    expect(pill.getAttribute('data-target')).toBe('factiv')
   })
 })

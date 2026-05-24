@@ -4,6 +4,11 @@
  * CODEX HIGH-1: NEVER renders row.absPath (it's daemon-internal only).
  * UI-SPEC §5: refresh action popover with row-specific options.
  *
+ * Phase 13 D-13-08: renders ScanPill in the gitNexus cell when gitnexus is
+ * installed and the row's gitNexus state is missing/not-applicable (not indexed yet).
+ * ScanPill returns null when installed=false — InstallGitNexusButton remains at
+ * the family-header level for that case (D-13-07 fallback preserved).
+ *
  * Constraints (D-5.1-10):
  * - NO cn()/clsx/CVA
  * - NO hex literals
@@ -14,6 +19,7 @@ import { RefreshCw } from 'lucide-react'
 import type { CoverageRow as CoverageRowData, CoverageFamily } from '@agenticapps/dashboard-shared'
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
+import { ScanPill } from './ScanPill.js'
 import { useCoverageHistory } from '../../../lib/coverageHistoryQueries.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 
@@ -32,6 +38,13 @@ export interface CoverageRowProps {
   row: CoverageRowData
   onRefresh?: (action: CoverageRefreshAction, context: CoverageRowContext) => void
   pending?: boolean       // NEW — default false; when true: spinner + aria-busy + disabled + opacity-100
+  /**
+   * Phase 13 D-13-08 + D-13-11b: gitnexus health props for ScanPill.
+   * Sourced from GET /health response.gitnexus — passed down from CoveragePage.
+   * Defaults to false when health data is unavailable (safe fallback: no Scan pill shown).
+   */
+  gitnexusInstalled?: boolean
+  gitnexusCanScan?: boolean
 }
 
 // Derive popover options from the row's column states
@@ -56,7 +69,13 @@ function getRefreshOptions(row: CoverageRowData) {
   return opts
 }
 
-export function CoverageRow({ row, onRefresh, pending = false }: CoverageRowProps): React.JSX.Element {
+export function CoverageRow({
+  row,
+  onRefresh,
+  pending = false,
+  gitnexusInstalled = false,
+  gitnexusCanScan = false,
+}: CoverageRowProps): React.JSX.Element {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const options = getRefreshOptions(row)
@@ -125,12 +144,25 @@ export function CoverageRow({ row, onRefresh, pending = false }: CoverageRowProp
         />
       </td>
       <td className={`${COVERAGE_COL_WIDTHS.gitNexus} px-2 py-2`}>
-        <CoverageCell
-          column="gitNexus"
-          state={row.gitNexus}
-          repoName={row.repo}
-          drift={cellDrifts?.gitNexus ?? null}
-        />
+        {/* Phase 13 D-13-08: show ScanPill when gitnexus installed + row not yet indexed.
+            ScanPill returns null when installed=false → existing cell render shows instead.
+            When state='missing' or 'not-applicable' and installed=true: ScanPill replaces cell.
+            When state='fresh' or 'stale': normal CoverageCell (no scan needed). */}
+        {gitnexusInstalled && (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable') ? (
+          <ScanPill
+            scope="repo"
+            target={`${row.family}/${row.repo}`}
+            canScan={gitnexusCanScan}
+            installed={gitnexusInstalled}
+          />
+        ) : (
+          <CoverageCell
+            column="gitNexus"
+            state={row.gitNexus}
+            repoName={row.repo}
+            drift={cellDrifts?.gitNexus ?? null}
+          />
+        )}
       </td>
       <td className={`${COVERAGE_COL_WIDTHS.wiki} px-2 py-2`}>
         <CoverageCell
