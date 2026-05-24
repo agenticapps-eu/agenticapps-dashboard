@@ -26,6 +26,7 @@ import {
 
 import { PageHeader } from '../../ui/PageHeader.js'
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
+import { useHealth } from '../../../lib/healthQueries.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { useToast } from '../../ui/Toast.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
@@ -83,7 +84,13 @@ function rowMatchesFilter(row: CoverageRow, filter: CoverageStatusFilter): boole
 export function CoveragePage(): React.JSX.Element {
   const query = useCoverage()
   const refresh = useCoverageRefresh()
+  const health = useHealth()
   const navigate = useNavigate()
+
+  // Phase 13 D-13-08 + D-13-11b: extract gitnexus health data for ScanPill props.
+  // Defaults to false when health data is unavailable — safe fallback (no Scan pill shown).
+  const gitnexusInstalled = health.data?.gitnexus?.installed ?? false
+  const gitnexusCanScan = health.data?.gitnexus?.canScan ?? false
   const toast = useToast()
   // URL state (strict:false — /coverage route may not have validateSearch yet; Plan 07 wires it)
   const search = useSearch({ strict: false }) as { status?: string; q?: string }
@@ -353,6 +360,8 @@ export function CoveragePage(): React.JSX.Element {
               gitNexusInstallState={data.gitNexusInstallState}
               onRefresh={handleRefresh}
               inFlightRefreshes={inFlightRefreshes}
+              gitnexusInstalled={gitnexusInstalled}
+              gitnexusCanScan={gitnexusCanScan}
             />
           ))}
         </div>
