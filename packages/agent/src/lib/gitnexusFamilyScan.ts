@@ -50,11 +50,13 @@ interface Registry {
  * @param familyScanId  Pre-generated UUID for the family job
  * @param familyId      One of the three known families
  * @param registry      Object with `entries` array (RegistryFile.projects shape)
+ * @param opts          Optional overrides (registryFile for test isolation)
  */
 export async function startFamilyScan(
   familyScanId: string,
   familyId: KnownFamily,
   registry: { entries: ReadonlyArray<{ id: string; root: string; client: string | null }> },
+  opts: { registryFile?: string } = {},
 ): Promise<{ ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' | 'BINARY_NOT_FOUND' }> {
   // 1. Derive repos in this family via path-prefix match (mirrors Phase 11 familyOf)
   //    Sort alphabetically by repo name (D-13-04).
@@ -82,8 +84,8 @@ export async function startFamilyScan(
       currentScanId: childScanId,
     }))
 
-    // Kick off the per-repo scan.
-    const startResult = await startScan(childScanId, { scope: 'repo', target: repoId })
+    // Kick off the per-repo scan (pass registryFile for test isolation).
+    const startResult = await startScan(childScanId, { scope: 'repo', target: repoId }, opts)
 
     if (!startResult.ok) {
       // startScan failed synchronously (REPO_NOT_REGISTERED, SCAN_IN_FLIGHT, etc.)

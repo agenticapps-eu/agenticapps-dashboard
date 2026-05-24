@@ -136,14 +136,15 @@ export async function withGlobalScanLock<T>(fn: () => Promise<T>): Promise<T> {
 export async function startScan(
   scanId: string,
   req: { scope: 'repo' | 'family'; target: string },
+  opts: { registryFile?: string } = {},
 ): Promise<
   | { ok: true }
   | { ok: false; code: GitnexusScanErrorCode; message?: string }
 > {
   const repoId = req.target // for scope:'repo' this is 'family/repo'
 
-  // (a) Resolve repo from registry
-  const reg = readRegistry()
+  // (a) Resolve repo from registry (uses opts.registryFile override when set — test isolation)
+  const reg = readRegistry(opts.registryFile)
   const entry = reg.projects.find((p) => derivedRepoId(p.root) === repoId)
   if (!entry) {
     return { ok: false, code: 'REPO_NOT_REGISTERED' }
