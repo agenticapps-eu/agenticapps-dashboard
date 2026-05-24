@@ -25,12 +25,26 @@ export function buildGitnexusInstallClipboardString(): string {
 }
 
 /**
- * 10.6: the "Index with GitNexus" clipboard string.
+ * D-13-10: single source of truth for the gitnexus invocation.
  *
- * Used when the binary is installed but `~/.gitnexus/registry.json` does not
- * exist yet. Running `gitnexus analyze` in any git repo creates the registry,
- * which transitions the page to the normal stale/fresh matrix.
+ * Returns both:
+ * - `string`: human-readable form for clipboard / install hint UIs.
+ * - `argv`:   argv form (without leading binary) for `execa('gitnexus', argv, ...)`.
+ *
+ * Both clipboard fallback (SPA) and daemon spawn use this helper so that the
+ * two call sites stay in lockstep — change one invocation, change both.
+ *
+ * NOTE: The `IndexGitNexusButton.tsx` SPA caller that previously consumed the
+ * bare string return is being removed in Plan 13-03 (D-13-06). Cross-package
+ * typecheck failures from that caller are EXPECTED until Plan 13-03 completes.
  */
-export function buildGitnexusIndexClipboardString(): string {
-  return 'gitnexus analyze'
+export interface GitnexusIndexCommand {
+  /** Human-readable form for clipboard / install hint UIs. */
+  readonly string: string
+  /** argv form (without leading binary) for `execa('gitnexus', argv, ...)`. */
+  readonly argv: readonly string[]
+}
+
+export function buildGitnexusIndexClipboardString(): GitnexusIndexCommand {
+  return { string: 'gitnexus analyze', argv: ['analyze'] } as const
 }

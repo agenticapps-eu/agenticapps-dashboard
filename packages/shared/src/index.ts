@@ -224,3 +224,4 @@ export {
   buildGitnexusInstallClipboardString,
   buildGitnexusIndexClipboardString,
 } from './clipboard.js'
+export type { GitnexusIndexCommand } from './clipboard.js'
