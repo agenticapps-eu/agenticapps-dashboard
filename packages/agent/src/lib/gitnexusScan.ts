@@ -26,7 +26,10 @@ import { homedir } from 'node:os'
 
 import { spawnGitNexusAnalyze } from './coverageSpawn.js'
 import { readRegistry } from './registry.js'
-import type { GitnexusScanErrorCode } from '@agenticapps/dashboard-shared'
+import {
+  buildGitnexusIndexClipboardString,
+  type GitnexusScanErrorCode,
+} from '@agenticapps/dashboard-shared'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -387,7 +390,9 @@ async function _spawnWithBinOverride(
   const { execa } = await import('execa')
   const SPAWN_TIMEOUT_MS = 5 * 60 * 1000
   try {
-    const result = await execa(binPath, ['analyze'], {
+    // D-13-10: argv sourced from the shared helper so the test-override spawn
+    // path and the production spawn (coverageSpawn.ts) stay in lockstep.
+    const result = await execa(binPath, [...buildGitnexusIndexClipboardString().argv], {
       cwd: repoAbsPath,
       timeout: SPAWN_TIMEOUT_MS,
     })

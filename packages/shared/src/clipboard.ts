@@ -31,12 +31,10 @@ export function buildGitnexusInstallClipboardString(): string {
  * - `string`: human-readable form for clipboard / install hint UIs.
  * - `argv`:   argv form (without leading binary) for `execa('gitnexus', argv, ...)`.
  *
- * Both clipboard fallback (SPA) and daemon spawn use this helper so that the
- * two call sites stay in lockstep — change one invocation, change both.
- *
- * NOTE: The `IndexGitNexusButton.tsx` SPA caller that previously consumed the
- * bare string return is being removed in Plan 13-03 (D-13-06). Cross-package
- * typecheck failures from that caller are EXPECTED until Plan 13-03 completes.
+ * Both daemon spawn sites (coverageSpawn.spawnGitNexusAnalyze and the test-override
+ * path in gitnexusScan._spawnWithBinOverride) consume `argv` directly so any
+ * future invocation change lands in one place. The `string` form is reserved
+ * for any SPA clipboard fallback the user surfaces in the future.
  */
 export interface GitnexusIndexCommand {
   /** Human-readable form for clipboard / install hint UIs. */
