@@ -82,9 +82,14 @@ gitnexusScanRoute.post(
     if (body.scope === 'repo') {
       result = await startScan(scanId, body, scanOpts)
     } else {
-      // scope === 'family'
+      // scope === 'family' — D-13-02 short-poll: synchronous register + fire-and-forget body.
+      // Mirrors per-repo startScan fire-and-forget at gitnexusScan.ts:154-186.
+      // Gap 2 closure: previous `await` blocked the POST for the entire sequential
+      // per-repo loop, breaking the SPA's polling pipeline (see 13-UAT.md Test 5).
+      // startFamilyScan is now synchronous — it registers the family job + voids
+      // the body internally, so the response returns within milliseconds.
       const reg = readRegistry(registryFile)
-      result = await startFamilyScan(
+      result = startFamilyScan(
         scanId,
         body.target as 'agenticapps' | 'factiv' | 'neuroflash',
         { entries: reg.projects },

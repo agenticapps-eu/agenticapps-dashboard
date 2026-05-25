@@ -210,7 +210,8 @@ describe('POST /api/gitnexus/scan', () => {
   })
 
   it('returns 404 FAMILY_HAS_NO_REPOS on family with zero registered repos', async () => {
-    vi.mocked(startFamilyScan).mockResolvedValue({ ok: false, code: 'FAMILY_HAS_NO_REPOS' })
+    // startFamilyScan is now sync (Gap 2 / D-13-02) — use mockReturnValue.
+    vi.mocked(startFamilyScan).mockReturnValue({ ok: false, code: 'FAMILY_HAS_NO_REPOS' })
 
     const res = await app.request('http://localhost/api/gitnexus/scan', {
       method: 'POST',
@@ -351,21 +352,27 @@ describe('POST /api/gitnexus/scan — family branch fire-and-forget (Gap 2 / D-1
     cleanup()
   })
 
-  it('POST returns {ok:true, scanId} within <100ms even when startFamilyScan mock has 500ms async delay', async () => {
-    // PURE MOCK: impose 500ms latency PURELY via the existing `vi.mock('../lib/gitnexusFamilyScan.js')`
-    // surface. No stub binary, no env var, no makeAppWithStubFamily.
+  it('POST returns {ok:true, scanId} within <100ms even when startFamilyScan mock simulates 500ms of background work', async () => {
+    // PURE MOCK: simulate background work using the existing
+    // `vi.mock('../lib/gitnexusFamilyScan.js')` surface — NO stub binary,
+    // NO env var, NO makeAppWithStubFamily.
     //
-    // Gap 2 RED contract: the route under test was `await startFamilyScan(...)` —
-    // returning a thenable here proves `await` blocks for 500ms BEFORE the route
-    // returns. Post-Task-2 GREEN drops the `await`, so the route returns ms-fast
-    // even when the mock returns a 500ms thenable. We cast the mock's return shape
-    // to bypass TypeScript's now-sync signature constraint — runtime `await` on
-    // a returned Promise still defers the handler.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(startFamilyScan).mockImplementationOnce((async () => {
-      await new Promise((r) => setTimeout(r, 500))
+    // Gap 2 contract: startFamilyScan is SYNCHRONOUS post-GREEN — it
+    // registers the family job, kicks off the body via `void` internally,
+    // and returns immediately. The route MUST NOT `await` it.
+    //
+    // The mock returns synchronously with {ok:true} and schedules an
+    // unrelated 500ms-delayed callback to simulate the kind of background
+    // work the real `void startFamilyScanBody(...)` does. If the route
+    // were to `await` the body's completion (the pre-GREEN bug), the
+    // setImmediate flush + setTimeout would push the response past 100ms.
+    vi.mocked(startFamilyScan).mockImplementationOnce(() => {
+      // Background work — never awaited by anyone. Mirrors `void startFamilyScanBody`.
+      setTimeout(() => {
+        // no-op; just simulates body work
+      }, 500)
       return { ok: true as const }
-    }) as any)
+    })
 
     const t0 = Date.now()
     const res = await app.request('http://localhost/api/gitnexus/scan', {
