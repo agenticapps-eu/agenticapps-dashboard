@@ -27,6 +27,7 @@ function makeRow(overrides: Partial<CoverageRowData> = {}): CoverageRowData {
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: default true so existing render-gate tests keep passing
     ...overrides,
   }
 }
@@ -676,5 +677,49 @@ describe('Phase 13 ScanPill wiring in gitNexus cell (D-13-08)', () => {
     fireEvent.click(screen.getByRole('button', { name: /refresh actions/i }))
     expect(screen.queryByTestId('scan-pill')).toBeNull()
     expect(screen.getByText(/gitnexus analyze/i)).toBeTruthy()
+  })
+})
+
+// ── Phase 13 D-13-EXT-07: ScanPill render gate honours row.inRegistry (Gap 1) ──
+
+describe('CoverageRow — Phase 13 Gap 1 inRegistry gate (D-13-EXT-07)', () => {
+  it('renders ScanPill in gitNexus cell when inRegistry=true (gate passes)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({
+              gitNexus: { kind: 'basic', state: 'missing' },
+              inRegistry: true,
+            })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    // ScanPill mock renders a button with data-testid='scan-pill'
+    expect(screen.getByTestId('scan-pill')).toBeInTheDocument()
+  })
+
+  it('does NOT render ScanPill when inRegistry=false (gate fails) — Gap 1 closure', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({
+              gitNexus: { kind: 'basic', state: 'missing' },
+              inRegistry: false,
+            })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    // No ScanPill rendered. The standard CoverageCell content shows instead.
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    // Standard CoverageCell still renders (aria-label on the figure)
+    expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
   })
 })
