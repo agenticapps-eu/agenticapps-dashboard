@@ -23,6 +23,7 @@
  */
 import { sep } from 'node:path'
 import { homedir } from 'node:os'
+import { existsSync, statSync } from 'node:fs'
 
 import { spawnGitNexusAnalyze } from './coverageSpawn.js'
 import { readRegistry } from './registry.js'
@@ -131,8 +132,17 @@ export async function withGlobalScanLock<T>(fn: () => Promise<T>): Promise<T> {
  * Start a per-repo scan (scope:'repo'). Fire-and-forget — returns immediately
  * after registering the job and launching the spawn.
  *
+ * Path resolution (D-13-EXT-08 supersedes D-13-EXT-07):
+ *   1. Dashboard project registry (uses opts.registryFile override when set).
+ *   2. Fallback: ~/Sourcecode/{family}/{repo} if that directory exists on disk.
+ *      Coverage discovery is filesystem-driven under ~/Sourcecode/, so this
+ *      fallback covers the typical case where a repo is visible in the matrix
+ *      but not explicitly `agentic-dashboard register`'d. T-13-02-01 mitigation
+ *      is preserved by the schema regex /^[a-z0-9\-]+\/[a-z0-9\-_.]+$/ on
+ *      req.target — path traversal is structurally impossible.
+ *
  * Returns {ok:false} if:
- *   - repo not in registry              → REPO_NOT_REGISTERED
+ *   - repo not in registry AND ~/Sourcecode/{family}/{repo} missing → REPO_NOT_REGISTERED
  *   - per-repo lock held                → SCAN_IN_FLIGHT
  *   - gitnexus binary not on PATH       → BINARY_NOT_FOUND
  */
@@ -146,10 +156,17 @@ export async function startScan(
 > {
   const repoId = req.target // for scope:'repo' this is 'family/repo'
 
-  // (a) Resolve repo from registry (uses opts.registryFile override when set — test isolation)
+  // (a) Resolve repo root — try registry first, then deterministic filesystem fallback.
   const reg = readRegistry(opts.registryFile)
   const entry = reg.projects.find((p) => derivedRepoId(p.root) === repoId)
-  if (!entry) {
+  let repoRoot: string | null = entry ? entry.root : null
+  if (!repoRoot) {
+    const fallback = deterministicRepoRoot(repoId)
+    if (fallback !== null) {
+      repoRoot = fallback
+    }
+  }
+  if (!repoRoot) {
     return { ok: false, code: 'REPO_NOT_REGISTERED' }
   }
 
@@ -169,7 +186,7 @@ export async function startScan(
   scans.set(scanId, job)
 
   // (e) Fire-and-forget spawn — resolve and kick off without awaiting
-  const spawnPromise = _doSpawnAndSettle(scanId, repoId, entry.root, job)
+  const spawnPromise = _doSpawnAndSettle(scanId, repoId, repoRoot, job)
 
   // Store the lock keyed by repoId; auto-release when spawn settles
   const lockPromise: Promise<void> = spawnPromise.then(
@@ -356,6 +373,39 @@ async function _doSpawnAndSettle(
 /** TTL eviction: delete job 60s after settle. Timer is unref()'d. */
 function scheduleEviction(scanId: string): void {
   setTimeout(() => scans.delete(scanId), 60_000).unref()
+}
+
+/**
+ * D-13-EXT-08 — Deterministic forward resolver for `family/repo` → absolute path.
+ * Inverse of `derivedRepoId`: given a `family/repo` repoId from the SPA, compute
+ * the canonical absolute path under ~/Sourcecode/ and return it ONLY if the
+ * directory exists on disk. Returns null otherwise.
+ *
+ * T-13-02-01 mitigation:
+ *   - repoId is constrained at the wire by `/^[a-z0-9\-]+\/[a-z0-9\-_.]+$/`
+ *     (GitnexusScanRequestSchema). Path traversal (`..`, `/`, NUL) is rejected
+ *     before this helper sees the input.
+ *   - The directory existence check (statSync().isDirectory()) ensures we don't
+ *     spawn against a regular file or symlink to outside ~/Sourcecode/.
+ *
+ * Family allow-list is enforced (matches derivedRepoId).
+ */
+export function deterministicRepoRoot(repoId: string): string | null {
+  const slash = repoId.indexOf('/')
+  if (slash < 1 || slash === repoId.length - 1) return null
+  const family = repoId.slice(0, slash)
+  const repo = repoId.slice(slash + 1)
+  const knownFamilies = ['agenticapps', 'factiv', 'neuroflash'] as const
+  if (!(knownFamilies as readonly string[]).includes(family)) return null
+  if (repo.includes('/') || repo.includes(sep)) return null
+  const root = `${homedir()}${sep}Sourcecode${sep}${family}${sep}${repo}`
+  if (!existsSync(root)) return null
+  try {
+    if (!statSync(root).isDirectory()) return null
+  } catch {
+    return null
+  }
+  return root
 }
 
 /**
