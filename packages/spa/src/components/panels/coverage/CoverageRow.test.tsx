@@ -680,10 +680,15 @@ describe('Phase 13 ScanPill wiring in gitNexus cell (D-13-08)', () => {
   })
 })
 
-// ── Phase 13 D-13-EXT-07: ScanPill render gate honours row.inRegistry (Gap 1) ──
+// ── Phase 13 D-13-EXT-08: inRegistry is metadata only — ScanPill renders on
+// every scannable row regardless of registry membership. The daemon's startScan
+// resolves ~/Sourcecode/{family}/{repo} deterministically when the repo is not
+// in the dashboard registry. D-13-EXT-08 SUPERSEDES D-13-EXT-07 (which gated
+// ScanPill on inRegistry, removing the feature for the typical filesystem-
+// discovered row). ──
 
-describe('CoverageRow — Phase 13 Gap 1 inRegistry gate (D-13-EXT-07)', () => {
-  it('renders ScanPill in gitNexus cell when inRegistry=true (gate passes)', () => {
+describe('CoverageRow — Phase 13 Gap 1 fix (D-13-EXT-08)', () => {
+  it('renders ScanPill in gitNexus cell when inRegistry=true', () => {
     renderInQC(
       <table>
         <tbody>
@@ -698,11 +703,10 @@ describe('CoverageRow — Phase 13 Gap 1 inRegistry gate (D-13-EXT-07)', () => {
         </tbody>
       </table>,
     )
-    // ScanPill mock renders a button with data-testid='scan-pill'
     expect(screen.getByTestId('scan-pill')).toBeInTheDocument()
   })
 
-  it('does NOT render ScanPill when inRegistry=false (gate fails) — Gap 1 closure', () => {
+  it('STILL renders ScanPill when inRegistry=false (D-13-EXT-08 supersedes D-13-EXT-07)', () => {
     renderInQC(
       <table>
         <tbody>
@@ -717,9 +721,10 @@ describe('CoverageRow — Phase 13 Gap 1 inRegistry gate (D-13-EXT-07)', () => {
         </tbody>
       </table>,
     )
-    // No ScanPill rendered. The standard CoverageCell content shows instead.
-    expect(screen.queryByTestId('scan-pill')).toBeNull()
-    // Standard CoverageCell still renders (aria-label on the figure)
-    expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
+    // Daemon resolves ~/Sourcecode/{family}/{repo} when not in registry. The
+    // SPA renders ScanPill on every missing/not-applicable row when gitnexus
+    // is installed; registry-membership is metadata for future tooltips, not
+    // a render gate.
+    expect(screen.getByTestId('scan-pill')).toBeInTheDocument()
   })
 })
