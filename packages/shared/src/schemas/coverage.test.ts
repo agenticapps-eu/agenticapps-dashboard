@@ -209,6 +209,7 @@ describe('CoverageRowSchema', () => {
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true,
   }
 
   it('accepts a valid complete row', () => {
@@ -228,6 +229,47 @@ describe('CoverageRowSchema', () => {
     // Guard against future regression — absPath must NEVER appear in the public schema
     const shape = Object.keys(CoverageRowSchema.shape)
     expect(shape).not.toContain('absPath')
+  })
+})
+
+describe('CoverageRowSchema — inRegistry field (D-13-EXT-07, Gap 1 closure)', () => {
+  // LOCAL fixture for these tests only. NEVER share with describe('CoverageRowSchema').
+  // The omission-throws assertion at (iii) below depends on this object never being
+  // mutated to carry an inRegistry key.
+  const validRowBase = {
+    family: 'agenticapps' as const,
+    repo: 'dashboard',
+    claudeMd: { kind: 'basic' as const, state: 'fresh' as const },
+    gitNexus: { kind: 'basic' as const, state: 'missing' as const },
+    wiki: { kind: 'basic' as const, state: 'missing' as const },
+    workflowVersion: {
+      kind: 'workflow' as const,
+      state: 'fresh' as const,
+      installedVersion: '1.6.0',
+      headVersion: '1.6.0',
+    },
+    overrideCount: 0,
+    overrides: [],
+  }
+
+  it('(i) accepts a row with inRegistry: true', () => {
+    expect(() => CoverageRowSchema.parse({ ...validRowBase, inRegistry: true })).not.toThrow()
+  })
+
+  it('(ii) accepts a row with inRegistry: false', () => {
+    expect(() => CoverageRowSchema.parse({ ...validRowBase, inRegistry: false })).not.toThrow()
+  })
+
+  it('(iii) REJECTS a row with inRegistry omitted (field is required)', () => {
+    // Pre-GREEN: schema has no inRegistry field → parse does NOT throw → .toThrow() FAILS → correct RED.
+    // Post-GREEN: schema requires inRegistry → parse throws → .toThrow() PASSES.
+    expect(() => CoverageRowSchema.parse(validRowBase)).toThrow()
+  })
+
+  it('(iv) REJECTS a row with inRegistry: "true" (must be boolean, not string)', () => {
+    expect(() =>
+      CoverageRowSchema.parse({ ...validRowBase, inRegistry: 'true' })
+    ).toThrow()
   })
 })
 
@@ -330,6 +372,7 @@ describe('CoverageRefreshResponseSchema (CODEX HIGH-5)', () => {
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true,
   }
 
   it('accepts ok=true with REQUIRED updatedRow (CODEX HIGH-5)', () => {
