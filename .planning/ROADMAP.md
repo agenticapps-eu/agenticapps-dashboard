@@ -594,7 +594,7 @@ Plans:
 
 **Requirements:** none (Phase 13 has no REQ-IDs — phase_req_ids: null. Acceptance behaviours B-13-01..13 minted during `/gsd-plan-phase 13`, 2026-05-24; full descriptions in `.planning/REQUIREMENTS.md` §"GitNexus scoped scan actions (Phase 13)" once the gates plan lands).
 
-**Plans:** 4/5 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 13-00-PLAN.md — Wave 0 (TDD foundations): extend `buildGitnexusIndexClipboardString` to return `{string, argv}` (D-13-10); shared Zod schemas for `GitnexusScanRequest/Response/Progress/ErrorCode` (D-13-EXT-06 11-code taxonomy); stub-gitnexus.sh + stub-gitnexus-failing.sh test fixtures; 6 RED test scaffolds for downstream waves. depends_on: []
