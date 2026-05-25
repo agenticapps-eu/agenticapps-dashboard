@@ -55,6 +55,7 @@ vi.mock('../lib/coverageScan.js', () => ({
           },
           overrideCount: 0,
           overrides: [],
+          inRegistry: true, // D-13-EXT-07
         },
       ],
     },
@@ -75,6 +76,7 @@ vi.mock('../lib/coverageScan.js', () => ({
         },
         overrideCount: 0,
         overrides: [],
+        inRegistry: true, // D-13-EXT-07
       },
     ],
   }),
@@ -174,6 +176,7 @@ function makeTestSetup() {
             },
             overrideCount: 0,
             overrides: [],
+            inRegistry: true, // D-13-EXT-07
           },
         ],
       },
@@ -193,6 +196,7 @@ function makeTestSetup() {
           },
           overrideCount: 0,
           overrides: [],
+          inRegistry: true, // D-13-EXT-07
         },
       ],
     })
@@ -310,6 +314,7 @@ describe('GET /api/coverage', () => {
           },
           overrideCount: 0,
           overrides: [],
+          inRegistry: true, // D-13-EXT-07
         },
       ],
     })
