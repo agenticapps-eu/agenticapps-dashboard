@@ -146,15 +146,16 @@ export function CoverageRow({
         />
       </td>
       <td className={`${COVERAGE_COL_WIDTHS.gitNexus} px-2 py-2`}>
-        {/* Phase 13 D-13-08 + D-13-EXT-07 (Gap 1): show ScanPill ONLY when gitnexus
-            is installed, the row is in a scannable state (missing/not-applicable),
-            AND the row is registered in the dashboard project registry. Unregistered
-            rows render the standard CoverageCell ✗ — daemon's startScan resolves
-            paths exclusively via registry lookup, so showing Scan on an unregistered
-            row would produce an unrecoverable REPO_NOT_REGISTERED toast. */}
+        {/* Phase 13 D-13-08 + D-13-EXT-08 (Gap 1 fix): show ScanPill when gitnexus
+            is installed AND the row is in a scannable state (missing/not-applicable).
+            row.inRegistry is metadata only — D-13-EXT-08 supersedes D-13-EXT-07:
+            the daemon resolves ~/Sourcecode/{family}/{repo} deterministically for
+            repos not in the dashboard registry, so the SPA does not need to gate
+            on registry membership. T-13-02-01 mitigation is preserved by the
+            schema regex (/^[a-z0-9\-]+\/[a-z0-9\-_.]+$/) which blocks path
+            traversal; gitnexus writes only to ~/.gitnexus/, not the target dir. */}
         {gitnexusInstalled
-          && (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable')
-          && row.inRegistry ? (
+          && (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable') ? (
           <ScanPill
             scope="repo"
             target={`${row.family}/${row.repo}`}
