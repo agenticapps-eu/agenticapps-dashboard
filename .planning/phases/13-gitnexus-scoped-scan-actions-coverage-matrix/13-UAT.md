@@ -1,5 +1,5 @@
 ---
-status: partial
+status: diagnosed
 phase: 13-gitnexus-scoped-scan-actions-coverage-matrix
 source:
   - 13-00-SUMMARY.md
@@ -7,7 +7,7 @@ source:
   - 13-02-SUMMARY.md
   - 13-03-SUMMARY.md
 started: 2026-05-24T17:42:00Z
-updated: 2026-05-25T14:35:00Z
+updated: 2026-05-25T15:05:00Z
 ---
 
 ## Current Test
@@ -119,30 +119,50 @@ blocked: 2
   reason: "User reported: after clikcing the pill, I got this error that repo was not found"
   severity: major
   test: 4
+  root_cause: "Plan 13-03 renders ScanPill for every CoverageRow whose gitnexus.state is missing|not-applicable when gitnexusInstalled===true (CoverageRow.tsx:148-167), but the daemon's startScan() resolves the absolute repo path EXCLUSIVELY via dashboard-registry lookup (gitnexusScan.ts:150-154); empirically the registry holds 1 entry while the matrix renders ~22 rows, making the toast unrecoverable for the typical row. No D-13-* decision bridges (2) and (3); the docs implicitly assumed registered ≈ discovered, which is empirically false."
   artifacts:
     - path: "packages/agent/src/lib/gitnexusScan.ts"
-      line: 151
-      issue: "startScan() resolves repo from dashboard project registry only — Coverage panel renders rows for ALL repos under ~/Sourcecode/{family}/, but ScanPill can only succeed for repos that were explicitly `agentic-dashboard register`'d"
-    - path: "packages/spa/src/components/panels/coverage/ScanPill.tsx"
-      issue: "renders for any missing/not-applicable row without checking if the repo is dashboard-registered — produces unrecoverable REPO_NOT_REGISTERED toast on click"
+      line: "150-154"
+      issue: "registry-only resolver — no fallback to ~/Sourcecode/{family}/{repo} derivation; derivedRepoId (line 367) already proves the deterministic reverse mapping exists but is used only for matching, not resolving"
+    - path: "packages/spa/src/components/panels/coverage/CoverageRow.tsx"
+      line: "148-167"
+      issue: "ScanPill render gate has no `registered` check; CoverageRowData wire schema carries no registry-membership flag, so the SPA cannot gate by it today"
+    - path: "packages/shared/src/schemas/coverage.ts"
+      issue: "CoverageRow shared schema has no inRegistry/registered field; Option A requires a contract addition (single boolean)"
+    - path: "packages/spa/src/components/panels/coverage/CoveragePage.tsx"
+      line: "88-94"
+      issue: "useHealth() already plumbs gitnexus.{installed,canScan} down — same lift pattern works for a registry signal"
   missing:
-    - "EITHER: hide ScanPill on rows whose repo is not in the dashboard registry"
-    - "OR: resolve repo path deterministically from {family}/{repo} → ~/Sourcecode/{family}/{repo} when not registered"
-    - "OR: surface a 'Register repo to scan' CTA in place of the toast"
-  debug_session: ""
+    - "Add `inRegistry: boolean` field to the shared CoverageRow schema (D-13-08 amendment)"
+    - "Populate inRegistry in the Phase 10/11 coverage scanner by checking registry membership at scan time (scanner already reads both filesystem + registry)"
+    - "Gate ScanPill render in CoverageRow.tsx on `gitnexusInstalled && state ∈ {missing,not-applicable} && row.inRegistry`"
+    - "Rationale (rejected alternatives): Option B (deterministic ~/Sourcecode/{family}/{repo} resolver) expands the daemon's write-surface beyond registered paths — meaningful relaxation of T-13-02-01 threat model, would need fresh /cso audit. Option C (auto-register on first scan) hides registration as a side effect of clicking Scan, harder to reason about than an explicit inRegistry flag on the wire."
+  debug_session: ".planning/debug/per-row-scan-repo-not-registered.md"
 
 - truth: "Family-level Scan: pill shows running, section refreshes on completion, partial-success toast surfaces (completed/failed/total)"
   status: failed
   reason: "User reported: Nothing really happens, I click scan, I get 1 repo scanned but no state changes, but after reload the first repo was scanned, afterwards nothing happens anymore"
   severity: major
   test: 5
+  root_cause: "Single architectural mistake — all three sub-issues collapse onto it. The family POST handler at gitnexusScan.ts:87 `await`s startFamilyScan(...) for the entire sequential per-repo loop before returning the scanId. This breaks the D-13-02 short-poll contract that the SPA was built against. (a) is the visible UI consequence; (b) and (c) are downstream of (a) plus long-running-fetch connection-liveness risk that disappears once the POST is fast. Per-repo scans use the correct fire-and-forget pattern (gitnexusScan.ts:170) — that's why they worked end-to-end."
   artifacts:
+    - path: "packages/agent/src/routes/gitnexusScan.ts"
+      line: 87
+      issue: "`result = await startFamilyScan(...)` blocks POST for the entire sequential per-repo loop; family branch should mirror per-repo branch's fire-and-forget shape"
+    - path: "packages/agent/src/lib/gitnexusFamilyScan.ts"
+      line: "55-147"
+      issue: "startFamilyScan returns only after the for-of loop awaits every per-repo waitForScanSettle — needs to be split: synchronous registerFamilyJob(...) + `void` body that performs the loop and finalizes the family job state"
+    - path: "packages/agent/src/lib/gitnexusScan.ts"
+      line: "154-170"
+      issue: "REFERENCE — correct fire-and-forget pattern: startScan mints the job, kicks off _doSpawnAndSettle(...), sets the per-repo lock, returns {ok:true} immediately. Family handler should follow the same shape."
     - path: "packages/spa/src/components/panels/coverage/ScanPill.tsx"
-      issue: "(a) no visible running-state UI during scan; (c) no partial-success count toast surfaced after family scan terminal — spec calls for completed/failed/total info toast"
-    - path: "packages/spa/src/lib/queries/gitnexusScan.ts"
-      issue: "(b) cache invalidation on terminal not firing — queryClient.invalidateQueries(['coverage'],['conformance']) is either not wired, not running, or running too early; row only updates after manual page reload"
+      line: "64-167"
+      issue: "SPA-side polling and effect logic is CORRECT in isolation; no SPA change required once daemon fire-and-forget is restored. Terminal useEffect correctly wires invalidateQueries(['coverage']) + ['conformance'] and toast variants for failed===0 vs failed>0."
+    - path: "packages/spa/src/lib/queries/gitnexusScan.test.ts"
+      issue: "Wave 0 tests are structural placeholders (expect(useGitnexusScan).toBeDefined()) — the polling/invalidation pipeline was never exercised end-to-end, which is why this regression escaped to UAT. Tests should be upgraded to mock fetch and assert undefined → running → done transitions."
   missing:
-    - "ScanPill must show a visible running/progress state while a scan is in flight"
-    - "On scan terminal (done|error), refetch or invalidate coverage + conformance queries so the row re-renders without manual reload"
-    - "For family scans that complete with mixed outcomes, surface the informational count toast (completed/failed/total) defined in the SPA plan"
-  debug_session: ""
+    - "Split startFamilyScan into synchronous registerFamilyJob(familyScanId, familyId) + fire-and-forget startFamilyScanBody(familyScanId, familyId, registry, opts) — the body runs the for-of loop and finalizes family job state"
+    - "Update POST /api/gitnexus/scan family branch to call registerFamilyJob synchronously and `void startFamilyScanBody(...)` — return {ok:true, scanId} within milliseconds"
+    - "Upgrade packages/spa/src/lib/queries/gitnexusScan.test.ts: mock fetch / msw, assert the polling pipeline observes undefined → running → done and the terminal effect fires invalidateQueries once + toast once (covers (a)(b)(c) end-to-end)"
+    - "Optional hardening: SPA fallback toast in mutateAsync rejection path (today onClick catch at ScanPill.tsx:154-160 already does this — verify the rejection path is reached when fetch hangs)"
+  debug_session: ".planning/debug/family-scan-no-ui-feedback.md"
