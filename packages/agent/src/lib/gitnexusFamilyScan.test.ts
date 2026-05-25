@@ -232,7 +232,13 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
       return { kind: 'ok' as const, stdout: '' }
     })
 
-    await startFamilyScan(familyScanId, 'agenticapps', toRegistryArg('agenticapps', repos))
+    startFamilyScan(familyScanId, 'agenticapps', toRegistryArg('agenticapps', repos))
+
+    // Wait for the body to settle through both repos
+    await vi.waitFor(() => {
+      const job = getScanJob(familyScanId)
+      expect(job?.kind === 'family' && job.state === 'done').toBe(true)
+    }, { timeout: 10_000 })
 
     // During each spawn, currentRepoId should be the active repo
     expect(observedCurrentRepoIds).toEqual([
@@ -246,6 +252,93 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
       expect(finalJob.currentRepoId).toBeNull()
       expect(finalJob.currentScanId).toBeNull()
       expect(finalJob.state).toBe('done')
+    }
+  })
+})
+
+// ── Gap 2 / D-13-02 short-poll contract ───────────────────────────────────────
+// These tests assert the FIRE-AND-FORGET shape of startFamilyScan: it must
+// register the family job synchronously and return without awaiting the
+// per-repo loop. Imposes latency PURELY via the existing `vi.mock('./coverageSpawn.js')`
+// surface — NO stub binary, NO env var, NO _setGitnexusBinForTests.
+
+describe('startFamilyScan — D-13-02 short-poll contract (Gap 2)', () => {
+  beforeEach(() => {
+    _resetForTests()
+  })
+
+  afterEach(() => {
+    _resetForTests()
+  })
+
+  it('returns synchronously (NOT a Promise) and registers the family job immediately', async () => {
+    // Impose 500ms latency PURELY via the existing mock — no stub binary, no env var.
+    vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 500))
+      return { kind: 'ok' as const, stdout: '' }
+    })
+    // Registry must contain both repos so the body's startScan calls find them.
+    vi.mocked(readRegistry).mockReturnValue(
+      fakeRegistryForFamily('agenticapps', ['repoA', 'repoB']),
+    )
+
+    const familyScanId = randomUUID()
+
+    const t0 = Date.now()
+    const result = startFamilyScan(
+      familyScanId,
+      'agenticapps',
+      toRegistryArg('agenticapps', ['repoA', 'repoB']),
+    )
+    const t1 = Date.now()
+
+    // (a) Returns within microseconds — well below the mock's 500ms × 2 = 1000ms total work
+    expect(t1 - t0).toBeLessThan(50)
+
+    // (b) Result is a plain object (NOT a Promise) — no need to await
+    expect(result).not.toBeInstanceOf(Promise)
+    expect(result.ok).toBe(true)
+
+    // (c) The family job is registered into the scans Map AT THE TIME the function returned,
+    //     with state='running' — NOT 'done'
+    const job = getScanJob(familyScanId)
+    expect(job?.kind).toBe('family')
+    expect(job?.state).toBe('running')
+
+    // Cleanup: wait for the body to settle so subsequent tests start clean
+    await vi.waitFor(
+      () => {
+        expect(getScanJob(familyScanId)?.state).toBe('done')
+      },
+      { timeout: 10_000 },
+    )
+  })
+
+  it('startFamilyScanBody runs the for-of loop to completion (observable via scans Map transition)', async () => {
+    vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
+    vi.mocked(readRegistry).mockReturnValue(
+      fakeRegistryForFamily('agenticapps', ['repoA', 'repoB']),
+    )
+    const familyScanId = randomUUID()
+    // startFamilyScan registers the job sync
+    const result = startFamilyScan(
+      familyScanId,
+      'agenticapps',
+      toRegistryArg('agenticapps', ['repoA', 'repoB']),
+    )
+    expect(result.ok).toBe(true)
+    // Now wait for body completion — observable via the scans Map transition
+    await vi.waitFor(
+      () => {
+        const job = getScanJob(familyScanId)
+        expect(job?.state).toBe('done')
+      },
+      { timeout: 10_000 },
+    )
+    const job = getScanJob(familyScanId)
+    expect(job?.kind).toBe('family')
+    if (job?.kind === 'family') {
+      expect(job.completed + job.failed).toBe(job.total)
     }
   })
 })
