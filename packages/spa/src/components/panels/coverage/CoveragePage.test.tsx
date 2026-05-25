@@ -70,6 +70,7 @@ function makeRow(
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: page fixture default — tests not exercising the gate
   }
 }
 

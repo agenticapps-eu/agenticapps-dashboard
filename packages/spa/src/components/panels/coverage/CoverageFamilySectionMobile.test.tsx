@@ -123,6 +123,7 @@ function makeRow(
       overrideCount > 0
         ? [{ phaseSlug: 'phase-01', sinceIso: '2026-01-01', source: 'git-log' }]
         : [],
+    inRegistry: true, // D-13-EXT-07: mobile fixture default — tests not exercising the gate
   }
 }
 

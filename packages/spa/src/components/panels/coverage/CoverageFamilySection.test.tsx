@@ -122,6 +122,7 @@ function makeRow(
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: section fixture default — tests not exercising the gate
   }
 }
 
