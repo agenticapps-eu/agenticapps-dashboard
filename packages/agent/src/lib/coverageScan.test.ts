@@ -10,6 +10,7 @@
  */
 
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, afterEach } from 'vitest'
@@ -224,5 +225,52 @@ describe('scanCoverage', () => {
     cleanups.push(cleanup)
     const result = await scanCoverage({ sourcecodeRootOverride: root })
     expect(result.schemaVersion).toBe(1)
+  })
+})
+
+describe('scanCoverageInternal — inRegistry field (D-13-EXT-07 / Gap 1)', () => {
+  it('tags rows in the dashboard project registry with inRegistry: true; absent rows with false', async () => {
+    // tmpdir setup: ~/Sourcecode/agenticapps/repoA, ~/Sourcecode/agenticapps/repoB
+    const tmp = await mkdtemp(join(tmpdir(), 'cov-inreg-'))
+    try {
+      const sourcecode = join(tmp, 'Sourcecode')
+      const agenticRoot = join(sourcecode, 'agenticapps')
+      await mkdir(join(agenticRoot, 'repoA', '.git'), { recursive: true })
+      await mkdir(join(agenticRoot, 'repoB', '.git'), { recursive: true })
+      // Fake registry: ONLY repoA is registered.
+      // IMPORTANT (checker Issue-1): registryFileOverride MUST point to a path
+      // whose parent dir already exists. readRegistry calls ensureRegistryFile
+      // which calls ensureConfigDir(dirname(filePath)) and atomicWriteFile —
+      // a nonexistent path under /, /etc, or other unwritable parents crashes
+      // the test at the wrong layer. Write the registry into our tmpdir.
+      const registryFile = join(tmp, 'registry.json')
+      await writeFile(
+        registryFile,
+        JSON.stringify({
+          version: 1,
+          projects: [
+            {
+              id: 'repoa-uuid',
+              name: 'repoA',
+              root: join(agenticRoot, 'repoA'),
+              client: null,
+              addedAt: '2026-05-25T00:00:00.000Z',
+              tags: [],
+            },
+          ],
+        }),
+      )
+
+      const { response } = await scanCoverageInternal({
+        sourcecodeRootOverride: sourcecode,
+        registryFileOverride: registryFile, // NEW field — does not exist yet (this is the RED)
+      })
+      const a = response.rows.find((r) => r.repo === 'repoA')
+      const b = response.rows.find((r) => r.repo === 'repoB')
+      expect(a?.inRegistry).toBe(true)
+      expect(b?.inRegistry).toBe(false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
   })
 })
