@@ -60,49 +60,67 @@ export function ScanPill({ scope, target, canScan, installed }: ScanPillProps) {
   const scan = useGitnexusScan()
   const progress = useGitnexusScanProgress(scanId)
 
-  // Terminal state handler: invalidate caches + show toast + reset scanId
+  // Terminal state handler: AWAIT coverage refetch so the row's gitNexus state
+  // updates BEFORE we clear scanId (D-13-EXT-08 UAT follow-up, 2026-05-25). If we
+  // cleared scanId before the refetch landed, isPending would flip false and
+  // ScanPill would briefly revert to the idle "Scan" button on a row that's
+  // still rendering the OLD pre-scan state — confusing UX (user reported during
+  // re-verification: "still shows scan ... takes a while than it shows when it
+  // was scanned"). Awaiting the refetch keeps "Scanning…" visible until the
+  // row data reflects reality.
   useEffect(() => {
     if (!progress.data) return
     if (progress.data.state === 'running') return
-    // Terminal — invalidate coverage + conformance, show toast, reset
-    void qc.invalidateQueries({ queryKey: ['coverage'] })
-    void qc.invalidateQueries({ queryKey: ['conformance'] })
 
-    if (progress.data.kind === 'repo') {
-      if (progress.data.state === 'done') {
-        toast.show({ variant: 'success', message: `Indexed ${target}` })
+    // Snapshot the terminal data — progress.data may change as we await
+    const terminalData = progress.data
+    let cancelled = false
+
+    ;(async () => {
+      // Await coverage refetch so row.gitNexus state flips fresh before idle.
+      // refetchQueries() resolves after the network round-trip completes.
+      await qc.refetchQueries({ queryKey: ['coverage'] })
+      if (cancelled) return
+      // conformance is best-effort — fire-and-forget is fine here.
+      void qc.invalidateQueries({ queryKey: ['conformance'] })
+
+      if (terminalData.kind === 'repo') {
+        if (terminalData.state === 'done') {
+          toast.show({ variant: 'success', message: `Indexed ${target}` })
+        } else {
+          const code = terminalData.error?.code ?? 'INTERNAL_ERROR'
+          toast.show({
+            variant: 'error',
+            message: `Indexing failed: ${scanErrorCodeToMessage(code)}`,
+          })
+        }
       } else {
-        // state === 'error'
-        const code = progress.data.error?.code ?? 'INTERNAL_ERROR'
-        toast.show({
-          variant: 'error',
-          message: `Indexing failed: ${scanErrorCodeToMessage(code)}`,
-        })
+        const familyData = terminalData as {
+          kind: 'family'
+          state: 'running' | 'done'
+          completed: number
+          failed: number
+          total: number
+        }
+        const { completed, failed, total } = familyData
+        if (failed === 0) {
+          toast.show({
+            variant: 'success',
+            message: `Scanned ${completed} repos in ${target}`,
+          })
+        } else {
+          toast.show({
+            variant: 'error',
+            message: `${completed}/${total} scanned, ${failed} failed — retry failed?`,
+          })
+        }
       }
-    } else {
-      // kind === 'family' — partial-success semantics (D-13-05)
-      // FamilyScanShape has completed/failed/total counts
-      const familyData = progress.data as {
-        kind: 'family'
-        state: 'running' | 'done'
-        completed: number
-        failed: number
-        total: number
-      }
-      const { completed, failed, total } = familyData
-      if (failed === 0) {
-        toast.show({
-          variant: 'success',
-          message: `Scanned ${completed} repos in ${target}`,
-        })
-      } else {
-        toast.show({
-          variant: 'error',
-          message: `${completed}/${total} scanned, ${failed} failed — retry failed?`,
-        })
-      }
+      setScanId(null)
+    })()
+
+    return () => {
+      cancelled = true
     }
-    setScanId(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress.data?.state])
 
@@ -127,9 +145,13 @@ export function ScanPill({ scope, target, canScan, installed }: ScanPillProps) {
     )
   }
 
-  // Scanning state: scanId set + progress shows running (or still fetching first result)
-  const isPending =
-    scanId !== null && (progress.data?.state === 'running' || progress.isFetching)
+  // Scanning state: while scanId is set, show "Scanning…". scanId is cleared by
+  // the terminal effect AFTER coverage refetch completes (D-13-EXT-08 UAT
+  // follow-up), so this single condition covers the whole running-→-row-refresh
+  // window. Without this, the pill briefly reverted to idle while the coverage
+  // refetch was in flight, displaying "Scan" on a row that had already been
+  // scanned but whose data hadn't refreshed yet.
+  const isPending = scanId !== null
   if (isPending) {
     return (
       <span
