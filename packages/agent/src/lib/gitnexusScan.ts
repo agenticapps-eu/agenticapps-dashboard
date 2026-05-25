@@ -23,7 +23,7 @@
  */
 import { sep } from 'node:path'
 import { homedir } from 'node:os'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, realpathSync, statSync } from 'node:fs'
 
 import { spawnGitNexusAnalyze } from './coverageSpawn.js'
 import { readRegistry } from './registry.js'
@@ -381,12 +381,17 @@ function scheduleEviction(scanId: string): void {
  * the canonical absolute path under ~/Sourcecode/ and return it ONLY if the
  * directory exists on disk. Returns null otherwise.
  *
- * T-13-02-01 mitigation:
- *   - repoId is constrained at the wire by `/^[a-z0-9\-]+\/[a-z0-9\-_.]+$/`
- *     (GitnexusScanRequestSchema). Path traversal (`..`, `/`, NUL) is rejected
- *     before this helper sees the input.
- *   - The directory existence check (statSync().isDirectory()) ensures we don't
- *     spawn against a regular file or symlink to outside ~/Sourcecode/.
+ * D-13-EXT-09 corollary (Codex CRITICAL #2) — Realpath-guarded.
+ *   After existence + directory checks, realpath the candidate and refuse
+ *   unless the resolved path equals the candidate OR lives under the family
+ *   prefix. A symlink at ~/Sourcecode/agenticapps/evil → /etc would otherwise
+ *   pass the directory check and let the daemon spawn gitnexus analyze with
+ *   cwd=/etc. Mirrors assertSnapshotDirInDaemonHome (server/boot.ts:98-116).
+ *
+ * D-13-EXT-11 (Codex CRITICAL #1) — Defence-in-depth dot-segment rejection.
+ *   The wire schema already rejects `.`, `..`, and `..` substrings, but the
+ *   helper may be called from non-route paths in future. Re-check here so the
+ *   safety invariant survives refactoring of the wire layer.
  *
  * Family allow-list is enforced (matches derivedRepoId).
  */
@@ -398,11 +403,34 @@ export function deterministicRepoRoot(repoId: string): string | null {
   const knownFamilies = ['agenticapps', 'factiv', 'neuroflash'] as const
   if (!(knownFamilies as readonly string[]).includes(family)) return null
   if (repo.includes('/') || repo.includes(sep)) return null
-  const root = `${homedir()}${sep}Sourcecode${sep}${family}${sep}${repo}`
+  // D-13-EXT-11 defence-in-depth
+  if (repo === '.' || repo === '..' || repo.includes('..')) return null
+
+  const familyPrefix = `${homedir()}${sep}Sourcecode${sep}${family}${sep}`
+  const root = `${familyPrefix}${repo}`
   if (!existsSync(root)) return null
   try {
     if (!statSync(root).isDirectory()) return null
   } catch {
+    return null
+  }
+
+  // D-13-EXT-09 corollary — symlink-escape defence (Codex CRITICAL #2).
+  // Compare in canonical (realpath) form on both sides — macOS aliases
+  // /var ↔ /private/var would otherwise produce false negatives when HOME
+  // lives under /var/folders/ (mkdtemp default) but realpath returns /private.
+  let realCandidate: string
+  let realFamilyPrefix: string
+  try {
+    realCandidate = realpathSync.native(root)
+    // realpath does not preserve trailing separator; add one back so the
+    // startsWith check correctly enforces the prefix boundary (otherwise
+    // /Sourcecode/agenticapps would match /Sourcecode/agenticapps-evil).
+    realFamilyPrefix = realpathSync.native(familyPrefix.slice(0, -1)) + sep
+  } catch {
+    return null
+  }
+  if (!realCandidate.startsWith(realFamilyPrefix) && realCandidate !== realFamilyPrefix.slice(0, -1)) {
     return null
   }
   return root
