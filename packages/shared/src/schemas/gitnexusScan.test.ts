@@ -224,3 +224,59 @@ describe('GitnexusScanProgressSchema', () => {
     expect(() => GitnexusScanProgressSchema.parse(payload)).not.toThrow()
   })
 })
+
+// ── Codex CRITICAL #1 hardening (D-13-EXT-11) ────────────────────────────────
+//
+// The original regex /^[a-z0-9\-]+\/[a-z0-9\-_.]+$/ accepted 'agenticapps/..'
+// because the repo character class includes '.', so '..' is two valid chars.
+// Codex review of PR #52 surfaced this as CRITICAL #1. D-13-EXT-11 records
+// the two-layer fix: tighter regex (leading [a-z0-9] required) + .refine()
+// rejecting '.'/'..'/embedded-'..'.
+describe('GitnexusScanRequestSchema repo target — D-13-EXT-11 path-traversal hardening', () => {
+  it('rejects target ending in .. (Codex CRITICAL #1)', () => {
+    const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target: 'agenticapps/..' })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects target ending in . (parent self-reference)', () => {
+    const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target: 'agenticapps/.' })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects target with .. nested in segment', () => {
+    const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target: 'agenticapps/foo..bar' })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects target whose repo segment starts with a dot', () => {
+    const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target: 'agenticapps/.hidden' })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects target whose repo segment starts with a hyphen', () => {
+    const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target: 'agenticapps/-leading-hyphen' })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects target whose repo segment starts with an underscore', () => {
+    const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target: 'agenticapps/_underscore' })
+    expect(r.success).toBe(false)
+  })
+
+  it('still accepts known-good repo names from the wild', () => {
+    for (const target of [
+      'factiv/cparx',
+      'agenticapps/agenticapps-dashboard',
+      'neuroflash/q-and-a',
+      'agenticapps/claude-workflow',
+      'agenticapps/pi-agentic-apps-workflow',
+      'agenticapps/codex-workflow',
+      'agenticapps/dotclaude',
+      'agenticapps/open-design',
+      'agenticapps/agentlinter',
+    ]) {
+      const r = GitnexusScanRequestSchema.safeParse({ scope: 'repo', target })
+      expect(r.success, `should accept ${target}`).toBe(true)
+    }
+  })
+})

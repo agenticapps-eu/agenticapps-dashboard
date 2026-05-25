@@ -41,11 +41,35 @@ export type GitnexusScanErrorCode = z.infer<typeof GitnexusScanErrorCodeSchema>
 /**
  * POST /api/gitnexus/scan request body (D-13-EXT-03).
  * Discriminated union on 'scope':
- *   - 'repo':   target is a 'family/repo' slug (regex guards against path traversal)
+ *   - 'repo':   target is a 'family/repo' slug (regex + refine guard against path traversal)
  *   - 'family': target is one of the three known family names
+ *
+ * D-13-EXT-11 — Repo-target hardening (Codex CRITICAL #1).
+ * The previous regex /^[a-z0-9\-]+\/[a-z0-9\-_.]+$/ accepted 'family/..' because
+ * the repo character class includes '.'. Two-layer fix:
+ *   1. Tighter regex — repo segment must START with [a-z0-9] (blocks leading
+ *      '.', '-', '_'). Subsequent chars still allow '-', '_', '.'.
+ *   2. .refine() — additionally rejects exact '.'/'..' AND any '..' substring
+ *      within the repo segment. Defence-in-depth so a future regex tweak
+ *      cannot silently re-open the traversal vector.
  */
+const RepoTargetRe = /^[a-z0-9\-]+\/[a-z0-9][a-z0-9\-_.]*$/
+
 export const GitnexusScanRequestSchema = z.discriminatedUnion('scope', [
-  z.object({ scope: z.literal('repo'),   target: z.string().regex(/^[a-z0-9\-]+\/[a-z0-9\-_.]+$/) }).strict(),
+  z.object({
+    scope: z.literal('repo'),
+    target: z.string().regex(RepoTargetRe).refine(
+      (s) => {
+        const slash = s.indexOf('/')
+        if (slash < 0) return false
+        const repo = s.slice(slash + 1)
+        if (repo === '.' || repo === '..') return false
+        if (repo.includes('..')) return false
+        return true
+      },
+      { message: 'repo target cannot contain `..` or be `.`/`..`' },
+    ),
+  }).strict(),
   z.object({ scope: z.literal('family'), target: z.enum(['agenticapps','factiv','neuroflash']) }).strict(),
 ])
 export type GitnexusScanRequest = z.infer<typeof GitnexusScanRequestSchema>
