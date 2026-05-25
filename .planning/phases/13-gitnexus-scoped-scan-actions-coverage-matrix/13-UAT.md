@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 13-gitnexus-scoped-scan-actions-coverage-matrix
 source:
   - 13-00-SUMMARY.md
@@ -7,12 +7,12 @@ source:
   - 13-02-SUMMARY.md
   - 13-03-SUMMARY.md
 started: 2026-05-24T17:42:00Z
-updated: 2026-05-25T15:05:00Z
+updated: 2026-05-25T18:50:00Z
 ---
 
 ## Current Test
 
-[testing paused — 2 major issues found, 2 tests blocked on browser automation]
+[resolved — both major issues closed via plans 13-05/13-06/13-07; 2 tests remain blocked on browser automation (low impact)]
 
 ## Tests
 
@@ -115,7 +115,9 @@ blocked: 2
 ## Gaps
 
 - truth: "Clicking ScanPill on a missing row triggers a scan that completes and updates the row to fresh"
-  status: failed
+  status: resolved
+  resolved_by: "13-05 (initial — Option A, regressed UX); 13-07 (Option D — final fix per D-13-EXT-08)"
+  resolved_date: "2026-05-25"
   reason: "User reported: after clikcing the pill, I got this error that repo was not found"
   severity: major
   test: 4
@@ -140,7 +142,9 @@ blocked: 2
   debug_session: ".planning/debug/per-row-scan-repo-not-registered.md"
 
 - truth: "Family-level Scan: pill shows running, section refreshes on completion, partial-success toast surfaces (completed/failed/total)"
-  status: failed
+  status: resolved
+  resolved_by: "13-06 (fire-and-forget daemon split); 13-07 (ScanPill terminal-effect await-refetch shared with per-row)"
+  resolved_date: "2026-05-25"
   reason: "User reported: Nothing really happens, I click scan, I get 1 repo scanned but no state changes, but after reload the first repo was scanned, afterwards nothing happens anymore"
   severity: major
   test: 5
