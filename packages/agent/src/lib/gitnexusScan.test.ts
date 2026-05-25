@@ -116,6 +116,67 @@ describe('startScan()', () => {
   })
 })
 
+// ── Phase 13 D-13-EXT-08: deterministic ~/Sourcecode/{family}/{repo} fallback ──
+// Supersedes D-13-EXT-07. When the target repo is not in the dashboard registry,
+// startScan falls back to resolving ~/Sourcecode/{family}/{repo}. If that
+// directory exists on disk, the scan proceeds against it. Otherwise REPO_NOT_REGISTERED.
+// T-13-02-01 mitigation preserved by the schema regex on req.target.
+
+describe('startScan() — D-13-EXT-08 deterministic ~/Sourcecode/{family}/{repo} fallback', () => {
+  let tmpHome: string
+  let origHome: string | undefined
+
+  beforeEach(async () => {
+    _resetForTests()
+    // Registry is EMPTY — no projects registered with the dashboard.
+    vi.mocked(readRegistry).mockReturnValue({ version: 1, projects: [] })
+
+    const { mkdtempSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    tmpHome = mkdtempSync(join(tmpdir(), 'gitnexus-fallback-test-'))
+    origHome = process.env.HOME
+    process.env.HOME = tmpHome
+  })
+
+  afterEach(async () => {
+    if (origHome !== undefined) {
+      process.env.HOME = origHome
+    } else {
+      delete process.env.HOME
+    }
+    const { rmSync } = await import('node:fs')
+    rmSync(tmpHome, { recursive: true, force: true })
+    _resetForTests()
+  })
+
+  it('resolves ~/Sourcecode/{family}/{repo} when not in registry but directory exists (D-13-EXT-08)', async () => {
+    const { mkdirSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const repoPath = join(tmpHome, 'Sourcecode', 'agenticapps', 'foo-repo')
+    mkdirSync(repoPath, { recursive: true })
+
+    const scanId = crypto.randomUUID()
+    const result = await startScan(scanId, { scope: 'repo', target: 'agenticapps/foo-repo' })
+
+    expect(result.ok).toBe(true)
+    // Job registered, spawn (mocked) settles ok
+    const job = getScanJob(scanId)
+    expect(job).not.toBeNull()
+    expect(job?.kind).toBe('repo')
+  })
+
+  it('returns REPO_NOT_REGISTERED when both registry miss AND ~/Sourcecode/{family}/{repo} does not exist', async () => {
+    // Note: tmpHome contains no Sourcecode/ tree at all
+    const scanId = crypto.randomUUID()
+    const result = await startScan(scanId, { scope: 'repo', target: 'agenticapps/does-not-exist' })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.code).toBe('REPO_NOT_REGISTERED')
+    }
+  })
+})
+
 describe('getScanJob()', () => {
   beforeEach(() => {
     _resetForTests()
