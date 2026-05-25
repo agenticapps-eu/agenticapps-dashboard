@@ -146,11 +146,15 @@ export function CoverageRow({
         />
       </td>
       <td className={`${COVERAGE_COL_WIDTHS.gitNexus} px-2 py-2`}>
-        {/* Phase 13 D-13-08: show ScanPill when gitnexus installed + row not yet indexed.
-            ScanPill returns null when installed=false → existing cell render shows instead.
-            When state='missing' or 'not-applicable' and installed=true: ScanPill replaces cell.
-            When state='fresh' or 'stale': normal CoverageCell (no scan needed). */}
-        {gitnexusInstalled && (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable') ? (
+        {/* Phase 13 D-13-08 + D-13-EXT-07 (Gap 1): show ScanPill ONLY when gitnexus
+            is installed, the row is in a scannable state (missing/not-applicable),
+            AND the row is registered in the dashboard project registry. Unregistered
+            rows render the standard CoverageCell ✗ — daemon's startScan resolves
+            paths exclusively via registry lookup, so showing Scan on an unregistered
+            row would produce an unrecoverable REPO_NOT_REGISTERED toast. */}
+        {gitnexusInstalled
+          && (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable')
+          && row.inRegistry ? (
           <ScanPill
             scope="repo"
             target={`${row.family}/${row.repo}`}
