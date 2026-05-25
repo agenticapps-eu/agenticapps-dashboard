@@ -188,12 +188,15 @@ describe('useGitnexusScanProgress(scanId) — GET /api/gitnexus/scan/:id polling
     )
   })
 
-  it("stops polling when state='done' (RED: this MUST FAIL until GREEN flips mock to {running, running, done})", async () => {
+  it("stops polling when state='done' (GREEN: {running, running, done} sequence proves the transition fires)", async () => {
     const scanId = '99999999-aaaa-bbbb-cccc-dddddddddddd'
-    // RED commit: mock returns 'running' forever. The transition to 'done' never
-    // happens, so the assertion below FAILS. GREEN commit will flip this to
-    // {running, running, done} so the transition fires.
-    mockFetch.mockReturnValue(makeFetchResponse(runningJob(scanId)))
+    // GREEN commit: sequence the mock so a 'done' frame arrives.
+    // The polling pipeline observes undefined → running → done and halts.
+    mockFetch
+      .mockReturnValueOnce(makeFetchResponse(runningJob(scanId)))
+      .mockReturnValueOnce(makeFetchResponse(runningJob(scanId)))
+      .mockReturnValueOnce(makeFetchResponse(doneJob(scanId)))
+      .mockReturnValue(makeFetchResponse(doneJob(scanId))) // safety net for any extra calls
 
     const { wrapper } = makeWrapper()
     const { result } = renderHook(() => useGitnexusScanProgress(scanId), { wrapper })
@@ -207,9 +210,6 @@ describe('useGitnexusScanProgress(scanId) — GET /api/gitnexus/scan/:id polling
       await vi.advanceTimersByTimeAsync(1500)
     })
 
-    // ← RED: this assertion fails because mock never transitions to 'done'.
-    //   GREEN commit will change `mockReturnValue(running)` to
-    //   `mockReturnValueOnce(running).mockReturnValueOnce(running).mockReturnValueOnce(done)`.
     await waitFor(() => expect(result.current.data?.state).toBe('done'), {
       timeout: 1000,
     })
@@ -249,12 +249,15 @@ describe('useGitnexusScanProgress(scanId) — GET /api/gitnexus/scan/:id polling
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  it("consumer effect (ScanPill-style): qc.invalidateQueries(['coverage']) AND ['conformance'] fire on running→done transition (RED: FAILS until GREEN flip)", async () => {
+  it("consumer effect (ScanPill-style): qc.invalidateQueries(['coverage']) AND ['conformance'] fire on running→done transition (GREEN: {running, done} sequence)", async () => {
     const scanId = '33333333-4444-5555-6666-777777777777'
-    // RED commit: mock returns 'running' forever — no transition, so the
-    // ConsumerEffect never invokes invalidateQueries. The assertion FAILS.
-    // GREEN commit flips to {running, done} sequence.
-    mockFetch.mockReturnValue(makeFetchResponse(runningJob(scanId)))
+    // GREEN commit: sequence the mock so the ConsumerEffect observes the
+    // running → done transition and invokes invalidateQueries for both
+    // ['coverage'] and ['conformance'] (D-13-09).
+    mockFetch
+      .mockReturnValueOnce(makeFetchResponse(runningJob(scanId)))
+      .mockReturnValueOnce(makeFetchResponse(doneJob(scanId)))
+      .mockReturnValue(makeFetchResponse(doneJob(scanId))) // safety net
 
     const { qc, wrapper } = makeWrapper()
     const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
