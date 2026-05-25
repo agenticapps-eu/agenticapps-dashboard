@@ -16,7 +16,8 @@
  *  10. GET /scan/:id → 404 SCAN_NOT_FOUND after 60s TTL eviction (vi.useFakeTimers)
  */
 
-import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { join, sep } from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 
@@ -302,5 +303,102 @@ describe('GET /api/gitnexus/scan/:id', () => {
     expect(body.error).toBe('SCAN_NOT_FOUND')
 
     vi.useRealTimers()
+  })
+})
+
+// ── Gap 2 / D-13-02: family branch is fire-and-forget ─────────────────────────
+// Asserts the route's family branch does NOT await the body, so the POST
+// response returns within milliseconds even when the mocked startFamilyScan
+// imposes a 500ms async delay. Pure mock — `vi.mocked(startFamilyScan)`
+// already exists at the top of this file via `vi.mock('../lib/gitnexusFamilyScan.js')`.
+
+describe('POST /api/gitnexus/scan — family branch fire-and-forget (Gap 2 / D-13-02)', () => {
+  let cleanup: () => void
+  let token: string
+  let app: ReturnType<typeof createApp>
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.mocked(rlConsume).mockReturnValue({ allowed: true })
+    vi.mocked(readRegistry).mockReturnValue({
+      version: 1,
+      projects: [
+        {
+          id: 'a',
+          name: 'repoA',
+          root: `${homedir()}${sep}Sourcecode${sep}agenticapps${sep}repoA`,
+          client: null,
+          addedAt: new Date().toISOString(),
+          tags: [],
+        },
+        {
+          id: 'b',
+          name: 'repoB',
+          root: `${homedir()}${sep}Sourcecode${sep}agenticapps${sep}repoB`,
+          client: null,
+          addedAt: new Date().toISOString(),
+          tags: [],
+        },
+      ],
+    })
+    const ctx = makeApp('loopback')
+    app = ctx.app
+    token = ctx.token
+    cleanup = ctx.cleanup
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('POST returns {ok:true, scanId} within <100ms even when startFamilyScan mock has 500ms async delay', async () => {
+    // PURE MOCK: impose 500ms latency PURELY via the existing `vi.mock('../lib/gitnexusFamilyScan.js')`
+    // surface. No stub binary, no env var, no makeAppWithStubFamily.
+    //
+    // Gap 2 RED contract: the route under test was `await startFamilyScan(...)` —
+    // returning a thenable here proves `await` blocks for 500ms BEFORE the route
+    // returns. Post-Task-2 GREEN drops the `await`, so the route returns ms-fast
+    // even when the mock returns a 500ms thenable. We cast the mock's return shape
+    // to bypass TypeScript's now-sync signature constraint — runtime `await` on
+    // a returned Promise still defers the handler.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(startFamilyScan).mockImplementationOnce((async () => {
+      await new Promise((r) => setTimeout(r, 500))
+      return { ok: true as const }
+    }) as any)
+
+    const t0 = Date.now()
+    const res = await app.request('http://localhost/api/gitnexus/scan', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ scope: 'family', target: 'agenticapps' }),
+    })
+    const t1 = Date.now()
+
+    expect(res.status).toBe(200)
+    const json = await res.json() as { ok: true; scanId: string }
+    expect(json.ok).toBe(true)
+    expect(json.scanId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    // Gap 2 contract: route response must be ms-fast — NOT blocked on the body.
+    expect(t1 - t0).toBeLessThan(100)
+  })
+
+  it('the route calls startFamilyScan exactly once with the expected args', async () => {
+    vi.mocked(startFamilyScan).mockReturnValueOnce({ ok: true as const })
+
+    await app.request('http://localhost/api/gitnexus/scan', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ scope: 'family', target: 'agenticapps' }),
+    })
+
+    expect(vi.mocked(startFamilyScan)).toHaveBeenCalledOnce()
+    const callArgs = vi.mocked(startFamilyScan).mock.calls[0] ?? []
+    const scanId = callArgs[0]
+    const familyId = callArgs[1]
+    const registry = callArgs[2]
+    expect(typeof scanId).toBe('string')
+    expect(familyId).toBe('agenticapps')
+    expect(registry).toHaveProperty('entries')
   })
 })
