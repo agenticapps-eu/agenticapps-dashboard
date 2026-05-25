@@ -67,6 +67,12 @@ export const CoverageRowSchema = z.object({
   workflowVersion: CoverageWorkflowColumnSchema,
   overrideCount: z.number().int().nonnegative(),
   overrides: z.array(OverrideEntrySchema),
+  /** D-13-EXT-07: is this repo's absolute path in the dashboard project registry?
+   *  Required precondition for SPA affordances that trigger a daemon-side scan
+   *  (daemon's startScan resolves paths exclusively via the registry — coverage
+   *  discovery is filesystem-driven under ~/Sourcecode/{family}/, so the set of
+   *  rendered rows is a strict superset of the registered set). Gap-1 closure. */
+  inRegistry: z.boolean(),
   degraded: z
     .object({
       reason: z.string(), // e.g. "claudeMd scanner threw: ENOENT"
