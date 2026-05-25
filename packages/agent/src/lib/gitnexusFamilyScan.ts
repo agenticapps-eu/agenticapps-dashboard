@@ -8,6 +8,27 @@
  *   gitnexus subprocess runs at a time within a family; the global scan-serialisation
  *   lock in gitnexusScan.ts handles cross-family serialisation.
  *
+ * D-13-02 short-poll contract (Gap 2 closure — Plan 13-06):
+ *   `startFamilyScan` is SYNCHRONOUS — it registers the family job into the
+ *   scans Map and returns within microseconds. The orchestration loop runs in
+ *   the background via `void startFamilyScanBody(...)`. This mirrors the
+ *   per-repo `startScan` fire-and-forget pattern at gitnexusScan.ts:154-186.
+ *
+ *   Previously startFamilyScan was `async` and awaited the entire sequential
+ *   per-repo loop before returning — that broke the SPA's polling pipeline:
+ *   mutateAsync only resolved after the family job had already reached
+ *   state='done', so setScanId(r.scanId) ran too late, useGitnexusScanProgress
+ *   never observed 'running', and the terminal effect never fired. See
+ *   .planning/debug/family-scan-no-ui-feedback.md for the full diagnosis.
+ *
+ *   T-13-06-05 (UX regression accepted): The previous return union included
+ *   'BINARY_NOT_FOUND' from an up-front resolveGitNexusBin probe. That probe
+ *   was synchronous-impossible (resolveGitNexusBin is async). With the sync
+ *   handshake, a binary-not-found condition surfaces as N entries of
+ *   {code:'BINARY_NOT_FOUND'} in perRepoResults[].error rather than a single
+ *   up-front 503. Defence-in-depth: /health.gitnexus.installed is checked by
+ *   the SPA at panel-mount and gates the family-scan UI affordance entirely.
+ *
  * All shared state mutations (scans Map) go through helpers exported from
  * gitnexusScan.ts — this module does NOT directly touch the Map.
  */
@@ -42,22 +63,34 @@ interface Registry {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Start a family scan — sequentially iterates all repos in the family
- * (alphabetical order by repo name) and awaits each per-repo scan before
- * starting the next. Partial-success: failures are recorded in perRepoResults
- * but never cause the family job itself to enter the 'error' state (D-13-05).
+ * Start a family scan — D-13-02 short-poll contract (Gap 2).
+ *
+ * SYNCHRONOUS handshake: validates the family + registers the family job into
+ * the scans Map, then kicks off `startFamilyScanBody(...)` as a fire-and-forget
+ * background task and returns immediately. Returns within microseconds.
+ *
+ * Mirrors the per-repo `startScan` fire-and-forget pattern at gitnexusScan.ts:154-186.
+ *
+ * Partial-success: failures are recorded in perRepoResults but never cause the
+ * family job itself to enter the 'error' state (D-13-05).
+ *
+ * NOTE: 'BINARY_NOT_FOUND' is intentionally NOT in this return union — the old
+ * up-front resolve was synchronous-impossible (resolveGitNexusBin is async).
+ * A mid-session binary-not-found surfaces as per-repo BINARY_NOT_FOUND entries
+ * in perRepoResults. See T-13-06-05 (accepted with defence-in-depth at
+ * /health.gitnexus.installed).
  *
  * @param familyScanId  Pre-generated UUID for the family job
  * @param familyId      One of the three known families
  * @param registry      Object with `entries` array (RegistryFile.projects shape)
  * @param opts          Optional overrides (registryFile for test isolation)
  */
-export async function startFamilyScan(
+export function startFamilyScan(
   familyScanId: string,
   familyId: KnownFamily,
   registry: { entries: ReadonlyArray<{ id: string; root: string; client: string | null }> },
   opts: { registryFile?: string } = {},
-): Promise<{ ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' | 'BINARY_NOT_FOUND' }> {
+): { ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' } {
   // 1. Derive repos in this family via path-prefix match (mirrors Phase 11 familyOf)
   //    Sort alphabetically by repo name (D-13-04).
   const repos = deriveRepos(registry.entries, familyId).sort((a, b) =>
@@ -71,8 +104,43 @@ export async function startFamilyScan(
   // 2. Register the family job with initial counters in the shared scans Map.
   registerFamilyJob(familyScanId, familyId, repos)
 
-  // 3. Sequential for-of loop — awaits each per-repo scan before moving to the next.
-  //    D-13-04: NO Promise.all — parallel execution would race on ~/.gitnexus/registry.json.
+  // 3. Fire-and-forget — the body runs the sequential for-of loop + finalization.
+  //    Wrapped in `void` + `.catch(...)` so unhandled errors don't leave the
+  //    family job stuck in 'running' and don't crash the daemon (T-13-06-01).
+  void startFamilyScanBody(familyScanId, familyId, repos, opts).catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('[gitnexusFamilyScan] unhandled body error', err)
+    updateFamilyJob(familyScanId, (s) => ({
+      ...s,
+      state: 'done' as const,
+      completedAt: new Date().toISOString(),
+      currentRepoId: null,
+      currentScanId: null,
+    }))
+    scheduleFamilyEviction(familyScanId)
+  })
+
+  return { ok: true }
+}
+
+/**
+ * Fire-and-forget body of a family scan — sequentially iterates all repos
+ * (in the pre-sorted order passed by `startFamilyScan`) and awaits each
+ * per-repo scan before starting the next. Finalizes the family job to
+ * state='done' and schedules 60s TTL eviction (D-13-05 / D-13-EXT-04).
+ *
+ * NOT to be called directly outside this module — callers should use
+ * `startFamilyScan`, which handles the synchronous register + void invocation.
+ * Exported for testability + so the route layer can verify the contract.
+ */
+export async function startFamilyScanBody(
+  familyScanId: string,
+  familyId: KnownFamily,
+  repos: ReadonlyArray<{ repo: string; root: string }>,
+  opts: { registryFile?: string } = {},
+): Promise<void> {
+  // Sequential for-of loop — awaits each per-repo scan before moving to the next.
+  // D-13-04: NO Promise.all — parallel execution would race on ~/.gitnexus/registry.json.
   for (const repo of repos) {
     const childScanId = randomUUID()
     const repoId = `${familyId}/${repo.repo}`
@@ -131,7 +199,7 @@ export async function startFamilyScan(
     }
   }
 
-  // 4. Freeze family state to 'done' (family never reports 'error' at top-level — D-13-05).
+  // Freeze family state to 'done' (family never reports 'error' at top-level — D-13-05).
   updateFamilyJob(familyScanId, (s) => ({
     ...s,
     state: 'done' as const,
@@ -140,10 +208,8 @@ export async function startFamilyScan(
     currentScanId: null,
   }))
 
-  // 5. Schedule TTL eviction for the family job (60s — mirrors per-repo eviction).
+  // Schedule TTL eviction for the family job (60s — mirrors per-repo eviction).
   scheduleFamilyEviction(familyScanId)
-
-  return { ok: true }
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

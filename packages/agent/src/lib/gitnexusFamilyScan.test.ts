@@ -103,13 +103,17 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    const result = await startFamilyScan(
+    const result = startFamilyScan(
       familyScanId,
       'agenticapps',
       toRegistryArg('agenticapps', repos),
     )
 
     expect(result.ok).toBe(true)
+    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
+    await vi.waitFor(() => {
+      expect(getScanJob(familyScanId)?.state).toBe('done')
+    }, { timeout: 10_000 })
     // Verify alphabetical order
     expect(spawnOrder).toEqual(['aaa-repo', 'mmm-repo', 'zzz-repo'])
 
@@ -142,7 +146,12 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    await startFamilyScan(familyScanId, 'factiv', toRegistryArg('factiv', repos))
+    startFamilyScan(familyScanId, 'factiv', toRegistryArg('factiv', repos))
+
+    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
+    await vi.waitFor(() => {
+      expect(getScanJob(familyScanId)?.state).toBe('done')
+    }, { timeout: 10_000 })
 
     // Sequential execution means max 1 concurrent spawn at a time
     expect(maxConcurrent).toBe(1)
@@ -163,13 +172,18 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    const result = await startFamilyScan(
+    const result = startFamilyScan(
       familyScanId,
       'neuroflash',
       toRegistryArg('neuroflash', repos),
     )
 
     expect(result.ok).toBe(true)
+
+    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
+    await vi.waitFor(() => {
+      expect(getScanJob(familyScanId)?.state).toBe('done')
+    }, { timeout: 10_000 })
 
     const job = getScanJob(familyScanId)
     expect(job?.kind).toBe('family')
@@ -194,7 +208,12 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    await startFamilyScan(familyScanId, 'neuroflash', toRegistryArg('neuroflash', repos))
+    startFamilyScan(familyScanId, 'neuroflash', toRegistryArg('neuroflash', repos))
+
+    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
+    await vi.waitFor(() => {
+      expect(getScanJob(familyScanId)?.state).toBe('done')
+    }, { timeout: 10_000 })
 
     const job = getScanJob(familyScanId)
     expect(job?.kind).toBe('family')
