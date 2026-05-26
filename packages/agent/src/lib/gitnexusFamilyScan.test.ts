@@ -397,3 +397,81 @@ describe('startFamilyScan — D-13-EXT-09 FS-aligned source (Codex WARNING #1)',
     }
   })
 })
+
+// ── D-13-EXT-12: family-level lock (Codex WARNING #3) ────────────────────────
+
+describe('startFamilyScan — D-13-EXT-12 family-level lock (Codex WARNING #3)', () => {
+  let fixture: FakeHomeFixture | undefined
+
+  beforeEach(() => {
+    _resetForTests()
+  })
+
+  afterEach(() => {
+    fixture?.cleanup()
+    fixture = undefined
+    _resetForTests()
+  })
+
+  it('rejects a second family scan for the same family while one is in flight', async () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', ['alpha', 'beta'])
+
+    // Slow the spawn so the first scan is still mid-flight when we try the second.
+    let release: (() => void) | undefined
+    vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
+      await new Promise<void>((r) => { release = r })
+      return { kind: 'ok' as const, stdout: '' }
+    })
+
+    const first = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    expect(first.ok).toBe(true)
+
+    // First scan is now sitting on the hang. Second scan for SAME family.
+    const second = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    expect(second).toEqual({ ok: false, code: 'SCAN_IN_FLIGHT' })
+
+    // Release the hang so the first scan completes and afterEach can reset.
+    release?.()
+    vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
+  })
+
+  it('allows family scans for DIFFERENT families to run concurrently', async () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', ['alpha'])
+    // Add a second-family repo via a second mkdir under the same HOME
+    mkdirSync(join(fixture.fakeHome, 'Sourcecode', 'factiv', 'cparx'), { recursive: true })
+
+    let release: (() => void) | undefined
+    vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
+      await new Promise<void>((r) => { release = r })
+      return { kind: 'ok' as const, stdout: '' }
+    })
+
+    const first = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    expect(first.ok).toBe(true)
+
+    const second = startFamilyScan(randomUUID(), 'factiv', deprecatedRegistryArg())
+    expect(second.ok).toBe(true)
+
+    release?.()
+    vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
+  })
+
+  it('releases the family lock when the body throws (lock not wedged)', async () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', ['alpha'])
+
+    // Make the spawn settle ok (body completes normally; lock released in finally).
+    vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
+
+    const firstId = randomUUID()
+    expect(startFamilyScan(firstId, 'agenticapps', deprecatedRegistryArg()).ok).toBe(true)
+
+    // Wait for first to settle and lock to release.
+    await vi.waitFor(() => {
+      expect(getScanJob(firstId)?.state).toBe('done')
+    }, { timeout: 10_000 })
+
+    // Second scan should now succeed because the lock was released.
+    const second = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    expect(second.ok).toBe(true)
+  })
+})

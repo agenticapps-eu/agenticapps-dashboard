@@ -44,6 +44,8 @@ import {
   waitForScanSettle,
   scheduleFamilyEviction,
   deterministicRepoRoot,
+  tryAcquireFamilyLock,
+  releaseFamilyLock,
 } from './gitnexusScan.js'
 import type { GitnexusScanErrorCode } from '@agenticapps/dashboard-shared'
 
@@ -92,29 +94,28 @@ export function startFamilyScan(
   familyId: KnownFamily,
   _registryDeprecated: { entries: ReadonlyArray<{ id: string; root: string; client: string | null }> } = { entries: [] },
   opts: { registryFile?: string } = {},
-): { ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' } {
+): { ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' | 'SCAN_IN_FLIGHT' } {
   // D-13-EXT-09 (Codex WARNING #1) — source repos from the filesystem, not
-  // the registry. The previous registry-driven walk silently skipped
-  // unregistered-but-visible repos in the Coverage matrix — the family-level
-  // twin of the D-13-EXT-08 defect. _registryDeprecated retained as a
-  // positional-compat shim for one release; value ignored.
-  //
-  // deriveFamilyReposFromFs reads ~/Sourcecode/{family}/ and filters each
-  // subdir through the realpath-guarded deterministicRepoRoot() (D-13-EXT-09
-  // corollary), preserving D-13-04 alphabetical ordering.
-  void _registryDeprecated // suppress unused-arg lint
+  // the registry. _registryDeprecated retained as a positional-compat shim
+  // for one release; value ignored.
+  void _registryDeprecated
   const repos = deriveFamilyReposFromFs(familyId)
 
   if (repos.length === 0) {
     return { ok: false, code: 'FAMILY_HAS_NO_REPOS' }
   }
 
-  // 2. Register the family job with initial counters in the shared scans Map.
+  // D-13-EXT-12 (Codex WARNING #3) — Acquire the family lock BEFORE registering
+  // the job. If another family scan for this family is in flight, reject with
+  // SCAN_IN_FLIGHT (HTTP 409) without registering anything. Released in the
+  // body's finally so a thrown body cannot wedge the lock.
+  const acquired = tryAcquireFamilyLock(familyId, familyScanId)
+  if (!acquired) {
+    return { ok: false, code: 'SCAN_IN_FLIGHT' }
+  }
+
   registerFamilyJob(familyScanId, familyId, repos)
 
-  // 3. Fire-and-forget — the body runs the sequential for-of loop + finalization.
-  //    Wrapped in `void` + `.catch(...)` so unhandled errors don't leave the
-  //    family job stuck in 'running' and don't crash the daemon (T-13-06-01).
   void startFamilyScanBody(familyScanId, familyId, repos, opts).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[gitnexusFamilyScan] unhandled body error', err)
@@ -126,6 +127,9 @@ export function startFamilyScan(
       currentScanId: null,
     }))
     scheduleFamilyEviction(familyScanId)
+    // Body's finally is bypassed when the body itself throws synchronously
+    // (rare — defence in depth here).
+    releaseFamilyLock(familyId)
   })
 
   return { ok: true }
@@ -147,6 +151,7 @@ export async function startFamilyScanBody(
   repos: ReadonlyArray<{ repo: string; root: string }>,
   opts: { registryFile?: string } = {},
 ): Promise<void> {
+  try {
   // Sequential for-of loop — awaits each per-repo scan before moving to the next.
   // D-13-04: NO Promise.all — parallel execution would race on ~/.gitnexus/registry.json.
   for (const repo of repos) {
@@ -218,6 +223,11 @@ export async function startFamilyScanBody(
 
   // Schedule TTL eviction for the family job (60s — mirrors per-repo eviction).
   scheduleFamilyEviction(familyScanId)
+  } finally {
+    // D-13-EXT-12 — Release the family lock on every exit path (normal
+    // completion AND thrown body). Idempotent via Map.delete().
+    releaseFamilyLock(familyId)
+  }
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

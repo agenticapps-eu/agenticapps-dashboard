@@ -77,6 +77,34 @@ const perRepoLocks = new Map<string, Promise<void>>()
  *  on ~/.gitnexus/registry.json (D-13-EXT-01). Held for the duration of each spawn. */
 let globalScanLock: Promise<void> | null = null
 
+/** D-13-EXT-12 (Codex WARNING #3) — Per-family concurrency gate.
+ *  Prevents two overlapping family scans for the same family from racing each
+ *  other (the loser's per-repo startScan calls would otherwise come back as
+ *  permanent SCAN_IN_FLIGHT entries in perRepoResults). Released in
+ *  startFamilyScanBody's finally so a thrown body cannot wedge the lock.
+ *  Different families remain independent — the global scan lock still
+ *  serialises gitnexus subprocesses across families. */
+const familyInflight = new Map<'agenticapps' | 'factiv' | 'neuroflash', string>()
+
+export function tryAcquireFamilyLock(
+  family: 'agenticapps' | 'factiv' | 'neuroflash',
+  scanId: string,
+): boolean {
+  if (familyInflight.has(family)) return false
+  familyInflight.set(family, scanId)
+  return true
+}
+
+export function releaseFamilyLock(family: 'agenticapps' | 'factiv' | 'neuroflash'): void {
+  familyInflight.delete(family)
+}
+
+export function familyLockHeldBy(
+  family: 'agenticapps' | 'factiv' | 'neuroflash',
+): string | null {
+  return familyInflight.get(family) ?? null
+}
+
 /**
  * Deferred-settle callbacks — registered when startScan fires a spawn,
  * consumed by waitForScanSettle() which needs event-driven notification
@@ -282,6 +310,7 @@ export function scheduleFamilyEviction(scanId: string): void {
 export function _resetForTests(): void {
   scans.clear()
   perRepoLocks.clear()
+  familyInflight.clear()
   settleCallbacks.clear()
   globalScanLock = null
   _gitnexusBinOverride = null // restore: use real PATH lookup
