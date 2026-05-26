@@ -513,9 +513,11 @@ export function deterministicRepoRoot(repoId: string): string | null {
   } catch {
     return null
   }
-  if (!realCandidate.startsWith(realFamilyPrefix) && realCandidate !== realFamilyPrefix.slice(0, -1)) {
-    return null
-  }
+  // Only check startsWith — `realCandidate` is always {familyPrefix}{repo} so
+  // it cannot equal the bare family root post-realpath. (Previously this had a
+  // defence-in-depth `||` against equality with the family root; removed since
+  // the candidate construction never produces that shape.)
+  if (!realCandidate.startsWith(realFamilyPrefix)) return null
   return root
 }
 

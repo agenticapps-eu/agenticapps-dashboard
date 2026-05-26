@@ -422,9 +422,11 @@ describe('POST /api/gitnexus/scan — family branch fire-and-forget (Gap 2 / D-1
     const callArgs = vi.mocked(startFamilyScan).mock.calls[0] ?? []
     const scanId = callArgs[0]
     const familyId = callArgs[1]
-    const registry = callArgs[2]
+    const opts = callArgs[2]
     expect(typeof scanId).toBe('string')
     expect(familyId).toBe('agenticapps')
-    expect(registry).toHaveProperty('entries')
+    // D-13-EXT-09 / Plan 13-08 Stage-2 I2 cleanup — registry positional shim
+    // removed; opts is the registryFile-only opts bag.
+    expect(opts).toBeTypeOf('object')
   })
 })

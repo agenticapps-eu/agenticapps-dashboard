@@ -80,12 +80,6 @@ function setupFakeHomeWithRepos(family: string, repos: readonly string[]): FakeH
   }
 }
 
-/** Legacy stub: the third argument to startFamilyScan is deprecated post-D-13-EXT-09.
- *  Tests still pass it for positional-compat; the value is ignored by the implementation. */
-function deprecatedRegistryArg() {
-  return { entries: [] as ReadonlyArray<{ id: string; root: string; client: string | null }> }
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('startFamilyScan() — D-13-04 sequential family scan orchestration', () => {
@@ -115,7 +109,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    const result = startFamilyScan(familyScanId, 'agenticapps')
 
     expect(result.ok).toBe(true)
     await vi.waitFor(() => {
@@ -150,7 +144,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    startFamilyScan(familyScanId, 'factiv', deprecatedRegistryArg())
+    startFamilyScan(familyScanId, 'factiv')
 
     await vi.waitFor(() => {
       expect(getScanJob(familyScanId)?.state).toBe('done')
@@ -173,7 +167,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(familyScanId, 'neuroflash', deprecatedRegistryArg())
+    const result = startFamilyScan(familyScanId, 'neuroflash')
 
     expect(result.ok).toBe(true)
 
@@ -204,7 +198,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    startFamilyScan(familyScanId, 'neuroflash', deprecatedRegistryArg())
+    startFamilyScan(familyScanId, 'neuroflash')
 
     await vi.waitFor(() => {
       expect(getScanJob(familyScanId)?.state).toBe('done')
@@ -235,7 +229,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
       return { kind: 'ok' as const, stdout: '' }
     })
 
-    startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    startFamilyScan(familyScanId, 'agenticapps')
 
     await vi.waitFor(() => {
       const job = getScanJob(familyScanId)
@@ -280,7 +274,7 @@ describe('startFamilyScan — D-13-02 short-poll contract (Gap 2)', () => {
 
     const familyScanId = randomUUID()
     const t0 = Date.now()
-    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    const result = startFamilyScan(familyScanId, 'agenticapps')
     const t1 = Date.now()
 
     expect(t1 - t0).toBeLessThan(50)
@@ -302,7 +296,7 @@ describe('startFamilyScan — D-13-02 short-poll contract (Gap 2)', () => {
     vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    const result = startFamilyScan(familyScanId, 'agenticapps')
     expect(result.ok).toBe(true)
 
     await vi.waitFor(
@@ -340,7 +334,7 @@ describe('startFamilyScan — D-13-EXT-09 FS-aligned source (Codex WARNING #1)',
     fixture = setupFakeHomeWithRepos('agenticapps', ['alpha', 'beta', 'gamma'])
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    const result = startFamilyScan(familyScanId, 'agenticapps')
     expect(result.ok).toBe(true)
 
     await vi.waitFor(() => {
@@ -365,14 +359,14 @@ describe('startFamilyScan — D-13-EXT-09 FS-aligned source (Codex WARNING #1)',
     // Also ensure the family dir itself exists but is empty
     mkdirSync(join(fixture.fakeHome, 'Sourcecode', 'agenticapps'), { recursive: true })
 
-    const result = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    const result = startFamilyScan(randomUUID(), 'agenticapps')
     expect(result).toEqual({ ok: false, code: 'FAMILY_HAS_NO_REPOS' })
   })
 
   it('returns FAMILY_HAS_NO_REPOS when ~/Sourcecode/{family}/ does not exist at all', () => {
     fixture = setupFakeHomeWithRepos('factiv', ['some-repo']) // create some OTHER family
     // Scanning a different family with no dir
-    const result = startFamilyScan(randomUUID(), 'neuroflash', deprecatedRegistryArg())
+    const result = startFamilyScan(randomUUID(), 'neuroflash')
     expect(result).toEqual({ ok: false, code: 'FAMILY_HAS_NO_REPOS' })
   })
 
@@ -383,7 +377,7 @@ describe('startFamilyScan — D-13-EXT-09 FS-aligned source (Codex WARNING #1)',
     mkdirSync(join(fixture.fakeHome, 'Sourcecode', 'agenticapps', '.DS_Store'), { recursive: true })
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    const result = startFamilyScan(familyScanId, 'agenticapps')
     expect(result.ok).toBe(true)
 
     await vi.waitFor(() => {
@@ -423,11 +417,11 @@ describe('startFamilyScan — D-13-EXT-12 family-level lock (Codex WARNING #3)',
       return { kind: 'ok' as const, stdout: '' }
     })
 
-    const first = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    const first = startFamilyScan(randomUUID(), 'agenticapps')
     expect(first.ok).toBe(true)
 
     // First scan is now sitting on the hang. Second scan for SAME family.
-    const second = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    const second = startFamilyScan(randomUUID(), 'agenticapps')
     expect(second).toEqual({ ok: false, code: 'SCAN_IN_FLIGHT' })
 
     // Release the hang so the first scan completes and afterEach can reset.
@@ -446,10 +440,10 @@ describe('startFamilyScan — D-13-EXT-12 family-level lock (Codex WARNING #3)',
       return { kind: 'ok' as const, stdout: '' }
     })
 
-    const first = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    const first = startFamilyScan(randomUUID(), 'agenticapps')
     expect(first.ok).toBe(true)
 
-    const second = startFamilyScan(randomUUID(), 'factiv', deprecatedRegistryArg())
+    const second = startFamilyScan(randomUUID(), 'factiv')
     expect(second.ok).toBe(true)
 
     release?.()
@@ -463,7 +457,7 @@ describe('startFamilyScan — D-13-EXT-12 family-level lock (Codex WARNING #3)',
     vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
 
     const firstId = randomUUID()
-    expect(startFamilyScan(firstId, 'agenticapps', deprecatedRegistryArg()).ok).toBe(true)
+    expect(startFamilyScan(firstId, 'agenticapps').ok).toBe(true)
 
     // Wait for first to settle and lock to release.
     await vi.waitFor(() => {
@@ -471,7 +465,7 @@ describe('startFamilyScan — D-13-EXT-12 family-level lock (Codex WARNING #3)',
     }, { timeout: 10_000 })
 
     // Second scan should now succeed because the lock was released.
-    const second = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    const second = startFamilyScan(randomUUID(), 'agenticapps')
     expect(second.ok).toBe(true)
   })
 })

@@ -87,12 +87,10 @@ gitnexusScanRoute.post(
       result = await startScan(scanId, body, scanOpts)
     } else {
       // scope === 'family' — D-13-EXT-09: startFamilyScan walks the FS, not
-      // the registry. The third arg is a positional-compat shim retained for
-      // one release; the value is ignored.
+      // the registry. No registry arg needed.
       result = startFamilyScan(
         scanId,
         body.target as 'agenticapps' | 'factiv' | 'neuroflash',
-        { entries: [] },
         scanOpts,
       )
     }

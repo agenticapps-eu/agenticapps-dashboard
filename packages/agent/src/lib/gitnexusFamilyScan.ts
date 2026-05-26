@@ -35,7 +35,7 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, sep } from 'node:path'
+import { sep } from 'node:path'
 
 import {
   startScan,
@@ -92,13 +92,12 @@ interface Registry {
 export function startFamilyScan(
   familyScanId: string,
   familyId: KnownFamily,
-  _registryDeprecated: { entries: ReadonlyArray<{ id: string; root: string; client: string | null }> } = { entries: [] },
   opts: { registryFile?: string } = {},
 ): { ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' | 'SCAN_IN_FLIGHT' } {
   // D-13-EXT-09 (Codex WARNING #1) — source repos from the filesystem, not
-  // the registry. _registryDeprecated retained as a positional-compat shim
-  // for one release; value ignored.
-  void _registryDeprecated
+  // the registry. Plan 13-08 Stage-2 review I2 cleanup: the previous
+  // _registryDeprecated positional shim was removed since the type signature
+  // was lying (the value was always ignored). Callers must update accordingly.
   const repos = deriveFamilyReposFromFs(familyId)
 
   if (repos.length === 0) {
@@ -270,29 +269,7 @@ export function deriveFamilyReposFromFs(
   return result
 }
 
-/**
- * Legacy: registry-driven family repo derivation. Kept for one release for
- * grep history; no live callers post-D-13-EXT-09. Will be removed after
- * Plan 13-08 merges.
- *
- * @deprecated use {@link deriveFamilyReposFromFs} instead.
- */
-function deriveRepos(
-  entries: ReadonlyArray<{ root: string; [key: string]: unknown }>,
-  familyId: KnownFamily,
-): Array<{ repo: string; root: string }> {
-  const home = homedir()
-  const familyPrefix = `${home}${sep}Sourcecode${sep}${familyId}${sep}`
-
-  const result: Array<{ repo: string; root: string }> = []
-  for (const entry of entries) {
-    if (!entry.root.startsWith(familyPrefix)) continue
-    const rel = entry.root.slice(familyPrefix.length)
-    const parts = rel.split(sep)
-    if (parts.length < 1 || !parts[0]) continue
-    result.push({ repo: parts[0], root: entry.root })
-  }
-  return result
-}
-// Suppress unused-warning while we keep deriveRepos around for one release.
-void deriveRepos
+// Legacy `deriveRepos(entries, family)` helper removed in Plan 13-08 per Stage-2
+// review W2 — `void deriveRepos` was suppressing unused-warnings indefinitely.
+// `deriveFamilyReposFromFs` replaces it; the registry-derived shape is no longer
+// needed anywhere in the daemon scan path.
