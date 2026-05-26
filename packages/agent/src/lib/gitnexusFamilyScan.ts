@@ -53,16 +53,9 @@ import type { GitnexusScanErrorCode } from '@agenticapps/dashboard-shared'
 
 type KnownFamily = 'agenticapps' | 'factiv' | 'neuroflash'
 
-interface RegistryEntry {
-  id: string
-  root: string
-  client: string | null
-  [key: string]: unknown
-}
-
-interface Registry {
-  entries: ReadonlyArray<RegistryEntry>
-}
+// (RegistryEntry / Registry types removed in Plan 13-08 — D-13-EXT-09 made
+//  the family scan FS-driven, so no registry types are referenced in this
+//  module anymore.)
 
 // ── Public API ────────────────────────────────────────────────────────────────
 

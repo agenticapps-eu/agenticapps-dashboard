@@ -125,7 +125,6 @@ describe('POST /api/gitnexus/scan', () => {
 
   it('returns 200 + {ok:true, scanId} on happy path (repo scope)', async () => {
     vi.mocked(startScan).mockResolvedValue({ ok: true })
-    const scanId = randomUUID()
     // startScan accepts the id we pass; we capture it via the mock
     vi.mocked(startScan).mockImplementation(async (id) => {
       // Mock getScanJob to return a running job for this scanId
