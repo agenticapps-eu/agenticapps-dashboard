@@ -1,25 +1,33 @@
 /**
- * gitnexusFamilyScan.test.ts — GREEN tests for lib/gitnexusFamilyScan.ts.
+ * gitnexusFamilyScan.test.ts — Family-scan orchestration tests.
  *
- * Plan 13-02 (Wave 2) — GREENed the Wave 0 RED scaffold.
+ * Plan 13-02 (Wave 2) — original orchestration coverage.
+ * Plan 13-08 (D-13-EXT-09) — refactored to source repos from the filesystem
+ *   instead of the registry; tests now create real dirs under a tmpdir HOME
+ *   so deriveFamilyReposFromFs + deterministicRepoRoot find them.
  *
- * Test inventory (5 cases — family orchestration concerns, D-13-04/05):
- *   1. startFamilyScan() iterates repos in alphabetical order (D-13-04)
- *   2. startFamilyScan() serially awaits each per-repo scan (no overlap — D-13-EXT-01)
- *   3. On partial failure (3 repos, 1 fails): state.completed=2 and state.failed=1 (D-13-05)
- *   4. perRepoResults carries error code for the failed entry
+ * Test inventory:
+ *   1. iterates repos in alphabetical order (D-13-04)
+ *   2. serially awaits each per-repo scan (D-13-EXT-01)
+ *   3. partial failure: completed/failed counters correct (D-13-05)
+ *   4. perRepoResults carries error code for failed entries (Pitfall 7 guard)
  *   5. currentRepoId + currentScanId update as the family progresses
+ *   6. short-poll contract — synchronous register, fire-and-forget body (D-13-02)
+ *   7. body runs the loop to completion (D-13-02)
+ *   8. D-13-EXT-09: scans every FS-discovered repo, not just registered subset
+ *   9. D-13-EXT-09: returns FAMILY_HAS_NO_REPOS when ~/Sourcecode/{family}/ is empty
+ *  10. WARNING #3: rejects a second family scan for the same family while one runs
+ *  11. WARNING #3: allows different-family scans to overlap
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { homedir } from 'node:os'
-import { sep } from 'node:path'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, sep } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
 import { startFamilyScan } from '../lib/gitnexusFamilyScan.js'
 import { _resetForTests, getScanJob } from '../lib/gitnexusScan.js'
-
-const HOME = homedir()
 
 // ── Mock setup ─────────────────────────────────────────────────────────────────
 // Mock coverageSpawn so tests don't invoke a real subprocess.
@@ -32,53 +40,57 @@ vi.mock('./coverageSpawn.js', () => ({
   buildGitnexusInstallClipboardString: vi.fn(),
 }))
 
-// Mock registry — startScan calls readRegistry to resolve repoId → root
+// Mock registry — startScan still calls readRegistry as a first lookup before
+// falling back to deterministicRepoRoot. Tests rely on the FS fallback path
+// after D-13-EXT-09, so the registry can stay empty.
 vi.mock('./registry.js', () => ({
-  readRegistry: vi.fn(),
+  readRegistry: vi.fn().mockReturnValue({ version: 1, projects: [] }),
   writeRegistry: vi.fn(),
   withRegistryLock: vi.fn(),
   assertRegistrationAllowed: vi.fn(),
   RegistrationPathBlocked: class RegistrationPathBlocked extends Error {},
 }))
 
-import { readRegistry } from './registry.js'
 import { spawnGitNexusAnalyze } from './coverageSpawn.js'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Fixture helpers ───────────────────────────────────────────────────────────
 
-function fakeEntry(family: string, repo: string) {
+interface FakeHomeFixture {
+  fakeHome: string
+  stashedHome: string | undefined
+  cleanup: () => void
+}
+
+/** Create a tmpdir, override HOME, mkdir the per-family repo dirs. */
+function setupFakeHomeWithRepos(family: string, repos: readonly string[]): FakeHomeFixture {
+  const fakeHome = mkdtempSync(join(tmpdir(), 'family-scan-test-'))
+  const stashedHome = process.env.HOME
+  process.env.HOME = fakeHome
+  for (const repo of repos) {
+    mkdirSync(join(fakeHome, 'Sourcecode', family, repo), { recursive: true })
+  }
   return {
-    id: `${family}-${repo}`,
-    name: repo,
-    root: `${HOME}${sep}Sourcecode${sep}${family}${sep}${repo}`,
-    client: null,
-    addedAt: new Date().toISOString(),
-    tags: [],
+    fakeHome,
+    stashedHome,
+    cleanup: () => {
+      if (stashedHome !== undefined) process.env.HOME = stashedHome
+      else delete process.env.HOME
+      try { rmSync(fakeHome, { recursive: true, force: true }) } catch { /* best-effort */ }
+    },
   }
 }
 
-function fakeRegistry(entries: ReturnType<typeof fakeEntry>[]) {
-  return { version: 1 as const, projects: entries }
-}
-
-function fakeRegistryForFamily(family: 'agenticapps' | 'factiv' | 'neuroflash', repos: string[]) {
-  return fakeRegistry(repos.map((r) => fakeEntry(family, r)))
-}
-
-/** Build the registry shape expected by startFamilyScan */
-function toRegistryArg(family: string, repos: string[]) {
-  return {
-    entries: repos.map((repo) => ({
-      id: `${family}-${repo}`,
-      root: `${HOME}${sep}Sourcecode${sep}${family}${sep}${repo}`,
-      client: null,
-    })),
-  }
+/** Legacy stub: the third argument to startFamilyScan is deprecated post-D-13-EXT-09.
+ *  Tests still pass it for positional-compat; the value is ignored by the implementation. */
+function deprecatedRegistryArg() {
+  return { entries: [] as ReadonlyArray<{ id: string; root: string; client: string | null }> }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('startFamilyScan() — D-13-04 sequential family scan orchestration', () => {
+  let fixture: FakeHomeFixture | undefined
+
   beforeEach(() => {
     _resetForTests()
     vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
@@ -86,38 +98,31 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
 
   afterEach(() => {
     vi.useRealTimers()
+    fixture?.cleanup()
+    fixture = undefined
     _resetForTests()
   })
 
   it('iterates repos in alphabetical order (D-13-04)', async () => {
     const repos = ['zzz-repo', 'aaa-repo', 'mmm-repo']
-    // Registry must have all three repos for startScan to find them
-    vi.mocked(readRegistry).mockReturnValue(fakeRegistryForFamily('agenticapps', repos))
+    fixture = setupFakeHomeWithRepos('agenticapps', repos)
 
     const spawnOrder: string[] = []
     vi.mocked(spawnGitNexusAnalyze).mockImplementation(async (repoPath: string) => {
-      // Extract repo name from path
       const parts = repoPath.split(sep)
       spawnOrder.push(parts[parts.length - 1] ?? repoPath)
       return { kind: 'ok' as const, stdout: '' }
     })
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(
-      familyScanId,
-      'agenticapps',
-      toRegistryArg('agenticapps', repos),
-    )
+    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
 
     expect(result.ok).toBe(true)
-    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
     await vi.waitFor(() => {
       expect(getScanJob(familyScanId)?.state).toBe('done')
     }, { timeout: 10_000 })
-    // Verify alphabetical order
     expect(spawnOrder).toEqual(['aaa-repo', 'mmm-repo', 'zzz-repo'])
 
-    // Check final family job state
     const job = getScanJob(familyScanId)
     expect(job?.kind).toBe('family')
     if (job?.kind === 'family') {
@@ -131,7 +136,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
 
   it('serially awaits each per-repo scan — no temporal overlap between spawns', async () => {
     const repos = ['repo-a', 'repo-b', 'repo-c']
-    vi.mocked(readRegistry).mockReturnValue(fakeRegistryForFamily('factiv', repos))
+    fixture = setupFakeHomeWithRepos('factiv', repos)
 
     let inFlight = 0
     let maxConcurrent = 0
@@ -139,32 +144,28 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
       inFlight++
       maxConcurrent = Math.max(maxConcurrent, inFlight)
-      // Small delay to simulate real work
       await new Promise<void>((r) => setTimeout(r, 5))
       inFlight--
       return { kind: 'ok' as const, stdout: '' }
     })
 
     const familyScanId = randomUUID()
-    startFamilyScan(familyScanId, 'factiv', toRegistryArg('factiv', repos))
+    startFamilyScan(familyScanId, 'factiv', deprecatedRegistryArg())
 
-    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
     await vi.waitFor(() => {
       expect(getScanJob(familyScanId)?.state).toBe('done')
     }, { timeout: 10_000 })
 
-    // Sequential execution means max 1 concurrent spawn at a time
     expect(maxConcurrent).toBe(1)
   })
 
   it('partial failure (3 repos, 1 fails): state.completed=2 and state.failed=1 (D-13-05)', async () => {
     const repos = ['alpha', 'beta', 'gamma']
-    vi.mocked(readRegistry).mockReturnValue(fakeRegistryForFamily('neuroflash', repos))
+    fixture = setupFakeHomeWithRepos('neuroflash', repos)
 
     let callCount = 0
     vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
       callCount++
-      // 2nd invocation (beta) fails
       if (callCount === 2) {
         return { kind: 'error' as const, exitCode: 1, stderr: '' }
       }
@@ -172,15 +173,10 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    const result = startFamilyScan(
-      familyScanId,
-      'neuroflash',
-      toRegistryArg('neuroflash', repos),
-    )
+    const result = startFamilyScan(familyScanId, 'neuroflash', deprecatedRegistryArg())
 
     expect(result.ok).toBe(true)
 
-    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
     await vi.waitFor(() => {
       expect(getScanJob(familyScanId)?.state).toBe('done')
     }, { timeout: 10_000 })
@@ -188,7 +184,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     const job = getScanJob(familyScanId)
     expect(job?.kind).toBe('family')
     if (job?.kind === 'family') {
-      expect(job.state).toBe('done')       // family never reports 'error' — D-13-05
+      expect(job.state).toBe('done')
       expect(job.completed).toBe(2)
       expect(job.failed).toBe(1)
     }
@@ -196,7 +192,7 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
 
   it('perRepoResults carries error code for the failed entry (D-13-05 Pitfall 7 guard)', async () => {
     const repos = ['alpha', 'beta', 'gamma']
-    vi.mocked(readRegistry).mockReturnValue(fakeRegistryForFamily('neuroflash', repos))
+    fixture = setupFakeHomeWithRepos('neuroflash', repos)
 
     let callCount = 0
     vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
@@ -208,9 +204,8 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     })
 
     const familyScanId = randomUUID()
-    startFamilyScan(familyScanId, 'neuroflash', toRegistryArg('neuroflash', repos))
+    startFamilyScan(familyScanId, 'neuroflash', deprecatedRegistryArg())
 
-    // Wait for the fire-and-forget body to settle (D-13-02 / Gap 2 closure).
     await vi.waitFor(() => {
       expect(getScanJob(familyScanId)?.state).toBe('done')
     }, { timeout: 10_000 })
@@ -218,7 +213,6 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
     const job = getScanJob(familyScanId)
     expect(job?.kind).toBe('family')
     if (job?.kind === 'family') {
-      // Alphabetical order: alpha (0), beta (1), gamma (2)
       expect(job.perRepoResults[0]?.state).toBe('done')
       expect(job.perRepoResults[1]?.state).toBe('error')
       expect(job.perRepoResults[1]?.error?.code).toBe('SCAN_FAILED')
@@ -228,19 +222,9 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
 
   it('currentRepoId + currentScanId update as the family progresses', async () => {
     const repos = ['alpha', 'beta']
-    vi.mocked(readRegistry).mockReturnValue(fakeRegistryForFamily('agenticapps', repos))
+    fixture = setupFakeHomeWithRepos('agenticapps', repos)
 
     const observedCurrentRepoIds: (string | null)[] = []
-
-    vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
-      // Capture currentRepoId from the family job at spawn time
-      const allJobs = [...Array.from({ length: 0 })].map(() => null) // dummy
-      // We can't directly enumerate scans, so we poll getScanJob with the familyScanId
-      // which is captured in the closure below.
-      return { kind: 'ok' as const, stdout: '' }
-    })
-
-    // Re-implement with family scan ID captured
     const familyScanId = randomUUID()
 
     vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
@@ -251,21 +235,18 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
       return { kind: 'ok' as const, stdout: '' }
     })
 
-    startFamilyScan(familyScanId, 'agenticapps', toRegistryArg('agenticapps', repos))
+    startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
 
-    // Wait for the body to settle through both repos
     await vi.waitFor(() => {
       const job = getScanJob(familyScanId)
       expect(job?.kind === 'family' && job.state === 'done').toBe(true)
     }, { timeout: 10_000 })
 
-    // During each spawn, currentRepoId should be the active repo
     expect(observedCurrentRepoIds).toEqual([
       'agenticapps/alpha',
       'agenticapps/beta',
     ])
 
-    // After completion, currentRepoId should be null
     const finalJob = getScanJob(familyScanId)
     if (finalJob?.kind === 'family') {
       expect(finalJob.currentRepoId).toBeNull()
@@ -276,77 +257,54 @@ describe('startFamilyScan() — D-13-04 sequential family scan orchestration', (
 })
 
 // ── Gap 2 / D-13-02 short-poll contract ───────────────────────────────────────
-// These tests assert the FIRE-AND-FORGET shape of startFamilyScan: it must
-// register the family job synchronously and return without awaiting the
-// per-repo loop. Imposes latency PURELY via the existing `vi.mock('./coverageSpawn.js')`
-// surface — NO stub binary, NO env var, NO _setGitnexusBinForTests.
 
 describe('startFamilyScan — D-13-02 short-poll contract (Gap 2)', () => {
+  let fixture: FakeHomeFixture | undefined
+
   beforeEach(() => {
     _resetForTests()
   })
 
   afterEach(() => {
+    fixture?.cleanup()
+    fixture = undefined
     _resetForTests()
   })
 
   it('returns synchronously (NOT a Promise) and registers the family job immediately', async () => {
-    // Impose 500ms latency PURELY via the existing mock — no stub binary, no env var.
+    fixture = setupFakeHomeWithRepos('agenticapps', ['repoA', 'repoB'])
     vi.mocked(spawnGitNexusAnalyze).mockImplementation(async () => {
       await new Promise((r) => setTimeout(r, 500))
       return { kind: 'ok' as const, stdout: '' }
     })
-    // Registry must contain both repos so the body's startScan calls find them.
-    vi.mocked(readRegistry).mockReturnValue(
-      fakeRegistryForFamily('agenticapps', ['repoA', 'repoB']),
-    )
 
     const familyScanId = randomUUID()
-
     const t0 = Date.now()
-    const result = startFamilyScan(
-      familyScanId,
-      'agenticapps',
-      toRegistryArg('agenticapps', ['repoA', 'repoB']),
-    )
+    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
     const t1 = Date.now()
 
-    // (a) Returns within microseconds — well below the mock's 500ms × 2 = 1000ms total work
     expect(t1 - t0).toBeLessThan(50)
-
-    // (b) Result is a plain object (NOT a Promise) — no need to await
     expect(result).not.toBeInstanceOf(Promise)
     expect(result.ok).toBe(true)
 
-    // (c) The family job is registered into the scans Map AT THE TIME the function returned,
-    //     with state='running' — NOT 'done'
     const job = getScanJob(familyScanId)
     expect(job?.kind).toBe('family')
     expect(job?.state).toBe('running')
 
-    // Cleanup: wait for the body to settle so subsequent tests start clean
     await vi.waitFor(
-      () => {
-        expect(getScanJob(familyScanId)?.state).toBe('done')
-      },
+      () => { expect(getScanJob(familyScanId)?.state).toBe('done') },
       { timeout: 10_000 },
     )
   })
 
   it('startFamilyScanBody runs the for-of loop to completion (observable via scans Map transition)', async () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', ['repoA', 'repoB'])
     vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
-    vi.mocked(readRegistry).mockReturnValue(
-      fakeRegistryForFamily('agenticapps', ['repoA', 'repoB']),
-    )
+
     const familyScanId = randomUUID()
-    // startFamilyScan registers the job sync
-    const result = startFamilyScan(
-      familyScanId,
-      'agenticapps',
-      toRegistryArg('agenticapps', ['repoA', 'repoB']),
-    )
+    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
     expect(result.ok).toBe(true)
-    // Now wait for body completion — observable via the scans Map transition
+
     await vi.waitFor(
       () => {
         const job = getScanJob(familyScanId)
@@ -358,6 +316,84 @@ describe('startFamilyScan — D-13-02 short-poll contract (Gap 2)', () => {
     expect(job?.kind).toBe('family')
     if (job?.kind === 'family') {
       expect(job.completed + job.failed).toBe(job.total)
+    }
+  })
+})
+
+// ── D-13-EXT-09: FS-aligned source-of-truth (Codex WARNING #1) ────────────────
+
+describe('startFamilyScan — D-13-EXT-09 FS-aligned source (Codex WARNING #1)', () => {
+  let fixture: FakeHomeFixture | undefined
+
+  beforeEach(() => {
+    _resetForTests()
+    vi.mocked(spawnGitNexusAnalyze).mockResolvedValue({ kind: 'ok', stdout: '' })
+  })
+
+  afterEach(() => {
+    fixture?.cleanup()
+    fixture = undefined
+    _resetForTests()
+  })
+
+  it('scans every FS-discovered repo, NOT just the registered subset', async () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', ['alpha', 'beta', 'gamma'])
+
+    const familyScanId = randomUUID()
+    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    expect(result.ok).toBe(true)
+
+    await vi.waitFor(() => {
+      expect(getScanJob(familyScanId)?.state).toBe('done')
+    }, { timeout: 10_000 })
+
+    const job = getScanJob(familyScanId)
+    expect(job?.kind).toBe('family')
+    if (job?.kind === 'family') {
+      expect(job.total).toBe(3)
+      const ids = job.perRepoResults.map((r) => r.repoId).sort()
+      expect(ids).toEqual([
+        'agenticapps/alpha',
+        'agenticapps/beta',
+        'agenticapps/gamma',
+      ])
+    }
+  })
+
+  it('returns FAMILY_HAS_NO_REPOS when ~/Sourcecode/{family}/ is empty', () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', []) // creates HOME but no repos under family/
+    // Also ensure the family dir itself exists but is empty
+    mkdirSync(join(fixture.fakeHome, 'Sourcecode', 'agenticapps'), { recursive: true })
+
+    const result = startFamilyScan(randomUUID(), 'agenticapps', deprecatedRegistryArg())
+    expect(result).toEqual({ ok: false, code: 'FAMILY_HAS_NO_REPOS' })
+  })
+
+  it('returns FAMILY_HAS_NO_REPOS when ~/Sourcecode/{family}/ does not exist at all', () => {
+    fixture = setupFakeHomeWithRepos('factiv', ['some-repo']) // create some OTHER family
+    // Scanning a different family with no dir
+    const result = startFamilyScan(randomUUID(), 'neuroflash', deprecatedRegistryArg())
+    expect(result).toEqual({ ok: false, code: 'FAMILY_HAS_NO_REPOS' })
+  })
+
+  it('skips dotfile entries (.git, .DS_Store) under the family root', async () => {
+    fixture = setupFakeHomeWithRepos('agenticapps', ['real-repo'])
+    // Add a hidden entry that should be skipped
+    mkdirSync(join(fixture.fakeHome, 'Sourcecode', 'agenticapps', '.git'), { recursive: true })
+    mkdirSync(join(fixture.fakeHome, 'Sourcecode', 'agenticapps', '.DS_Store'), { recursive: true })
+
+    const familyScanId = randomUUID()
+    const result = startFamilyScan(familyScanId, 'agenticapps', deprecatedRegistryArg())
+    expect(result.ok).toBe(true)
+
+    await vi.waitFor(() => {
+      expect(getScanJob(familyScanId)?.state).toBe('done')
+    }, { timeout: 10_000 })
+
+    const job = getScanJob(familyScanId)
+    if (job?.kind === 'family') {
+      expect(job.total).toBe(1)
+      expect(job.perRepoResults[0]?.repoId).toBe('agenticapps/real-repo')
     }
   })
 })

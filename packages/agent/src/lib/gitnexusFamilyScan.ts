@@ -33,6 +33,7 @@
  * gitnexusScan.ts — this module does NOT directly touch the Map.
  */
 import { randomUUID } from 'node:crypto'
+import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, sep } from 'node:path'
 
@@ -42,6 +43,7 @@ import {
   updateFamilyJob,
   waitForScanSettle,
   scheduleFamilyEviction,
+  deterministicRepoRoot,
 } from './gitnexusScan.js'
 import type { GitnexusScanErrorCode } from '@agenticapps/dashboard-shared'
 
@@ -88,14 +90,20 @@ interface Registry {
 export function startFamilyScan(
   familyScanId: string,
   familyId: KnownFamily,
-  registry: { entries: ReadonlyArray<{ id: string; root: string; client: string | null }> },
+  _registryDeprecated: { entries: ReadonlyArray<{ id: string; root: string; client: string | null }> } = { entries: [] },
   opts: { registryFile?: string } = {},
 ): { ok: true } | { ok: false; code: 'FAMILY_HAS_NO_REPOS' } {
-  // 1. Derive repos in this family via path-prefix match (mirrors Phase 11 familyOf)
-  //    Sort alphabetically by repo name (D-13-04).
-  const repos = deriveRepos(registry.entries, familyId).sort((a, b) =>
-    a.repo.localeCompare(b.repo),
-  )
+  // D-13-EXT-09 (Codex WARNING #1) — source repos from the filesystem, not
+  // the registry. The previous registry-driven walk silently skipped
+  // unregistered-but-visible repos in the Coverage matrix — the family-level
+  // twin of the D-13-EXT-08 defect. _registryDeprecated retained as a
+  // positional-compat shim for one release; value ignored.
+  //
+  // deriveFamilyReposFromFs reads ~/Sourcecode/{family}/ and filters each
+  // subdir through the realpath-guarded deterministicRepoRoot() (D-13-EXT-09
+  // corollary), preserving D-13-04 alphabetical ordering.
+  void _registryDeprecated // suppress unused-arg lint
+  const repos = deriveFamilyReposFromFs(familyId)
 
   if (repos.length === 0) {
     return { ok: false, code: 'FAMILY_HAS_NO_REPOS' }
@@ -215,12 +223,49 @@ export async function startFamilyScanBody(
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /**
- * Derive the list of repos belonging to a family from registry entries.
- * Mirrors Phase 11's familyOf path-prefix logic:
- *   family root = ~/Sourcecode/{agenticapps|factiv|neuroflash}
- *   repo name   = basename of the entry's root path
+ * D-13-EXT-09 (Codex WARNING #1) — FS-aligned family repo derivation.
  *
- * Returns an array of { repo: string (basename), root: string (abs path) }.
+ * Reads ~/Sourcecode/{family}/ directly and accepts each subdirectory that
+ * passes deterministicRepoRoot() — which after the D-13-EXT-09 corollary
+ * enforces family allow-list + directory existence + realpath stay-under-
+ * family-prefix. Hidden dirs (".git", ".DS_Store", etc.) are skipped.
+ *
+ * Used by startFamilyScan instead of the older deriveRepos(registry.entries).
+ * A family scan now covers every repo visible in the Coverage matrix, not
+ * only the subset that happens to be in the dashboard registry — closing
+ * the family-level twin of D-13-EXT-08.
+ *
+ * Returns alphabetically-sorted repos (preserves D-13-04 ordering).
+ */
+export function deriveFamilyReposFromFs(
+  familyId: KnownFamily,
+): Array<{ repo: string; root: string }> {
+  const familyRoot = `${homedir()}${sep}Sourcecode${sep}${familyId}`
+  if (!existsSync(familyRoot)) return []
+  let entries: string[]
+  try {
+    entries = readdirSync(familyRoot)
+  } catch {
+    return []
+  }
+  const result: Array<{ repo: string; root: string }> = []
+  for (const name of entries) {
+    if (name.startsWith('.')) continue // skip .git, .DS_Store, etc.
+    const resolved = deterministicRepoRoot(`${familyId}/${name}`)
+    if (resolved !== null) {
+      result.push({ repo: name, root: resolved })
+    }
+  }
+  result.sort((a, b) => a.repo.localeCompare(b.repo))
+  return result
+}
+
+/**
+ * Legacy: registry-driven family repo derivation. Kept for one release for
+ * grep history; no live callers post-D-13-EXT-09. Will be removed after
+ * Plan 13-08 merges.
+ *
+ * @deprecated use {@link deriveFamilyReposFromFs} instead.
  */
 function deriveRepos(
   entries: ReadonlyArray<{ root: string; [key: string]: unknown }>,
@@ -234,9 +279,10 @@ function deriveRepos(
     if (!entry.root.startsWith(familyPrefix)) continue
     const rel = entry.root.slice(familyPrefix.length)
     const parts = rel.split(sep)
-    // Need exactly one path component (the repo name) — not a deeper subdirectory.
     if (parts.length < 1 || !parts[0]) continue
     result.push({ repo: parts[0], root: entry.root })
   }
   return result
 }
+// Suppress unused-warning while we keep deriveRepos around for one release.
+void deriveRepos
