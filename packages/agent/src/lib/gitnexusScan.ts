@@ -77,6 +77,49 @@ const perRepoLocks = new Map<string, Promise<void>>()
  *  on ~/.gitnexus/registry.json (D-13-EXT-01). Held for the duration of each spawn. */
 let globalScanLock: Promise<void> | null = null
 
+/** D-13-EXT-13 (Codex WARNING #5) — Active execa subprocess handles tracked
+ *  for shutdown disposal. Populated by _doSpawnAndSettle via the onSubprocess
+ *  callback passed to spawnGitNexusAnalyze; entries removed on settle.
+ *  disposeAllInflightScans() iterates + SIGTERMs each on daemon shutdown. */
+type ExecaResultPromise = ReturnType<typeof import('execa').execa>
+const activeChildren = new Set<ExecaResultPromise>()
+
+export function trackInflightScan(sp: ExecaResultPromise): void {
+  activeChildren.add(sp)
+}
+
+export function untrackInflightScan(sp: ExecaResultPromise): void {
+  activeChildren.delete(sp)
+}
+
+/**
+ * D-13-EXT-13 — Cancel every in-flight gitnexus child process. Called by the
+ * shutdown disposer registered in server/boot.ts. SIGTERMs each tracked
+ * subprocess; a 2s timer escalates to SIGKILL if the child has not exited.
+ * The Set drains synchronously so the disposer completes quickly; the OS
+ * reap is async. Escalation timers are .unref()'d so they cannot block
+ * gracefulShutdown's exit.
+ */
+export function disposeAllInflightScans(): void {
+  for (const sp of activeChildren) {
+    try {
+      sp.kill('SIGTERM')
+    } catch {
+      // best-effort; child may already be dead
+    }
+    // SIGKILL escalation if SIGTERM is ignored.
+    setTimeout(() => {
+      try { sp.kill('SIGKILL') } catch { /* best-effort */ }
+    }, 2000).unref()
+  }
+  activeChildren.clear()
+}
+
+/** Test-only — expose the active child set. */
+export function _activeChildrenForTests(): ReadonlyArray<ExecaResultPromise> {
+  return Array.from(activeChildren)
+}
+
 /** D-13-EXT-12 (Codex WARNING #3) — Per-family concurrency gate.
  *  Prevents two overlapping family scans for the same family from racing each
  *  other (the loser's per-repo startScan calls would otherwise come back as
@@ -312,6 +355,7 @@ export function _resetForTests(): void {
   perRepoLocks.clear()
   familyInflight.clear()
   settleCallbacks.clear()
+  activeChildren.clear()
   globalScanLock = null
   _gitnexusBinOverride = null // restore: use real PATH lookup
 }
@@ -330,10 +374,20 @@ async function _doSpawnAndSettle(
 ): Promise<void> {
   let updated: RepoScanJob
   try {
+    // D-13-EXT-13 — Track the subprocess so disposeAllInflightScans() can
+    // SIGTERM it on daemon shutdown. The callback fires synchronously when
+    // the child is spawned (before await). The cleanup chain swallows
+    // rejections so it does not turn into an unhandled rejection — the
+    // primary await in spawnGitNexusAnalyze still observes the error.
+    const onSubprocess = (sp: ExecaResultPromise): void => {
+      trackInflightScan(sp)
+      sp.finally(() => untrackInflightScan(sp)).catch(() => { /* swallowed */ })
+    }
+
     const spawnFn =
       _gitnexusBinOverride !== null
-        ? () => _spawnWithBinOverride(_gitnexusBinOverride as string, repoAbsPath)
-        : () => spawnGitNexusAnalyze(repoAbsPath)
+        ? () => _spawnWithBinOverride(_gitnexusBinOverride as string, repoAbsPath, onSubprocess)
+        : () => spawnGitNexusAnalyze(repoAbsPath, onSubprocess)
 
     // Wrap in globalScanLock to serialise registry.json writes (D-13-EXT-01 / T-13-02-05)
     const result = await withGlobalScanLock(spawnFn)
@@ -492,17 +546,20 @@ export function derivedRepoId(root: string): string | null {
 async function _spawnWithBinOverride(
   binPath: string,
   repoAbsPath: string,
+  onSubprocess?: (sp: ExecaResultPromise) => void,
 ): ReturnType<typeof spawnGitNexusAnalyze> {
   // Use execa directly with the override binary path (T-10-03-02: argv-array form)
   const { execa } = await import('execa')
   const SPAWN_TIMEOUT_MS = 5 * 60 * 1000
+  // D-13-10: argv sourced from the shared helper so the test-override spawn
+  // path and the production spawn (coverageSpawn.ts) stay in lockstep.
+  const sp = execa(binPath, [...buildGitnexusIndexClipboardString().argv], {
+    cwd: repoAbsPath,
+    timeout: SPAWN_TIMEOUT_MS,
+  })
+  if (onSubprocess) onSubprocess(sp)
   try {
-    // D-13-10: argv sourced from the shared helper so the test-override spawn
-    // path and the production spawn (coverageSpawn.ts) stay in lockstep.
-    const result = await execa(binPath, [...buildGitnexusIndexClipboardString().argv], {
-      cwd: repoAbsPath,
-      timeout: SPAWN_TIMEOUT_MS,
-    })
+    const result = await sp
     return { kind: 'ok', stdout: result.stdout }
   } catch (e: unknown) {
     const err = e as { timedOut?: boolean; exitCode?: number; stderr?: string }
