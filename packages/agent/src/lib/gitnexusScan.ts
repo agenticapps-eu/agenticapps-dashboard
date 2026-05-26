@@ -376,9 +376,15 @@ async function _doSpawnAndSettle(
   try {
     // D-13-EXT-13 — Track the subprocess so disposeAllInflightScans() can
     // SIGTERM it on daemon shutdown. The callback fires synchronously when
-    // the child is spawned (before await). The cleanup chain swallows
-    // rejections so it does not turn into an unhandled rejection — the
-    // primary await in spawnGitNexusAnalyze still observes the error.
+    // the child is spawned (before await).
+    //
+    // `sp` is awaited TWICE: once inside spawnGitNexusAnalyze (the primary
+    // await — its result is mapped to SpawnResult and returned), and once
+    // here via `sp.finally(...)` purely so we can untrack on settle. The
+    // tracking-chain await is a parallel observer; its `.catch(() => {})`
+    // swallows the rejection so it does not surface as an unhandled
+    // promise rejection. The error is still observed (and surfaced) by
+    // the primary await in spawnGitNexusAnalyze — nothing is lost.
     const onSubprocess = (sp: ExecaResultPromise): void => {
       trackInflightScan(sp)
       sp.finally(() => untrackInflightScan(sp)).catch(() => { /* swallowed */ })
