@@ -232,10 +232,8 @@ describe('CoverageRowSchema', () => {
   })
 })
 
-describe('CoverageRowSchema — inRegistry field (D-13-EXT-07, Gap 1 closure)', () => {
+describe('CoverageRowSchema — inRegistry field (D-13-EXT-07 / D-13-EXT-10 back-compat)', () => {
   // LOCAL fixture for these tests only. NEVER share with describe('CoverageRowSchema').
-  // The omission-throws assertion at (iii) below depends on this object never being
-  // mutated to carry an inRegistry key.
   const validRowBase = {
     family: 'agenticapps' as const,
     repo: 'dashboard',
@@ -260,13 +258,15 @@ describe('CoverageRowSchema — inRegistry field (D-13-EXT-07, Gap 1 closure)', 
     expect(() => CoverageRowSchema.parse({ ...validRowBase, inRegistry: false })).not.toThrow()
   })
 
-  it('(iii) REJECTS a row with inRegistry omitted (field is required)', () => {
-    // Pre-GREEN: schema has no inRegistry field → parse does NOT throw → .toThrow() FAILS → correct RED.
-    // Post-GREEN: schema requires inRegistry → parse throws → .toThrow() PASSES.
-    expect(() => CoverageRowSchema.parse(validRowBase)).toThrow()
+  it('(iii) D-13-EXT-10: accepts a row with inRegistry omitted (older daemon back-compat)', () => {
+    // D-13-EXT-10 (Codex WARNING #6) inverted this test. Pre-Phase-13 daemons
+    // omit the field; SPA must parse cleanly without dropping into SchemaDriftState.
+    const r = CoverageRowSchema.safeParse(validRowBase)
+    expect(r.success, r.success ? '' : JSON.stringify(r.error.format())).toBe(true)
+    if (r.success) expect(r.data.inRegistry).toBeUndefined()
   })
 
-  it('(iv) REJECTS a row with inRegistry: "true" (must be boolean, not string)', () => {
+  it('(iv) REJECTS a row with inRegistry: "true" (must be boolean when present, not string)', () => {
     expect(() =>
       CoverageRowSchema.parse({ ...validRowBase, inRegistry: 'true' })
     ).toThrow()
