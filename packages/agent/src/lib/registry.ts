@@ -167,6 +167,23 @@ export function assertRegistrationAllowed(canonicalRoot: string): void {
   if (pathEqualsOrIsUnder(canonicalRoot, CONFIG_DIR)) {
     throw new RegistrationPathBlocked(canonicalRoot, "daemon's own state directory")
   }
+  // D-13-EXT-09 corollary — Subdir hijack defence (Codex WARNING #2).
+  //   ~/Sourcecode/{family}/{repo} is the canonical project root for the three
+  //   known families. derivedRepoId() / deterministicRepoRoot() use family + repo
+  //   as the unique key, so registering a deeper subdir (e.g. .../repo/subdir)
+  //   makes the scan path resolution ambiguous and silently misroutes scans
+  //   into the subdirectory. Block at registration time. Scoped to known
+  //   families — non-family paths under ~/Sourcecode/ (e.g. ~/Sourcecode/misc/...)
+  //   are unaffected.
+  const sourcecodePrefix = `${home}${sep}Sourcecode${sep}`
+  if (canonicalRoot.startsWith(sourcecodePrefix)) {
+    const rel = canonicalRoot.slice(sourcecodePrefix.length)
+    const parts = rel.split(sep).filter((p) => p.length > 0)
+    const knownFamilies = new Set(['agenticapps', 'factiv', 'neuroflash'])
+    if (parts.length > 2 && knownFamilies.has(parts[0]!)) {
+      throw new RegistrationPathBlocked(canonicalRoot, 'sourcecode-family-subdir')
+    }
+  }
 }
 
 export function ensureRegistryFile(filePath: string = REGISTRY_FILE): void {
