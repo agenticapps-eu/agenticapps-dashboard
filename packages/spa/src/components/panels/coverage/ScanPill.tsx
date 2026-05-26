@@ -60,6 +60,32 @@ export function ScanPill({ scope, target, canScan, installed }: ScanPillProps) {
   const scan = useGitnexusScan()
   const progress = useGitnexusScanProgress(scanId)
 
+  // D-13-EXT-14 (Codex WARNING #4) — Terminal cleanup on poll ERROR.
+  //
+  // If the daemon disappears mid-poll (5xx, SCAN_NOT_FOUND after TTL eviction,
+  // network drop), useGitnexusScanProgress lands in isError state with
+  // data: undefined. The success-path effect below doesn't fire because
+  // progress.data is falsy; without this branch the pill stays on
+  // 'Scanning…' until the row remounts.
+  useEffect(() => {
+    if (!progress.isError) return
+    const code = (progress.error as { code?: string } | undefined)?.code ?? 'SCAN_NOT_FOUND'
+    let cancelled = false
+    ;(async () => {
+      // Best-effort: refetch coverage so any partial work surfaces. Swallow
+      // any refetch error — we still need to clear scanId regardless.
+      try { await qc.refetchQueries({ queryKey: ['coverage'] }) } catch { /* ignore */ }
+      if (cancelled) return
+      toast.show({
+        variant: 'error',
+        message: `Indexing failed: ${scanErrorCodeToMessage(code as never)}`,
+      })
+      setScanId(null)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress.isError])
+
   // Terminal state handler: AWAIT coverage refetch so the row's gitNexus state
   // updates BEFORE we clear scanId (D-13-EXT-08 UAT follow-up, 2026-05-25). If we
   // cleared scanId before the refetch landed, isPending would flip false and

@@ -230,3 +230,47 @@ describe('ScanPill — interaction and scan lifecycle (D-13-08, D-13-09)', () =>
     expect(screen.getByRole('button').textContent).toContain('Scan')
   })
 })
+
+// ── D-13-EXT-14: terminal cleanup on poll error (Codex WARNING #4) ────────────
+
+describe('ScanPill — D-13-EXT-14 terminal cleanup on poll error (Codex WARNING #4)', () => {
+  it('returns to the idle Scan button when the progress query errors mid-poll', async () => {
+    // Mutation resolves with a scanId. Progress query then immediately errors
+    // (e.g. daemon dies, SCAN_NOT_FOUND after TTL eviction, 5xx).
+    const localMutateAsync = vi.fn().mockResolvedValue({ ok: true, scanId: 'test-scan-id' })
+    mockUseGitnexusScan.mockReturnValue({
+      mutateAsync: localMutateAsync,
+      isPending: false,
+    })
+    mockUseGitnexusScanProgress.mockReturnValue({
+      data: undefined,
+      isError: true,
+      error: Object.assign(new Error('SCAN_NOT_FOUND'), { code: 'SCAN_NOT_FOUND' }),
+      isFetching: false,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const { Wrapper } = makeWrapper()
+    render(
+      React.createElement(Wrapper, null,
+        React.createElement(ScanPill, {
+          scope: 'repo',
+          target: 'agenticapps/dashboard',
+          canScan: true,
+          installed: true,
+        }),
+      ),
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+    // Yield twice so React's mutation-set-state + error-effect both flush.
+    await new Promise((r) => setTimeout(r, 0))
+    await new Promise((r) => setTimeout(r, 0))
+
+    // After the click, scanId was set → 'Scanning…' would render WITHOUT the
+    // error-branch effect. The new effect resets scanId on isError so the pill
+    // returns to the idle Scan button.
+    expect(screen.getByRole('button').textContent).toContain('Scan')
+    expect(screen.queryByText(/Scanning/)).toBeNull()
+  })
+})
