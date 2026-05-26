@@ -93,6 +93,27 @@ export function untrackInflightScan(sp: ExecaResultPromise): void {
 }
 
 /**
+ * D-13-EXT-16 — Standard onSubprocess factory used by every spawnGitNexusAnalyze
+ * caller (scan jobs in _doSpawnAndSettle, coverage refresh in routes/coverage.ts).
+ *
+ * Tracks the subprocess so disposeAllInflightScans() can SIGTERM it on daemon
+ * shutdown, and untracks it on settle.
+ *
+ * `sp` is awaited TWICE: once inside spawnGitNexusAnalyze (the primary await —
+ * its result is mapped to SpawnResult and returned to the caller) and once
+ * here via `sp.finally(...)` purely so we can untrack on settle. The tracking-
+ * chain is a parallel observer; its `.catch(() => {})` swallows the rejection
+ * only to suppress an unhandled-rejection report on the secondary chain. The
+ * error is still observed (and surfaced) by the primary await — nothing is lost.
+ */
+export function makeTrackingOnSubprocess(): (sp: ExecaResultPromise) => void {
+  return (sp) => {
+    trackInflightScan(sp)
+    sp.finally(() => untrackInflightScan(sp)).catch(() => { /* swallowed */ })
+  }
+}
+
+/**
  * D-13-EXT-13 — Cancel every in-flight gitnexus child process. Called by the
  * shutdown disposer registered in server/boot.ts. SIGTERMs each tracked
  * subprocess; a 2s timer escalates to SIGKILL if the child has not exited.
@@ -374,21 +395,10 @@ async function _doSpawnAndSettle(
 ): Promise<void> {
   let updated: RepoScanJob
   try {
-    // D-13-EXT-13 — Track the subprocess so disposeAllInflightScans() can
-    // SIGTERM it on daemon shutdown. The callback fires synchronously when
-    // the child is spawned (before await).
-    //
-    // `sp` is awaited TWICE: once inside spawnGitNexusAnalyze (the primary
-    // await — its result is mapped to SpawnResult and returned), and once
-    // here via `sp.finally(...)` purely so we can untrack on settle. The
-    // tracking-chain await is a parallel observer; its `.catch(() => {})`
-    // swallows the rejection so it does not surface as an unhandled
-    // promise rejection. The error is still observed (and surfaced) by
-    // the primary await in spawnGitNexusAnalyze — nothing is lost.
-    const onSubprocess = (sp: ExecaResultPromise): void => {
-      trackInflightScan(sp)
-      sp.finally(() => untrackInflightScan(sp)).catch(() => { /* swallowed */ })
-    }
+    // D-13-EXT-13 / D-13-EXT-16 — Track the subprocess so
+    // disposeAllInflightScans() can SIGTERM it on daemon shutdown.
+    // See makeTrackingOnSubprocess() for the dual-await contract.
+    const onSubprocess = makeTrackingOnSubprocess()
 
     const spawnFn =
       _gitnexusBinOverride !== null
