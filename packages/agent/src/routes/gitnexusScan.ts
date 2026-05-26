@@ -27,7 +27,6 @@ import {
 import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { startScan, getScanJob } from '../lib/gitnexusScan.js'
 import { startFamilyScan } from '../lib/gitnexusFamilyScan.js'
-import { readRegistry } from '../lib/registry.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
 
@@ -37,6 +36,18 @@ export const gitnexusScanRoute = new Hono<Env>()
 
 gitnexusScanRoute.post(
   '/scan',
+  // D-13-EXT-15 (Codex INFO #2) — Bind-mode gate runs BEFORE zValidator so a
+  // non-loopback caller never pays the Zod parse cost on malformed JSON.
+  // Defence-in-depth: SPA also gates via `canScan` to prevent the click; this
+  // middleware is the wire-level enforcement (T-13-02-02).
+  async (c, next) => {
+    const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
+    const bindMode = c.get('bindMode')
+    if (bindMode !== 'loopback') {
+      return c.json({ ok: false, error: 'BIND_REFUSED', requestId }, 403)
+    }
+    await next()
+  },
   // Zod validation with custom result hook for 422 INVALID_REQUEST
   // Note: the validator callback context is untyped w.r.t. Variables, so we
   // cast via unknown to read requestId without a TS2769 "never" error.
@@ -49,15 +60,8 @@ gitnexusScanRoute.post(
   }),
   async (c) => {
     const requestId = (c.get('requestId') as string | undefined) ?? 'unknown'
-    const bindMode = c.get('bindMode')
 
-    // 1. bindMode refusal FIRST (D-13-11 / T-13-02-02)
-    //    Returned before rate-limit and before body parse to minimise attack surface.
-    if (bindMode !== 'loopback') {
-      return c.json({ ok: false, error: 'BIND_REFUSED', requestId }, 403)
-    }
-
-    // 2. Rate limit (Phase 12 reuse — 10/10s per token-hash)
+    // 1. Rate limit (Phase 12 reuse — 10/10s per token-hash)
     const token = c.req.header('Authorization')?.slice('Bearer '.length).trim() ?? ''
     const rl = rlConsume(tokenHashOf(token))
     if (!rl.allowed) {
@@ -68,10 +72,10 @@ gitnexusScanRoute.post(
       )
     }
 
-    // 3. Body already parsed by zValidator — c.req.valid('json') returns the validated body
+    // 2. Body already parsed by zValidator — c.req.valid('json') returns the validated body
     const body = c.req.valid('json')  // GitnexusScanRequest
 
-    // 4. Dispatch to per-repo or family scan
+    // 3. Dispatch to per-repo or family scan
     const scanId = randomUUID()
     // Use the registryFile override from context (set by createApp for isolated tests)
     const registryFile = c.get('registryFile') as string | undefined
@@ -82,17 +86,13 @@ gitnexusScanRoute.post(
     if (body.scope === 'repo') {
       result = await startScan(scanId, body, scanOpts)
     } else {
-      // scope === 'family' — D-13-02 short-poll: synchronous register + fire-and-forget body.
-      // Mirrors per-repo startScan fire-and-forget at gitnexusScan.ts:154-186.
-      // Gap 2 closure: previous `await` blocked the POST for the entire sequential
-      // per-repo loop, breaking the SPA's polling pipeline (see 13-UAT.md Test 5).
-      // startFamilyScan is now synchronous — it registers the family job + voids
-      // the body internally, so the response returns within milliseconds.
-      const reg = readRegistry(registryFile)
+      // scope === 'family' — D-13-EXT-09: startFamilyScan walks the FS, not
+      // the registry. The third arg is a positional-compat shim retained for
+      // one release; the value is ignored.
       result = startFamilyScan(
         scanId,
         body.target as 'agenticapps' | 'factiv' | 'neuroflash',
-        { entries: reg.projects },
+        { entries: [] },
         scanOpts,
       )
     }

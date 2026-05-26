@@ -195,6 +195,25 @@ describe('POST /api/gitnexus/scan', () => {
     expect(startScan).not.toHaveBeenCalled()
   })
 
+  it("D-13-EXT-15: returns 403 BIND_REFUSED on tailscale even with malformed JSON body (Codex INFO #2)", async () => {
+    // Pre-fix: zValidator runs before the bindMode check, so malformed JSON
+    // returns 422 INVALID_REQUEST. Post-fix: bindMode middleware runs first
+    // and 403s before parse work. Defence-in-depth: non-loopback callers
+    // pay zero parse cost.
+    const ctx2 = makeApp('tailscale')
+    const res = await ctx2.app.request('http://localhost/api/gitnexus/scan', {
+      method: 'POST',
+      headers: authHeaders(ctx2.token),
+      body: '{not-valid-json',
+    })
+    ctx2.cleanup()
+
+    expect(res.status).toBe(403)
+    const body = await res.json() as Record<string, unknown>
+    expect(body.error).toBe('BIND_REFUSED')
+    expect(startScan).not.toHaveBeenCalled()
+  })
+
   it('returns 404 REPO_NOT_REGISTERED on unknown repoId (scope: repo)', async () => {
     vi.mocked(startScan).mockResolvedValue({ ok: false, code: 'REPO_NOT_REGISTERED' })
 
