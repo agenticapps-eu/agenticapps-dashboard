@@ -67,6 +67,12 @@ export const CoverageRowSchema = z.object({
   workflowVersion: CoverageWorkflowColumnSchema,
   overrideCount: z.number().int().nonnegative(),
   overrides: z.array(OverrideEntrySchema),
+  /** D-13-EXT-07 / D-13-EXT-10: is this repo's absolute path in the dashboard
+   *  project registry? Optional (D-13-EXT-10) — older daemons omit it and the
+   *  SPA must render gracefully without the field. Metadata only since
+   *  D-13-EXT-08 removed the render gate; not used to gate UI affordances.
+   *  Closes Codex WARNING #6. */
+  inRegistry: z.boolean().optional(),
   degraded: z
     .object({
       reason: z.string(), // e.g. "claudeMd scanner threw: ENOENT"

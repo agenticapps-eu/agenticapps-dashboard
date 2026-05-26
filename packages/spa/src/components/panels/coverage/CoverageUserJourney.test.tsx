@@ -69,6 +69,7 @@ function makeRow(
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: user-journey fixture default — tests not exercising the gate
     ...overrides,
   }
 }

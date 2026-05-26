@@ -107,3 +107,34 @@ describe('coverageSpawn — spawnGitNexusAnalyze behavior', () => {
     expect(['not-installed', 'error']).toContain((result as { kind: string }).kind)
   })
 })
+
+describe('coverageSpawn — D-13-10 spawn-helper lockstep', () => {
+  // I-2 (Stage-2 review): the shared `buildGitnexusIndexClipboardString` helper
+  // is the single source of truth for gitnexus argv. Locking the spawn source
+  // to the helper output prevents the silent divergence the reviewer flagged
+  // (helper shape shipped but both spawn sites hardcoded `['analyze']`).
+  it('coverageSpawn.ts AND gitnexusScan.ts both consume buildGitnexusIndexClipboardString().argv (no hardcoded argv literal in any execa call)', async () => {
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+    const url = await import('node:url')
+    const here = path.dirname(url.fileURLToPath(import.meta.url))
+    for (const file of ['coverageSpawn.ts', 'gitnexusScan.ts']) {
+      const src = await fs.readFile(path.join(here, file), 'utf8')
+      // The helper invocation must appear in the spawn body
+      expect(src, `${file}: helper invocation missing`).toMatch(
+        /buildGitnexusIndexClipboardString\(\)\.argv/,
+      )
+      // And the bare hardcoded literal must NOT appear in any execa call expression
+      expect(src, `${file}: hardcoded ['analyze'] argv in execa call`).not.toMatch(
+        /execa\(\s*\w+\s*,\s*\['analyze'\]/,
+      )
+    }
+  })
+
+  it("helper.argv currently equals ['analyze'] — drift gate for future changes", () => {
+    // If gitnexus invocation gains a flag (e.g. ['analyze', '--quiet']), this
+    // test fails AND the spawn sites pick up the new argv automatically because
+    // they consume the helper. Verifies single-source-of-truth contract.
+    expect(shared.buildGitnexusIndexClipboardString().argv).toEqual(['analyze'])
+  })
+})

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-05-20T05:28:05.991Z"
-last_activity: 2026-05-20 -- Phase 12 execution started
+stopped_at: Phase 13 context gathered
+last_updated: "2026-05-25T16:54:53.310Z"
+last_activity: 2026-05-25 -- Phase 13 execution started
 progress:
-  total_phases: 19
-  completed_phases: 8
-  total_plans: 51
-  completed_plans: 51
+  total_phases: 20
+  completed_phases: 9
+  total_plans: 58
+  completed_plans: 58
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 12 — observability-conformance-surface
+**Current focus:** Phase 13 — gitnexus-scoped-scan-actions-coverage-matrix
 
 ## Current Position
 
-Phase: 12 (observability-conformance-surface) — EXECUTING
+Phase: 13 (gitnexus-scoped-scan-actions-coverage-matrix) — EXECUTING
 Plan: 1 of 7
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Executing Phase 12
-Last activity: 2026-05-20 -- Phase 12 execution started
+Status: Executing Phase 13
+Last activity: 2026-05-25 -- Phase 13 execution started
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 
@@ -154,7 +154,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-19T16:17:00.795Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/DASH-12-observability-conformance-surface/12-CONTEXT.md
+Last session: 2026-05-24T09:41:36.060Z
+Stopped at: Phase 13 context gathered
+Resume file: .planning/phases/13-gitnexus-scoped-scan-actions-coverage-matrix/13-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).

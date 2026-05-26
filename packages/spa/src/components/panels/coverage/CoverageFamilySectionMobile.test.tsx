@@ -32,6 +32,35 @@ vi.mock('../../../lib/pairing.js', () => ({
   })),
 }))
 
+// Stage-2 I-3: mock ScanPill so mobile wiring tests assert prop forwarding +
+// mutual-exclusion with refresh button, without exercising scan mutation/poll.
+vi.mock('./ScanPill.js', () => ({
+  ScanPill: ({
+    scope,
+    target,
+    canScan,
+    installed,
+  }: {
+    scope: string
+    target: string
+    canScan: boolean
+    installed: boolean
+  }) => {
+    if (!installed) return null
+    return React.createElement(
+      'button',
+      {
+        'data-testid': 'scan-pill',
+        'data-scope': scope,
+        'data-target': target,
+        'data-can-scan': String(canScan),
+        disabled: !canScan || undefined,
+      },
+      'Scan',
+    )
+  },
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
@@ -94,6 +123,7 @@ function makeRow(
       overrideCount > 0
         ? [{ phaseSlug: 'phase-01', sinceIso: '2026-01-01', source: 'git-log' }]
         : [],
+    inRegistry: true, // D-13-EXT-07: mobile fixture default — tests not exercising the gate
   }
 }
 
@@ -353,5 +383,132 @@ describe('CoverageFamilySectionMobile', () => {
       ),
     )
     expect(screen.queryByRole('button', { name: /overridden/i })).toBeNull()
+  })
+})
+
+// ── Stage-2 I-3: ScanPill wiring on mobile ──────────────────────────────────
+
+describe('I-3: mobile ScanPill wiring (D-13-08 parity with desktop)', () => {
+  it("renders ScanPill (not refresh button) for state='missing' + gitnexusInstalled=true", () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'missing' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={true}
+        />,
+      ),
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-scope')).toBe('repo')
+    expect(pill.getAttribute('data-target')).toBe('agenticapps/repo-a')
+    expect(pill.getAttribute('data-can-scan')).toBe('true')
+    // Mutual exclusion: the legacy refresh button must NOT render alongside the pill
+    expect(screen.queryByRole('button', { name: /refresh.*repo-a/i })).toBeNull()
+  })
+
+  it("renders ScanPill (not refresh button) for state='not-applicable' + gitnexusInstalled=true", () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'not-applicable' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={true}
+        />,
+      ),
+    )
+    expect(screen.getByTestId('scan-pill')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /refresh.*repo-a/i })).toBeNull()
+  })
+
+  it("renders ScanPill disabled when canScan=false (Tailscale D-13-11b)", () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'missing' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={false}
+        />,
+      ),
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeDisabled()
+    expect(pill.getAttribute('data-can-scan')).toBe('false')
+  })
+
+  it("does NOT render ScanPill when gitnexusInstalled=false — legacy refresh button still renders", () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'missing' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="not-installed"
+          gitnexusInstalled={false}
+          gitnexusCanScan={false}
+        />,
+      ),
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByRole('button', { name: /refresh.*repo-a/i })).toBeTruthy()
+  })
+
+  it("does NOT render ScanPill for state='stale' — refresh button still renders (mirrors desktop popover-only for stale)", () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'stale' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={true}
+        />,
+      ),
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByRole('button', { name: /refresh.*repo-a/i })).toBeTruthy()
+  })
+
+  it("does NOT render ScanPill for state='fresh' — refresh button still renders", () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'fresh' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+          gitnexusInstalled={true}
+          gitnexusCanScan={true}
+        />,
+      ),
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByRole('button', { name: /refresh.*repo-a/i })).toBeTruthy()
+  })
+
+  it('omitting gitnexusInstalled/gitnexusCanScan defaults to false (no ScanPill, refresh button stays)', () => {
+    const rows = [makeRow('repo-a', { gitNexus: 'missing' })]
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByRole('button', { name: /refresh.*repo-a/i })).toBeTruthy()
   })
 })
