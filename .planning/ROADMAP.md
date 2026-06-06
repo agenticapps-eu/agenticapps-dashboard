@@ -413,6 +413,16 @@ Plans:
 - `/qa` walkthrough on `/coverage` + `/observability/skill-drift`
 - `/impeccable critique` on `/coverage` (post-fix re-run with drift badge + sticky header + opacity polish) AND `/observability/skill-drift` (first critique) → `11-IMPECCABLE.md` composite ≥ 87 floor (calibration data point #2 per D-10.5-03)
 
+### Phase 14: Understand-Anything integration: daemon-hosted knowledge-graph viewer + coverage status
+
+**Goal:** Clicking a project's "Knowledge graph" link opens the understand-anything viewer served by the daemon at `/understand/{projectId}/` (prebuilt static build of the plugin's dashboard SPA + its 6 data endpoints re-implemented in Hono with bearer auth over `.understand-anything/`), and the Coverage matrix shows per-repo understand-anything status (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand`. No daemon-triggered LLM scans this phase (analysis is LLM-driven; headless scan is a follow-up candidate).
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
 ---
 
 ### Phase 11.2: impeccable P2 polish bundle (INSERTED)
