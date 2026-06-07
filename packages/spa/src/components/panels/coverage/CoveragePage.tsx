@@ -113,6 +113,13 @@ export function CoveragePage(): React.JSX.Element {
   const gitnexusInstalled = health.data?.gitnexus?.installed ?? false
   const gitnexusCanScan = health.data?.gitnexus?.canScan ?? false
 
+  // Phase 14 review fix: suppress viewer URLs when /health positively reports
+  // the viewer as NOT installed (links would 503). When health is unavailable
+  // (loading/error — no data), do NOT suppress: unknown is treated as installed
+  // since the daemon route degrades gracefully with a 503 + install hint.
+  const understandViewerInstalled =
+    health.data === undefined ? true : health.data.understand?.viewerInstalled === true
+
   // Phase 14 D-14-03/06/07: build per-row understand viewer URLs from the scoped
   // viewerToken on each row (NOT the bearer token from getPairing).
   // Keyed by `${family}/${repo}` — matches refreshKey() convention.
@@ -121,7 +128,7 @@ export function CoveragePage(): React.JSX.Element {
   // When unpaired, the empty map is passed and every cell shows no link.
   const pairing = getPairing()
   const understandViewerUrls = useMemo((): Readonly<Record<string, string>> => {
-    if (!pairing) return {}
+    if (!pairing || !understandViewerInstalled) return {}
     const urls: Record<string, string> = {}
     for (const row of query.data?.rows ?? []) {
       const vt = row.understand?.viewerToken
@@ -131,7 +138,7 @@ export function CoveragePage(): React.JSX.Element {
     }
     return urls
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.data, pairing?.agentUrl])
+  }, [query.data, pairing?.agentUrl, understandViewerInstalled])
 
   const toast = useToast()
   // URL state (strict:false — /coverage route may not have validateSearch yet; Plan 07 wires it)

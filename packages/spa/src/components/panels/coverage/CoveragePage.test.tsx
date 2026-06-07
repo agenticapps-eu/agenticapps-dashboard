@@ -32,9 +32,22 @@ vi.mock('../../../lib/coverageQueries.js', () => ({
 
 // Mock useHealth — Phase 13 D-13-08: CoveragePage now calls useHealth to get
 // gitnexus.{installed,canScan} for ScanPill props. Default: not installed.
+// Phase 14 review fix: viewer links are gated on understand.viewerInstalled —
+// default mock reports the viewer as installed so link tests exercise the
+// happy path.
 vi.mock('../../../lib/healthQueries.js', () => ({
   useHealth: vi.fn(() => ({
-    data: { ok: true, version: '1.0.0', gitnexus: { installed: false, canScan: false } },
+    data: {
+      ok: true,
+      version: '1.0.0',
+      gitnexus: { installed: false, canScan: false },
+      understand: {
+        viewerInstalled: true,
+        viewerVersion: '2.7.6',
+        pluginVersion: '2.7.6',
+        updateAvailable: false,
+      },
+    },
     isPending: false,
     isError: false,
     error: null,
@@ -58,6 +71,7 @@ vi.mock('../../../lib/pairing.js', () => ({
 }))
 
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
+import { useHealth } from '../../../lib/healthQueries.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { getPairing } from '../../../lib/pairing.js'
 import { CoveragePage } from './CoveragePage.js'
@@ -1055,5 +1069,69 @@ describe('Phase 14 D-14-03: CoveragePage builds viewer URLs from row viewerToken
     for (const link of understandLinks) {
       expect((link as HTMLAnchorElement).href).not.toContain(BEARER_TOKEN)
     }
+  })
+
+  // ── Phase 14 review fix: viewer links gated on health.understand.viewerInstalled ──
+
+  function setupRowsWithTokens() {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows: [makeRowWithUnderstand('agenticapps', 'claude-workflow', 'v1.abc.def')],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+  }
+
+  it('Test 4: health reports viewerInstalled=false → viewer links suppressed (no 503 dead links)', () => {
+    setupRowsWithTokens()
+    vi.mocked(useHealth).mockReturnValueOnce({
+      data: {
+        ok: true,
+        version: '1.0.0',
+        gitnexus: { installed: false, canScan: false },
+        understand: {
+          viewerInstalled: false,
+          viewerVersion: null,
+          pluginVersion: '2.7.6',
+          updateAvailable: false,
+        },
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    } as ReturnType<typeof useHealth>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    const understandLinks = Array.from(container.querySelectorAll('a[href]')).filter((a) =>
+      (a as HTMLAnchorElement).href.includes('/understand/'),
+    )
+    expect(understandLinks.length).toBe(0)
+  })
+
+  it('Test 5: health unavailable (error, no data) → links NOT suppressed (unknown treated as installed)', () => {
+    setupRowsWithTokens()
+    vi.mocked(useHealth).mockReturnValueOnce({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new Error('daemon unreachable'),
+    } as ReturnType<typeof useHealth>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    // Unknown install state must not strip links — the daemon route 503s
+    // gracefully if the viewer is truly missing.
+    const understandLinks = Array.from(container.querySelectorAll('a[href]')).filter((a) =>
+      (a as HTMLAnchorElement).href.includes('/understand/'),
+    )
+    expect(understandLinks.length).toBe(1)
   })
 })
