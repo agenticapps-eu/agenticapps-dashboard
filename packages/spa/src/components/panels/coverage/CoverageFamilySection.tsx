@@ -70,6 +70,12 @@ export interface CoverageFamilySectionProps {
    */
   gitnexusInstalled?: boolean
   gitnexusCanScan?: boolean
+  /**
+   * Phase 14 D-14-03/06/07: per-row understand viewer URLs, keyed by `${family}/${repo}`.
+   * Built by CoveragePage from `agentUrl/understand/{family}/{repo}/?token={viewerToken}`.
+   * Absent for pre-Phase-14 daemons or when pairing is missing.
+   */
+  understandViewerUrls?: Readonly<Record<string, string>>
 }
 
 // UI-SPEC §5: localStorage key format (locked)
@@ -117,6 +123,7 @@ export function CoverageFamilySection({
   inFlightRefreshes,
   gitnexusInstalled = false,
   gitnexusCanScan = false,
+  understandViewerUrls,
 }: CoverageFamilySectionProps): React.JSX.Element {
   // Phase 12 Plan 12-05 (D-12-23 + D-12-24): viewport branch — at xs (<640px
   // Tailwind 4) render the card-per-row sibling; otherwise the desktop
@@ -167,6 +174,7 @@ export function CoverageFamilySection({
         gitnexusCanScan={gitnexusCanScan}
         {...(onRefresh !== undefined ? { onRefresh } : {})}
         {...(inFlightRefreshes !== undefined ? { inFlightRefreshes } : {})}
+        {...(understandViewerUrls !== undefined ? { understandViewerUrls } : {})}
       />
     )
   }
@@ -253,6 +261,7 @@ export function CoverageFamilySection({
               <col className={COVERAGE_COL_WIDTHS.gitNexus} />
               <col className={COVERAGE_COL_WIDTHS.wiki} />
               <col className={COVERAGE_COL_WIDTHS.workflow} />
+              <col className={COVERAGE_COL_WIDTHS.understand} />
               <col className={COVERAGE_COL_WIDTHS.actions} />
             </colgroup>
             <thead>
@@ -262,6 +271,7 @@ export function CoverageFamilySection({
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.gitNexus}>GitNexus</Tooltip></th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.wiki}>Wiki</Tooltip></th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.workflowVersion}>Workflow</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.understand}>Understand</Tooltip></th>
                 <th scope="col" className={`sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg pl-2 py-2 ${COVERAGE_COL_WIDTHS.actions}`}>
                   <span className="sr-only">Actions</span>
                 </th>
@@ -270,6 +280,7 @@ export function CoverageFamilySection({
             <tbody className="divide-y divide-border-subtle">
               {rows.map((row) => {
                 const pending = !!inFlightRefreshes?.has(refreshKey(row.family, row.repo))
+                const repoKey = `${row.family}/${row.repo}`
                 return (
                   <CoverageRow
                     key={`${row.family}-${row.repo}`}
@@ -277,6 +288,7 @@ export function CoverageFamilySection({
                     pending={pending}
                     gitnexusInstalled={gitnexusInstalled}
                     gitnexusCanScan={gitnexusCanScan}
+                    {...(understandViewerUrls?.[repoKey] !== undefined ? { understandViewerUrl: understandViewerUrls[repoKey] } : {})}
                     {...(onRefresh !== undefined ? { onRefresh } : {})}
                   />
                 )

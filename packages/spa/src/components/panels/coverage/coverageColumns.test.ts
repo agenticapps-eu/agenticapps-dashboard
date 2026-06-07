@@ -11,14 +11,15 @@ import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 const COVERAGE_DIR = resolve(__dirname)
 
 describe('COVERAGE_COL_WIDTHS', () => {
-  it('has exactly 6 keys: repo, claudeMd, gitNexus, wiki, workflow, actions', () => {
+  it('has exactly 7 keys: repo, claudeMd, gitNexus, wiki, workflow, understand, actions', () => {
     const keys = Object.keys(COVERAGE_COL_WIDTHS)
-    expect(keys).toHaveLength(6)
+    expect(keys).toHaveLength(7)
     expect(keys).toContain('repo')
     expect(keys).toContain('claudeMd')
     expect(keys).toContain('gitNexus')
     expect(keys).toContain('wiki')
     expect(keys).toContain('workflow')
+    expect(keys).toContain('understand')
     expect(keys).toContain('actions')
   })
 
@@ -53,6 +54,11 @@ describe('COVERAGE_COL_WIDTHS', () => {
   // Plan 03 (D-11.2-09): wiki tightening
   it('wiki column width is w-72 (288px) — tightened from w-[22rem] per D-11.2-09', () => {
     expect(COVERAGE_COL_WIDTHS.wiki).toBe('w-72')
+  })
+
+  // Phase 14 (D-14-06): understand column — same density as gitNexus (link + pill)
+  it('understand column width is w-36 (144px) — matches gitNexus density (viewer link + copy pill)', () => {
+    expect(COVERAGE_COL_WIDTHS.understand).toBe('w-36')
   })
 })
 

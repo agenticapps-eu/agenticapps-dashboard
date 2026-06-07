@@ -9,6 +9,9 @@ export const COVERAGE_COL_WIDTHS = Object.freeze({
   //   Matches repo column (w-72) for visual rhythm. Net table delta vs Plan 02: −64px.
   wiki:     'w-72',       // 288px — sha + timestamp (max measured 150)
   workflow: 'w-32',       // 128px
+  // Phase 14 — same density as gitNexus: link + pill (D-11.2-10-style comment).
+  //   w-36 (144px) matches gitNexus column — same content: a link + copy pill pair.
+  understand: 'w-36',    // 144px — viewer link + /understand copy pill
   // PD-11.2-02: w-8 (32px) → w-12 (48px) — D-11.2-12, Apple HIG 44px touch target.
   //   Button is min-w-[44px] min-h-[44px] + p-[15px] in CoverageRow.tsx;
   //   48px col = 44px button + 4px breathing room. Net table delta with Plan 03: −48px.

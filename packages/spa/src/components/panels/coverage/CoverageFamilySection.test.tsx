@@ -329,7 +329,7 @@ describe('CoverageFamilySection sticky stack consumes --ph-h (IMP-02)', () => {
 })
 
 describe('column-width lock (IMP-01)', () => {
-  it('renders <colgroup> with 6 <col> elements consuming COVERAGE_COL_WIDTHS', () => {
+  it('renders <colgroup> with 7 <col> elements consuming COVERAGE_COL_WIDTHS (Phase 14: understand added)', () => {
     const fixture: CoverageRowData[] = [
       makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
       makeRow('repo-b', { claudeMd: 'stale', gitNexus: 'missing', wiki: 'fresh', workflow: 'fresh' }),
@@ -344,13 +344,14 @@ describe('column-width lock (IMP-01)', () => {
       ),
     )
     const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(6)
+    expect(cols).toHaveLength(7)
     expect(cols[0]?.className).toBe(COVERAGE_COL_WIDTHS.repo)
     expect(cols[1]?.className).toBe(COVERAGE_COL_WIDTHS.claudeMd)
     expect(cols[2]?.className).toBe(COVERAGE_COL_WIDTHS.gitNexus)
     expect(cols[3]?.className).toBe(COVERAGE_COL_WIDTHS.wiki)
     expect(cols[4]?.className).toBe(COVERAGE_COL_WIDTHS.workflow)
-    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
+    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.understand)
+    expect(cols[6]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
   })
 
   it('marks <table> as table-fixed', () => {
@@ -447,13 +448,14 @@ describe('column-header tooltips', () => {
     expect(screen.getByText('Installed version of `agenticapps-workflow`. Compared against the current scaffolder release.')).toBeInTheDocument()
   })
 
-  it('the Repo and Actions <th> elements do NOT render tooltips — only 4 tooltips total', () => {
+  it('the Repo and Actions <th> elements do NOT render tooltips — 5 tooltips total (Phase 14 adds Understand)', () => {
     render(
       withQC(
         <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
       ),
     )
-    expect(screen.queryAllByRole('tooltip')).toHaveLength(4)
+    // 5: claudeMd, gitNexus, wiki, workflowVersion, understand
+    expect(screen.queryAllByRole('tooltip')).toHaveLength(5)
   })
 })
 
@@ -526,7 +528,7 @@ describe('CoverageFamilySection viewport branching (12-05)', () => {
     expect(container.querySelector('table')).not.toBeNull()
   })
 
-  it('renders <colgroup> in desktop branch (Phase 11.1 IMP-01 regression — re-confirmed under viewport branch)', () => {
+  it('renders <colgroup> in desktop branch (Phase 11.1 IMP-01 regression — re-confirmed under viewport branch, 7 cols after Phase 14)', () => {
     installMatchMedia(
       (q) =>
         q === '(min-width: 1024px)' ||
@@ -543,7 +545,7 @@ describe('CoverageFamilySection viewport branching (12-05)', () => {
       ),
     )
     const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(6)
+    expect(cols).toHaveLength(7)
   })
 
   it('renders mobile card layout when matchMedia mock forces xs (no min-width queries match)', () => {
@@ -794,5 +796,52 @@ describe('Phase 13 per-family ScanPill in header bar (D-13-08, D-13-11b)', () =>
     const pill = screen.getByTestId('scan-pill')
     expect(pill.getAttribute('data-scope')).toBe('family')
     expect(pill.getAttribute('data-target')).toBe('factiv')
+  })
+})
+
+// ── Phase 14 D-14-06: understand column in desktop table ────────────────────
+
+describe('Phase 14 — understand column in desktop CoverageFamilySection (D-14-06)', () => {
+  // Test 4: desktop section renders the new <col> + <th> with Tooltip-wrapped "Understand" header
+  it('Test-4: desktop section renders <col> for understand column in colgroup (7 total)', () => {
+    const { container } = render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const cols = container.querySelectorAll('colgroup > col')
+    expect(cols).toHaveLength(7)
+  })
+
+  it('Test-4b: desktop section renders Understand <th> header visible in thead', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    // The Understand column header (tooltip content also contains the tooltip text)
+    expect(screen.getByText('Understand-anything knowledge graph. Built by `/understand`; stored under `<repo>/.understand-anything/`.')).toBeInTheDocument()
+  })
+
+  it('Test-4c: Understand <th> tooltip uses coverageColumnTooltips.understand SoT copy', () => {
+    render(
+      withQC(
+        <CoverageFamilySection
+          family="agenticapps"
+          rows={[makeRow('repo-a')]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    // 5 tooltips total now (claudeMd + gitNexus + wiki + workflowVersion + understand)
+    expect(screen.queryAllByRole('tooltip')).toHaveLength(5)
   })
 })

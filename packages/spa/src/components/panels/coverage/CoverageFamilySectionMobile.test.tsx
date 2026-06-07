@@ -512,3 +512,69 @@ describe('I-3: mobile ScanPill wiring (D-13-08 parity with desktop)', () => {
     expect(screen.getByRole('button', { name: /refresh.*repo-a/i })).toBeTruthy()
   })
 })
+
+// ── Phase 14 D-14-06: understand column in mobile card layout ───────────────
+
+// Mock UnderstandCopyPill for mobile wiring test (same pattern as CoverageRow.test.tsx)
+vi.mock('./UnderstandCopyPill.js', () => ({
+  UnderstandCopyPill: ({
+    state,
+    viewerUrl,
+    repo,
+  }: {
+    family: string
+    repo: string
+    viewerUrl?: string
+    state: string
+  }) =>
+    React.createElement(
+      'div',
+      {
+        'data-testid': 'understand-pill',
+        'data-state': state,
+        'data-viewer-url': viewerUrl ?? '',
+        'data-repo': repo,
+      },
+      state,
+    ),
+}))
+
+describe('Phase 14 — understand cell in mobile card layout (D-14-06 Test-5)', () => {
+  it('Test-5: mobile card renders understand cell with UnderstandCopyPill for understand.state=missing', () => {
+    const rows = [makeRow('repo-a', {}, 0)]
+    // Add understand field to the row. Object.assign preserves required field types
+    // so exactOptionalPropertyTypes is satisfied (spread widens required fields to optional).
+    const rowWithUnderstand: CoverageRowData = Object.assign({}, rows[0], {
+      understand: { kind: 'basic' as const, state: 'missing' as const },
+    })
+    render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={[rowWithUnderstand]}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    const pill = screen.getByTestId('understand-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-state')).toBe('missing')
+  })
+
+  it('Test-5b: mobile card renders em-dash for understand=undefined (back-compat)', () => {
+    const rows = [makeRow('repo-a', {}, 0)]
+    const { container } = render(
+      withQC(
+        <CoverageFamilySectionMobile
+          family="agenticapps"
+          rows={rows}
+          gitNexusInstallState="installed-with-registry"
+        />,
+      ),
+    )
+    // No understand pill should render when field is absent
+    expect(screen.queryByTestId('understand-pill')).toBeNull()
+    // em-dash placeholder visible
+    expect(container.innerHTML).toContain('—')
+  })
+})
