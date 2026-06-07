@@ -54,6 +54,8 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
     const result = spawnSync('node', [cliBundle, '--help'], { encoding: 'utf8' })
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('install-understand-viewer')
-    expect(result.stdout).toContain('Build and install the understand-anything viewer from the plugin cache')
+    // Commander may wrap the description across lines — normalise whitespace before asserting
+    const normalised = result.stdout.replace(/\s+/g, ' ')
+    expect(normalised).toContain('Build and install the understand-anything viewer from the plugin cache')
   })
 })
