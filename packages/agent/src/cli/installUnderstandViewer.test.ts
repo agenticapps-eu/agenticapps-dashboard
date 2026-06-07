@@ -10,6 +10,8 @@
  *   5. Dashboard build invoked with vite build + --base=./ args; non-zero exit → error + exit 1
  *   6. Post-build base verification: /assets/ in index.html → fail; ./assets/ → proceed
  *   7. Happy path: copies dist/ to UNDERSTAND_VIEWER_DIR/<version>/ + prints target + restart hint
+ *
+ * Seam: _seams.exec(cmd, args, opts?) mirrors execFile argv-array style (T-14-07-03).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -35,7 +37,7 @@ function makeTmpDir(): string {
 
 /**
  * Build a minimal fake plugin cache dir with a single semver version.
- * Returns { cacheDir, versionDir, coreDir, dashboardDir }.
+ * Returns { cacheDir, versionDir, coreDir, dashboardDir, dashboardDistDir }.
  */
 function makeFakeCache(root: string, version = '2.7.6') {
   const cacheDir = join(root, 'understand-anything', 'understand-anything')
@@ -58,7 +60,7 @@ describe('runInstallUnderstandViewer', () => {
     targetDir = join(tmpRoot, 'understand-viewer')
     mkdirSync(targetDir, { recursive: true })
 
-    // Save and override the seams for the test
+    // Save original seams for restoration
     originalSeams = { ..._seams }
   })
 
@@ -129,7 +131,7 @@ describe('runInstallUnderstandViewer', () => {
     })
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    // exec spy: first call (pnpm --version) throws → pnpm missing
+    // exec spy: first call (pnpm ['--version']) throws → pnpm missing
     const execSpy = vi.fn().mockRejectedValue(new Error('pnpm not found'))
 
     _seams.exec = execSpy
@@ -144,8 +146,9 @@ describe('runInstallUnderstandViewer', () => {
     expect(exitSpy).toHaveBeenCalledWith(1)
     // Only the pnpm probe call should have happened
     expect(execSpy).toHaveBeenCalledTimes(1)
-    expect(execSpy.mock.calls[0]![0]).toContain('pnpm')
-    expect(execSpy.mock.calls[0]![0]).toContain('--version')
+    // First arg is 'pnpm', second is ['--version'] array
+    expect(execSpy.mock.calls[0]![0]).toBe('pnpm')
+    expect(execSpy.mock.calls[0]![1]).toContain('--version')
   })
 
   // ── Test 4a: Core dist absent → core build invoked ───────────────────────────
@@ -156,9 +159,6 @@ describe('runInstallUnderstandViewer', () => {
     // Create fake dashboard dist with relative assets
     mkdirSync(dashboardDistDir, { recursive: true })
     writeFileSync(join(dashboardDistDir, 'index.html'), '<script src="./assets/index.js"></script>')
-    // Create target viewer dir
-    const versionViewerDir = join(targetDir, '2.7.6')
-    mkdirSync(versionViewerDir, { recursive: true })
 
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code?: string | number | null | undefined) => {
       throw new Error('process.exit called')
@@ -166,12 +166,12 @@ describe('runInstallUnderstandViewer', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const execCalls: Array<{ cmd: string; cwd?: string }> = []
-    const execSpy = vi.fn().mockImplementation((cmd: string, opts?: { cwd?: string }) => {
-      execCalls.push({ cmd, cwd: opts?.cwd })
+    // Track calls as { cmd, args, cwd }
+    const execCalls: Array<{ cmd: string; args: string[]; cwd: string | undefined }> = []
+    const execSpy = vi.fn().mockImplementation((cmd: string, args: string[], opts?: { cwd?: string }) => {
+      execCalls.push({ cmd, args, cwd: opts?.cwd })
       return Promise.resolve({ stdout: '', stderr: '' })
     })
-    // cpSync seam — no-op, we won't reach it if we fake dist
     const cpSyncSpy = vi.fn()
 
     _seams.exec = execSpy
@@ -183,17 +183,27 @@ describe('runInstallUnderstandViewer', () => {
     await runInstallUnderstandViewer()
 
     // pnpm --version probe
-    expect(execCalls[0]!.cmd).toContain('--version')
+    expect(execCalls[0]!.cmd).toBe('pnpm')
+    expect(execCalls[0]!.args).toContain('--version')
+
     // pnpm install in core (because node_modules absent)
-    const coreInstallCall = execCalls.find((c) => c.cwd === coreDir && c.cmd.includes('install') && !c.cmd.includes('--version'))
+    const coreInstallCall = execCalls.find(
+      (c) => c.cwd === coreDir && c.args.includes('install'),
+    )
     expect(coreInstallCall).toBeDefined()
+
     // pnpm build in core
-    const coreBuildCall = execCalls.find((c) => c.cwd === coreDir && c.cmd.includes('build'))
+    const coreBuildCall = execCalls.find(
+      (c) => c.cwd === coreDir && c.args.includes('build') && !c.args.includes('install'),
+    )
     expect(coreBuildCall).toBeDefined()
+
     // pnpm vite build --base=./ in dashboard
-    const dashBuildCall = execCalls.find((c) => c.cwd === dashboardDir && c.cmd.includes('vite') && c.cmd.includes('build'))
+    const dashBuildCall = execCalls.find(
+      (c) => c.cwd === dashboardDir && c.args.includes('vite') && c.args.includes('build'),
+    )
     expect(dashBuildCall).toBeDefined()
-    expect(dashBuildCall!.cmd).toContain('--base=./')
+    expect(dashBuildCall!.args).toContain('--base=./')
 
     // Verify order: core install before core build before dashboard build
     const coreInstallIdx = execCalls.indexOf(coreInstallCall!)
@@ -217,9 +227,9 @@ describe('runInstallUnderstandViewer', () => {
 
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    const execCalls: Array<{ cmd: string; cwd?: string }> = []
-    const execSpy = vi.fn().mockImplementation((cmd: string, opts?: { cwd?: string }) => {
-      execCalls.push({ cmd, cwd: opts?.cwd })
+    const execCalls: Array<{ cmd: string; args: string[]; cwd: string | undefined }> = []
+    const execSpy = vi.fn().mockImplementation((cmd: string, args: string[], opts?: { cwd?: string }) => {
+      execCalls.push({ cmd, args, cwd: opts?.cwd })
       return Promise.resolve({ stdout: '', stderr: '' })
     })
     const cpSyncSpy = vi.fn()
@@ -235,7 +245,7 @@ describe('runInstallUnderstandViewer', () => {
     const coreExecCalls = execCalls.filter((c) => c.cwd === coreDir)
     expect(coreExecCalls).toHaveLength(0)
     // Should still call dashboard build
-    const dashBuildCall = execCalls.find((c) => c.cwd === dashboardDir && c.cmd.includes('vite'))
+    const dashBuildCall = execCalls.find((c) => c.cwd === dashboardDir && c.args.includes('vite'))
     expect(dashBuildCall).toBeDefined()
   })
 
@@ -259,7 +269,7 @@ describe('runInstallUnderstandViewer', () => {
     })
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const execSpy = vi.fn().mockImplementation((cmd: string, opts?: { cwd?: string }) => {
+    const execSpy = vi.fn().mockImplementation((cmd: string, args: string[], opts?: { cwd?: string }) => {
       if (opts?.cwd === dashboardDir) {
         return Promise.reject(new Error('Build failed: exit code 1'))
       }
@@ -280,12 +290,12 @@ describe('runInstallUnderstandViewer', () => {
   // ── Test 6: Post-build base verification ─────────────────────────────────────
 
   it('Test 6a: dist/index.html has root-absolute /assets/ refs → fail with --base=./ message', async () => {
-    const { cacheDir, dashboardDir, dashboardDistDir } = makeFakeCache(tmpRoot)
+    const { cacheDir, dashboardDistDir } = makeFakeCache(tmpRoot)
     // core dist present
     const coreDistDir = join(cacheDir, '2.7.6', 'packages', 'core', 'dist')
     mkdirSync(coreDistDir, { recursive: true })
     writeFileSync(join(coreDistDir, 'schema.js'), '')
-    // dashboard dist has root-absolute refs (the bad case)
+    // dashboard dist has root-absolute refs (the bad case — base=./ was ignored)
     mkdirSync(dashboardDistDir, { recursive: true })
     writeFileSync(
       join(dashboardDistDir, 'index.html'),
@@ -351,7 +361,7 @@ describe('runInstallUnderstandViewer', () => {
     const coreDistDir = join(cacheDir, '2.7.6', 'packages', 'core', 'dist')
     mkdirSync(coreDistDir, { recursive: true })
     writeFileSync(join(coreDistDir, 'schema.js'), '')
-    // dashboard dist with relative refs
+    // dashboard dist with relative refs + nested assets
     const assetsDir = join(dashboardDistDir, 'assets')
     mkdirSync(assetsDir, { recursive: true })
     writeFileSync(join(dashboardDistDir, 'index.html'), '<script src="./assets/index.js"></script>')
@@ -364,7 +374,7 @@ describe('runInstallUnderstandViewer', () => {
 
     const execSpy = vi.fn().mockResolvedValue({ stdout: '', stderr: '' })
 
-    // Track cpSync calls to verify destination
+    // Track cpSync calls to verify source → destination
     const cpSyncCalls: Array<{ src: string; dst: string }> = []
     const cpSyncSpy = vi.fn().mockImplementation((src: string, dst: string) => {
       cpSyncCalls.push({ src, dst })
