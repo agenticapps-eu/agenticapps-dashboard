@@ -232,6 +232,88 @@ describe('CoverageRowSchema', () => {
   })
 })
 
+// Phase 14 D-14-08 / D-14-03: understand column on CoverageRowSchema
+describe('CoverageRowSchema — understand column (Phase 14 D-14-08 staleness + D-14-03 scoped viewer token)', () => {
+  // LOCAL fixture for these tests only. Pre-Phase-14 daemon shape — no understand field.
+  const validRowBase = {
+    family: 'agenticapps' as const,
+    repo: 'claude-workflow',
+    claudeMd: { kind: 'basic' as const, state: 'fresh' as const },
+    gitNexus: { kind: 'basic' as const, state: 'missing' as const },
+    wiki: { kind: 'basic' as const, state: 'fresh' as const },
+    workflowVersion: {
+      kind: 'workflow' as const,
+      state: 'fresh' as const,
+      installedVersion: '1.6.0',
+      headVersion: '1.6.0',
+    },
+    overrideCount: 0,
+    overrides: [],
+  }
+
+  it('(understand-row-1) back-compat: row WITHOUT understand field parses (D-13-EXT-10 precedent)', () => {
+    const r = CoverageRowSchema.safeParse(validRowBase)
+    expect(r.success, r.success ? '' : JSON.stringify((r as { error: { format(): unknown } }).error.format())).toBe(true)
+    if (r.success) expect(r.data.understand).toBeUndefined()
+  })
+
+  it('(understand-row-2) full understand column with fresh state and viewerToken parses', () => {
+    const row = {
+      ...validRowBase,
+      understand: {
+        kind: 'basic',
+        state: 'fresh',
+        lastAnalyzedAt: '2026-06-06T09:09:18Z',
+        analyzedCommit: '01435ab',
+        analyzedFiles: 110,
+        viewerToken: 'v1.xxx.yyy',
+      },
+    }
+    const r = CoverageRowSchema.safeParse(row)
+    expect(r.success, r.success ? '' : JSON.stringify((r as { error: { format(): unknown } }).error.format())).toBe(true)
+    if (r.success) {
+      expect(r.data.understand?.state).toBe('fresh')
+      expect(r.data.understand?.viewerToken).toBe('v1.xxx.yyy')
+    }
+  })
+
+  it('(understand-row-3a) state stale parses', () => {
+    const row = { ...validRowBase, understand: { kind: 'basic', state: 'stale' } }
+    expect(() => CoverageRowSchema.parse(row)).not.toThrow()
+  })
+
+  it('(understand-row-3b) state missing parses', () => {
+    const row = { ...validRowBase, understand: { kind: 'basic', state: 'missing' } }
+    expect(() => CoverageRowSchema.parse(row)).not.toThrow()
+  })
+
+  it('(understand-row-3c) state "analyzed" FAILS (not in enum — guards RESEARCH naming drift)', () => {
+    const row = { ...validRowBase, understand: { kind: 'basic', state: 'analyzed' } }
+    expect(() => CoverageRowSchema.parse(row)).toThrow()
+  })
+
+  it('(understand-row-3d) state "present" FAILS (not in enum — guards RESEARCH/PATTERNS naming drift)', () => {
+    const row = { ...validRowBase, understand: { kind: 'basic', state: 'present' } }
+    expect(() => CoverageRowSchema.parse(row)).toThrow()
+  })
+
+  it('(understand-row-4) unknown key inside understand FAILS parse (.strict())', () => {
+    const row = {
+      ...validRowBase,
+      understand: { kind: 'basic', state: 'fresh', unknownKey: 'should-fail' },
+    }
+    expect(() => CoverageRowSchema.parse(row)).toThrow()
+  })
+
+  it('(understand-row-5) degraded shape parses (AGREED-2 degraded-row pattern)', () => {
+    const row = {
+      ...validRowBase,
+      understand: { kind: 'basic', state: 'missing', degraded: true, degradedReason: 'scanner threw ENOENT' },
+    }
+    expect(() => CoverageRowSchema.parse(row)).not.toThrow()
+  })
+})
+
 describe('CoverageRowSchema — inRegistry field (D-13-EXT-07 / D-13-EXT-10 back-compat)', () => {
   // LOCAL fixture for these tests only. NEVER share with describe('CoverageRowSchema').
   const validRowBase = {
