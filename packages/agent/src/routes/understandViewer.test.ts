@@ -1038,13 +1038,16 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     writeFileSync(registryFile, JSON.stringify({ version: 1, projects: [] }))
 
     const token = mintViewerToken('agenticapps/test-repo', viewerTokenFile)
-    const app = createApp({
+    const appOpts: import('../server/app.js').CreateAppOptions = {
       registryFile,
       authFile,
       viewerTokenFile,
-      viewerDirOverride: opts.viewerInstalled !== false ? viewerDir : undefined,
       bindMode: 'loopback',
-    })
+    }
+    if (opts.viewerInstalled !== false) {
+      appOpts.viewerDirOverride = viewerDir
+    }
+    const app = createApp(appOpts)
 
     return { app, bearerToken: authFresh.token, viewerToken: token, cleanup: tmp.cleanup }
   }
@@ -1099,8 +1102,10 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     const res = await ctx.app.request(
       `http://127.0.0.1:5193/understand/agenticapps/test-repo/../../../etc/passwd`,
     )
-    // Must be 404 or redirect, never serve the actual /etc/passwd
-    expect([404, 301, 302, 400]).toContain(res.status)
+    // Must be 404 or redirect, never serve the actual /etc/passwd.
+    // 401 is also acceptable: Hono normalizes the path, which escapes /understand/*
+    // and hits bearerAuth (the route does not match, so no /etc/passwd data is served).
+    expect([404, 401, 301, 302, 400]).toContain(res.status)
     if (res.status === 200) {
       const body = await res.text()
       expect(body).not.toContain('root:')
@@ -1113,7 +1118,9 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     const res = await ctx.app.request(
       `http://127.0.0.1:5193/understand/agenticapps/test-repo/%2e%2e%2f%2e%2e%2fetc%2fpasswd`,
     )
-    expect([404, 301, 302, 400]).toContain(res.status)
+    // 401 is also acceptable (same reason as above: Hono URL normalization
+    // causes the path to miss /understand/* routes).
+    expect([404, 401, 301, 302, 400]).toContain(res.status)
     if (res.status === 200) {
       const body = await res.text()
       expect(body).not.toContain('root:')
@@ -1187,12 +1194,14 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     ctx.cleanup()
   })
 
-  it('segment with ".." → 404', async () => {
+  it('segment with ".." → 404 or 401 (Hono normalizes, never serves external file)', async () => {
     const ctx = makeViewerApp({ viewerInstalled: true })
     const res = await ctx.app.request(
       `http://127.0.0.1:5193/understand/../../../etc/passwd`,
     )
-    expect([404, 400]).toContain(res.status)
+    // 401 acceptable: Hono path normalization escapes the /understand/* prefix
+    // so bearerAuth intercepts. The key invariant is that /etc/passwd is never served.
+    expect([404, 401, 400]).toContain(res.status)
     ctx.cleanup()
   })
 })
