@@ -78,9 +78,13 @@ function statusFromFilter(filter: CoverageStatusFilter): string | undefined {
 }
 
 // Row matches filter (union of selected states across any column)
+// Phase 14 review fix: understand participates when present. Undefined
+// understand (pre-Phase-14 daemon) is simply excluded — old rows filter
+// exactly as before.
 function rowMatchesFilter(row: CoverageRow, filter: CoverageStatusFilter): boolean {
   if (filter.all) return true
   const cols = [row.claudeMd.state, row.gitNexus.state, row.wiki.state, row.workflowVersion.state]
+  if (row.understand) cols.push(row.understand.state)
   return (
     (filter.missing && cols.includes('missing')) ||
     (filter.stale && cols.includes('stale')) ||

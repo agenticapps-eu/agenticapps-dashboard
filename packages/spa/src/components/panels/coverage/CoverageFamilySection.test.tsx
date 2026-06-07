@@ -105,6 +105,8 @@ function makeRow(
     gitNexus?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
     wiki?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
     workflow?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
+    // Phase 14 review fix: optional — omitted means "old daemon" (no understand key)
+    understand?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
   } = {},
 ): CoverageRowData {
   return {
@@ -123,6 +125,9 @@ function makeRow(
     overrideCount: 0,
     overrides: [],
     inRegistry: true, // D-13-EXT-07: section fixture default — tests not exercising the gate
+    ...(states.understand !== undefined
+      ? { understand: { kind: 'basic' as const, state: states.understand } }
+      : {}),
   }
 }
 
@@ -796,6 +801,52 @@ describe('Phase 13 per-family ScanPill in header bar (D-13-08, D-13-11b)', () =>
     const pill = screen.getByTestId('scan-pill')
     expect(pill.getAttribute('data-scope')).toBe('family')
     expect(pill.getAttribute('data-target')).toBe('factiv')
+  })
+})
+
+// ── Phase 14 review fix: understand participates in family aggregates ────────
+
+describe('Phase 14 review fix — understand state participates in worst-state-wins aggregates', () => {
+  it('row fresh on all 4 classic columns but understand missing counts in the ✕ tally (worstState = missing)', () => {
+    const rows = [
+      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh', understand: 'missing' }),
+    ]
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText(/✕\s*1/)).toBeTruthy()
+    expect(screen.getByText(/⚠\s*0/)).toBeTruthy()
+    expect(screen.getByText(/✓\s*0/)).toBeTruthy()
+  })
+
+  it('row fresh on all 4 classic columns but understand stale counts in the ⚠ tally (worstState = stale)', () => {
+    const rows = [
+      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh', understand: 'stale' }),
+    ]
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText(/✕\s*0/)).toBeTruthy()
+    expect(screen.getByText(/⚠\s*1/)).toBeTruthy()
+    expect(screen.getByText(/✓\s*0/)).toBeTruthy()
+  })
+
+  it('REGRESSION: row with NO understand key (old daemon) aggregates exactly as before — all-fresh row counts ✓', () => {
+    const rows = [
+      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
+    ]
+    render(
+      withQC(
+        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
+      ),
+    )
+    expect(screen.getByText(/✕\s*0/)).toBeTruthy()
+    expect(screen.getByText(/⚠\s*0/)).toBeTruthy()
+    expect(screen.getByText(/✓\s*1/)).toBeTruthy()
   })
 })
 

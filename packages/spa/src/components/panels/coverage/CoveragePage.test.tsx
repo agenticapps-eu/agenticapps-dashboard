@@ -1116,6 +1116,76 @@ describe('Phase 14 D-14-03: CoveragePage builds viewer URLs from row viewerToken
     expect(understandLinks.length).toBe(0)
   })
 
+  // ── Phase 14 review fix: understand state participates in the status filter ──
+
+  function makeRowWithUnderstandState(
+    repo: string,
+    understandState?: 'fresh' | 'stale' | 'missing',
+  ): CoverageRow {
+    const row = makeRow('agenticapps', repo) // all 4 classic columns fresh
+    if (understandState !== undefined) {
+      row.understand = { kind: 'basic', state: understandState }
+    }
+    return row
+  }
+
+  function setupFilterRows(rows: CoverageRow[]) {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows,
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+  }
+
+  it('Filter-1: row fresh on all 4 classic columns but understand MISSING matches the "missing" filter chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-only-understand-missing', 'missing')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✕ Missing' }))
+
+    // Row must still be visible — understand state participates in the filter
+    expect(screen.getByText('repo-only-understand-missing')).toBeTruthy()
+    expect(screen.queryByText(/No repos match your filters/i)).toBeNull()
+  })
+
+  it('Filter-2: row fresh on all 4 classic columns but understand missing does NOT match the "fresh" chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-only-understand-missing', 'missing')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✓ Fresh' }))
+
+    expect(screen.queryByText('repo-only-understand-missing')).toBeNull()
+    expect(screen.getByText(/No repos match your filters/i)).toBeTruthy()
+  })
+
+  it('Filter-3 REGRESSION: row with NO understand key (old daemon) behaves exactly as before — all-fresh row excluded by "missing" chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-old-daemon')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✕ Missing' }))
+
+    expect(screen.queryByText('repo-old-daemon')).toBeNull()
+    expect(screen.getByText(/No repos match your filters/i)).toBeTruthy()
+  })
+
+  it('Filter-4 REGRESSION: row with NO understand key (old daemon) still matches the "fresh" chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-old-daemon')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✓ Fresh' }))
+
+    expect(screen.getByText('repo-old-daemon')).toBeTruthy()
+    expect(screen.queryByText(/No repos match your filters/i)).toBeNull()
+  })
+
   it('Test 5: health unavailable (error, no data) → links NOT suppressed (unknown treated as installed)', () => {
     setupRowsWithTokens()
     vi.mocked(useHealth).mockReturnValueOnce({

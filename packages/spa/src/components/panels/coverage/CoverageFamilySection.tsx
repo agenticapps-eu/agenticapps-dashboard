@@ -85,7 +85,10 @@ function storageKey(family: CoverageFamily): string {
 
 // CODEX MED: worst-state-wins per row
 // Priority: missing > stale > fresh > not-applicable
-// Returns the worst state across all 4 columns for a given row
+// Returns the worst state across all columns for a given row.
+// Phase 14 review fix: understand participates when present. Undefined
+// understand (pre-Phase-14 daemon) is excluded from aggregation — old rows
+// aggregate exactly as before.
 function worstState(row: CoverageRowData): CoverageState | 'not-applicable' {
   const states: CoverageState[] = [
     row.claudeMd.state,
@@ -93,6 +96,7 @@ function worstState(row: CoverageRowData): CoverageState | 'not-applicable' {
     row.wiki.state,
     row.workflowVersion.state,
   ]
+  if (row.understand) states.push(row.understand.state)
   if (states.includes('missing')) return 'missing'
   if (states.includes('stale')) return 'stale'
   if (states.includes('fresh')) return 'fresh'
