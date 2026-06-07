@@ -288,7 +288,7 @@ export function CoverageFamilySection({
                     pending={pending}
                     gitnexusInstalled={gitnexusInstalled}
                     gitnexusCanScan={gitnexusCanScan}
-                    understandViewerUrl={understandViewerUrls?.[repoKey]}
+                    {...(understandViewerUrls?.[repoKey] !== undefined ? { understandViewerUrl: understandViewerUrls[repoKey] } : {})}
                     {...(onRefresh !== undefined ? { onRefresh } : {})}
                   />
                 )

@@ -207,7 +207,7 @@ export function CoverageFamilySectionMobile({
                   <UnderstandCopyPill
                     family={row.family}
                     repo={row.repo}
-                    viewerUrl={understandViewerUrl}
+                    {...(understandViewerUrl !== undefined ? { viewerUrl: understandViewerUrl } : {})}
                     state={row.understand.state}
                   />
                 ) : (

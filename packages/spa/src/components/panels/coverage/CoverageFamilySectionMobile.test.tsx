@@ -542,11 +542,11 @@ vi.mock('./UnderstandCopyPill.js', () => ({
 describe('Phase 14 — understand cell in mobile card layout (D-14-06 Test-5)', () => {
   it('Test-5: mobile card renders understand cell with UnderstandCopyPill for understand.state=missing', () => {
     const rows = [makeRow('repo-a', {}, 0)]
-    // Add understand field to the row
-    const rowWithUnderstand = {
-      ...rows[0],
+    // Add understand field to the row. Object.assign preserves required field types
+    // so exactOptionalPropertyTypes is satisfied (spread widens required fields to optional).
+    const rowWithUnderstand: CoverageRowData = Object.assign({}, rows[0], {
       understand: { kind: 'basic' as const, state: 'missing' as const },
-    }
+    })
     render(
       withQC(
         <CoverageFamilySectionMobile
