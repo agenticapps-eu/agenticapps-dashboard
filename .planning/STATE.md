@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: Phase 14 context gathered
-last_updated: "2026-06-07T09:07:25.972Z"
-last_activity: 2026-06-07 -- Phase 14 planning complete
+last_updated: "2026-06-07T09:13:06.974Z"
+last_activity: 2026-06-07 -- Phase 14 execution started
 progress:
   total_phases: 18
   completed_phases: 15
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 13 — gitnexus-scoped-scan-actions-coverage-matrix
+**Current focus:** Phase 14 — understand-anything-integration-daemon-hosted-knowledge-grap
 
 ## Current Position
 
-Phase: 13 (gitnexus-scoped-scan-actions-coverage-matrix) — EXECUTING
-Plan: 1 of 7
+Phase: 14 (understand-anything-integration-daemon-hosted-knowledge-grap) — EXECUTING
+Plan: 1 of 8
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Ready to execute
-Last activity: 2026-06-07 -- Phase 14 planning complete
+Status: Executing Phase 14
+Last activity: 2026-06-07 -- Phase 14 execution started
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 
