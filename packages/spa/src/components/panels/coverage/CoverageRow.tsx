@@ -20,6 +20,7 @@ import type { CoverageRow as CoverageRowData, CoverageFamily } from '@agenticapp
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
 import { ScanPill } from './ScanPill.js'
+import { UnderstandCopyPill } from './UnderstandCopyPill.js'
 import { useCoverageHistory } from '../../../lib/coverageHistoryQueries.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 
@@ -45,6 +46,12 @@ export interface CoverageRowProps {
    */
   gitnexusInstalled?: boolean
   gitnexusCanScan?: boolean
+  /**
+   * Phase 14 D-14-03/06/07: fully-built viewer URL for the understand column.
+   * Constructed by CoveragePage from `agentUrl/understand/{family}/{repo}/?token={viewerToken}`.
+   * Absent when pairing is missing or the daemon has no viewer token (pre-Phase-14).
+   */
+  understandViewerUrl?: string
 }
 
 // Derive popover options from the row's column states
@@ -77,6 +84,7 @@ export function CoverageRow({
   pending = false,
   gitnexusInstalled = false,
   gitnexusCanScan = false,
+  understandViewerUrl,
 }: CoverageRowProps): React.JSX.Element {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -186,6 +194,25 @@ export function CoverageRow({
           repoName={row.repo}
           drift={cellDrifts?.workflowVersion ?? null}
         />
+      </td>
+
+      {/* Phase 14 D-14-06/08/10: understand column — 3-state (fresh/stale/missing).
+          D-14-08: title attribute surfaces lastAnalyzedAt when present.
+          Back-compat: row.understand undefined on pre-Phase-14 daemons → em-dash placeholder. */}
+      <td
+        className={`${COVERAGE_COL_WIDTHS.understand} px-2 py-2`}
+        title={row.understand?.lastAnalyzedAt ? `Last analyzed: ${row.understand.lastAnalyzedAt}` : undefined}
+      >
+        {row.understand && (row.understand.state === 'fresh' || row.understand.state === 'stale' || row.understand.state === 'missing') ? (
+          <UnderstandCopyPill
+            family={row.family}
+            repo={row.repo}
+            viewerUrl={understandViewerUrl}
+            state={row.understand.state}
+          />
+        ) : (
+          <span className="text-text-tertiary text-xs">—</span>
+        )}
       </td>
 
       {/* Refresh action — visible on hover/focus */}
