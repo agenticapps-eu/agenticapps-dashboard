@@ -32,6 +32,8 @@ import {
   scanWorkflowVersionForRepo,
 } from './scanners/workflowVersionScanner.js'
 import { scanOverrideSentinelsForRepo } from './scanners/overrideSentinelScanner.js'
+import { readRepoHeadSha, scanUnderstandForRepo } from './scanners/understandScanner.js'
+import { mintViewerToken } from './viewerToken.js'
 import { makeCoverageResolver, type PathResolver } from './coverageResolver.js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -179,12 +181,14 @@ async function buildRow(
   // a sync throw escape the array literal before allSettled gets a chance to
   // catch it. Wrap in an async IIFE so the throw resolves to a rejected promise
   // that allSettled handles.
-  const [cmS, gnS, wkS, wfS, ovS] = await Promise.allSettled([
+  const [cmS, gnS, wkS, wfS, ovS, unS] = await Promise.allSettled([
     (async () => scanClaudeMd({ repoAbsPath, resolve }))(),
     (async () => rateGitNexusRepo(gnGlobal, repoAbsPath))(),
     (async () => scanWikiForFamily(familyRoot, repoName, resolve))(),
     (async () => scanWorkflowVersionForRepo(repoAbsPath, workflowHead, resolve))(),
     (async () => scanOverrideSentinelsForRepo(repoAbsPath, resolve))(),
+    // Phase 14 D-14-08: understand-anything staleness detection (pure FS, no subprocess)
+    (async () => scanUnderstandForRepo(repoAbsPath, readRepoHeadSha(repoAbsPath)))(),
   ])
 
   const rowDegraded: string[] = []
@@ -263,6 +267,38 @@ async function buildRow(
     rowDegraded.push(`overrides: ${String(ovS.reason)}`)
   }
 
+  // ── understand column (Phase 14 D-14-08 + D-14-03) ────────────────────────
+  // repoId used as the HMAC binding for the viewer token (D-14-03: per-repo scoped)
+  const repoId = `${family}/${repoName}`
+  const understand: CoverageRow['understand'] =
+    unS.status === 'fulfilled'
+      ? (() => {
+          const scan = unS.value
+          if (scan.state === 'missing') {
+            // Missing rows carry no viewerToken (viewer link not renderable)
+            return { kind: 'basic' as const, state: 'missing' as const }
+          }
+          // Fresh or stale rows carry a viewer token (D-14-03) + metadata
+          return {
+            kind: 'basic' as const,
+            state: scan.state,
+            ...(scan.lastAnalyzedAt !== undefined ? { lastAnalyzedAt: scan.lastAnalyzedAt } : {}),
+            ...(scan.analyzedCommit !== undefined ? { analyzedCommit: scan.analyzedCommit } : {}),
+            ...(scan.analyzedFiles !== undefined ? { analyzedFiles: scan.analyzedFiles } : {}),
+            viewerToken: mintViewerToken(repoId),
+          }
+        })()
+      : (() => {
+          // AGREED-2: scanner rejection → degraded missing state
+          rowDegraded.push(`understand: ${String(unS.reason)}`)
+          return {
+            kind: 'basic' as const,
+            state: 'missing' as const,
+            degraded: true,
+            degradedReason: String(unS.reason),
+          }
+        })()
+
   // ── Assemble CoverageRow (public shape) ───────────────────────────────────
   const publicRow: CoverageRow = {
     family,
@@ -281,6 +317,7 @@ async function buildRow(
     // is a precomputed ReadonlySet built once per scan from the dashboard
     // registry projects; this is O(1) per row, no per-row I/O.
     inRegistry: registeredRepoIds.has(`${family}/${repoName}`),
+    understand,
     ...(rowDegraded.length > 0 ? { degraded: { reason: rowDegraded.join('; ') } } : {}),
   }
 

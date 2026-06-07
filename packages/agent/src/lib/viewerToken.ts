@@ -171,11 +171,15 @@ export function rotateViewerSecret(filePath: string = VIEWER_TOKEN_FILE): Viewer
  * The repoId is encoded as base64url so it can be safely passed in URLs
  * without encoding issues. The HMAC binds it to the secret, so a token
  * for repo A cannot be used to read repo B's data.
+ *
+ * Uses in-memory activeViewerSecret when loaded (avoids per-call file I/O);
+ * falls back to reading filePath if activeViewerSecret is not yet populated.
+ * This matches the auth.ts pattern: secrets are loaded once at startup and
+ * held in-memory; per-call file reads are unnecessary overhead.
  */
 export function mintViewerToken(repoId: string, filePath: string = VIEWER_TOKEN_FILE): string {
-  // Load current secret (refresh from file to ensure consistency)
-  const data = readSecretFile(filePath)
-  const secret = data.secret
+  // Prefer in-memory secret (set by ensureViewerSecretFile at startup / test seed)
+  const secret = activeViewerSecret || readSecretFile(filePath).secret
   const repoB64 = Buffer.from(repoId).toString('base64url')
   const mac = createHmac('sha256', secret).update(repoId).digest('hex')
   return `v1.${repoB64}.${mac}`
