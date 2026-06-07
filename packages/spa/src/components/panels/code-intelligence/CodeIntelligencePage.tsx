@@ -33,6 +33,24 @@ import { buildViewerUrl } from '../../../lib/understandViewerUrl.js'
 
 import type { CoverageRow } from '@agenticapps/dashboard-shared'
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Format a lastAnalyzedAt ISO string for the table cell.
+ * Locale-default formatting (no hardcoded locale); invalid dates render as an
+ * em dash instead of 'Invalid Date' (Phase 14 review polish).
+ */
+function formatAnalyzedDate(iso: string | undefined): string | undefined {
+  if (!iso) return undefined
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) return '—'
+  return parsed.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface AnalyzedRowProps {
@@ -52,13 +70,7 @@ function AnalyzedRow({ row, agentUrl, viewerInstalled }: AnalyzedRowProps): Reac
       ? buildViewerUrl(agentUrl, row.family, row.repo, viewerToken)
       : undefined
 
-  const lastAnalyzedAt = understand.lastAnalyzedAt
-    ? new Date(understand.lastAnalyzedAt).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : undefined
+  const lastAnalyzedAt = formatAnalyzedDate(understand.lastAnalyzedAt)
 
   return (
     <tr className="border-b border-border-subtle last:border-0">
