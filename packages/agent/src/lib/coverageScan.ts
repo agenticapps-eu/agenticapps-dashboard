@@ -60,6 +60,11 @@ export interface ScanCoverageOptions {
    *  without touching ~/.agenticapps/dashboard/registry.json. Production
    *  callers pass undefined and readRegistry uses REGISTRY_FILE default. */
   registryFileOverride?: string
+  /** Phase 14 review (test isolation): tests pass a tmpdir-resident
+   *  viewer-token.json so mintViewerToken never reads/writes the real
+   *  ~/.agenticapps/dashboard/viewer-token.json. Production callers pass
+   *  undefined and mintViewerToken uses the VIEWER_TOKEN_FILE default. */
+  viewerTokenFileOverride?: string
 }
 
 // ── Internal scan ─────────────────────────────────────────────────────────────
@@ -122,6 +127,7 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
         workflowHead,
         resolve,
         registeredRepoIds,
+        opts.viewerTokenFileOverride,
       ),
     ),
   )
@@ -171,6 +177,7 @@ async function buildRow(
   workflowHead: string | null,
   resolve: PathResolver,
   registeredRepoIds: ReadonlySet<string>,
+  viewerTokenFile?: string,
 ): Promise<InternalCoverageRow> {
   const familyRoot = join(sourcecodeRoot, family)
 
@@ -285,7 +292,7 @@ async function buildRow(
             ...(scan.lastAnalyzedAt !== undefined ? { lastAnalyzedAt: scan.lastAnalyzedAt } : {}),
             ...(scan.analyzedCommit !== undefined ? { analyzedCommit: scan.analyzedCommit } : {}),
             ...(scan.analyzedFiles !== undefined ? { analyzedFiles: scan.analyzedFiles } : {}),
-            viewerToken: mintViewerToken(repoId),
+            viewerToken: mintViewerToken(repoId, viewerTokenFile),
           }
         })()
       : (() => {

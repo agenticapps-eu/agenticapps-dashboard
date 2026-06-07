@@ -278,14 +278,18 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
       analyzedFiles: 110,
     })
 
-    // Seed a viewer secret file so mintViewerToken doesn't try to write to ~/.agenticapps
+    // Seed a viewer secret file AND thread it through scanCoverage so
+    // mintViewerToken never reads/writes the real ~/.agenticapps file.
     const { ensureViewerSecretFile } = await import('../lib/viewerToken.js')
     const secretTmp = mkdtempSync(join(tmpdir(), 'viewer-secret-'))
     cleanups.push(() => rmSync(secretTmp, { recursive: true, force: true }))
     const secretPath = join(secretTmp, 'viewer-token.json')
     ensureViewerSecretFile(secretPath)
 
-    const result = await scanCoverage({ sourcecodeRootOverride: root })
+    const result = await scanCoverage({
+      sourcecodeRootOverride: root,
+      viewerTokenFileOverride: secretPath,
+    })
     expect(result.rows).toHaveLength(1)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const row = result.rows[0]!
@@ -314,15 +318,20 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
       analyzedFiles: 55,
     })
 
-    // Seed a viewer secret explicitly — do NOT rely on Test 1's module-global
-    // activeViewerSecret leftover (order-dependence; isolated runs would fall
-    // through to the REAL ~/.agenticapps/dashboard/viewer-token.json).
+    // Seed a viewer secret explicitly AND thread it through scanCoverage — do
+    // NOT rely on Test 1's module-global activeViewerSecret leftover
+    // (order-dependence; isolated runs would fall through to the REAL
+    // ~/.agenticapps/dashboard/viewer-token.json).
     const { ensureViewerSecretFile } = await import('../lib/viewerToken.js')
     const secretTmp = mkdtempSync(join(tmpdir(), 'viewer-secret-stale-'))
     cleanups.push(() => rmSync(secretTmp, { recursive: true, force: true }))
-    ensureViewerSecretFile(join(secretTmp, 'viewer-token.json'))
+    const secretPath = join(secretTmp, 'viewer-token.json')
+    ensureViewerSecretFile(secretPath)
 
-    const result = await scanCoverage({ sourcecodeRootOverride: root })
+    const result = await scanCoverage({
+      sourcecodeRootOverride: root,
+      viewerTokenFileOverride: secretPath,
+    })
     expect(result.rows).toHaveLength(1)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const row = result.rows[0]!
