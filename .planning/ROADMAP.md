@@ -476,7 +476,7 @@ Plans:
 **Goal:** Clicking a project's "Knowledge graph" link opens the understand-anything viewer served by the daemon at `/understand/{projectId}/` (prebuilt static build of the plugin's dashboard SPA + its 6 data endpoints re-implemented in Hono with bearer auth over `.understand-anything/`), and the Coverage matrix shows per-repo understand-anything status (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand`. No daemon-triggered LLM scans this phase (analysis is LLM-driven; headless scan is a follow-up candidate).
 **Requirements**: D-14-01..D-14-10 (CONTEXT.md locked decision set; no REQ-IDs minted — decision-driven phase per discuss-phase 2026-06-06). Constraint exception D-14-05 user-RATIFIED.
 **Depends on:** Phase 13
-**Plans:** 1/8 plans executed
+**Plans:** 4/8 plans executed
 
 Plans:
 **Wave 1**
@@ -485,9 +485,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 14-02-PLAN.md — Wave 2 (TDD): agent foundation — extract `repoRoot.ts` (deterministicRepoRoot + registry-first resolveRepoRoot, D-14-09), `viewerToken.ts` (HMAC per-repo scoped tokens, 0600 secret, rotation hooked into rotateToken, D-14-03), `viewerInstall.ts` version detection (D-14-01/02). depends_on: 14-01
-- [ ] 14-03-PLAN.md — Wave 2 (TDD, parallel): SPA Coverage Understand column — UnderstandCopyPill (fresh ✓-link / stale link+pill / missing pill, D-14-08/10), desktop+mobile cells, CoveragePage viewer-URL construction (scoped token only, D-14-03/07). depends_on: 14-01
-- [ ] 14-04-PLAN.md — Wave 2 (TDD, parallel): SPA Code Intelligence sidebar section + /code-intelligence page (analyzed-projects listing, install/update hints, D-14-02/06/07). depends_on: 14-01
+- [x] 14-02-PLAN.md — Wave 2 (TDD): agent foundation — extract `repoRoot.ts` (deterministicRepoRoot + registry-first resolveRepoRoot, D-14-09), `viewerToken.ts` (HMAC per-repo scoped tokens, 0600 secret, rotation hooked into rotateToken, D-14-03), `viewerInstall.ts` version detection (D-14-01/02). depends_on: 14-01
+- [x] 14-03-PLAN.md — Wave 2 (TDD, parallel): SPA Coverage Understand column — UnderstandCopyPill (fresh ✓-link / stale link+pill / missing pill, D-14-08/10), desktop+mobile cells, CoveragePage viewer-URL construction (scoped token only, D-14-03/07). depends_on: 14-01
+- [x] 14-04-PLAN.md — Wave 2 (TDD, parallel): SPA Code Intelligence sidebar section + /code-intelligence page (analyzed-projects listing, install/update hints, D-14-02/06/07). depends_on: 14-01
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
