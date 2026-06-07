@@ -416,12 +416,19 @@ Plans:
 ### Phase 14: Understand-Anything integration: daemon-hosted knowledge-graph viewer + coverage status
 
 **Goal:** Clicking a project's "Knowledge graph" link opens the understand-anything viewer served by the daemon at `/understand/{projectId}/` (prebuilt static build of the plugin's dashboard SPA + its 6 data endpoints re-implemented in Hono with bearer auth over `.understand-anything/`), and the Coverage matrix shows per-repo understand-anything status (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand`. No daemon-triggered LLM scans this phase (analysis is LLM-driven; headless scan is a follow-up candidate).
-**Requirements**: TBD
+**Requirements**: D-14-01..D-14-10 (CONTEXT.md locked decision set; no REQ-IDs minted — decision-driven phase per discuss-phase 2026-06-06). Constraint exception D-14-05 user-RATIFIED.
 **Depends on:** Phase 13
-**Plans:** 0 plans
+**Plans:** 8 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+- [ ] 14-01-PLAN.md — Wave 1 (TDD): shared wire contracts — `understand` block on HealthResponseSchema (D-14-02), `understand` optional column on CoverageRowSchema (D-14-08, carries per-repo scoped viewerToken per D-14-03), `buildUnderstandCommand()` (D-14-10). depends_on: []
+- [ ] 14-02-PLAN.md — Wave 2 (TDD): agent foundation — extract `repoRoot.ts` (deterministicRepoRoot + registry-first resolveRepoRoot, D-14-09), `viewerToken.ts` (HMAC per-repo scoped tokens, 0600 secret, rotation hooked into rotateToken, D-14-03), `viewerInstall.ts` version detection (D-14-01/02). depends_on: 14-01
+- [ ] 14-03-PLAN.md — Wave 2 (TDD, parallel): SPA Coverage Understand column — UnderstandCopyPill (fresh ✓-link / stale link+pill / missing pill, D-14-08/10), desktop+mobile cells, CoveragePage viewer-URL construction (scoped token only, D-14-03/07). depends_on: 14-01
+- [ ] 14-04-PLAN.md — Wave 2 (TDD, parallel): SPA Code Intelligence sidebar section + /code-intelligence page (analyzed-projects listing, install/update hints, D-14-02/06/07). depends_on: 14-01
+- [ ] 14-05-PLAN.md — Wave 3 (TDD): daemon viewer route — static serving at /understand/{family}/{repo}/ + 6 root-level token-gated data endpoints, FIX 2 sanitization (D-14-05b), full 12-guard file-content suite (D-14-05 ratified exception), pre-bearerAuth mount, Tailscale parity (D-14-04). depends_on: 14-02
+- [ ] 14-06-PLAN.md — Wave 3 (TDD, parallel): understandScanner (readRepoHeadSha pure-FS + commit-hash staleness, D-14-08) + coverageScan integration with per-row viewerToken mint + /health understand block (D-14-02). depends_on: 14-01, 14-02
+- [ ] 14-07-PLAN.md — Wave 3 (TDD, parallel): CLI `install-understand-viewer` — plugin-cache build (core→dashboard, --base=./) installed to ~/.agenticapps/dashboard/understand-viewer/<version>/ (D-14-01). depends_on: 14-02
+- [ ] 14-08-PLAN.md — Wave 4 (checkpoints): full-suite gate, live e2e viewer verification, 14-IMPECCABLE.md (1440×900 on /coverage + /code-intelligence), two-stage review + /cso (D-14-05 exception + scoped-token surface) + /qa. depends_on: all
 
 ---
 
