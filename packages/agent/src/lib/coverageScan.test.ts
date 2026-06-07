@@ -314,6 +314,14 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
       analyzedFiles: 55,
     })
 
+    // Seed a viewer secret explicitly — do NOT rely on Test 1's module-global
+    // activeViewerSecret leftover (order-dependence; isolated runs would fall
+    // through to the REAL ~/.agenticapps/dashboard/viewer-token.json).
+    const { ensureViewerSecretFile } = await import('../lib/viewerToken.js')
+    const secretTmp = mkdtempSync(join(tmpdir(), 'viewer-secret-stale-'))
+    cleanups.push(() => rmSync(secretTmp, { recursive: true, force: true }))
+    ensureViewerSecretFile(join(secretTmp, 'viewer-token.json'))
+
     const result = await scanCoverage({ sourcecodeRootOverride: root })
     expect(result.rows).toHaveLength(1)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

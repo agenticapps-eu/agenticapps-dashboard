@@ -31,12 +31,17 @@ vi.mock('../lib/scanners/gitNexusScanner.js', () => ({
   scanGitNexus: vi.fn(),
 }))
 
-// Mock viewerInstall helpers so we can inject fixture data without touching real paths
-vi.mock('../lib/viewerInstall.js', () => ({
-  getInstalledViewerVersion: vi.fn(),
-  getInstalledViewerPath: vi.fn(),
-  getNewestPluginCacheVersion: vi.fn(),
-}))
+// Mock viewerInstall helpers so we can inject fixture data without touching real paths.
+// compareSemver stays REAL (importActual) — health.ts uses it for updateAvailable ordering.
+vi.mock('../lib/viewerInstall.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/viewerInstall.js')>()
+  return {
+    compareSemver: actual.compareSemver,
+    getInstalledViewerVersion: vi.fn(),
+    getInstalledViewerPath: vi.fn(),
+    getNewestPluginCacheVersion: vi.fn(),
+  }
+})
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` }

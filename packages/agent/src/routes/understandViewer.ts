@@ -115,16 +115,9 @@ function detectLanguage(filePath: string): string {
  */
 type RepoRootOverrides = Record<string, string>
 
-/**
- * Test injection for the viewer install directory.
- * When set, getInstalledViewerPath() is bypassed and this dir used instead.
- */
-let _viewerDirOverride: string | undefined
-
-/** Set a viewer dir override for tests (mirrors auth.ts setActiveToken pattern). */
-export function _setViewerDirOverrideForTests(dir: string | undefined): void {
-  _viewerDirOverride = dir
-}
+// Viewer-dir test injection happens via the `viewerDirOverride` createApp option
+// (read by getViewerRoot through c.get('viewerDirOverride')) — single seam, no
+// module-level override.
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -349,11 +342,12 @@ function makeDataHandler(fileName: string, opts: {
  *  11. Buffer.includes(0) (binary) -> 415 "Binary files cannot be previewed"
  *  12. symlink realpath escape (T-14-05-03) -> 400 "Path must stay inside the project"
  *
- * Note: Guard 12 (realpath containment) is applied BEFORE graph membership (guard 7)
- * per the threat model: a symlink to outside must fail even if graph-listed.
- * Implementation places realpath check after join+relative (guard 6) and before
- * the graph-membership lookup (guard 7) because realpath requires the file to exist.
- * For non-existent files, statSync (guard 8) catches them before realpath.
+ * Note: actual evaluation order is membership (guard 7) -> statSync (guard 8)
+ * -> realpath containment (guard 12) -> isFile (guard 9) -> size (guard 10)
+ * -> binary (guard 11). Realpath runs after stat because it requires the file
+ * to exist; a graph-listed symlink pointing outside the root still fails guard
+ * 12 before any byte is served (T-14-05-03), so the threat-model property
+ * "symlink to outside must fail even if graph-listed" holds.
  */
 async function handleFileContent(
   c: Context<Env>,

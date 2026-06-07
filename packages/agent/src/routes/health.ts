@@ -6,7 +6,11 @@ import { readRegistry } from '../lib/registry.js'
 import { getActiveToken } from '../lib/auth.js'
 import { outbound } from '../server/middleware/errors.js'
 import { detectGitNexusBinary } from '../lib/scanners/gitNexusScanner.js'
-import { getInstalledViewerVersion, getNewestPluginCacheVersion } from '../lib/viewerInstall.js'
+import {
+  compareSemver,
+  getInstalledViewerVersion,
+  getNewestPluginCacheVersion,
+} from '../lib/viewerInstall.js'
 import type { Env } from '../server/app.js'
 
 export const healthRoute = new Hono<Env>()
@@ -42,7 +46,10 @@ healthRoute.get('/', (c) => {
       viewerInstalled,
       viewerVersion,
       pluginVersion,
-      updateAvailable: viewerVersion !== null && pluginVersion !== null && viewerVersion !== pluginVersion,
+      // Semver ordering, not inequality: an installed viewer NEWER than the
+      // plugin cache (cache pruned/rolled back) must not prompt a downgrade.
+      updateAvailable:
+        viewerVersion !== null && pluginVersion !== null && compareSemver(pluginVersion, viewerVersion) > 0,
     },
   }
   // D-16: outbound parse before send (INV-04)

@@ -1046,6 +1046,11 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     }
     if (opts.viewerInstalled !== false) {
       appOpts.viewerDirOverride = viewerDir
+    } else {
+      // Point at a guaranteed-empty dir so the test never falls through to the
+      // REAL ~/.agenticapps/dashboard/understand-viewer/ install on dev machines
+      // (env-dependent failure once `install-understand-viewer` has run).
+      appOpts.viewerDirOverride = mkdtempSync(join(tmpdir(), 'no-viewer-'))
     }
     const app = createApp(appOpts)
 

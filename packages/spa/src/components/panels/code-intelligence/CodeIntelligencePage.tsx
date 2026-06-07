@@ -169,10 +169,11 @@ export function CodeIntelligencePage(): React.JSX.Element {
         helper="Knowledge graph analysis status across registered projects. Use the /understand skill to analyze a project."
       />
 
-      {/* Install hint — viewer not installed (D-14-02) */}
+      {/* Install hint — viewer not installed (D-14-02). role="status" (polite),
+          not "alert": this is a static hint present at render, not an interruption. */}
       {!viewerInstalled && (
         <div
-          role="alert"
+          role="status"
           className="rounded-lg border border-border-subtle bg-card-bg p-4 text-sm text-text-secondary"
         >
           <p className="font-medium text-text-primary">Viewer not installed</p>

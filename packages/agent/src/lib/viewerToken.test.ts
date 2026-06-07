@@ -208,19 +208,9 @@ describe('mintViewerToken / verifyViewerToken', () => {
 
 describe('viewerToken.ts — timingSafeEqual structural import', () => {
   it('module source contains timingSafeEqual import from node:crypto', async () => {
-    // Read the source module to verify structural compliance
+    // Structural compliance check: the module must import timingSafeEqual from
+    // node:crypto for constant-time MAC comparison (T-14-02-01).
     const { readFileSync } = await import('node:fs')
-    const { fileURLToPath } = await import('node:url')
-    const { dirname, join: pathJoin } = await import('node:path')
-    // The module must import timingSafeEqual from node:crypto for constant-time compare
-    const srcPath = pathJoin(
-      fileURLToPath(import.meta.url).replace('/repoRoot.test.ts', ''),
-      'viewerToken.ts',
-    ).replace('repoRoot.test.ts', 'viewerToken.ts')
-      .replace('/repoRoot.test.js', '/viewerToken.ts')
-
-    // Use a simpler approach: just import the module and trust it works
-    // The structural test below does code inspection
     const moduleSource = readFileSync(
       new URL('./viewerToken.ts', import.meta.url).pathname.replace('.js', '.ts'),
       'utf8',

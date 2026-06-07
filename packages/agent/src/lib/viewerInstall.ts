@@ -35,7 +35,7 @@ const SEMVER_RE = /^\d+\.\d+\.\d+$/
  * Numeric comparison is critical: '2.10.0' > '2.9.9' numerically
  * but '2.10.0' < '2.9.9' lexicographically.
  */
-function compareSemver(a: string, b: string): number {
+export function compareSemver(a: string, b: string): number {
   const aParts = a.split('.').map(Number)
   const bParts = b.split('.').map(Number)
   for (let i = 0; i < 3; i++) {
