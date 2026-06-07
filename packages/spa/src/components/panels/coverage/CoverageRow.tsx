@@ -22,6 +22,7 @@ import { OverrideChip } from './OverrideChip.js'
 import { ScanPill } from './ScanPill.js'
 import { UnderstandCopyPill } from './UnderstandCopyPill.js'
 import { useCoverageHistory } from '../../../lib/coverageHistoryQueries.js'
+import { formatRelativeTime } from '../../../lib/relativeTime.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 
 export type CoverageRefreshAction =
@@ -197,11 +198,12 @@ export function CoverageRow({
       </td>
 
       {/* Phase 14 D-14-06/08/10: understand column — 3-state (fresh/stale/missing).
-          D-14-08: title attribute surfaces lastAnalyzedAt when present.
+          D-14-08: title attribute surfaces lastAnalyzedAt when present —
+          formatted as relative time (review polish), not the raw ISO string.
           Back-compat: row.understand undefined on pre-Phase-14 daemons → em-dash placeholder. */}
       <td
         className={`${COVERAGE_COL_WIDTHS.understand} px-2 py-2`}
-        title={row.understand?.lastAnalyzedAt ? `Last analyzed: ${row.understand.lastAnalyzedAt}` : undefined}
+        title={row.understand?.lastAnalyzedAt ? `Last analyzed: ${formatRelativeTime(row.understand.lastAnalyzedAt)}` : undefined}
       >
         {row.understand && (row.understand.state === 'fresh' || row.understand.state === 'stale' || row.understand.state === 'missing') ? (
           <UnderstandCopyPill

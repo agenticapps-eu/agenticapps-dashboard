@@ -7,8 +7,11 @@
  *   3. Ensure packages/core/dist/schema.js exists; else pnpm install (if node_modules absent)
  *      then pnpm build in packages/core.
  *   4. pnpm vite build --base=./ in packages/dashboard (relative base is MANDATORY — Pitfall 7).
- *      A1 guard: assert dist/index.html references ./assets/ (relative), not /assets/ (absolute).
- *   5. Copy dist/ recursively to UNDERSTAND_VIEWER_DIR/<version>/ (write boundary).
+ *      A1 guard: dist/index.html MUST exist (missing entry point = fatal) and must
+ *      reference ./assets/ (relative), not /assets/ (absolute).
+ *   5. Atomic install: stage dist/ in a temp sibling under UNDERSTAND_VIEWER_DIR,
+ *      then rm the old <version>/ and rename staging → <version>/ (write boundary;
+ *      the daemon never serves a half-copied tree).
  *   6. Print success + restart hint.
  *
  * Security (T-14-07-02, T-14-07-03):
@@ -16,7 +19,7 @@
  *   - All exec calls use fixed argv arrays — no shell involved, no user input interpolation.
  *   - pnpm install only runs inside the plugin's own cached workspace against its lockfile.
  */
-import { existsSync, readFileSync, mkdirSync, cpSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync, cpSync, rmSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { execFile as execFileCb } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -37,6 +40,8 @@ const MSG_NO_VERSION = 'No understand-anything version found in plugin cache'
 const MSG_NO_PNPM = 'pnpm is required to build the viewer. Install: npm install -g pnpm'
 const MSG_CORE_BUILD_FAILED = 'Failed to build @understand-anything/core'
 const MSG_DASHBOARD_BUILD_FAILED = 'Failed to build understand-anything viewer'
+const MSG_NO_INDEX_HTML =
+  'Viewer build did not produce dist/index.html — refusing to install a broken viewer'
 const MSG_COPY_FAILED = 'Failed to install viewer to ~/.agenticapps/dashboard/understand-viewer/'
 
 // ── Seams (injectable for tests — mirrors installLaunchd convention) ──────────
@@ -52,9 +57,15 @@ export type ExecFn = (
 
 export type CpSyncFn = (src: string, dst: string, opts?: { recursive: boolean }) => void
 
+export type RmSyncFn = (path: string, opts?: { recursive: boolean; force: boolean }) => void
+
+export type RenameSyncFn = (oldPath: string, newPath: string) => void
+
 export interface InstallUnderstandViewerSeams {
   exec: ExecFn
   cpSync: CpSyncFn
+  rmSync: RmSyncFn
+  renameSync: RenameSyncFn
   cacheDir: string
   viewerDir: string
 }
@@ -62,6 +73,8 @@ export interface InstallUnderstandViewerSeams {
 export const _seams: InstallUnderstandViewerSeams = {
   exec: execFileAsync as ExecFn,
   cpSync: (src, dst, opts) => cpSync(src, dst, opts ?? { recursive: true }),
+  rmSync: (path, opts) => rmSync(path, opts ?? { recursive: true, force: true }),
+  renameSync: (oldPath, newPath) => renameSync(oldPath, newPath),
   cacheDir: UNDERSTAND_PLUGIN_CACHE,
   viewerDir: UNDERSTAND_VIEWER_DIR,
 }
@@ -82,7 +95,14 @@ function fatal(msg: string, detail?: string): never {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function runInstallUnderstandViewer(): Promise<void> {
-  const { exec, cpSync: cpSyncFn, cacheDir, viewerDir } = _seams
+  const {
+    exec,
+    cpSync: cpSyncFn,
+    rmSync: rmSyncFn,
+    renameSync: renameSyncFn,
+    cacheDir,
+    viewerDir,
+  } = _seams
 
   // Step 1: Locate plugin cache + newest version
   if (!existsSync(cacheDir)) {
@@ -133,27 +153,45 @@ export async function runInstallUnderstandViewer(): Promise<void> {
     fatal(MSG_DASHBOARD_BUILD_FAILED, String(err))
   }
 
+  // A1 guard precondition: the build MUST produce dist/index.html. A missing
+  // entry point means a broken build — installing it would leave the daemon
+  // serving 404s while the CLI reports success.
+  const indexHtmlPath = join(dashboardDistDir, 'index.html')
+  if (!existsSync(indexHtmlPath)) {
+    fatal(MSG_NO_INDEX_HTML)
+  }
+
   // A1 guard: assert dist/index.html does NOT reference root-absolute /assets/
   // Regex checks for src="/assets/ or href="/assets/ patterns (root-absolute).
   // Relative ./assets/ and ../assets/ are acceptable; only bare /assets/ indicates broken base.
-  const indexHtmlPath = join(dashboardDistDir, 'index.html')
-  if (existsSync(indexHtmlPath)) {
-    const indexHtml = readFileSync(indexHtmlPath, 'utf8')
-    if (/(?:src|href)=["']\/assets\//.test(indexHtml)) {
-      fatal(
-        'Build output uses root-absolute asset paths (/assets/). ' +
-          'The --base=./ flag was not honoured by Vite. ' +
-          'Check the Vite version and that "build.base" is not overriding --base=./ in vite.config.',
-      )
-    }
+  const indexHtml = readFileSync(indexHtmlPath, 'utf8')
+  if (/(?:src|href)=["']\/assets\//.test(indexHtml)) {
+    fatal(
+      'Build output uses root-absolute asset paths (/assets/). ' +
+        'The --base=./ flag was not honoured by Vite. ' +
+        'Check the Vite version and that "build.base" is not overriding --base=./ in vite.config.',
+    )
   }
 
-  // Step 5: Copy dist/ → UNDERSTAND_VIEWER_DIR/<version>/
+  // Step 5: Atomic install — stage dist/ in a temp sibling under viewerDir,
+  // then rmSync the existing target (if any) and renameSync temp → target.
+  // The daemon never observes a half-copied tree: it either sees the previous
+  // install or the complete new one (rename within the same parent dir).
   const targetDir = join(viewerDir, version)
+  const stagingDir = join(viewerDir, `.${version}.staging-${process.pid}`)
   try {
-    mkdirSync(targetDir, { recursive: true })
-    cpSyncFn(dashboardDistDir, targetDir, { recursive: true })
+    mkdirSync(viewerDir, { recursive: true })
+    rmSyncFn(stagingDir, { recursive: true, force: true })
+    cpSyncFn(dashboardDistDir, stagingDir, { recursive: true })
+    rmSyncFn(targetDir, { recursive: true, force: true })
+    renameSyncFn(stagingDir, targetDir)
   } catch (err) {
+    // Best-effort staging cleanup; never mask the original failure.
+    try {
+      rmSyncFn(stagingDir, { recursive: true, force: true })
+    } catch {
+      // ignore
+    }
     fatal(MSG_COPY_FAILED, String(err))
   }
 

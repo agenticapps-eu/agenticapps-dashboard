@@ -206,10 +206,31 @@ function normalizeGraphPath(filePath: string, projectRoot: string): string | nul
 }
 
 /**
+ * Module-level allow-list cache keyed by graph file path (Phase 14 review fix —
+ * Bundle D). Re-reading + re-parsing a ~143 kB graph on every file-content
+ * request is avoidable: the parsed Set is cached and invalidated when the graph
+ * file's mtimeMs changes (a fresh /understand run rewrites the file).
+ */
+const graphSetCache = new Map<string, { mtimeMs: number; set: Set<string> }>()
+
+/**
  * graphFilePathSet — parse graph JSON and build the normalized allow-list Set.
- * Per-request (no caching) — documented as ~1ms for 143 kB graph files (RESEARCH Pitfall 4).
+ * Cached per graph file path; invalidated on mtimeMs change (see graphSetCache).
  */
 function graphFilePathSet(graphFile: string, projectRoot: string): Set<string> {
+  let mtimeMs: number
+  try {
+    mtimeMs = statSync(graphFile).mtimeMs
+  } catch {
+    // Unstattable graph → empty allow-list (do not cache the failure)
+    return new Set<string>()
+  }
+
+  const cached = graphSetCache.get(graphFile)
+  if (cached && cached.mtimeMs === mtimeMs) {
+    return cached.set
+  }
+
   const allowed = new Set<string>()
   try {
     const raw = JSON.parse(readFileSync(graphFile, 'utf-8')) as {
@@ -221,8 +242,12 @@ function graphFilePathSet(graphFile: string, projectRoot: string): Set<string> {
       if (normalized) allowed.add(normalized)
     }
   } catch {
+    // Malformed graph → empty allow-list; cache it (keyed to this mtime) so a
+    // broken file does not trigger a re-parse storm; a rewrite bumps the mtime.
+    graphSetCache.set(graphFile, { mtimeMs, set: allowed })
     return allowed
   }
+  graphSetCache.set(graphFile, { mtimeMs, set: allowed })
   return allowed
 }
 
@@ -264,6 +289,11 @@ function makeDataHandler(fileName: string, opts: {
     const viewerTokenFile = c.get('viewerTokenFile') as string | undefined
     const rootOverrides = c.get('viewerRootOverrides') as RepoRootOverrides | undefined
 
+    // Data responses are token-bearing URLs — they must never be disk-cached.
+    // Applied to every c.json/c.body response from this handler (raw Response
+    // constructions below set the header explicitly).
+    c.header('Cache-Control', 'no-store')
+
     // Token gate (T-14-05-01)
     const token = c.req.query('token')
     const repoId = verifyToken(token, viewerTokenFile)
@@ -301,7 +331,10 @@ function makeDataHandler(fileName: string, opts: {
 
     if (!existsSync(filePath)) {
       if (opts.missWith404EmptyBody) {
-        return new Response(null, { status: 404 })
+        return new Response(null, {
+          status: 404,
+          headers: { 'Cache-Control': 'no-store' },
+        })
       }
       // knowledge-graph miss: upstream JSON error
       return c.json({ error: ERR_NO_GRAPH }, 404)
@@ -544,6 +577,18 @@ function getMime(filePath: string): string {
 }
 
 /**
+ * Cache-Control for static viewer files:
+ *   - assets/… chunks are content-hashed by Vite → long-lived immutable cache.
+ *   - index.html and other shell files must revalidate so a viewer update
+ *     (install-understand-viewer + daemon restart) is picked up immediately.
+ */
+function staticCacheControl(assetPath: string): string {
+  const isHashedAsset =
+    assetPath.startsWith('assets/') || assetPath.startsWith(`assets${sep}`)
+  return isHashedAsset ? 'public, max-age=31536000, immutable' : 'no-cache'
+}
+
+/**
  * Serve a static asset from the viewer dist directory.
  * Performs explicit realpath containment check (T-14-05-05).
  */
@@ -571,7 +616,10 @@ function serveViewerAsset(viewerRoot: string, assetPath: string): Response {
     const content = readFileSync(realCandidate)
     return new Response(content, {
       status: 200,
-      headers: { 'Content-Type': getMime(assetPath) },
+      headers: {
+        'Content-Type': getMime(assetPath),
+        'Cache-Control': staticCacheControl(assetPath),
+      },
     })
   } catch {
     return new Response(null, { status: 404 })

@@ -13,8 +13,8 @@
  *
  * Note: this module does NOT use execa/execSync/spawn — zero subprocess.
  */
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, statSync } from 'node:fs'
+import { isAbsolute, join, resolve } from 'node:path'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,17 +32,70 @@ export interface UnderstandScanResult {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
+ * Resolve the gitdir + common dir for a repo root, handling both layouts:
+ *   - .git is a DIRECTORY (normal clone): gitDir === commonDir === <root>/.git
+ *   - .git is a FILE (linked worktree / submodule): contains 'gitdir: <path>'
+ *     (absolute, or relative to repoRoot). The linked gitdir holds HEAD; refs
+ *     and packed-refs live in the parent repo's common dir, reachable via the
+ *     'commondir' pointer file inside the linked gitdir.
+ *
+ * Returns null when .git is absent or the pointer is malformed/dangling.
+ */
+function resolveGitDirs(repoRoot: string): { gitDir: string; commonDir: string } | null {
+  const dotGit = join(repoRoot, '.git')
+  let stat: ReturnType<typeof statSync>
+  try {
+    stat = statSync(dotGit)
+  } catch {
+    return null
+  }
+
+  let gitDir: string
+  if (stat.isDirectory()) {
+    gitDir = dotGit
+  } else {
+    // .git FILE: 'gitdir: <path>' (worktree/submodule pointer)
+    const content = readFileSync(dotGit, 'utf-8').trim()
+    if (!content.startsWith('gitdir:')) return null
+    const pointer = content.slice('gitdir:'.length).trim()
+    if (!pointer) return null
+    gitDir = isAbsolute(pointer) ? pointer : resolve(repoRoot, pointer)
+    if (!existsSync(gitDir)) return null
+  }
+
+  // 'commondir' file (present in linked worktree gitdirs) points at the parent
+  // repo's .git dir — that is where refs/ and packed-refs live.
+  let commonDir = gitDir
+  const commondirFile = join(gitDir, 'commondir')
+  if (existsSync(commondirFile)) {
+    const pointer = readFileSync(commondirFile, 'utf-8').trim()
+    if (pointer) {
+      commonDir = isAbsolute(pointer) ? pointer : resolve(gitDir, pointer)
+    }
+  }
+
+  return { gitDir, commonDir }
+}
+
+/**
  * Read the current HEAD SHA for a repo using pure FS reads (no subprocess).
  *
- * Reads .git/HEAD:
- *   - If it starts with "ref: ", resolve the branch ref file or packed-refs fallback.
+ * Supports normal clones (.git directory) AND linked worktrees/submodules
+ * (.git FILE with a 'gitdir:' pointer). Reads <gitDir>/HEAD:
+ *   - If it starts with "ref: ", resolve the branch ref file (checking the
+ *     linked gitdir first, then the common dir) or packed-refs fallback in
+ *     the common dir.
  *   - Otherwise (detached HEAD) return the raw content trimmed as the SHA.
  *
  * Returns null on any I/O error or if .git is absent.
  */
 export function readRepoHeadSha(repoRoot: string): string | null {
   try {
-    const headPath = join(repoRoot, '.git', 'HEAD')
+    const dirs = resolveGitDirs(repoRoot)
+    if (!dirs) return null
+    const { gitDir, commonDir } = dirs
+
+    const headPath = join(gitDir, 'HEAD')
     if (!existsSync(headPath)) return null
 
     const headContent = readFileSync(headPath, 'utf-8').trim()
@@ -52,15 +105,18 @@ export function readRepoHeadSha(repoRoot: string): string | null {
       return headContent || null
     }
 
-    // Ref form: resolve the branch ref
+    // Ref form: resolve the branch ref. Loose refs may live in the linked
+    // gitdir (e.g. refs/bisect) or, more commonly, in the common dir.
     const refPath = headContent.slice(5).trim()  // e.g. 'refs/heads/main'
-    const refFile = join(repoRoot, '.git', refPath)
-    if (existsSync(refFile)) {
-      return readFileSync(refFile, 'utf-8').trim() || null
+    for (const base of gitDir === commonDir ? [gitDir] : [gitDir, commonDir]) {
+      const refFile = join(base, refPath)
+      if (existsSync(refFile)) {
+        return readFileSync(refFile, 'utf-8').trim() || null
+      }
     }
 
-    // packed-refs fallback
-    const packedRefsPath = join(repoRoot, '.git', 'packed-refs')
+    // packed-refs fallback — always lives in the common dir
+    const packedRefsPath = join(commonDir, 'packed-refs')
     if (existsSync(packedRefsPath)) {
       const packedContent = readFileSync(packedRefsPath, 'utf-8')
       for (const line of packedContent.split('\n')) {

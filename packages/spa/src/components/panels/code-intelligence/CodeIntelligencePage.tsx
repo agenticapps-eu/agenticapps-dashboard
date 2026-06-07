@@ -29,23 +29,26 @@ import { EmptyState } from '../../ui/EmptyState.js'
 import { useCoverage } from '../../../lib/coverageQueries.js'
 import { useHealth } from '../../../lib/healthQueries.js'
 import { getPairing } from '../../../lib/pairing.js'
+import { buildViewerUrl } from '../../../lib/understandViewerUrl.js'
 
 import type { CoverageRow } from '@agenticapps/dashboard-shared'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Build the viewer URL for a given repo.
- * Pattern: {agentUrl}/understand/{family}/{repo}/?token={encodeURIComponent(viewerToken)}
- * Returns undefined when agentUrl or viewerToken are absent.
+ * Format a lastAnalyzedAt ISO string for the table cell.
+ * Locale-default formatting (no hardcoded locale); invalid dates render as an
+ * em dash instead of 'Invalid Date' (Phase 14 review polish).
  */
-function buildViewerUrl(
-  agentUrl: string,
-  family: string,
-  repo: string,
-  viewerToken: string,
-): string {
-  return `${agentUrl}/understand/${family}/${repo}/?token=${encodeURIComponent(viewerToken)}`
+function formatAnalyzedDate(iso: string | undefined): string | undefined {
+  if (!iso) return undefined
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) return '—'
+  return parsed.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -67,13 +70,7 @@ function AnalyzedRow({ row, agentUrl, viewerInstalled }: AnalyzedRowProps): Reac
       ? buildViewerUrl(agentUrl, row.family, row.repo, viewerToken)
       : undefined
 
-  const lastAnalyzedAt = understand.lastAnalyzedAt
-    ? new Date(understand.lastAnalyzedAt).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : undefined
+  const lastAnalyzedAt = formatAnalyzedDate(understand.lastAnalyzedAt)
 
   return (
     <tr className="border-b border-border-subtle last:border-0">
@@ -148,11 +145,18 @@ export function CodeIntelligencePage(): React.JSX.Element {
     )
   }
 
-  // Derive understand state from health
+  // Derive understand state from health.
+  // Phase 14 review fix: when the health query errored (or schema-drifted —
+  // no data either way), the install state is UNKNOWN: show neither the
+  // install banner nor the update hint, and keep viewer links rendered (the
+  // daemon route 503s gracefully if the viewer is truly missing). Only a
+  // successful health response may claim 'Viewer not installed'.
+  const healthUnknown = healthQuery.isError || healthQuery.data === undefined
   const understandHealth = healthQuery.data?.understand
   // Treat missing understand block (old daemon) as viewer not installed
-  const viewerInstalled = understandHealth?.viewerInstalled ?? false
-  const updateAvailable = understandHealth?.updateAvailable ?? false
+  const viewerInstalled = healthUnknown ? true : (understandHealth?.viewerInstalled ?? false)
+  const showInstallHint = !healthUnknown && !(understandHealth?.viewerInstalled ?? false)
+  const updateAvailable = !healthUnknown && (understandHealth?.updateAvailable ?? false)
   const viewerVersion = understandHealth?.viewerVersion ?? null
   const pluginVersion = understandHealth?.pluginVersion ?? null
 
@@ -170,8 +174,9 @@ export function CodeIntelligencePage(): React.JSX.Element {
       />
 
       {/* Install hint — viewer not installed (D-14-02). role="status" (polite),
-          not "alert": this is a static hint present at render, not an interruption. */}
-      {!viewerInstalled && (
+          not "alert": this is a static hint present at render, not an interruption.
+          Suppressed when health is unknown (errored/no data) — see healthUnknown. */}
+      {showInstallHint && (
         <div
           role="status"
           className="rounded-lg border border-border-subtle bg-card-bg p-4 text-sm text-text-secondary"

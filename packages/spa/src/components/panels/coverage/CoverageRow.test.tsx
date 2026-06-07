@@ -803,6 +803,27 @@ describe('Phase 14 — understand column in CoverageRow (D-14-06/08/10)', () => 
     expect(screen.getByTestId('understand-pill').getAttribute('data-state')).toBe('missing')
   })
 
+  // Phase 14 review fix (Bundle D polish): the understand cell title formats
+  // lastAnalyzedAt with formatRelativeTime instead of dumping the raw ISO string.
+  it('Test-2c: understand cell title uses relative time, not the raw ISO timestamp', () => {
+    const lastAnalyzedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
+    const { container } = renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'fresh', lastAnalyzedAt } })}
+          />
+        </tbody>
+      </table>,
+    )
+    const cell = container.querySelector('td[title]')
+    expect(cell).toBeTruthy()
+    const title = cell!.getAttribute('title')!
+    expect(title).toBe('Last analyzed: 3d ago')
+    // Raw ISO timestamp must NOT leak into the tooltip
+    expect(title).not.toContain(lastAnalyzedAt)
+  })
+
   // Test 3: undefined understand (pre-Phase-14 daemon) renders inert placeholder, no crash
   it('Test-3: understand=undefined (pre-Phase-14 daemon) renders em-dash placeholder, no crash', () => {
     const { container } = renderInQC(

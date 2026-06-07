@@ -273,6 +273,60 @@ describe('CodeIntelligencePage', () => {
     })
   })
 
+  describe('Test 2b: last-analyzed date rendering — Phase 14 review fix', () => {
+    it('invalid lastAnalyzedAt renders an em dash, never "Invalid Date"', () => {
+      const coverage = makeCoverageResponse([{ state: 'fresh', viewerToken: VIEWER_TOKEN }])
+      coverage.rows[0]!.understand!.lastAnalyzedAt = 'not-a-date'
+      mockUseCoverage.mockReturnValue(makeQueryResult(coverage))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      const { container } = render(<CodeIntelligencePage />)
+
+      expect(container.innerHTML).not.toContain('Invalid Date')
+      // The last-analyzed cell falls back to the em dash
+      expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('valid lastAnalyzedAt renders via locale-default formatting (no hardcoded en-US)', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'fresh', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      const { container } = render(<CodeIntelligencePage />)
+
+      // Fixture date: 2026-06-01T10:00:00.000Z — assert the locale-default output
+      const expected = new Date('2026-06-01T10:00:00.000Z').toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+      expect(container.textContent).toContain(expected)
+      expect(container.innerHTML).not.toContain('Invalid Date')
+    })
+  })
+
+  describe('Test 3b: health unknown (errored / no data) — Phase 14 review fix', () => {
+    it('health query error → NO install banner, NO update hint, viewer links stay rendered', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'fresh', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeErrorResult('daemon unreachable'))
+
+      render(<CodeIntelligencePage />)
+
+      // No misleading 'Viewer not installed' banner when install state is unknown
+      expect(screen.queryByText(/viewer not installed/i)).toBeNull()
+      // No update hint either
+      expect(screen.queryByText(/viewer update available/i)).toBeNull()
+      // Viewer links remain rendered — the daemon route 503s gracefully if needed
+      const link = screen.getByRole('link', { name: /open viewer/i })
+      expect(link).toBeDefined()
+      const expectedHref = `${AGENT_URL}/understand/agenticapps/repo-1/?token=${encodeURIComponent(VIEWER_TOKEN)}`
+      expect(link.getAttribute('href')).toBe(expectedHref)
+    })
+  })
+
   describe('Test 6: loading and error states', () => {
     it('renders loading skeleton when coverage query is pending', () => {
       mockUseCoverage.mockReturnValue(makePendingResult())

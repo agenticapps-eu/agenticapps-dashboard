@@ -176,6 +176,8 @@ describe('runInstallUnderstandViewer', () => {
 
     _seams.exec = execSpy
     _seams.cpSync = cpSyncSpy
+    _seams.rmSync = vi.fn()
+    _seams.renameSync = vi.fn()
     _seams.cacheDir = cacheDir
     _seams.viewerDir = targetDir
 
@@ -236,6 +238,8 @@ describe('runInstallUnderstandViewer', () => {
 
     _seams.exec = execSpy
     _seams.cpSync = cpSyncSpy
+    _seams.rmSync = vi.fn()
+    _seams.renameSync = vi.fn()
     _seams.cacheDir = cacheDir
     _seams.viewerDir = targetDir
 
@@ -343,6 +347,8 @@ describe('runInstallUnderstandViewer', () => {
 
     _seams.exec = execSpy
     _seams.cpSync = cpSyncSpy
+    _seams.rmSync = vi.fn()
+    _seams.renameSync = vi.fn()
     _seams.cacheDir = cacheDir
     _seams.viewerDir = targetDir
 
@@ -353,9 +359,9 @@ describe('runInstallUnderstandViewer', () => {
     expect(cpSyncSpy).toHaveBeenCalled()
   })
 
-  // ── Test 7: Happy path ────────────────────────────────────────────────────────
+  // ── Test 7: Happy path (atomic install) ──────────────────────────────────────
 
-  it('Test 7: happy path copies dist/ to UNDERSTAND_VIEWER_DIR/<version>/ + prints target + restart hint', async () => {
+  it('Test 7: happy path stages dist/ in a temp sibling, then renames atomically to <version>/ + prints target + restart hint', async () => {
     const { cacheDir, dashboardDistDir } = makeFakeCache(tmpRoot)
     // core dist present
     const coreDistDir = join(cacheDir, '2.7.6', 'packages', 'core', 'dist')
@@ -379,9 +385,16 @@ describe('runInstallUnderstandViewer', () => {
     const cpSyncSpy = vi.fn().mockImplementation((src: string, dst: string) => {
       cpSyncCalls.push({ src, dst })
     })
+    const renameCalls: Array<{ from: string; to: string }> = []
+    const renameSpy = vi.fn().mockImplementation((from: string, to: string) => {
+      renameCalls.push({ from, to })
+    })
+    const rmSpy = vi.fn()
 
     _seams.exec = execSpy
     _seams.cpSync = cpSyncSpy
+    _seams.rmSync = rmSpy
+    _seams.renameSync = renameSpy
     _seams.cacheDir = cacheDir
     _seams.viewerDir = targetDir
 
@@ -390,14 +403,65 @@ describe('runInstallUnderstandViewer', () => {
     // No exit
     expect(exitSpy).not.toHaveBeenCalled()
 
-    // cpSync called with dist → target/<version>
+    const finalTarget = join(targetDir, '2.7.6')
+
+    // cpSync stages into a temp sibling under the SAME parent (viewerDir) —
+    // NEVER directly into the final target (atomicity).
     expect(cpSyncCalls).toHaveLength(1)
     expect(cpSyncCalls[0]!.src).toBe(join(cacheDir, '2.7.6', 'packages', 'dashboard', 'dist'))
-    expect(cpSyncCalls[0]!.dst).toBe(join(targetDir, '2.7.6'))
+    expect(cpSyncCalls[0]!.dst).not.toBe(finalTarget)
+    expect(cpSyncCalls[0]!.dst.startsWith(targetDir)).toBe(true)
+
+    // renameSync swaps temp → final target as the last step
+    expect(renameCalls).toHaveLength(1)
+    expect(renameCalls[0]!.from).toBe(cpSyncCalls[0]!.dst)
+    expect(renameCalls[0]!.to).toBe(finalTarget)
+
+    // The existing target is removed before the rename
+    const rmTargets = rmSpy.mock.calls.map((c) => c[0] as string)
+    expect(rmTargets).toContain(finalTarget)
 
     // Logged target path and restart hint
     const logged = logSpy.mock.calls.flat().join('\n')
-    expect(logged).toContain(join(targetDir, '2.7.6'))
+    expect(logged).toContain(finalTarget)
     expect(logged).toMatch(/restart/i)
+  })
+
+  // ── Test 8: Missing dist/index.html after build → FATAL ──────────────────────
+
+  it('Test 8: missing dist/index.html after the vite build → exact message + exit 1, no install', async () => {
+    const { cacheDir, dashboardDistDir } = makeFakeCache(tmpRoot)
+    // core dist present
+    const coreDistDir = join(cacheDir, '2.7.6', 'packages', 'core', 'dist')
+    mkdirSync(coreDistDir, { recursive: true })
+    writeFileSync(join(coreDistDir, 'schema.js'), '')
+    // dashboard dist exists but has NO index.html (broken build output)
+    mkdirSync(dashboardDistDir, { recursive: true })
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code?: string | number | null | undefined) => {
+      throw new Error('process.exit called')
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const execSpy = vi.fn().mockResolvedValue({ stdout: '', stderr: '' })
+    const cpSyncSpy = vi.fn()
+    const renameSpy = vi.fn()
+
+    _seams.exec = execSpy
+    _seams.cpSync = cpSyncSpy
+    _seams.rmSync = vi.fn()
+    _seams.renameSync = renameSpy
+    _seams.cacheDir = cacheDir
+    _seams.viewerDir = targetDir
+
+    await expect(runInstallUnderstandViewer()).rejects.toThrow('process.exit called')
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Viewer build did not produce dist/index.html — refusing to install a broken viewer',
+    )
+    expect(exitSpy).toHaveBeenCalledWith(1)
+    // A broken build must never be installed
+    expect(cpSyncSpy).not.toHaveBeenCalled()
+    expect(renameSpy).not.toHaveBeenCalled()
   })
 })
