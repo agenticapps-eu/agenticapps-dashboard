@@ -41,12 +41,20 @@ export function UnderstandCopyPill({
   state,
 }: UnderstandCopyPillProps): React.JSX.Element {
   const toast = useToast()
-  const cmd = buildUnderstandCommand(family, repo)
+  // buildUnderstandCommand throws on non-slug family/repo names (shell-safety,
+  // Phase 14 review fix). Daemon-side mint validation already degrades such
+  // rows, but guard the render path too: no safe command → no copy pill.
+  let cmdString: string | null = null
+  try {
+    cmdString = buildUnderstandCommand(family, repo).string
+  } catch {
+    cmdString = null
+  }
 
   // Viewer link is shown for fresh and stale states when viewerUrl is set.
   const showLink = (state === 'fresh' || state === 'stale') && !!viewerUrl
-  // Copy pill is shown for stale and missing states.
-  const showPill = state === 'stale' || state === 'missing'
+  // Copy pill is shown for stale and missing states (when a safe command exists).
+  const showPill = (state === 'stale' || state === 'missing') && cmdString !== null
 
   return (
     <div className="flex items-center gap-2">
@@ -65,7 +73,7 @@ export function UnderstandCopyPill({
         <button
           type="button"
           onClick={async () => {
-            const ok = await writeToClipboard(cmd.string)
+            const ok = await writeToClipboard(cmdString!)
             toast.show(
               ok
                 ? { message: 'Copied — paste in terminal to analyze', variant: 'success' }
