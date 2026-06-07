@@ -28,6 +28,7 @@ import { PageHeader } from '../../ui/PageHeader.js'
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
 import { useHealth } from '../../../lib/healthQueries.js'
 import { getPairing } from '../../../lib/pairing.js'
+import { buildViewerUrl } from '../../../lib/understandViewerUrl.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { useToast } from '../../ui/Toast.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
@@ -40,24 +41,9 @@ import { InstallGitNexusButton } from './InstallGitNexusButton.js'
 // IndexGitNexusButton DELETED — D-13-06. Per-row + per-family ScanPill replaced it.
 // The binary-not-installed fallback (InstallGitNexusButton) is preserved (D-13-07).
 
-/**
- * Phase 14 D-14-03/06/07: build a scoped viewer URL for a single repo row.
- * Uses ONLY the per-row viewerToken (lower-privilege, repo-bound) — the main
- * bearer token from getPairing() is NEVER included in viewer URLs (T-14-03-01).
- *
- * Returns undefined when:
- *  - pairing is absent (not yet paired)
- *  - row.understand is undefined (pre-Phase-14 daemon)
- *  - viewerToken is absent on the understand object
- */
-function buildViewerUrl(
-  agentUrl: string,
-  family: string,
-  repo: string,
-  viewerToken: string,
-): string {
-  return `${agentUrl}/understand/${family}/${repo}/?token=${encodeURIComponent(viewerToken)}`
-}
+// Phase 14 D-14-03/06/07: viewer URLs are built with the shared buildViewerUrl
+// helper (lib/understandViewerUrl.ts) from the per-row scoped viewerToken — the
+// main bearer token from getPairing() is NEVER included (T-14-03-01).
 
 const FAMILIES: CoverageFamily[] = ['agenticapps', 'factiv', 'neuroflash']
 

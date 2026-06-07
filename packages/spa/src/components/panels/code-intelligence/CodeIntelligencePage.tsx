@@ -29,24 +29,9 @@ import { EmptyState } from '../../ui/EmptyState.js'
 import { useCoverage } from '../../../lib/coverageQueries.js'
 import { useHealth } from '../../../lib/healthQueries.js'
 import { getPairing } from '../../../lib/pairing.js'
+import { buildViewerUrl } from '../../../lib/understandViewerUrl.js'
 
 import type { CoverageRow } from '@agenticapps/dashboard-shared'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Build the viewer URL for a given repo.
- * Pattern: {agentUrl}/understand/{family}/{repo}/?token={encodeURIComponent(viewerToken)}
- * Returns undefined when agentUrl or viewerToken are absent.
- */
-function buildViewerUrl(
-  agentUrl: string,
-  family: string,
-  repo: string,
-  viewerToken: string,
-): string {
-  return `${agentUrl}/understand/${family}/${repo}/?token=${encodeURIComponent(viewerToken)}`
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
