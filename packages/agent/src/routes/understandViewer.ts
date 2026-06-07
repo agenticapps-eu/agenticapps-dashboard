@@ -39,8 +39,6 @@ import {
   statSync,
   readFileSync,
   realpathSync,
-  mkdirSync,
-  readdirSync,
 } from 'node:fs'
 import { join, normalize, relative, isAbsolute, basename, sep } from 'node:path'
 
