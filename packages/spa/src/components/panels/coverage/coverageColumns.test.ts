@@ -51,9 +51,12 @@ describe('COVERAGE_COL_WIDTHS', () => {
     expect(COVERAGE_COL_WIDTHS.actions).toBe('w-12')
   })
 
-  // Plan 03 (D-11.2-09): wiki tightening
-  it('wiki column width is w-72 (288px) — tightened from w-[22rem] per D-11.2-09', () => {
-    expect(COVERAGE_COL_WIDTHS.wiki).toBe('w-72')
+  // Plan 03 (D-11.2-09): wiki tightening, then Phase 14 review fix: w-72 → w-60.
+  // The new Understand column (w-36/144px) pushed total table width ~46px past
+  // a 1440 viewport at 1440×900. Wiki had ~138px breathing room over its
+  // ~150px max-measured content — reclaim 48px from it.
+  it('wiki column width is w-60 (240px) — reclaimed 48px for the Understand column (Phase 14 review fix)', () => {
+    expect(COVERAGE_COL_WIDTHS.wiki).toBe('w-60')
   })
 
   // Phase 14 (D-14-06): understand column — same density as gitNexus (link + pill)
