@@ -287,7 +287,8 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
 
     const result = await scanCoverage({ sourcecodeRootOverride: root })
     expect(result.rows).toHaveLength(1)
-    const row = result.rows[0]
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!
 
     // understand must be present
     expect(row.understand).toBeDefined()
@@ -315,7 +316,8 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
 
     const result = await scanCoverage({ sourcecodeRootOverride: root })
     expect(result.rows).toHaveLength(1)
-    const row = result.rows[0]
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!
 
     expect(row.understand?.state).toBe('stale')
     expect(row.understand?.viewerToken).toBeDefined()  // stale rows keep their viewer link
@@ -332,7 +334,8 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
 
     const result = await scanCoverage({ sourcecodeRootOverride: root })
     expect(result.rows).toHaveLength(1)
-    const row = result.rows[0]
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!
 
     expect(row.understand?.state).toBe('missing')
     // viewerToken must be ABSENT (not undefined-value, not present)

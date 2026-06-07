@@ -60,6 +60,11 @@ describe('GET /health', () => {
     // Default: binary is installed
     const { detectGitNexusBinary } = await import('../lib/scanners/gitNexusScanner.js')
     vi.mocked(detectGitNexusBinary).mockReturnValue(true)
+
+    // Default: viewer not installed (null values are valid for nullable schema fields)
+    const { getInstalledViewerVersion, getNewestPluginCacheVersion } = await import('../lib/viewerInstall.js')
+    vi.mocked(getInstalledViewerVersion).mockReturnValue(null)
+    vi.mocked(getNewestPluginCacheVersion).mockReturnValue(null)
   })
 
   afterEach(() => cleanup())
