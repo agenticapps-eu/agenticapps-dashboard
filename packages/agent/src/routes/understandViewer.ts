@@ -445,7 +445,10 @@ async function handleFileContent(
   //   e) size check
   //   f) binary check
 
-  // Build graph allow-list (per-request, no cache — RESEARCH Pitfall 4)
+  // Build graph allow-list — served from the mtime-keyed graphSetCache
+  // (Phase 14 review fix, Bundle D): the parsed Set is reused across requests
+  // and invalidated when the graph file's mtimeMs changes (a fresh /understand
+  // run rewrites the file).
   const allowed = graphFilePathSet(graphFile, projectRoot)
 
   if (!allowed.has(safeRelativePath)) {
