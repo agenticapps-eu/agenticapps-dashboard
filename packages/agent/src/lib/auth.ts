@@ -19,6 +19,7 @@ import { AUTH_FILE, CONFIG_DIR, TOKEN_ROTATION_DAYS } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
 import { parseOrCorrupt } from './stateCorruption.js'
+import { rotateViewerSecret } from './viewerToken.js'
 
 export type { AuthFile }
 
@@ -147,6 +148,8 @@ export function rotateToken(filePath: string = AUTH_FILE): AuthFile {
   }
   writeAuthFile(next, filePath) // write file FIRST
   setActiveToken(next.token) // then flip in-memory ref
+  // D-14-03 rotation: viewer tokens rotate with the bearer token — single rotation story
+  rotateViewerSecret()
   return next
 }
 

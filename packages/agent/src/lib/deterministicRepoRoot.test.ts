@@ -18,7 +18,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { deterministicRepoRoot } from './gitnexusScan.js'
+import { deterministicRepoRoot } from './repoRoot.js'
 
 describe('deterministicRepoRoot — D-13-EXT-09 corollary (Codex CRITICAL #2 symlink escape)', () => {
   let stashedHome: string | undefined

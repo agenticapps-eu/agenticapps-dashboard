@@ -5,6 +5,7 @@ import {
   assertSecurePermissions,
   InsecurePermissionsError,
 } from '../lib/auth.js'
+import { ensureViewerSecretFile } from '../lib/viewerToken.js'
 import { ensureRegistryFile } from '../lib/registry.js'
 import { assertNoStaleDaemon, StaleDaemonError } from '../lib/pidfile.js'
 import { createApp } from '../server/app.js'
@@ -43,6 +44,7 @@ export async function runStart(opts: StartOpts): Promise<void> {
 
     ensureRegistryFile()
     let auth = ensureAuthFile()
+    ensureViewerSecretFile() // D-14-03: viewer secret alongside bearer token
 
     // D-14: auto-rotate on version mismatch or 30-day expiry
     if (shouldAutoRotate(auth)) {
