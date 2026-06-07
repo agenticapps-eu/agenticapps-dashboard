@@ -22,6 +22,7 @@ import {
   rmSync,
   realpathSync,
   symlinkSync,
+  utimesSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -1230,6 +1231,71 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     expect(res.status).toBe(200)
     expect(res.headers.get('Cache-Control')).toBe('no-cache')
     ctx.cleanup()
+  })
+})
+
+// ── Graph allow-list mtime cache (Phase 14 review fix — Bundle D) ────────────
+
+describe('understandViewer — graph allow-list mtime cache', () => {
+  it('caches the allow-list per graph mtime: stable mtime → cache hit; bumped mtime → re-read', async () => {
+    const proj = makeTmpUnderstandProject([])
+    mkdirSync(join(proj.root, 'src'), { recursive: true })
+    writeFileSync(join(proj.root, 'src', 'auth.ts'), 'export const a = 1\n')
+    writeFileSync(join(proj.root, 'src', 'other.ts'), 'export const b = 2\n')
+
+    const graphFile = join(proj.uaDir, 'knowledge-graph.json')
+    writeFileSync(
+      graphFile,
+      makeGraphJson([{ filePath: 'src/auth.ts' }, { filePath: 'src/other.ts' }]),
+    )
+    // Pin the graph mtime so we can hold it stable across a content rewrite.
+    const t1 = new Date('2026-01-01T00:00:00Z')
+    utimesSync(graphFile, t1, t1)
+
+    const tmp = makeTmpHome()
+    const authFile = join(tmp.configDir, 'auth.json')
+    const registryFile = join(tmp.configDir, 'registry.json')
+    const viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
+    const authFresh = ensureAuthFile(authFile)
+    setActiveToken(authFresh.token)
+    ensureViewerSecretFile(viewerTokenFile)
+    writeFileSync(registryFile, JSON.stringify({
+      version: 1,
+      projects: [{ id: proj.root, root: proj.root, name: 'test' }],
+    }))
+
+    const app = createApp({
+      registryFile,
+      authFile,
+      viewerTokenFile,
+      viewerRootOverrides: { 'agenticapps/test-repo': proj.root },
+      bindMode: 'loopback',
+    })
+    const token = mintViewerToken('agenticapps/test-repo', viewerTokenFile)
+    const url = `http://127.0.0.1:5193/file-content.json?token=${token}&path=src/other.ts`
+
+    // Request 1 — populates the cache for mtime t1
+    const res1 = await app.request(url)
+    expect(res1.status).toBe(200)
+
+    // Rewrite the graph WITHOUT other.ts, but restore the mtime to t1.
+    // The second request must be served from the cached allow-list (cache hit:
+    // no re-parse despite the content change) → still 200.
+    writeFileSync(graphFile, makeGraphJson([{ filePath: 'src/auth.ts' }]))
+    utimesSync(graphFile, t1, t1)
+    const res2 = await app.request(url)
+    expect(res2.status).toBe(200)
+
+    // Bump the mtime → cache invalidated → re-read sees other.ts gone → 404.
+    const t2 = new Date('2026-01-01T00:01:00Z')
+    utimesSync(graphFile, t2, t2)
+    const res3 = await app.request(url)
+    expect(res3.status).toBe(404)
+    const body3 = await res3.json() as { error: string }
+    expect(body3.error).toBe('File is not in the knowledge graph')
+
+    proj.cleanup()
+    tmp.cleanup()
   })
 })
 

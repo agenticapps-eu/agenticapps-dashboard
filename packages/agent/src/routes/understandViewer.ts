@@ -206,10 +206,31 @@ function normalizeGraphPath(filePath: string, projectRoot: string): string | nul
 }
 
 /**
+ * Module-level allow-list cache keyed by graph file path (Phase 14 review fix —
+ * Bundle D). Re-reading + re-parsing a ~143 kB graph on every file-content
+ * request is avoidable: the parsed Set is cached and invalidated when the graph
+ * file's mtimeMs changes (a fresh /understand run rewrites the file).
+ */
+const graphSetCache = new Map<string, { mtimeMs: number; set: Set<string> }>()
+
+/**
  * graphFilePathSet — parse graph JSON and build the normalized allow-list Set.
- * Per-request (no caching) — documented as ~1ms for 143 kB graph files (RESEARCH Pitfall 4).
+ * Cached per graph file path; invalidated on mtimeMs change (see graphSetCache).
  */
 function graphFilePathSet(graphFile: string, projectRoot: string): Set<string> {
+  let mtimeMs: number
+  try {
+    mtimeMs = statSync(graphFile).mtimeMs
+  } catch {
+    // Unstattable graph → empty allow-list (do not cache the failure)
+    return new Set<string>()
+  }
+
+  const cached = graphSetCache.get(graphFile)
+  if (cached && cached.mtimeMs === mtimeMs) {
+    return cached.set
+  }
+
   const allowed = new Set<string>()
   try {
     const raw = JSON.parse(readFileSync(graphFile, 'utf-8')) as {
@@ -221,8 +242,12 @@ function graphFilePathSet(graphFile: string, projectRoot: string): Set<string> {
       if (normalized) allowed.add(normalized)
     }
   } catch {
+    // Malformed graph → empty allow-list; cache it (keyed to this mtime) so a
+    // broken file does not trigger a re-parse storm; a rewrite bumps the mtime.
+    graphSetCache.set(graphFile, { mtimeMs, set: allowed })
     return allowed
   }
+  graphSetCache.set(graphFile, { mtimeMs, set: allowed })
   return allowed
 }
 
