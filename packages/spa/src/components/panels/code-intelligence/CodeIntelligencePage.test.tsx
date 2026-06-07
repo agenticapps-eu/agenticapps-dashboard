@@ -263,8 +263,9 @@ describe('CodeIntelligencePage', () => {
 
       // EmptyState heading
       expect(screen.getByText(/no knowledge graphs/i)).toBeDefined()
-      // Mentions /understand skill
-      expect(screen.getByText(/\/understand/)).toBeDefined()
+      // Mentions /understand skill — at least one element contains /understand
+      const understandEls = screen.getAllByText(/\/understand/)
+      expect(understandEls.length).toBeGreaterThanOrEqual(1)
     })
   })
 
