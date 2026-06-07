@@ -2,6 +2,7 @@
  * health.test.ts — GET /health
  *
  * Phase 13 Plan 01 Task 2 (RED2 then GREEN2): gitnexus composite field.
+ * Phase 14 Plan 06 Task 3 (RED3 then GREEN3): understand block.
  *
  * Coverage:
  *   - returns 200 with valid HealthResponseSchema body ............... Test 1
@@ -10,6 +11,10 @@
  *   - D-13-11b canScan=true when loopback + binary installed ........ Test 4
  *   - D-13-11b canScan=false when tailscale (even binary installed) . Test 5
  *   - D-13-11b installed=false when detectGitNexusBinary=false ....... Test 6
+ *   - Phase 14 D-14-02: understand block when viewer installed + same version . Test 7
+ *   - Phase 14 D-14-02: understand.updateAvailable=true when plugin newer ..... Test 8
+ *   - Phase 14 D-14-02: understand block when nothing installed ............... Test 9
+ *   - Phase 14 T-14-06-03: negative assertion — no token in response ........... Test 10
  */
 import { join } from 'node:path'
 
@@ -24,6 +29,13 @@ import { AGENT_VERSION } from '../version.js'
 vi.mock('../lib/scanners/gitNexusScanner.js', () => ({
   detectGitNexusBinary: vi.fn(),
   scanGitNexus: vi.fn(),
+}))
+
+// Mock viewerInstall helpers so we can inject fixture data without touching real paths
+vi.mock('../lib/viewerInstall.js', () => ({
+  getInstalledViewerVersion: vi.fn(),
+  getInstalledViewerPath: vi.fn(),
+  getNewestPluginCacheVersion: vi.fn(),
 }))
 
 function authHeaders(token: string) {
@@ -153,5 +165,92 @@ describe('GET /health', () => {
     expect(body.gitnexus).toBeDefined()
     expect(body.gitnexus.installed).toBe(false)
     expect(body.gitnexus.canScan).toBe(false)
+  })
+
+  // ── Phase 14 D-14-02: understand block tests ──────────────────────────────
+
+  it("Test 7: D-14-02 understand block — viewer installed + same plugin version → updateAvailable: false", async () => {
+    const { getInstalledViewerVersion, getNewestPluginCacheVersion } = await import('../lib/viewerInstall.js')
+    vi.mocked(getInstalledViewerVersion).mockReturnValue('2.7.6')
+    vi.mocked(getNewestPluginCacheVersion).mockReturnValue('2.7.6')
+
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request('http://127.0.0.1:5193/health', {
+      headers: authHeaders(token),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as {
+      understand: {
+        viewerInstalled: boolean
+        viewerVersion: string | null
+        pluginVersion: string | null
+        updateAvailable: boolean
+      }
+    }
+    expect(body.understand).toBeDefined()
+    expect(body.understand.viewerInstalled).toBe(true)
+    expect(body.understand.viewerVersion).toBe('2.7.6')
+    expect(body.understand.pluginVersion).toBe('2.7.6')
+    expect(body.understand.updateAvailable).toBe(false)
+  })
+
+  it("Test 8: D-14-02 understand block — plugin cache has newer version → updateAvailable: true", async () => {
+    const { getInstalledViewerVersion, getNewestPluginCacheVersion } = await import('../lib/viewerInstall.js')
+    vi.mocked(getInstalledViewerVersion).mockReturnValue('2.7.6')
+    vi.mocked(getNewestPluginCacheVersion).mockReturnValue('2.8.0')
+
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request('http://127.0.0.1:5193/health', {
+      headers: authHeaders(token),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as { understand: { updateAvailable: boolean; viewerVersion: string | null; pluginVersion: string | null } }
+    expect(body.understand.viewerVersion).toBe('2.7.6')
+    expect(body.understand.pluginVersion).toBe('2.8.0')
+    expect(body.understand.updateAvailable).toBe(true)
+  })
+
+  it("Test 9: D-14-02 understand block — nothing installed → viewerInstalled: false, updateAvailable: false", async () => {
+    const { getInstalledViewerVersion, getNewestPluginCacheVersion } = await import('../lib/viewerInstall.js')
+    vi.mocked(getInstalledViewerVersion).mockReturnValue(null)
+    vi.mocked(getNewestPluginCacheVersion).mockReturnValue(null)
+
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request('http://127.0.0.1:5193/health', {
+      headers: authHeaders(token),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as {
+      understand: {
+        viewerInstalled: boolean
+        viewerVersion: string | null
+        pluginVersion: string | null
+        updateAvailable: boolean
+      }
+    }
+    expect(body.understand.viewerInstalled).toBe(false)
+    expect(body.understand.viewerVersion).toBeNull()
+    expect(body.understand.pluginVersion).toBeNull()
+    expect(body.understand.updateAvailable).toBe(false)
+  })
+
+  it("Test 10: T-14-06-03 negative — serialized health response contains no viewerToken or token material", async () => {
+    const { getInstalledViewerVersion, getNewestPluginCacheVersion } = await import('../lib/viewerInstall.js')
+    vi.mocked(getInstalledViewerVersion).mockReturnValue('2.7.6')
+    vi.mocked(getNewestPluginCacheVersion).mockReturnValue('2.7.6')
+
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request('http://127.0.0.1:5193/health', {
+      headers: authHeaders(token),
+    })
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    // Negative assertion: no token-like field in the response body
+    expect(text).not.toContain('"viewerToken"')
+    expect(text).not.toContain('"token"')
   })
 })
