@@ -31,11 +31,13 @@ function notExpectedFetch(): never {
 describe('rotateTokenSmart (F-006)', () => {
   let cleanup: () => void
   let authFile: string
+  let viewerTokenFile: string
 
   beforeEach(() => {
     const tmp = makeTmpHome()
     cleanup = tmp.cleanup
     authFile = join(tmp.configDir, 'auth.json')
+    viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
     ensureAuthFile(authFile) // initializes auth.json with a fresh token
   })
 
@@ -46,6 +48,7 @@ describe('rotateTokenSmart (F-006)', () => {
 
     const result = await rotateTokenSmart({
       authFile,
+      viewerTokenFile,
       readServerInfo: () => null,
       fetchFn: notExpectedFetch as unknown as typeof fetch,
     })
@@ -70,7 +73,7 @@ describe('rotateTokenSmart (F-006)', () => {
       // the test's auth.json — D-15 guarantees the file is written BEFORE
       // the 204 response, so the CLI re-reading auth.json after this call
       // observes the new token.
-      directRotateToken(authFile)
+      directRotateToken(authFile, viewerTokenFile)
       return new Response(null, { status: 204 })
     }
 
@@ -78,6 +81,7 @@ describe('rotateTokenSmart (F-006)', () => {
 
     const result = await rotateTokenSmart({
       authFile,
+      viewerTokenFile,
       readServerInfo: () => FAKE_INFO,
       fetchFn: fakeFetch,
     })
@@ -104,6 +108,7 @@ describe('rotateTokenSmart (F-006)', () => {
 
     const result = await rotateTokenSmart({
       authFile,
+      viewerTokenFile,
       readServerInfo: () => FAKE_INFO,
       fetchFn: fakeFetch,
     })
@@ -123,6 +128,7 @@ describe('rotateTokenSmart (F-006)', () => {
     await expect(
       rotateTokenSmart({
         authFile,
+        viewerTokenFile,
         readServerInfo: () => FAKE_INFO,
         fetchFn: fakeFetch,
       }),
@@ -139,6 +145,7 @@ describe('rotateTokenSmart (F-006)', () => {
     await expect(
       rotateTokenSmart({
         authFile,
+        viewerTokenFile,
         readServerInfo: () => FAKE_INFO,
         fetchFn: fakeFetch,
       }),

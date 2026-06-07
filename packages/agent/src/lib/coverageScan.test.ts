@@ -278,14 +278,18 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
       analyzedFiles: 110,
     })
 
-    // Seed a viewer secret file so mintViewerToken doesn't try to write to ~/.agenticapps
+    // Seed a viewer secret file AND thread it through scanCoverage so
+    // mintViewerToken never reads/writes the real ~/.agenticapps file.
     const { ensureViewerSecretFile } = await import('../lib/viewerToken.js')
     const secretTmp = mkdtempSync(join(tmpdir(), 'viewer-secret-'))
     cleanups.push(() => rmSync(secretTmp, { recursive: true, force: true }))
     const secretPath = join(secretTmp, 'viewer-token.json')
     ensureViewerSecretFile(secretPath)
 
-    const result = await scanCoverage({ sourcecodeRootOverride: root })
+    const result = await scanCoverage({
+      sourcecodeRootOverride: root,
+      viewerTokenFileOverride: secretPath,
+    })
     expect(result.rows).toHaveLength(1)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const row = result.rows[0]!
@@ -314,15 +318,20 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
       analyzedFiles: 55,
     })
 
-    // Seed a viewer secret explicitly — do NOT rely on Test 1's module-global
-    // activeViewerSecret leftover (order-dependence; isolated runs would fall
-    // through to the REAL ~/.agenticapps/dashboard/viewer-token.json).
+    // Seed a viewer secret explicitly AND thread it through scanCoverage — do
+    // NOT rely on Test 1's module-global activeViewerSecret leftover
+    // (order-dependence; isolated runs would fall through to the REAL
+    // ~/.agenticapps/dashboard/viewer-token.json).
     const { ensureViewerSecretFile } = await import('../lib/viewerToken.js')
     const secretTmp = mkdtempSync(join(tmpdir(), 'viewer-secret-stale-'))
     cleanups.push(() => rmSync(secretTmp, { recursive: true, force: true }))
-    ensureViewerSecretFile(join(secretTmp, 'viewer-token.json'))
+    const secretPath = join(secretTmp, 'viewer-token.json')
+    ensureViewerSecretFile(secretPath)
 
-    const result = await scanCoverage({ sourcecodeRootOverride: root })
+    const result = await scanCoverage({
+      sourcecodeRootOverride: root,
+      viewerTokenFileOverride: secretPath,
+    })
     expect(result.rows).toHaveLength(1)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const row = result.rows[0]!
@@ -348,6 +357,36 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
     expect(row.understand?.state).toBe('missing')
     // viewerToken must be ABSENT (not undefined-value, not present)
     expect('viewerToken' in (row.understand ?? {})).toBe(false)
+  })
+
+  it('Test 5 (Bundle B-3): mint failure degrades the row instead of rejecting the whole scan', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'coverage-understand-mintfail-'))
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }))
+    makeRepoWithGit(root, 'agenticapps', 'my-repo', FAKE_SHA, {
+      gitCommitHash: FAKE_SHA,
+      analyzedFiles: 7,
+    })
+
+    // Point the viewer secret at a nonexistent path — mintViewerToken throws
+    // (ENOENT). The scan must NOT reject (no /api/coverage 500): the row is
+    // returned with understand present but no viewerToken, marked degraded.
+    const result = await scanCoverage({
+      sourcecodeRootOverride: root,
+      viewerTokenFileOverride: join(root, 'does-not-exist', 'viewer-token.json'),
+    })
+
+    expect(result.rows).toHaveLength(1)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!
+
+    expect(row.understand).toBeDefined()
+    expect(row.understand?.state).toBe('fresh') // the FS scan itself succeeded
+    expect('viewerToken' in (row.understand ?? {})).toBe(false)
+    expect(row.understand?.degraded).toBe(true)
+    expect(row.degraded?.reason).toMatch(/understand: viewer token mint failed/)
+
+    // Full response still parses the wire schema
+    expect(CoverageResponseSchema.safeParse(result).success).toBe(true)
   })
 
   it('Test 4: scanner rejection → degraded missing with reason pushed to rowDegraded — schema still parses', async () => {

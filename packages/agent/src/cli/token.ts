@@ -14,6 +14,8 @@ export interface RotateTokenSmartDeps {
   fetchFn?: typeof fetch
   /** Override auth file path (for tests). Defaults to AUTH_FILE constant. */
   authFile?: string
+  /** Override viewer token file path (for tests). Defaults to VIEWER_TOKEN_FILE constant. */
+  viewerTokenFile?: string
 }
 
 export type RotateTokenMethod = 'daemon' | 'direct'
@@ -53,13 +55,14 @@ export async function rotateTokenSmart(
   const readServer = deps.readServerInfo ?? defaultReadServerInfo
   const doFetch = deps.fetchFn ?? fetch
   const authFile = deps.authFile
+  const viewerTokenFile = deps.viewerTokenFile
 
   // Always lazy-init so the token file exists and we know its current value.
   const existing = authFile ? ensureAuthFile(authFile) : ensureAuthFile()
 
   const info = readServer()
   if (!info) {
-    const next = authFile ? rotateToken(authFile) : rotateToken()
+    const next = rotateToken(authFile, viewerTokenFile)
     return { newToken: next.token, method: 'direct' }
   }
 
@@ -73,7 +76,7 @@ export async function rotateTokenSmart(
   } catch (err) {
     // Network error — daemon likely down or server.json stale. Direct
     // rotation is safe (no in-memory token to diverge from a real daemon).
-    const next = authFile ? rotateToken(authFile) : rotateToken()
+    const next = rotateToken(authFile, viewerTokenFile)
     return {
       newToken: next.token,
       method: 'direct',

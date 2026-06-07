@@ -30,6 +30,7 @@ import {
   rotateViewerSecret,
   mintViewerToken,
   verifyViewerToken,
+  InvalidRepoIdError,
 } from './viewerToken.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -201,6 +202,79 @@ describe('mintViewerToken / verifyViewerToken', () => {
     const repoId = 'neuroflash/backend'
     const newToken = mintViewerToken(repoId, secretFile)
     expect(verifyViewerToken(newToken, secretFile)).toBe(repoId)
+  })
+})
+
+// ── Phase 14 review Bundle B-2: mint-time repoId validation ──────────────────
+
+describe('mintViewerToken — mint-time repoId validation (Bundle B-2)', () => {
+  beforeEach(() => {
+    setup()
+    ensureViewerSecretFile(secretFile)
+  })
+  afterEach(teardown)
+
+  it('throws InvalidRepoIdError for uppercase repoId (would mint a dead link)', () => {
+    expect(() => mintViewerToken('agenticapps/MyRepo', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for unknown family', () => {
+    expect(() => mintViewerToken('evil/repo', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for path traversal repo segment', () => {
+    expect(() => mintViewerToken('agenticapps/..', secretFile)).toThrow(InvalidRepoIdError)
+    expect(() => mintViewerToken('agenticapps/a..b', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for missing family segment', () => {
+    expect(() => mintViewerToken('no-slash-here', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('still mints for conforming repoIds in every known family', () => {
+    for (const family of ['agenticapps', 'factiv', 'neuroflash']) {
+      const repoId = `${family}/valid-repo_1.2`
+      const token = mintViewerToken(repoId, secretFile)
+      expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+    }
+  })
+})
+
+// ── Phase 14 review Bundle B-1: mint/verify secret-source symmetry ────────────
+
+describe('mint/verify secret-source symmetry (Bundle B-1)', () => {
+  beforeEach(setup)
+  afterEach(teardown)
+
+  it('verifyViewerToken uses the in-memory secret without re-reading the file (hot path)', () => {
+    ensureViewerSecretFile(secretFile) // populates the in-memory secret ref
+    const repoId = 'agenticapps/my-repo'
+    const token = mintViewerToken(repoId, secretFile)
+    // Delete the secret file — both mint and verify must keep working from memory
+    rmSync(secretFile)
+    expect(mintViewerToken(repoId, secretFile)).toBe(token)
+    expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+  })
+
+  it('an explicitly different filePath is read from disk, not served from memory', () => {
+    ensureViewerSecretFile(secretFile) // in-memory ref now bound to secretFile
+    // Craft a SECOND secret file manually (does not touch the module global)
+    const otherFile = join(tmpDir, 'other-viewer-token.json')
+    const otherSecret = 'b'.repeat(64)
+    writeFileSync(
+      otherFile,
+      JSON.stringify({ version: 1, secret: otherSecret, rotatedAt: new Date().toISOString() }),
+      { mode: 0o600 },
+    )
+    const repoId = 'agenticapps/my-repo'
+    // Mint against the OTHER file — must use otherFile's secret, not the in-memory one
+    const tokenOther = mintViewerToken(repoId, otherFile)
+    expect(verifyViewerToken(tokenOther, otherFile)).toBe(repoId)
+    // The same token must NOT verify against the original secret file
+    expect(verifyViewerToken(tokenOther, secretFile)).toBeNull()
+    // And a token minted against the original file must not verify against otherFile
+    const tokenOriginal = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(tokenOriginal, otherFile)).toBeNull()
   })
 })
 

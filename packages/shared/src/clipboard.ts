@@ -66,7 +66,24 @@ export interface UnderstandCommand {
   readonly argv: readonly string[]
 }
 
+/**
+ * Phase 14 review Bundle B-4: conservative slug charset for the two segments
+ * interpolated into the shell string — same charset as the daemon's
+ * REPO_TARGET_RE (D-13-EXT-11). Must start with [a-z0-9]; no spaces, no shell
+ * metacharacters, no leading dots (blocks `..` traversal segments).
+ */
+const UNDERSTAND_TARGET_SEGMENT_RE = /^[a-z0-9][a-z0-9\-_.]*$/
+
 export function buildUnderstandCommand(family: string, repo: string): UnderstandCommand {
+  // The SPA only calls this with daemon-validated coverage rows; a
+  // non-conforming segment means corrupted input — failing loudly beats
+  // emitting an injectable shell string onto the user's clipboard.
+  if (!UNDERSTAND_TARGET_SEGMENT_RE.test(family) || !UNDERSTAND_TARGET_SEGMENT_RE.test(repo)) {
+    throw new TypeError(
+      `buildUnderstandCommand: family/repo must match ${String(UNDERSTAND_TARGET_SEGMENT_RE)}; ` +
+        `got family=${JSON.stringify(family)} repo=${JSON.stringify(repo)}`,
+    )
+  }
   return {
     string: `cd ~/Sourcecode/${family}/${repo} && claude "/understand"`,
     argv: ['/understand'],

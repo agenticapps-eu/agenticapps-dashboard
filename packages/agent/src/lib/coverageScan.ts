@@ -60,6 +60,11 @@ export interface ScanCoverageOptions {
    *  without touching ~/.agenticapps/dashboard/registry.json. Production
    *  callers pass undefined and readRegistry uses REGISTRY_FILE default. */
   registryFileOverride?: string
+  /** Phase 14 review (test isolation): tests pass a tmpdir-resident
+   *  viewer-token.json so mintViewerToken never reads/writes the real
+   *  ~/.agenticapps/dashboard/viewer-token.json. Production callers pass
+   *  undefined and mintViewerToken uses the VIEWER_TOKEN_FILE default. */
+  viewerTokenFileOverride?: string
 }
 
 // ── Internal scan ─────────────────────────────────────────────────────────────
@@ -122,6 +127,7 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
         workflowHead,
         resolve,
         registeredRepoIds,
+        opts.viewerTokenFileOverride,
       ),
     ),
   )
@@ -171,6 +177,7 @@ async function buildRow(
   workflowHead: string | null,
   resolve: PathResolver,
   registeredRepoIds: ReadonlySet<string>,
+  viewerTokenFile?: string,
 ): Promise<InternalCoverageRow> {
   const familyRoot = join(sourcecodeRoot, family)
 
@@ -278,14 +285,27 @@ async function buildRow(
             // Missing rows carry no viewerToken (viewer link not renderable)
             return { kind: 'basic' as const, state: 'missing' as const }
           }
-          // Fresh or stale rows carry a viewer token (D-14-03) + metadata
+          // Fresh or stale rows carry a viewer token (D-14-03) + metadata.
+          // Bundle B-3 (review): a mint failure must degrade the row (AGREED-2
+          // pattern), NOT reject the whole Promise.all → /api/coverage 500.
+          // On failure the viewerToken is omitted and the column marked degraded.
+          let viewerToken: string | undefined
+          let mintError: string | undefined
+          try {
+            viewerToken = mintViewerToken(repoId, viewerTokenFile)
+          } catch (err) {
+            mintError = String(err)
+            rowDegraded.push(`understand: viewer token mint failed: ${mintError}`)
+          }
           return {
             kind: 'basic' as const,
             state: scan.state,
             ...(scan.lastAnalyzedAt !== undefined ? { lastAnalyzedAt: scan.lastAnalyzedAt } : {}),
             ...(scan.analyzedCommit !== undefined ? { analyzedCommit: scan.analyzedCommit } : {}),
             ...(scan.analyzedFiles !== undefined ? { analyzedFiles: scan.analyzedFiles } : {}),
-            viewerToken: mintViewerToken(repoId),
+            ...(viewerToken !== undefined
+              ? { viewerToken }
+              : { degraded: true, degradedReason: `viewer token mint failed: ${mintError}` }),
           }
         })()
       : (() => {

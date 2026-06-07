@@ -32,12 +32,14 @@ describe('token-rotation-invalidates-old-token (mandatory TDD)', () => {
   let cleanup: () => void
   let authFile: string
   let registryFile: string
+  let viewerTokenFile: string
 
   beforeEach(() => {
     const tmp = makeTmpHome()
     cleanup = tmp.cleanup
     authFile = join(tmp.configDir, 'auth.json')
     registryFile = join(tmp.configDir, 'registry.json')
+    viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
     const fresh = ensureAuthFile(authFile)
     setActiveToken(fresh.token)
   })
@@ -54,8 +56,9 @@ describe('token-rotation-invalidates-old-token (mandatory TDD)', () => {
     })
     expect(r1.status).toBe(200)
 
-    // Rotate — write new file FIRST then flip in-memory ref (D-15)
-    const next = rotateToken(authFile)
+    // Rotate — write new file FIRST then flip in-memory ref (D-15).
+    // Thread the tmp viewer-token path so the real ~/.agenticapps file is untouched.
+    const next = rotateToken(authFile, viewerTokenFile)
 
     // Old token now rejected
     const r2 = await app.request('http://127.0.0.1:5193/health', {

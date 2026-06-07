@@ -44,9 +44,44 @@ interface ViewerTokenFile {
   rotatedAt: string  // ISO-8601
 }
 
+/**
+ * Bundle B-2 (review): typed error thrown by mintViewerToken when the repoId
+ * does not conform to the D-13-EXT-11 family/repo rules. Verification would
+ * uniformly reject such a token, so minting one would only produce a dead
+ * viewer link — fail loudly at mint time instead.
+ */
+export class InvalidRepoIdError extends Error {
+  constructor(repoId: string) {
+    super(
+      `mintViewerToken: repoId does not conform to family/repo slug rules ` +
+        `(D-13-EXT-11): ${JSON.stringify(repoId)}`,
+    )
+    this.name = 'InvalidRepoIdError'
+  }
+}
+
 // ── In-memory secret ref (auth.ts activeToken pattern) ───────────────────────
 
 let activeViewerSecret = ''
+// Path that populated activeViewerSecret. mint/verify serve from memory ONLY
+// when asked about the same file; an explicit different filePath always reads
+// that file. This keeps test isolation correct (tests pass tmp paths expecting
+// file-based behaviour) while removing the per-request sync readFileSync from
+// the production hot path (the daemon ensures the default file at startup).
+let activeViewerSecretPath = ''
+
+/**
+ * Bundle B-1 (review): single secret-source resolution shared by mintViewerToken
+ * and verifyViewerToken so both sides of the HMAC always agree on the secret.
+ * Prefers the in-memory ref when it was populated from the SAME file; falls
+ * back to reading filePath otherwise.
+ */
+function resolveSecret(filePath: string): string {
+  if (activeViewerSecret && filePath === activeViewerSecretPath) {
+    return activeViewerSecret
+  }
+  return readSecretFile(filePath).secret
+}
 
 // ── Permission helpers ────────────────────────────────────────────────────────
 
@@ -134,6 +169,7 @@ export function ensureViewerSecretFile(filePath: string = VIEWER_TOKEN_FILE): Vi
     assertSecurePermissions(filePath)
     const data = readSecretFile(filePath)
     activeViewerSecret = data.secret
+    activeViewerSecretPath = filePath
     return data
   }
   const fresh: ViewerTokenFile = {
@@ -143,6 +179,7 @@ export function ensureViewerSecretFile(filePath: string = VIEWER_TOKEN_FILE): Vi
   }
   atomicWriteFile(filePath, JSON.stringify(fresh, null, 2), 0o600)
   activeViewerSecret = fresh.secret
+  activeViewerSecretPath = filePath
   return fresh
 }
 
@@ -160,6 +197,7 @@ export function rotateViewerSecret(filePath: string = VIEWER_TOKEN_FILE): Viewer
   }
   atomicWriteFile(filePath, JSON.stringify(next, null, 2), 0o600)
   activeViewerSecret = next.secret
+  activeViewerSecretPath = filePath
   return next
 }
 
@@ -172,14 +210,17 @@ export function rotateViewerSecret(filePath: string = VIEWER_TOKEN_FILE): Viewer
  * without encoding issues. The HMAC binds it to the secret, so a token
  * for repo A cannot be used to read repo B's data.
  *
- * Uses in-memory activeViewerSecret when loaded (avoids per-call file I/O);
- * falls back to reading filePath if activeViewerSecret is not yet populated.
- * This matches the auth.ts pattern: secrets are loaded once at startup and
- * held in-memory; per-call file reads are unnecessary overhead.
+ * Secret source (Bundle B-1): resolveSecret — in-memory activeViewerSecret when
+ * it was populated from the SAME filePath (avoids per-call file I/O); reads
+ * filePath otherwise. This matches the auth.ts pattern: secrets are loaded once
+ * at startup and held in-memory; per-call file reads are unnecessary overhead.
+ * verifyViewerToken uses the identical resolution so both sides always agree.
  */
 export function mintViewerToken(repoId: string, filePath: string = VIEWER_TOKEN_FILE): string {
-  // Prefer in-memory secret (set by ensureViewerSecretFile at startup / test seed)
-  const secret = activeViewerSecret || readSecretFile(filePath).secret
+  // Bundle B-2: same validation as verify time — never mint a token that
+  // verifyViewerToken would reject (dead viewer links).
+  if (!validateRepoId(repoId)) throw new InvalidRepoIdError(repoId)
+  const secret = resolveSecret(filePath)
   const repoB64 = Buffer.from(repoId).toString('base64url')
   const mac = createHmac('sha256', secret).update(repoId).digest('hex')
   return `v1.${repoB64}.${mac}`
@@ -220,9 +261,10 @@ export function verifyViewerToken(token: string, filePath: string = VIEWER_TOKEN
     // Step 3: validate decoded repoId (D-13-EXT-11 two-layer guard)
     if (!validateRepoId(repoId)) return null
 
-    // Step 4: HMAC comparison using timingSafeEqual (T-14-02-01 constant-time)
-    const data = readSecretFile(filePath)
-    const secret = data.secret
+    // Step 4: HMAC comparison using timingSafeEqual (T-14-02-01 constant-time).
+    // Secret source mirrors mintViewerToken (Bundle B-1): in-memory ref when it
+    // was populated from this same file — no sync readFileSync on the hot path.
+    const secret = resolveSecret(filePath)
     const expected = createHmac('sha256', secret).update(repoId).digest('hex')
 
     // Length guard before timingSafeEqual: Buffers must be same length to avoid
