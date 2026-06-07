@@ -4,12 +4,12 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: executing
 stopped_at: Phase 14 context gathered
-last_updated: "2026-06-06T17:01:43.719Z"
-last_activity: 2026-05-25 -- Phase 13 execution started
+last_updated: "2026-06-07T09:07:25.972Z"
+last_activity: 2026-06-07 -- Phase 14 planning complete
 progress:
   total_phases: 18
   completed_phases: 15
-  total_plans: 106
+  total_plans: 114
   completed_plans: 105
   percent: 83
 ---
@@ -29,8 +29,8 @@ Phase: 13 (gitnexus-scoped-scan-actions-coverage-matrix) — EXECUTING
 Plan: 1 of 7
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
 Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Executing Phase 13
-Last activity: 2026-05-25 -- Phase 13 execution started
+Status: Ready to execute
+Last activity: 2026-06-07 -- Phase 14 planning complete
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
 

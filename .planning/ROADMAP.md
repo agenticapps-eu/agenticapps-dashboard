@@ -18,6 +18,7 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (0, 1, 2): Planned milestone work
 - Decimal phases (5.1, 6.1, 8.1): Sub-phases within their parent phase
 
@@ -40,18 +41,22 @@ A ten-phase journey from empty repo to a working multi-project pipeline dashboar
 ## Phase Details
 
 ### Phase 0: Bootstrap
+
 **Goal**: Stand up the pnpm workspace, Cloudflare Pages preview deploy, npm placeholder package, README, and green CI — establishing the contracts every subsequent phase inherits.
 **Depends on**: Nothing (first phase)
 **Requirements**: BOOT-01, BOOT-02, BOOT-03, BOOT-04, BOOT-05
 **Success Criteria** (what must be TRUE):
+
   1. `pnpm install` from a fresh clone resolves successfully against the root `pnpm-workspace.yaml` with `packages/spa`, `packages/agent`, `packages/shared`.
   2. Pushing a branch triggers a Cloudflare Pages preview deploy; the preview URL is accessible behind CF Access (email-only).
   3. `npm view @agenticapps/dashboard-agent@0.0.1-alpha.0` returns metadata; `npx @agenticapps/dashboard-agent@0.0.1-alpha.0` runs and prints a friendly "alpha placeholder" message and exit code 0.
   4. CI workflow runs lint + typecheck + test on push and PR; status is green on `main`.
   5. README at repo root opens with an "alpha" notice, the install snippet, and links to the spec.
+
 **Plans**: 5 plans
 
 Plans:
+
 - [x] 00-01-PLAN.md — Workspace skeleton + HealthResponseSchema + CI workflow (smoke plan, Wave 1)
 - [x] 00-02-PLAN.md — `packages/agent` commander CLI + tsup bundle + subprocess tests (Wave 2)
 - [x] 00-03-PLAN.md — `packages/spa` Vite/React/Tailwind 4 shell with AgentVersion fallback (Wave 2)
@@ -59,18 +64,22 @@ Plans:
 - [x] 00-05-PLAN.md — README.md + `docs/deploy/cloudflare-pages-setup.md` (Wave 3)
 
 ### Phase 1: Daemon + Registry + Pairing
+
 **Goal**: A working `agentic-dashboard` CLI/daemon that registers projects, serves a token-authed Hono API on `127.0.0.1:5193` with CORS lock, enforces path allow-lists, and prints a one-click pair URL.
 **Depends on**: Phase 0
 **Requirements**: DAEMON-01–06, AUTH-01–05, REG-01–05, API-01, API-02, API-03, INV-02, INV-05
 **Success Criteria**:
+
   1. `agentic-dashboard register <path>` followed by `agentic-dashboard start` boots the daemon, prints a pair URL, and `curl -H "Authorization: Bearer <token>" http://127.0.0.1:5193/health` returns `{ ok: true }`.
   2. `agentic-dashboard rotate-token` invalidates the prior token immediately; the next bearer-token request with the old value returns 401.
   3. `GET /api/projects/{id}/read?path=../../etc/passwd` returns 422 (path allow-list rejects traversal).
   4. Daemon refuses to start when `~/.agenticapps/dashboard/auth.json` is `0644`, with a clear remediation message.
   5. `--bind tailscale` succeeds when `tailscale ip -4` resolves and gracefully degrades otherwise.
+
 **Plans**: 5 plans
 
 Plans:
+
 - [ ] 01-01-PLAN.md — Wave 0: zod ^3.25 catalog bump + Hono/execa/picocolors install + 6 shared schema stubs (auth, registry, read, git, errors, server) + extended HealthResponseSchema
 - [ ] 01-02-PLAN.md — Wave 1: lib utilities (constants, paths allow-list with realpath defense, pidfile, logging, banner verbatim per spec, auth with token gen + 0600 enforcement + D-15 rotation, registry CRUD with idempotent register + slug collisions)
 - [ ] 01-03-PLAN.md — Wave 2: Hono server (createApp factory with cors-before-bearerAuth, optional CIDR middleware, NODE_ENV-gated errors, D-16 outbound parse) + 6 routes (/health, /api/admin/shutdown, /api/registry CRUD, /api/auth/rotate, /api/projects/:id/read, /api/projects/:id/git) + 4 MANDATORY TDD CASES as named tests + serverInfo + git allow-list runner + boot
@@ -78,17 +87,21 @@ Plans:
 - [ ] 01-05-PLAN.md — Wave 3 (parallel with 04): Tailscale lib (mocked-execa unit tests) + start.ts wires --bind tailscale + cidr middleware integration tests + bind-modes subprocess tests + end-to-end smoke covering Phase 1 success criterion 1
 
 ### Phase 2: SPA Shell + Pair Flow
+
 **Goal**: A Vite + React + Tailwind shell that renders `/onboarding` for unpaired sessions, completes pairing via `/pair?agent=...&token=...`, stores credentials in localStorage, and exposes manual-pair fallback at `/settings`.
 **Depends on**: Phase 1
 **Requirements**: SPA-01, SPA-02, SPA-03, SPA-04, INV-04 (SPA-side), AUTH-04 (SPA-side)
 **Success Criteria**:
+
   1. `pnpm --filter @agenticapps/dashboard-spa dev` boots the SPA at `localhost:5174` with hot-reload < 2s.
   2. Visiting `/` without paired credentials redirects to `/onboarding` and shows the install guide.
   3. Clicking the printed pair URL completes pairing without manual input; the SPA lands on `/`.
   4. `/settings` accepts manual paste of agent URL + token and validates by calling `/health` before saving.
+
 **Plans**: 6 plans
 
 Plans:
+
 - [x] 02-01-PLAN.md — Wave 0: catalog + PairingSchema/AgentUrlSchema + CF Pages _redirects/_headers + global.css UI-SPEC tokens + 4 RED stub tests
 - [x] 02-02-PLAN.md — Wave 1A: lib/pairing + lib/theme (D-02/D-03) + ThemeChip + Header + AppShell + 5-route TanStack Router (D-04, D-05)
 - [x] 02-03-PLAN.md — Wave 1B: lib/api (apiFetch + parseOrDrift + ApiError) + lib/queryClient (Pattern 6 401 interceptor) + lib/repair + SchemaDriftState + DaemonUnreachableState + RepairBanner
@@ -97,17 +110,21 @@ Plans:
 - [x] 02-06-PLAN.md — Wave 3: wire RepairProvider+QueryBridge in main.tsx; mount RepairBanner in AppShell; SPA-01 dev-perf-smoke subprocess test; e2e pair-flow test; README update
 
 ### Phase 3: Multi-project Home Page
+
 **Goal**: A multi-project home page rendering one card per registered project with current phase, finding counts, and last-commit time; supports filters, search, sort, and an in-UI "Register project" modal.
 **Depends on**: Phase 2
 **Requirements**: HOME-01, HOME-02, HOME-03, HOME-04, HOME-05, HOME-06
 **Success Criteria**:
+
   1. With ≥2 registered projects, `/` renders a card per project with phase, finding-counts breakdown, last-commit timestamp.
   2. Cards refresh every 5s; per-card freshness indicator visible.
   3. Filter chips and search box filter the grid live (no full reload).
   4. "+ Register project" modal POSTs to `/api/registry/register`; new card appears within 5s without page reload.
+
 **Plans**: 11 plans
 
 Plans:
+
 - [x] 03-01-PLAN.md — Wave 0: shared schemas (overview.ts + registry.ts extensions) + 4 daemon RED stubs (registerNonces / rateLimiter / registerLog / overviewCache) + projectOverview reader + touchLongPress; ~25 new tests
 - [x] 03-02-PLAN.md — Wave 0: AppShell max-w override pattern (useSyncExternalStore-backed) + HomeLayout wrapper for the 5xl home page width
 - [x] 03-03-PLAN.md — Wave 1: GET /api/projects/:id/overview route + 5s memo cache + outbound() schema-drift defense + 404 + unreachable graceful Pending
@@ -121,18 +138,22 @@ Plans:
 - [x] 03-11-PLAN.md — Wave 4: end-to-end subprocess test (daemon spawn + prepare → confirm + single-use semantics) + README "Phase 3 shipped" + full pre-flight (typecheck + test + build + lint)
 
 ### Phase 4: Single-project View — Discipline + Phase Progress
+
 **Goal**: Per-project three-column view's left (Discipline) and center (Phase progress) columns, driven by `.planning/phases/<current>/` and meta-observer JSONL.
 **Depends on**: Phase 3
 **Requirements**: DISC-01–04, PHASE-01–05
 **Success Criteria**:
+
   1. Clicking a card on `/` navigates to `/projects/{id}` and renders header + left + center columns.
   2. CommitmentBlock surfaces the most recent `## Workflow commitment` block from the project's session output.
   3. ExecutionTimeline parses `test(RED)` and `feat(GREEN)` commit pairs from `git log` and groups them per task.
   4. ReviewStatus parses `<finding severity="...">` blocks per spec §"Stage 2 finding count" and renders by severity.
   5. VerificationStatus shows must_haves count vs evidence count from `VERIFICATION.md`.
+
 **Plans**: 6 plans
 
 Plans:
+
 - [x] 04-01-PLAN.md — Wave 0: shared schemas (commitment, observations, phaseDetail, discipline, security) + barrel re-export + 22+ failing-then-passing schema tests
 - [x] 04-02-PLAN.md — Wave 1: phaseCache (per-route 5s memo, evictPhaseCacheProject) + phaseDetail.ts (8 parsers: parseCommitmentBlock, readSkillObservations, parseRationalizationRows, parsePhaseChecklist, parseExecutionTimeline, parseSecurityReports, parseReviewFindings4, parseVerificationDetail) + phase4-fixture helper + 49+ tests
 - [x] 04-03-PLAN.md — Wave 2: 5 daemon routes (/commitment, /observations/recent, /phase-progress, /discipline, /security) + app.ts wiring + unregister cache eviction + 36+ in-process Hono tests
@@ -141,17 +162,21 @@ Plans:
 - [x] 04-06-PLAN.md — Wave 5: Phase Progress column — extract shared InlineDrift + 5 panels (PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus) + mount + e2e route test verifying ROADMAP success criteria 1-5
 
 ### Phase 5: Skills + Health Panels
+
 **Goal**: The right column — InstalledSkills (global + local), SkillHealth (AgentLinter-backed), ObservabilityHealth, SecretsHealth, IntegrationsHealth — with cached AgentLinter subprocess and grep-based detection.
 **Depends on**: Phase 4
 **Requirements**: HEALTH-01–05, INV-03 (graceful empty states)
 **Success Criteria**:
+
   1. InstalledSkills renders skills from `~/.claude/skills/*/SKILL.md` (frontmatter only) and project `.claude/skills/*/SKILL.md`.
   2. SkillHealth runs `npx agentlinter scan` (cached 1h), surfaces Position Risk warnings; cache invalidates on `SKILL.md` mtime change.
   3. ObservabilityHealth detects Spotlight / Sentry SDK / sentry-cli in `package.json` + CI files via grep.
   4. With Sentry / Linear / Infisical unconfigured, IntegrationsHealth shows "Configure to enable" with one-paragraph guides linked.
+
 **Plans**: 6 plans
 
 Plans:
+
 - [x] 05-01-PLAN.md — Wave 1: 5 shared schemas (skills/agentlinter/observability/secrets/integrations) + meta-observer workspace pkg with SessionEnd hook + atomic write + transcript extractors + 2 Wave-0 probes
 - [x] 05-02-PLAN.md — Wave 1: skillsScan (dual-layout SKILL.md frontmatter reader) + agentLinterRunner (5-class outcome with --local privacy invariant) + agentLinterCache (1h+mtime) + 3 daemon routes (/api/skills/global, /api/projects/:id/skills/local, /api/projects/:id/agentlinter)
 - [x] 05-03-PLAN.md — Wave 1: paths.ts resolveAllowedNamed extension (D-5-13) + projectMetadataScan (9 detectors for package.json/.infisical.json/.sentryclirc/.env/.spotlight/CI YAML/sentry-cli binary) + integrationsState 3-state truth table + 3 daemon routes (observability/secrets/integrations)
@@ -165,6 +190,7 @@ Plans:
 **Depends on**: Phase 5
 **Requirements**: None (internal UI quality work; ties to POLISH-04 in Phase 6)
 **Success Criteria**:
+
   1. All paired routes (`/`, `/projects/:id`, `/settings`, `/help`) render under AppShellV2 with locked tokens (UI-SPEC AC-01).
   2. `/onboarding` and `/pair` keep their standalone presentation (UI-SPEC AC-02).
   3. Every Phase 5 panel still works — 1117-test baseline holds (UI-SPEC AC-03).
@@ -172,9 +198,11 @@ Plans:
   5. `impeccable:critique` >= 90 on `/` and `/projects/:id` at 1440x900 (UI-SPEC AC-06; preview gate, Phase 6 enforces).
   6. New UI primitive component tests pass (UI-SPEC AC-07).
   7. Visual smoke screenshot committed at refs/after-shell.png (UI-SPEC AC-08).
+
 **Plans**: 6 plans
 
 Plans:
+
 - [x] 05.1-01-PLAN.md — Wave 1: tokens.css + 7 UI primitives (Card, CardHeader, EmptyState, Pill, StatusPill, MetricNumeric, KbdHint) + Inter font + alias layer + noOrange invariant
 - [x] 05.1-02-PLAN.md — Wave 2: shell components (Sidebar*, TopBar, Breadcrumb, PageHeader) + AppShellV2 + VITE_APPSHELL_V2 flag + pathless layout fixing /onboarding+/pair leak
 - [x] 05.1-03-PLAN.md — Wave 3: migrate `/` (MultiProjectHome PageHeader + repalette HomeToolbar/ProjectCard/RegisterButtonCard)
@@ -183,18 +211,22 @@ Plans:
 - [x] 05.1-06-PLAN.md — Wave 6: flag flip + delete legacy AppShell/Header/HomeLayout/ProjectLayout/appShellWidth/ProjectHeader + delete alias :root block + legacy .dark block; capture refs/after-shell.png; run /impeccable:critique closure ritual
 
 ### Phase 6: Polish + Service Install + Acceptance
+
 **Goal**: Production-ready dashboard — keyboard shortcuts, LaunchAgent / systemd installers, impeccable-critique gate, two-stage review, README with FAQ + troubleshooting, CF Access policy applied (already done pre-flight).
 **Depends on**: Phase 5
 **Requirements**: POLISH-01–06
 **Success Criteria**:
+
   1. `agentic-dashboard install-launchd` produces `~/Library/LaunchAgents/eu.agenticapps.dashboard.plist`; `launchctl list | grep eu.agenticapps.dashboard` shows it loaded; daemon survives reboot.
   2. `R` refreshes, `?` shows help overlay, `/` focuses the home-page search box.
   3. `impeccable:critique` against the dashboard's own UI scores ≥ 90.
   4. PR closing v1.0 has Stage 1 (`/review`) AND Stage 2 (`superpowers:requesting-code-review`) sections in REVIEW.md, with `<finding severity="...">` blocks.
   5. README has install / pair / FAQ / troubleshooting sections.
+
 **Plans**: 7 plans
 
 Plans:
+
 - [x] 06-01-PLAN.md — Wave 0: baseline impeccable capture + screenshot.mjs --route/--viewport extension; closes Phase 5.1 HUMAN-UAT AC-08 (after-shell.png re-capture)
 - [x] 06-02-PLAN.md — Wave 0: A-01 rate-limit on /rename + /tags + /register-confirm; A-02 schema bounds (.max(200)/.max(20)/.max(50)) — Phase 3 carry-forward (D-6-20)
 - [x] 06-03-PLAN.md — Wave 1: useGlobalShortcuts + HelpOverlay + KbdHint chips on /help (POLISH-01 D-6-01..03)
@@ -211,6 +243,7 @@ Plans:
 **Plans:** 7/7 plans complete
 
 Plans:
+
 - [x] 06.1-01-PLAN.md — Wave 1: D-6.1-01 max-w-[75ch] on /help + /onboarding prose (TDD; 2 tasks)
 - [x] 06.1-02-PLAN.md — Wave 1: D-6.1-03 MaskedToken primitive (RED→GREEN; 2 tasks)
 - [x] 06.1-03-PLAN.md — Wave 2: D-6.1-02 PanelContainer disclosure + 5 panel updates + panel-prose max-w-[75ch] (depends_on: [01]; 2 tasks)
@@ -220,11 +253,13 @@ Plans:
 - [x] 06.1-07-PLAN.md — Wave 5: closure ritual + final regression sweep
 
 ### Phase 7: Help docs v1.0  ✅ shipped 2026-05-12 (PR #21 + #22)
+
 **Goal**: Ship the v1.0 `/help` docs site as a separate feature branch (`feat/help-docs-v1`) off `origin/main` — MDX-driven, mounted under `/help/*` in the existing TanStack Router. Replaces the current `/help` keyboard-shortcuts page; folds shortcuts into `/help/reference/shortcuts`. Five anchor pages (landing, workflow/overview, repos/overview, observability/overview, operations/install) plus ~25 stub pages rendering `ComingSoon`. Shell components: HelpLayout (sidebar + main + sticky TOC, mobile drawer), HelpWidget (lazy dispatch), HelpHook (in-page deep link), ComingSoon. Eight named widget stubs (RepoTopologyMap, WorkflowStateMachine, GatePicker, TraceVisualizer, ScanReportPlayground, ApplyConsentSimulator, MigrationDryRun, SlashCommandCatalog) — real implementations land in v1.2. PR targets `main`, ships independently of any future redesign work.
 **Canonical refs:** `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/MIGRATION-INSTRUCTIONS.md` (the migration spec — 12 steps), `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/HelpRoutes.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/HelpLayout.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/components/{HelpWidget,HelpHook,ComingSoon}.tsx`, `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/_shell/widgets/_stub-pattern.tsx`, source MDX content at `~/Documents/Claude/Projects/agentic-workflow/dashboard-help-pages/{landing,workflow/overview,repos/overview,observability/overview,operations/install}.md`.
 **Depends on**: Phase 6 (v1.0 ship — branched off `origin/main` `26e78c7`)
 **Requirements**: HELP-01 (5 anchor MDX pages render with frontmatter + GFM + Mermaid), HELP-02 (~25 stub routes render `ComingSoon` without crash), HELP-03 (HelpLayout sidebar collapses on mobile, sticky on desktop; no console errors), HELP-04 (HelpWidget dispatches the 8 stubs via React.lazy; unknown widget renders bordered error), HELP-05 (HelpHook deep-link component ships but is not yet wired into dashboard pages — v1.1 wires usages), HELP-06 (existing `/help` keyboard shortcuts move into `/help/reference/shortcuts` MDX page; `?` shortcut still routes to `/help` landing).
 **Success Criteria**:
+
   1. `pnpm --filter @agenticapps/dashboard-spa dev` boots SPA on `:5174`; visiting `/help` renders the landing MDX (three navigation cards + intro paragraph + Mermaid diagram).
   2. All 5 anchor pages render with their embedded Mermaid diagrams (verified via `/browse` screenshot — no console errors).
   3. Each of the ~25 stub paths (e.g. `/help/workflow/gates`, `/help/reference/glossary`) renders `ComingSoon` with the correct section + title + back-link.
@@ -233,9 +268,11 @@ Plans:
   6. `?` keyboard shortcut still pushes `/help` (lands on docs landing). Keyboard shortcuts content from old `/help` lives at `/help/reference/shortcuts` with the same `KbdHint` rendering.
   7. Dark mode renders correctly on every help route (prose-invert applied via Tailwind v4 typography plugin).
   8. `pnpm -r typecheck && pnpm -r test && pnpm lint` all green; SPA build emits the help MDX chunks; PR opens against `main` (NOT the redesign branch) with two-stage review + impeccable critique ≥ 90 on `/help` (lg, 1440x900).
+
 **Plans**: 5 plans
 
 Plans:
+
 - [x] 07-01-PLAN.md — Wave 0 infrastructure: 7 catalog deps (@mdx-js/react, @mdx-js/rollup, remark-{gfm,frontmatter,mdx-frontmatter}, @tailwindcss/typography, mermaid) + Vite MDX plugin + Tailwind v4 typography + MDXProvider wiring + playwright.config.ts + tokenSourceOfTruth scope extension + HELP-01..06 in REQUIREMENTS.md + smoke test
 - [x] 07-02-PLAN.md — Wave 1 shell components: HelpLayout (5 NAV sections incl. D-7-13 stubs + HELP-06 entry) + HelpWidget (8-stub dispatch) + HelpHook + ComingSoon + MermaidBlock (StrictMode-safe) + topicToUrl pure fn; ~40 unit tests
 - [x] 07-03-PLAN.md — Wave 1 widget stubs: pruned _stub-pattern.tsx (primitive only) + 8 .stub.tsx default exports + 13 smoke tests (parallel with 07-02; disjoint file set)
@@ -243,22 +280,28 @@ Plans:
 - [x] 07-05-PLAN.md — Wave 3 route wiring + closing ritual: helpRouteTable (41 entries) + buildHelpRoutes factory + ComingSoonRoute + 6 lazy wrappers + _helpLayout peer route (D-7-12) + DELETE legacy /help + Playwright walking checklist + impeccable ≥ 90 gate + /browse screenshots + VERIFICATION.md + UAT.md
 
 ### Phase 8: Optional Integrations (held) — was Phase 7
+
 **Goal**: Wire Sentry, Linear, and Infisical-aware env loading one sub-phase at a time, only when upstream tooling is set up. Each is fully optional and the dashboard MUST continue to work without them.
 **Depends on**: Phase 7
 **Requirements**: SENTRY-01–03, LINEAR-01–03, INFI-01–02 (all v2)
 **Success Criteria** (per sub-phase):
+
   - 8a (Sentry): With `SENTRY_AUTH_TOKEN` set, recent errors render in the right column; without it, panel still renders with "configure" copy.
   - 8b (Linear): With `LINEAR_API_KEY` set, branch-to-issue linking surfaces issue title/status in the header; without it, no panel error.
   - 8c (Infisical): `infisical run -- agentic-dashboard start` works with no daemon code change.
+
 **Plans**: TBD per sub-phase
 
 ### Phase 9: Open-source Readiness (much later) — was Phase 8
+
 **Goal**: LICENSE (MIT), CONTRIBUTING.md, and the optional flip of CF Access to public landing once the dashboard has soaked privately.
 **Depends on**: Phase 8 (held until user opts in)
 **Requirements**: OSS-01, OSS-02, OSS-03
 **Success Criteria**:
+
   1. `LICENSE` and `CONTRIBUTING.md` at repo root match conventions in the rest of the Claude Code skill ecosystem.
   2. (Optional) CF Access policy on `dashboard.agenticapps.eu` relaxed; public landing renders for unauthenticated visitors with onboarding copy.
+
 **Plans**: TBD
 
 ## Progress
@@ -289,6 +332,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 | 12. Observability Conformance Surface | 6/7 | In Progress|  |
 
 **v1.0.1 follow-ups (deferred from Phase 7):**
+
 - Impeccable scoring tool drift — pick: pin to `npx impeccable@<last-with-critique>` or migrate to the `detect`-only surface in v2.1.8+. See `.planning/phases/07-help-docs-v1-0/deferred-items.md`.
 - `text-text-tertiary` token contrast bump — current `#9c95a8` is 2.8:1 on warm paper; needs ≥ 3:1. Cross-phase Phase 5.1 token patch.
 
@@ -298,6 +342,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 **Milestone:** v1.1 — Cross-family observability
 **Depends on:** Phase 7 (last shipped phase; skips held Phases 8/9)
 **Authoritative inputs:**
+
   - `claude-workflow/docs/decisions/0018-multi-ai-plan-review-enforcement.md`
   - `claude-workflow/docs/decisions/0019-llm-wiki-compiler-integration.md`
   - `claude-workflow/docs/decisions/0020-gitnexus-code-graph-integration.md`
@@ -305,6 +350,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
   - `~/Sourcecode/CLAUDE.md` + each family's `CLAUDE.md`
   - Each family's `.wiki-compiler.json` (runtime schema)
   - Existing agenticapps-dashboard codebase
+
 **Coverage columns:**
   | Column | Source of truth | "Fresh" means |
   |---|---|---|
@@ -317,6 +363,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → (5.1) → 4 → 5 → 6
 **Plans:** 9/9 plans complete
 
 Plans:
+
 - [x] 10-01-PLAN.md — Wave 0 (TDD): Shared Zod schemas (coverage.ts) + barrel re-export + 21 RED-state test stubs across daemon scanners/orchestrator/route + SPA query hooks + 8 panel components — establishes the wire contract + Nyquist test scaffold
 - [x] 10-02-PLAN.md — Wave 1 (TDD): 5 daemon scanners + repoDiscovery — claudeMdScanner / gitNexusScanner / wikiScanner / workflowVersionScanner / overrideSentinelScanner. Encodes RESEARCH Pitfalls 1-6 (registry-as-array, never-compiled-vs-not-linked, version-unknown dashboard case, dual-layout SKILL.md probe, empty sentinel set, no worktree walk)
 - [x] 10-03-PLAN.md — Wave 1 (TDD, parallel with 02): paths.ts COVERAGE_ROOTS extension (additive — old /api/projects/:id/read scope preserved) + coverageCache (30s TTL singleton) + coverageScan orchestrator (Promise.allSettled partial-failure isolation per AGREED-2) + coverageSpawn (gitnexus-only spawn; re-exports clipboard builders from @agenticapps/dashboard-shared per CODEX MED-13)
@@ -335,6 +382,7 @@ Plans:
 **Decisions:** D-10.5-01 (retire CI gate) · D-10.5-02 (skill-driven per-phase artifact is the gate) · D-10.5-03 (composite ≥ 87 floor provisional pending 3-phase calibration) · D-10.5-04 (no headless skill invocation in CI) · D-10.5-05 (cross-repo update via ADR addendum only).
 **Scope:** `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-SCOPE.md`
 **Deliverables (5):**
+
 - [x] D1 — Run `/impeccable critique` against `/coverage` → write `10-IMPECCABLE.md` (composite + sub-scores + findings).
 - [x] D2 — Delete `.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`.
 - [x] D3 — Update `CLAUDE.md:38` + `docs/spec/dashboard-prompt.md` lines 554, 594, 696 to describe the per-phase artifact contract.
@@ -347,11 +395,14 @@ Plans:
 **Milestone:** v1.1 — Cross-family observability
 **Depends on:** Phase 10 (extends the coverage scanner + page CTAs)
 **Decisions:**
+
 - 3-state enum on the wire (`not-installed` / `installed-no-registry` / `installed-with-registry`), not 2 boolean flags. Why: semantic clarity, exhaustive-switch checking, harder to misuse.
 - Stat-based binary detection probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) — no shell-out. Why: predictable, no shell-injection surface, survives launchd minimal PATH.
 - Per-row state under `installed-no-registry` shifts `'not-applicable'` → `'missing'`. Why: under installed-no-registry, repos CAN be indexed — actionable state is the correct semantic.
 - eslint `argsIgnorePattern: '^_'` + variants adopted globally to align with existing underscore-discard convention.
+
 **Files touched:**
+
 - `packages/agent/src/lib/scanners/gitNexusScanner.ts` — new `detectGitNexusBinary`, 3-state enum, semantic shift for `rateGitNexusRepo`.
 - `packages/shared/src/schemas/coverage.ts` — `gitNexusInstallState` enum replaces `gitNexusInstalled` boolean on `CoverageResponseSchema`.
 - `packages/shared/src/clipboard.ts` — new `buildGitnexusIndexClipboardString()`.
@@ -359,6 +410,7 @@ Plans:
 - `packages/spa/src/components/panels/coverage/CoveragePage.tsx` — 3-way CTA selection.
 - `packages/spa/src/components/panels/coverage/CoverageFamilySection.tsx` — install hint only for `not-installed`.
 - `eslint.config.mjs` — added `argsIgnorePattern`, `varsIgnorePattern`, `caughtErrorsIgnorePattern`, `destructuredArrayIgnorePattern` all `^_`.
+
 **Plans:** N/A — single squashable feature (1 PR scope). Triggered as a hot-follow-up; no separate `/gsd-plan-phase` artefacts.
 
 ### Phase 11: Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle
@@ -367,12 +419,14 @@ Plans:
 **Milestone:** v1.1 — Cross-family observability (close-out)
 **Depends on:** Phase 10 (reuses `coverageScan` orchestrator, `gitNexusInstallState` enum from 10.6, 30s daemon cache, wire-schema barrel) · Phase 5 (extends per-project skills scanner into cross-repo aggregator) · Phase 10.5 (re-runs `impeccable critique` as calibration data point #2 for D-10.5-03 score floor)
 **Authoritative inputs:**
+
   - `.planning/ROADMAP.md` §"Phase 11+ Candidates — v1.1 close-out audit (2026-05-14)" — combined A+B decision recorded 2026-05-15
   - `.planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-IMPECCABLE.md` — 2 polish items flagged "fold into Phase 11.x"
   - `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md` — composite floor + calibration policy (D-10.5-03)
   - `packages/agent/src/lib/scanners/` — existing coverage scanners (extension surface)
   - `packages/shared/src/schemas/coverage.ts` — `CoverageResponseSchema` (extension surface for `history?: CoverageDrift[]`)
   - `docs/spec/dashboard-prompt.md` — hard architectural constraints (read-only on project FS, daemon writes confined to `~/.agenticapps/dashboard/`, no native deps, bearer-auth on every route)
+
 **Sub-tracks:**
   | Sub-track | Scope |
   |---|---|
@@ -382,6 +436,7 @@ Plans:
   | Gates | Stage 1 `/review`, Stage 2 `superpowers:requesting-code-review`, `/cso` for daemon filesystem-write surface (new write paths cross trust boundary), `/qa` walkthrough, `impeccable:critique` post-fix re-run (calibration data point #2 for D-10.5-03 floor). |
 **Non-goals (explicit):** No cloud upload of snapshots; no family-aggregate trend views (deferred to v1.2 — open question 4 in audit); no auto-correction of registry path drift (separate hygiene task); no rewrite of Phase 10 scanner architecture; no new third-party deps (must stay native-free per spec).
 **Open scope decisions — RESOLVED in `/gsd-discuss-phase 11` (CONTEXT D-11-01..14, 2026-05-16):**
+
   1. Snapshot retention window — **14 days** rolling (D-11-01)
   2. Snapshot trigger — **daily cron only** via Phase 6 launchd / systemd install. Reinterpreted via **PD-11-01** (recorded in 11-RESEARCH.md §A9 + Plan 02) as in-process scheduler inside the running daemon — `KeepAlive=true` on the existing plist is incompatible with `StartCalendarInterval`. (D-11-02)
   3. Drift surface — **inline indicator only** (▲Nd / ▼Nd text). No sparkline in v1.1. (D-11-03)
@@ -392,6 +447,7 @@ Plans:
   8. Sidebar IA — **2 peer entries under `Observability`**: `Coverage`, `Skill drift` (using `SidebarItem` primitive, NOT `SidebarSubItem`). (D-11-08)
 
 **PLAN-DECISIONS (recorded during `/gsd-plan-phase 11`, 2026-05-16):**
+
   - **PD-11-01** — Reinterpret D-11-02. The "daily cron via Phase 6 install" is realised as an **in-process `setTimeout` chain** inside the daemon process that launchd / systemd already keeps alive. NO `StartCalendarInterval` added to the plist (would either spawn duplicate daemons or be silently ignored under `KeepAlive=true`). Scheduler is `.unref()`'d, anchored to 03:00 local time, first-boot-fires-immediately when today's NDJSON file does not exist. Recorded in 11-RESEARCH.md §A9 + Plan 02 §Pattern 2. **Reviewed against `installLaunchd.ts:46` source evidence — verified incompatible with KeepAlive=true.**
 
 **Requirements (minted during `/gsd-plan-phase 11`, 2026-05-16):** TRD-01, TRD-02, TRD-03, TRD-04, TRD-05, SKD-01, SKD-02, SKD-03, SKD-04, SKD-05, PLI-01, PLI-02, PLI-03 — full descriptions in `.planning/REQUIREMENTS.md` §"Coverage trends + Cross-repo skill drift + Phase 10.6 polish bundle (Phase 11)".
@@ -399,6 +455,7 @@ Plans:
 **Plans:** 0/0 plans complete
 
 Plans:
+
 - [x] 11-01-PLAN.md — Wave 0 (TDD): shared schemas `coverageHistory.ts` + `skillDrift.ts` + barrel re-export. Covers TRD-03, TRD-05, SKD-01, SKD-02, SKD-04, INV-04. Foundation for every downstream daemon + SPA plan.
 - [x] 11-02-PLAN.md — Wave 1 (TDD): Coverage trends daemon — `snapshotPaths/Writer/Pruner/Reader/Scheduler` + `coverageHistoryCache` + `GET /api/coverage/history` route + boot-wired symlink-escape defence + in-process scheduler (PD-11-01). Covers TRD-01..04, INV-01/02/04/05. depends_on: 11-01.
 - [x] 11-03-PLAN.md — Wave 1 (TDD, parallel with 02): Skill drift daemon — `skillDriftScan` aggregator (path-based familyOf with 'other' fallback) + `skillDriftCache` (30s) + `GET /api/skills/drift` + `POST /api/skills/drift/agentlinter` (single-project-per-request, .strict body). Reuses Phase 5 `agentLinterRunner` + `agentLinterCache` UNCHANGED — D-11-14 widens call-site only, not spawn surface. Covers SKD-01..03, INV-01/04/05. depends_on: 11-01.
@@ -407,6 +464,7 @@ Plans:
 - [x] 11-06-PLAN.md — Wave 2 (TDD, parallel with 04 + 05): Polish bundle — `PageHeader` sticky prop (default false, backward-compat) + `CoverageRow` opacity-30 default + `/coverage` opts into `sticky={true}`. Covers PLI-01..03. depends_on: [] (independent of all other plans).
 
 **Gates (after Wave 2 ships — Wave 3 sequential):**
+
 - Stage 1 `/review` on the phase diff
 - Stage 2 `superpowers:requesting-code-review`
 - `/cso` audit on D-11-13 (new write path `coverage-history/`) + D-11-14 (widened AgentLinter call-site)
@@ -421,13 +479,24 @@ Plans:
 **Plans:** 8 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 14-01-PLAN.md — Wave 1 (TDD): shared wire contracts — `understand` block on HealthResponseSchema (D-14-02), `understand` optional column on CoverageRowSchema (D-14-08, carries per-repo scoped viewerToken per D-14-03), `buildUnderstandCommand()` (D-14-10). depends_on: []
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 14-02-PLAN.md — Wave 2 (TDD): agent foundation — extract `repoRoot.ts` (deterministicRepoRoot + registry-first resolveRepoRoot, D-14-09), `viewerToken.ts` (HMAC per-repo scoped tokens, 0600 secret, rotation hooked into rotateToken, D-14-03), `viewerInstall.ts` version detection (D-14-01/02). depends_on: 14-01
 - [ ] 14-03-PLAN.md — Wave 2 (TDD, parallel): SPA Coverage Understand column — UnderstandCopyPill (fresh ✓-link / stale link+pill / missing pill, D-14-08/10), desktop+mobile cells, CoveragePage viewer-URL construction (scoped token only, D-14-03/07). depends_on: 14-01
 - [ ] 14-04-PLAN.md — Wave 2 (TDD, parallel): SPA Code Intelligence sidebar section + /code-intelligence page (analyzed-projects listing, install/update hints, D-14-02/06/07). depends_on: 14-01
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 14-05-PLAN.md — Wave 3 (TDD): daemon viewer route — static serving at /understand/{family}/{repo}/ + 6 root-level token-gated data endpoints, FIX 2 sanitization (D-14-05b), full 12-guard file-content suite (D-14-05 ratified exception), pre-bearerAuth mount, Tailscale parity (D-14-04). depends_on: 14-02
 - [ ] 14-06-PLAN.md — Wave 3 (TDD, parallel): understandScanner (readRepoHeadSha pure-FS + commit-hash staleness, D-14-08) + coverageScan integration with per-row viewerToken mint + /health understand block (D-14-02). depends_on: 14-01, 14-02
 - [ ] 14-07-PLAN.md — Wave 3 (TDD, parallel): CLI `install-understand-viewer` — plugin-cache build (core→dashboard, --base=./) installed to ~/.agenticapps/dashboard/understand-viewer/<version>/ (D-14-01). depends_on: 14-02
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 14-08-PLAN.md — Wave 4 (checkpoints): full-suite gate, live e2e viewer verification, 14-IMPECCABLE.md (1440×900 on /coverage + /code-intelligence), two-stage review + /cso (D-14-05 exception + scoped-token surface) + /qa. depends_on: all
 
 ---
@@ -442,6 +511,7 @@ Plans:
 **Plans:** 6/6 plans complete
 
 **Decisions (D-11.2-01..15) — RESOLVED in `/gsd-discuss-phase 11.2` (`--auto`-equivalent mode), 2026-05-18:**
+
   1. In-house `Tooltip.tsx` primitive (~65 LOC, no Radix/shadcn) (D-11.2-01)
   2. Tooltip API: `<Tooltip content="…">{children}</Tooltip>`; `aria-describedby` + `role=tooltip`; `z-[var(--z-overlay)]` = 100 (D-11.2-02)
   3. Open on hover+focus (100ms delay), close on leave/blur/Escape (0ms) (D-11.2-03)
@@ -459,6 +529,7 @@ Plans:
   15. Regression contract: Phase 11.1 IMP-01..05 must-haves preserved (D-11.2-15)
 
 Plans:
+
 - [x] 11.2-01-PLAN.md — Wave 1 (TDD, parallel): `ui/Tooltip.tsx` primitive (~65 LOC) + `Tooltip.test.tsx` (8 tests) + `coverageColumnTooltips.ts` SoT + `CoverageFamilySection.tsx` wires 4 `<th>` with `<Tooltip>`. Closes D-11.2-01..05. depends_on: []
 - [x] 11.2-02-PLAN.md — Wave 2 (TDD, sequential — same file CoverageFamilySection.tsx as 01): `CoverageRow.tsx` adds `pending` prop (spinner + aria-busy + disabled + opacity-100) + `CoverageFamilySection.tsx` derives per-row pending from `refresh.isPending` + `.variables` + `CoveragePage.tsx` wires refresh handle + adds gitnexus-analyze success/error toast (7th + 8th call sites). Closes D-11.2-06..08. depends_on: 11.2-01
 - [x] 11.2-03-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` wiki: `w-[22rem]` → `w-72` + comment chain + `coverageColumns.test.ts` regression lock. Closes D-11.2-09..10. depends_on: []
@@ -467,11 +538,13 @@ Plans:
 - [x] 11.2-06-PLAN.md — Wave 1 (TDD, parallel): `PageHeader.tsx` subtitle `<p>` gains `max-w-prose` (Tailwind 65ch utility); one-token edit applies retroactively to 4 PageHeader-using routes. Closes D-11.2-14. depends_on: []
 
 **Wave structure:**
+
 - Wave 1 (parallel): 11.2-01 + 11.2-03 + 11.2-05 + 11.2-06 (exclusive file ownership — Tooltip+section / coverageColumns / Toolbar / PageHeader)
 - Wave 2 (sequential): 11.2-02 (waits for 11.2-01 — both modify CoverageFamilySection.tsx)
 - Wave 3 (sequential): 11.2-04 (waits for 11.2-02 — same CoverageRow.tsx; waits for 11.2-03 — same coverageColumns.ts)
 
 **Post-phase gates:**
+
 - Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse)
 - `/cso` **NOT REQUIRED** (no daemon/auth/storage/api/llm touched) — confirm explicitly in REVIEW.md
 - `/qa` walkthrough on `/coverage` covering all 6 polish surfaces + regression smoke against IMP-01..05
@@ -489,6 +562,7 @@ Plans:
 **Plans:** 6/6 plans complete
 
 **Decisions (D-11.1-01..23) — RESOLVED in brainstorming + `/gsd-discuss-phase 11.1`, 2026-05-18:**
+
   1. Column-width lock approach — shared `<colgroup>` with `table-fixed` (D-11.1-01; rejected Option B CSS-Grid refactor)
   2. Column widths defined via single SoT `coverageColumns.ts` (D-11.1-02)
   3. CoverageToolbar moves INTO `PageHeader` `children` slot (D-11.1-03)
@@ -506,6 +580,7 @@ Plans:
   15. New `verify-contrast.test.ts` invariant for all `text-*` tokens (D-11.1-15)
 
 Plans:
+
 - [x] 11.1-01-PLAN.md — Wave 0 (TDD, foundational): `lib/contrast.ts` (WCAG calculator) + `lib/contrast.test.ts` + `styles/verify-contrast.test.ts` (token invariant) + `tokens.css` swap `--color-text-tertiary` to `#75708A`. Covers IMP-04, IMP-05. depends_on: []
 - [x] 11.1-02-PLAN.md — Wave 1 (TDD, parallel): `coverageColumns.ts` SoT + `coverageColumns.test.ts` + `CoverageFamilySection.tsx` `<colgroup>` + `table-fixed` + `CoverageRow.tsx` track adoption. Covers IMP-01. depends_on: 11.1-01
 - [x] 11.1-03-PLAN.md — Wave 1 (TDD, parallel): new `ui/Toast.tsx` primitive (provider + portal + `useToast` hook, single-slot replace, opacity-only animation) + `Toast.test.tsx` (11 assertions). Covers IMP-03 (primitive half). depends_on: 11.1-01
@@ -514,6 +589,7 @@ Plans:
 - [x] 11.1-06-PLAN.md — Wave 2 (TDD, sequential): `AppShellV2.tsx` wrap with `<ToastProvider>` + wire 6 clipboard call sites (`IndexGitNexusButton`, `InstallGitNexusButton`, `CoverageEmptyState`, `CoverageFamilySection` family-hint, `CoveragePage` wiki-compile, `CoveragePage` workflow update). Closes IMP-03 (wiring). depends_on: 11.1-03, 11.1-05
 
 **Post-phase gates:**
+
 - Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse)
 - `/cso` **NOT REQUIRED** (no daemon/auth/storage/api/llm touched) — confirm explicitly in REVIEW.md
 - `/qa` walkthrough on `/coverage` covering all 4 P1 surfaces + regression smoke
@@ -527,10 +603,12 @@ Plans:
 **Milestone:** v1.2 — Fleet conformance & drift visibility (opens v1.2)
 **Depends on:** Phase 11 (consumes `coverage-history` NDJSON store + `coverageHistory.ts` schema barrel + sibling-route precedent) · Phase 10/10.6 (column SoT + 3-state GitNexus enum for the conformance-score weighting) · Phase 5.1 (sidebar section pattern — graduates `Observability` from 2 → 3 entries) · Phase 11.x (sticky `PageHeader` primitive + Toast wiring for path-drift "fix all" affordance)
 **Authoritative inputs:**
+
   - `.planning/phases/DASH-11-coverage-trends-skill-drift/11-CONTEXT.md` §"Phase 12 anticipation" — D-11-07 (family-aggregate deferred to Phase 12 `/observability/trend`) + D-11-08 (sidebar IA — Phase 12 adds Conformance as 3rd entry) + D-11-11 (sibling-endpoint pattern)
   - `.planning/phases/DASH-11.2-impeccable-p2-polish-bundle/11.2-CONTEXT.md` §"Out of scope" — Coverage responsive collapse below 768px (Phase 12 candidate); family-aggregate worst-state-wins refinement (Phase 12 candidate)
   - `packages/agent/src/lib/scanners/coverageScan.ts` + `packages/shared/src/schemas/coverageHistory.ts` — extension surfaces for aggregate roll-up
   - `docs/spec/dashboard-prompt.md` — hard architectural constraints (read-only on project FS, daemon writes confined to `~/.agenticapps/dashboard/`, no native deps, bearer-auth on every route)
+
 **Sub-tracks:**
   | Sub-track | Scope |
   |---|---|
@@ -544,6 +622,7 @@ Plans:
 **Plans**: 7 plans across 6 waves (minted during `/gsd-plan-phase 12`).
 
 Plans:
+
 - [x] 12-00-PLAN.md — Wave 0 (TDD foundations): shared `conformance.ts` schema + `tierOf` + `RETENTION_DAYS` 14→90 bump + `useViewportBreakpoint` matchMedia hook. Covers REQ-12-CON-01, REQ-12-FOUNDATION-01, REQ-12-RVP-01. depends_on: []
 - [x] 12-01-PLAN.md — Wave 1 (TDD daemon pure primitives): `conformanceScore.ts` (equal-weight, Pitfalls 2/3) + `snapshotFleetReader.ts` (90-day NDJSON walk, per-day per-family scores). Covers REQ-12-CON-02, REQ-12-CON-03, REQ-12-CON-05. depends_on: [12-00]
 - [x] 12-02-PLAN.md — Wave 2 (TDD daemon wire surface): `conformanceCache.ts` (30s TTL) + `registryPathDrift.ts` (detector + inference via fs.readFile + regex, no subprocess) + `conformanceScan.ts` orchestrator + `GET /api/observability/conformance` + `POST /api/admin/registry/fix-path` (9 threat mitigations: T-12-PATH-TRAVERSAL/SYMLINK-ESCAPE/CONCURRENT-WRITE/CSRF/AUTH/INFO-DISCLOSURE/REGISTRY-CORRUPTION/DENIAL-OF-SERVICE/SUPPLY-CHAIN). Covers REQ-12-CON-04, REQ-12-CON-05, REQ-12-RPD-01..03. depends_on: [12-00, 12-01]
@@ -553,6 +632,7 @@ Plans:
 - [ ] 12-06-PLAN.md — Wave 6 (gates, sequential, autonomous: false): Stage 1 /review + /cso audit + Stage 2 superpowers:requesting-code-review + /qa walkthrough (5 scenarios per D-12-28) + impeccable critique at 1440×900 → `12-IMPECCABLE.md` (calibration data point #5 for D-10.5-03) + REQUIREMENTS.md tick-off. Covers REQ-12-IMP-01. depends_on: [12-00..12-05]
 
 **Wave structure:**
+
 - Wave 0 (12-00): foundations
 - Wave 1 (12-01): depends on 12-00
 - Wave 2 (12-02): depends on 12-00 + 12-01 (daemon wire surface — registryFixPath is the threat surface /cso audits)
@@ -562,6 +642,7 @@ Plans:
 - Wave 6 (12-06): depends on all 5 prior plans (gates run on the merged surface)
 
 **Anticipated decision set (D-12-01..09) — provisional from Phase 11 forward references; ratify/revise during `/gsd-discuss-phase 12`:**
+
   1. D-12-01 — Sidebar IA: `Conformance` as 3rd entry under `Observability` (Coverage / Skill drift / Conformance)
   2. D-12-02 — Sibling routes (NOT widening Phase 5's `/observability` aggregator)
   3. D-12-03 — Conformance score weighting: equal-weight across 4 Coverage columns (no per-column priority) — to be ratified
@@ -580,12 +661,14 @@ Plans:
 **Milestone:** v1.2 — Fleet conformance & drift visibility (continues v1.2; Phase 12 opened it)
 **Depends on:** Phase 10 (Coverage column schema + per-repo row anatomy) · Phase 10.6 (3-state GitNexus enum — `present` / `installed-no-registry` / `not-installed` — the state machine that determines which rows surface a Scan button) · Phase 11 (`coverageHistory` NDJSON + scanner architecture — Phase 13 must invalidate the relevant snapshot rows on scan success so trend lines react) · Phase 12 (`PathDriftPanel` / `useRegistryFixPath` patterns — daemon-side write affordances with inflight-Set + error-code mapping; new daemon route reuses this discipline)
 **Authoritative inputs:**
+
   - `docs/spec/dashboard-prompt.md` — hard architectural constraints (read-only on project FS, daemon writes confined to `~/.agenticapps/dashboard/`, **no native deps**, bearer-auth on every route, no Cloudflare Workers/Functions). Critical: `gitnexus analyze` writes to `~/.gitnexus/`, **outside** the daemon's write boundary — Phase 13 must surface this as an explicit `/cso`-audited exception with a documented rationale or relocate the side effect.
   - `.planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/` — Coverage page wire schema, column anatomy, `CoverageRow.tsx` / `CoverageFamilySection.tsx` row+section primitives.
   - `.planning/phases/DASH-10.6-three-state-gitnexus-detection/` (if present) or the 10.6 entry above — 3-state enum + which states warrant a Scan affordance vs an Install CTA.
   - `.planning/phases/DASH-12-observability-conformance-surface/12-CONTEXT.md` — `useRegistryFixPath` + `PathDriftPanel` precedent for daemon-side action affordances with inflight tracking + error-code mapping. Phase 13 follows the same discipline.
   - `packages/spa/src/components/panels/coverage/IndexGitNexusButton.tsx` + `InstallGitNexusButton.tsx` + `CoveragePage.tsx` — current clipboard-only CTAs that this phase replaces / repositions.
   - `packages/agent/src/lib/coverageScan.ts` + `coverageResolver.ts` + `coverageSpawn.ts` — daemon-side Coverage scanner. The gitnexus scan subprocess pattern lives next to these.
+
 **Sub-tracks:**
   | Sub-track | Scope |
   |---|---|
@@ -596,6 +679,7 @@ Plans:
   | Failure paths | gitnexus not on PATH → install CTA fallback (D-13-07). Scan fails for a subset of repos → partial-success toast with retry affordance (D-13-05). Concurrency collision → 409 with friendly retry-after message. |
   | Gates | Stage 1 `/review` + Stage 2 `superpowers:requesting-code-review` (two-stage, do NOT collapse) · `/cso` REQUIRED (new subprocess spawn surface + `~/.gitnexus/` write side effect outside daemon's normal write boundary — explicit threat model entry needed) · `/qa` walkthrough on Coverage: scan one repo, scan a family, scan with gitnexus binary missing, scan during another scan (concurrency), scan that fails partway · `/impeccable critique` on Coverage at 1440×900 → `13-IMPECCABLE.md` (calibration data point #6 for D-10.5-03) |
 **Anticipated decision set (D-13-01..11) — provisional; ratify/revise during `/gsd-discuss-phase 13`:**
+
   1. D-13-01 — Scan invocation: spawn `gitnexus analyze` subprocess vs invoke as a library dep. (Subprocess avoids native-dep + version-skew risk; library invocation may need gitnexus npm package. Recommend: subprocess.)
   2. D-13-02 — Progress transport: short-poll `GET /api/gitnexus/scan/{id}` vs SSE stream. Phase 12 used 30s-TTL cache + manual refetch — introducing SSE is new infra. Recommend: short-poll (matches Phase 12 discipline).
   3. D-13-03 — Concurrency model: global lock (one scan at a time) vs per-repo lock vs per-family lock. Recommend: per-repo lock + family-scan = orchestrated sequence of per-repo scans, so locks compose naturally.
@@ -608,12 +692,12 @@ Plans:
   10. D-13-10 — Command construction: reuse `buildGitnexusIndexClipboardString` from `@agenticapps/dashboard-shared` (so the clipboard fallback + daemon scan invoke the **same** command shape) vs daemon-side independent construction. Recommend: reuse the shared builder — single source of truth for "what gitnexus analyze command do we run".
   11. D-13-11 — Bind-mode posture: `gitnexus analyze` spawned by the daemon inherits the daemon process env. When daemon is bound to `tailscale` or `0.0.0.0` (remote-device access), a remote browser could trigger a local subprocess. Recommend: gate scan routes behind a "local-bind-only" check OR an explicit `--allow-remote-scan` flag set at daemon start; default to refusing scan requests when bind != 127.0.0.1.
 
-
 **Requirements:** none (Phase 13 has no REQ-IDs — phase_req_ids: null. Acceptance behaviours B-13-01..13 minted during `/gsd-plan-phase 13`, 2026-05-24; full descriptions in `.planning/REQUIREMENTS.md` §"GitNexus scoped scan actions (Phase 13)" once the gates plan lands).
 
 **Plans:** 7/7 plans complete
 
 Plans:
+
 - [x] 13-00-PLAN.md — Wave 0 (TDD foundations): extend `buildGitnexusIndexClipboardString` to return `{string, argv}` (D-13-10); shared Zod schemas for `GitnexusScanRequest/Response/Progress/ErrorCode` (D-13-EXT-06 11-code taxonomy); stub-gitnexus.sh + stub-gitnexus-failing.sh test fixtures; 6 RED test scaffolds for downstream waves. depends_on: []
 - [x] 13-01-PLAN.md — Wave 1 (TDD daemon plumbing): bindMode threaded through `Env.Variables` → `CreateAppOptions` → `boot.ts` → `cli/start.ts` (Pitfall 2); extend `HealthResponseSchema` + `/health` route with `gitnexus: { installed, canScan }` (D-13-11b). depends_on: [00]
 - [x] 13-02-PLAN.md — Wave 2 (TDD daemon route + lib): `lib/gitnexusScan.ts` (Map + per-repo lock + global scan-serialisation lock D-13-EXT-01 + 60s TTL eviction + fire-and-forget spawn via execa argv-array); `lib/gitnexusFamilyScan.ts` (sequential, alphabetical, partial-success per D-13-04/05); `routes/gitnexusScan.ts` (POST + GET, mounted at `/api/gitnexus`, mirror Phase 12 `registryFixPath` shape, full threat model with 9 STRIDE patterns + ~/.gitnexus carve-out); integration test with stub binary. depends_on: [00, 01]
@@ -621,6 +705,7 @@ Plans:
 - [ ] 13-04-PLAN.md — Wave 4 (gates, autonomous: false): `/cso` audit on subprocess-exec surface + ~/.gitnexus carve-out → 13-CSO.md; Stage 1 /review (gstack) → 13-REVIEW.md "Stage 1"; Stage 2 superpowers:requesting-code-review (FRESH context) → 13-REVIEW.md "Stage 2" (do NOT collapse); /qa walkthrough on 6 manual scenarios → 13-UAT.md; impeccable:critique at 1440×900 → 13-IMPECCABLE.md (calibration data point #6 for D-10.5-03 floor); REQUIREMENTS.md acceptance-proxy tick-off + STATE.md/ROADMAP.md closure. depends_on: [00, 01, 02, 03]
 
 **Wave structure:**
+
 - Wave 0 (13-00): foundations — shared contracts + stub fixtures + test scaffolds
 - Wave 1 (13-01): depends on 13-00 (uses HealthResponseSchema; needs no Wave 0 lib)
 - Wave 2 (13-02): depends on 13-00 + 13-01 (consumes bindMode from Env.Variables; consumes shared schemas)
@@ -720,17 +805,20 @@ The Coverage Matrix delivers the **point-in-time** half of "what every project's
 **Open scope decisions (8 — to be surfaced in /gsd-discuss-phase 11):**
 
 *From Candidate A:*
+
 1. Snapshot retention window — 14d / 30d / 90d?
 2. Snapshot trigger — cron-only vs cron + opportunistic dedup on dashboard load?
 3. Drift surface — inline `▲14d` indicator / sparkline / both?
 4. Family-aggregate trends in v1.1 or defer to v1.2?
 
 *From Candidate B:*
+
 5. Skill-drift aggregation level — per-skill (showing presence in N of M projects) vs per-project (showing missing skills) vs both views?
 6. AgentLinter integration depth — surface per-project linter outputs in the matrix, or just version-drift / presence?
 7. Cross-family vs in-family drift — does v1.1 ship the cross-family view, or scope to in-family only?
 
 *From combined frame:*
+
 8. Sidebar IA — keep `Observability` as a section with 2-3 entries (Coverage, Trends, Skill drift)? Or fold Trends into Coverage as a sub-view?
 
 **Next concrete action:** `/gsd-discuss-phase 11` to surface the 8 open scope decisions before formal planning. Discuss-phase output will feed `/gsd-plan-phase 11`.
