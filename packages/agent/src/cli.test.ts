@@ -49,4 +49,11 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
     const contents = readFileSync(cliBundle, 'utf8')
     expect(contents).not.toMatch(/from\s+['"]@agenticapps\/dashboard-shared['"]/)
   })
+
+  it('registers install-understand-viewer command with correct description (D-14-01)', () => {
+    const result = spawnSync('node', [cliBundle, '--help'], { encoding: 'utf8' })
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('install-understand-viewer')
+    expect(result.stdout).toContain('Build and install the understand-anything viewer from the plugin cache')
+  })
 })
