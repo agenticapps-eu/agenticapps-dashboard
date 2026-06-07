@@ -285,14 +285,27 @@ async function buildRow(
             // Missing rows carry no viewerToken (viewer link not renderable)
             return { kind: 'basic' as const, state: 'missing' as const }
           }
-          // Fresh or stale rows carry a viewer token (D-14-03) + metadata
+          // Fresh or stale rows carry a viewer token (D-14-03) + metadata.
+          // Bundle B-3 (review): a mint failure must degrade the row (AGREED-2
+          // pattern), NOT reject the whole Promise.all → /api/coverage 500.
+          // On failure the viewerToken is omitted and the column marked degraded.
+          let viewerToken: string | undefined
+          let mintError: string | undefined
+          try {
+            viewerToken = mintViewerToken(repoId, viewerTokenFile)
+          } catch (err) {
+            mintError = String(err)
+            rowDegraded.push(`understand: viewer token mint failed: ${mintError}`)
+          }
           return {
             kind: 'basic' as const,
             state: scan.state,
             ...(scan.lastAnalyzedAt !== undefined ? { lastAnalyzedAt: scan.lastAnalyzedAt } : {}),
             ...(scan.analyzedCommit !== undefined ? { analyzedCommit: scan.analyzedCommit } : {}),
             ...(scan.analyzedFiles !== undefined ? { analyzedFiles: scan.analyzedFiles } : {}),
-            viewerToken: mintViewerToken(repoId, viewerTokenFile),
+            ...(viewerToken !== undefined
+              ? { viewerToken }
+              : { degraded: true, degradedReason: `viewer token mint failed: ${mintError}` }),
           }
         })()
       : (() => {

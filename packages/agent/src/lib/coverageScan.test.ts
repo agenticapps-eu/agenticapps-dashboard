@@ -359,6 +359,36 @@ describe('scanCoverage — understand column (Plan 14-06)', () => {
     expect('viewerToken' in (row.understand ?? {})).toBe(false)
   })
 
+  it('Test 5 (Bundle B-3): mint failure degrades the row instead of rejecting the whole scan', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'coverage-understand-mintfail-'))
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }))
+    makeRepoWithGit(root, 'agenticapps', 'my-repo', FAKE_SHA, {
+      gitCommitHash: FAKE_SHA,
+      analyzedFiles: 7,
+    })
+
+    // Point the viewer secret at a nonexistent path — mintViewerToken throws
+    // (ENOENT). The scan must NOT reject (no /api/coverage 500): the row is
+    // returned with understand present but no viewerToken, marked degraded.
+    const result = await scanCoverage({
+      sourcecodeRootOverride: root,
+      viewerTokenFileOverride: join(root, 'does-not-exist', 'viewer-token.json'),
+    })
+
+    expect(result.rows).toHaveLength(1)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!
+
+    expect(row.understand).toBeDefined()
+    expect(row.understand?.state).toBe('fresh') // the FS scan itself succeeded
+    expect('viewerToken' in (row.understand ?? {})).toBe(false)
+    expect(row.understand?.degraded).toBe(true)
+    expect(row.degraded?.reason).toMatch(/understand: viewer token mint failed/)
+
+    // Full response still parses the wire schema
+    expect(CoverageResponseSchema.safeParse(result).success).toBe(true)
+  })
+
   it('Test 4: scanner rejection → degraded missing with reason pushed to rowDegraded — schema still parses', async () => {
     // Simulate allSettled rejection by having the understandScanner throw.
     // We construct a row via the schema to verify the AGREED-2 degraded shape.
