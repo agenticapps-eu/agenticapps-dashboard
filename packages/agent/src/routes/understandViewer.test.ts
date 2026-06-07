@@ -1209,4 +1209,132 @@ describe('understandViewer — Task 3: static viewer serving', () => {
     expect([404, 401, 400]).toContain(res.status)
     ctx.cleanup()
   })
+
+  // ── Test 7: Cache-Control headers (Phase 14 review fix — Bundle D) ─────────
+
+  it('static asset under assets/ → Cache-Control: public, max-age=31536000, immutable', async () => {
+    const ctx = makeViewerApp({ viewerInstalled: true })
+    const res = await ctx.app.request(
+      `http://127.0.0.1:5193/understand/agenticapps/test-repo/assets/app.js`,
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable')
+    ctx.cleanup()
+  })
+
+  it('index.html (shell) → Cache-Control: no-cache', async () => {
+    const ctx = makeViewerApp({ viewerInstalled: true })
+    const res = await ctx.app.request(
+      `http://127.0.0.1:5193/understand/agenticapps/test-repo/`,
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('no-cache')
+    ctx.cleanup()
+  })
+})
+
+// ── Cache-Control on data endpoints (Phase 14 review fix — Bundle D) ─────────
+
+describe('understandViewer — data endpoint Cache-Control: no-store', () => {
+  it('knowledge-graph.json 200 response carries Cache-Control: no-store', async () => {
+    const proj = makeTmpUnderstandProject([{ filePath: 'src/a.ts' }])
+    const tmp = makeTmpHome()
+    const authFile = join(tmp.configDir, 'auth.json')
+    const registryFile = join(tmp.configDir, 'registry.json')
+    const viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
+    const authFresh = ensureAuthFile(authFile)
+    setActiveToken(authFresh.token)
+    ensureViewerSecretFile(viewerTokenFile)
+    writeFileSync(registryFile, JSON.stringify({
+      version: 1,
+      projects: [{ id: proj.root, root: proj.root, name: 'test' }],
+    }))
+
+    const app = createApp({
+      registryFile,
+      authFile,
+      viewerTokenFile,
+      viewerRootOverrides: { 'agenticapps/test-repo': proj.root },
+      bindMode: 'loopback',
+    })
+    const token = mintViewerToken('agenticapps/test-repo', viewerTokenFile)
+
+    const res = await app.request(`http://127.0.0.1:5193/knowledge-graph.json?token=${token}`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+
+    proj.cleanup()
+    tmp.cleanup()
+  })
+
+  it('file-content.json 200 response carries Cache-Control: no-store', async () => {
+    const proj = makeTmpUnderstandProject([])
+    mkdirSync(join(proj.root, 'src'), { recursive: true })
+    writeFileSync(join(proj.root, 'src', 'auth.ts'), 'export const a = 1\n')
+    writeFileSync(
+      join(proj.uaDir, 'knowledge-graph.json'),
+      makeGraphJson([{ filePath: 'src/auth.ts' }]),
+    )
+
+    const tmp = makeTmpHome()
+    const authFile = join(tmp.configDir, 'auth.json')
+    const registryFile = join(tmp.configDir, 'registry.json')
+    const viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
+    const authFresh = ensureAuthFile(authFile)
+    setActiveToken(authFresh.token)
+    ensureViewerSecretFile(viewerTokenFile)
+    writeFileSync(registryFile, JSON.stringify({
+      version: 1,
+      projects: [{ id: proj.root, root: proj.root, name: 'test' }],
+    }))
+
+    const app = createApp({
+      registryFile,
+      authFile,
+      viewerTokenFile,
+      viewerRootOverrides: { 'agenticapps/test-repo': proj.root },
+      bindMode: 'loopback',
+    })
+    const token = mintViewerToken('agenticapps/test-repo', viewerTokenFile)
+
+    const res = await app.request(
+      `http://127.0.0.1:5193/file-content.json?token=${token}&path=src/auth.ts`,
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+
+    proj.cleanup()
+    tmp.cleanup()
+  })
+
+  it('meta.json 404 empty-body response carries Cache-Control: no-store', async () => {
+    const proj = makeTmpUnderstandProject([])
+    const tmp = makeTmpHome()
+    const authFile = join(tmp.configDir, 'auth.json')
+    const registryFile = join(tmp.configDir, 'registry.json')
+    const viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
+    const authFresh = ensureAuthFile(authFile)
+    setActiveToken(authFresh.token)
+    ensureViewerSecretFile(viewerTokenFile)
+    writeFileSync(registryFile, JSON.stringify({
+      version: 1,
+      projects: [{ id: proj.root, root: proj.root, name: 'test' }],
+    }))
+
+    const app = createApp({
+      registryFile,
+      authFile,
+      viewerTokenFile,
+      viewerRootOverrides: { 'agenticapps/test-repo': proj.root },
+      bindMode: 'loopback',
+    })
+    const token = mintViewerToken('agenticapps/test-repo', viewerTokenFile)
+
+    const res = await app.request(`http://127.0.0.1:5193/meta.json?token=${token}`)
+    expect(res.status).toBe(404)
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+
+    proj.cleanup()
+    tmp.cleanup()
+  })
 })

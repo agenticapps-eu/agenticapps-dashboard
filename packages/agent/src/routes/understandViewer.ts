@@ -264,6 +264,11 @@ function makeDataHandler(fileName: string, opts: {
     const viewerTokenFile = c.get('viewerTokenFile') as string | undefined
     const rootOverrides = c.get('viewerRootOverrides') as RepoRootOverrides | undefined
 
+    // Data responses are token-bearing URLs — they must never be disk-cached.
+    // Applied to every c.json/c.body response from this handler (raw Response
+    // constructions below set the header explicitly).
+    c.header('Cache-Control', 'no-store')
+
     // Token gate (T-14-05-01)
     const token = c.req.query('token')
     const repoId = verifyToken(token, viewerTokenFile)
@@ -301,7 +306,10 @@ function makeDataHandler(fileName: string, opts: {
 
     if (!existsSync(filePath)) {
       if (opts.missWith404EmptyBody) {
-        return new Response(null, { status: 404 })
+        return new Response(null, {
+          status: 404,
+          headers: { 'Cache-Control': 'no-store' },
+        })
       }
       // knowledge-graph miss: upstream JSON error
       return c.json({ error: ERR_NO_GRAPH }, 404)
@@ -544,6 +552,18 @@ function getMime(filePath: string): string {
 }
 
 /**
+ * Cache-Control for static viewer files:
+ *   - assets/… chunks are content-hashed by Vite → long-lived immutable cache.
+ *   - index.html and other shell files must revalidate so a viewer update
+ *     (install-understand-viewer + daemon restart) is picked up immediately.
+ */
+function staticCacheControl(assetPath: string): string {
+  const isHashedAsset =
+    assetPath.startsWith('assets/') || assetPath.startsWith(`assets${sep}`)
+  return isHashedAsset ? 'public, max-age=31536000, immutable' : 'no-cache'
+}
+
+/**
  * Serve a static asset from the viewer dist directory.
  * Performs explicit realpath containment check (T-14-05-05).
  */
@@ -571,7 +591,10 @@ function serveViewerAsset(viewerRoot: string, assetPath: string): Response {
     const content = readFileSync(realCandidate)
     return new Response(content, {
       status: 200,
-      headers: { 'Content-Type': getMime(assetPath) },
+      headers: {
+        'Content-Type': getMime(assetPath),
+        'Cache-Control': staticCacheControl(assetPath),
+      },
     })
   } catch {
     return new Response(null, { status: 404 })
