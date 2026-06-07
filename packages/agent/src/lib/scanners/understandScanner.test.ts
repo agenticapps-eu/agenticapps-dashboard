@@ -13,7 +13,7 @@
  */
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 
 import { describe, it, expect, afterEach } from 'vitest'
 
@@ -54,6 +54,55 @@ function makeGitPackedRef(repoRoot: string, sha: string, branch = 'main'): void 
   writeFileSync(join(gitDir, 'HEAD'), `ref: refs/heads/${branch}\n`)
   // packed-refs format: <sha> <ref>
   writeFileSync(join(gitDir, 'packed-refs'), `# pack-refs with: peeled fully-peeled sorted\n${sha} refs/heads/${branch}\n`)
+}
+
+/**
+ * Create a linked-worktree layout:
+ *   mainRoot/.git/                          — parent repo git dir (common dir)
+ *   mainRoot/.git/worktrees/<name>/HEAD     — worktree HEAD (ref: or detached SHA)
+ *   mainRoot/.git/worktrees/<name>/commondir — '../..' pointer to the common dir
+ *   wtRoot/.git                             — FILE containing 'gitdir: <linked gitdir>'
+ */
+function makeWorktreeLayout(
+  mainRoot: string,
+  wtRoot: string,
+  opts: {
+    headContent: string          // 'ref: refs/heads/feature\n' or '<sha>\n'
+    refSha?: string              // when set, write refs/heads/<branch> in the COMMON dir
+    packedRefSha?: string        // when set, write packed-refs in the COMMON dir instead
+    branch?: string
+    relativeGitdirPointer?: boolean // write the gitdir: pointer relative to wtRoot
+  },
+): void {
+  const branch = opts.branch ?? 'feature'
+  const commonGitDir = join(mainRoot, '.git')
+  const linkedGitDir = join(commonGitDir, 'worktrees', 'wt1')
+  mkdirSync(linkedGitDir, { recursive: true })
+
+  // Parent repo's own HEAD (points at main — must NOT be what the worktree resolves)
+  mkdirSync(join(commonGitDir, 'refs', 'heads'), { recursive: true })
+  writeFileSync(join(commonGitDir, 'HEAD'), 'ref: refs/heads/main\n')
+  writeFileSync(join(commonGitDir, 'refs', 'heads', 'main'), `${OTHER_SHA}\n`)
+
+  // Linked gitdir contents
+  writeFileSync(join(linkedGitDir, 'HEAD'), opts.headContent)
+  writeFileSync(join(linkedGitDir, 'commondir'), '../..\n')
+
+  if (opts.refSha) {
+    writeFileSync(join(commonGitDir, 'refs', 'heads', branch), `${opts.refSha}\n`)
+  }
+  if (opts.packedRefSha) {
+    writeFileSync(
+      join(commonGitDir, 'packed-refs'),
+      `# pack-refs with: peeled fully-peeled sorted\n${opts.packedRefSha} refs/heads/${branch}\n`,
+    )
+  }
+
+  // The worktree's .git FILE pointing at the linked gitdir
+  const pointer = opts.relativeGitdirPointer
+    ? relative(wtRoot, linkedGitDir)
+    : linkedGitDir
+  writeFileSync(join(wtRoot, '.git'), `gitdir: ${pointer}\n`)
 }
 
 /** Create .understand-anything/meta.json with a given gitCommitHash. */
@@ -104,6 +153,68 @@ describe('readRepoHeadSha', () => {
     const { repoRoot, cleanup } = makeTmpRepo()
     cleanups.push(cleanup)
     // No .git at all
+    expect(readRepoHeadSha(repoRoot)).toBeNull()
+  })
+})
+
+// ── Test 1b: readRepoHeadSha — linked worktrees (.git is a FILE) ──────────────
+
+describe('readRepoHeadSha — git worktree (.git file with gitdir: pointer)', () => {
+  const cleanups: Array<() => void> = []
+  afterEach(() => { for (const c of cleanups) c(); cleanups.length = 0 })
+
+  function makeMainAndWorktree(): { mainRoot: string; wtRoot: string } {
+    const main = makeTmpRepo()
+    const wt = makeTmpRepo()
+    cleanups.push(main.cleanup, wt.cleanup)
+    return { mainRoot: main.repoRoot, wtRoot: wt.repoRoot }
+  }
+
+  it('detached worktree HEAD: linked gitdir HEAD contains raw SHA → returns it', () => {
+    const { mainRoot, wtRoot } = makeMainAndWorktree()
+    makeWorktreeLayout(mainRoot, wtRoot, { headContent: `${FAKE_SHA}\n` })
+    expect(readRepoHeadSha(wtRoot)).toBe(FAKE_SHA)
+  })
+
+  it('ref-form worktree HEAD: ref resolves via commondir refs/heads/<branch>', () => {
+    const { mainRoot, wtRoot } = makeMainAndWorktree()
+    makeWorktreeLayout(mainRoot, wtRoot, {
+      headContent: 'ref: refs/heads/feature\n',
+      refSha: FAKE_SHA,
+    })
+    // Must resolve the WORKTREE branch SHA, not the parent repo's main HEAD
+    expect(readRepoHeadSha(wtRoot)).toBe(FAKE_SHA)
+  })
+
+  it('ref-form worktree HEAD: ref absent in refs/, resolves via commondir packed-refs', () => {
+    const { mainRoot, wtRoot } = makeMainAndWorktree()
+    makeWorktreeLayout(mainRoot, wtRoot, {
+      headContent: 'ref: refs/heads/feature\n',
+      packedRefSha: FAKE_SHA,
+    })
+    expect(readRepoHeadSha(wtRoot)).toBe(FAKE_SHA)
+  })
+
+  it('relative gitdir: pointer (relative to repoRoot) resolves correctly', () => {
+    const { mainRoot, wtRoot } = makeMainAndWorktree()
+    makeWorktreeLayout(mainRoot, wtRoot, {
+      headContent: `${FAKE_SHA}\n`,
+      relativeGitdirPointer: true,
+    })
+    expect(readRepoHeadSha(wtRoot)).toBe(FAKE_SHA)
+  })
+
+  it('malformed .git file (no gitdir: prefix) → returns null, never throws', () => {
+    const { repoRoot, cleanup } = makeTmpRepo()
+    cleanups.push(cleanup)
+    writeFileSync(join(repoRoot, '.git'), 'this is not a gitdir pointer\n')
+    expect(readRepoHeadSha(repoRoot)).toBeNull()
+  })
+
+  it('gitdir: pointer to a nonexistent directory → returns null, never throws', () => {
+    const { repoRoot, cleanup } = makeTmpRepo()
+    cleanups.push(cleanup)
+    writeFileSync(join(repoRoot, '.git'), `gitdir: ${join(repoRoot, 'does-not-exist')}\n`)
     expect(readRepoHeadSha(repoRoot)).toBeNull()
   })
 })
