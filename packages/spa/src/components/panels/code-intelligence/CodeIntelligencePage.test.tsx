@@ -132,7 +132,11 @@ function makeErrorResult<T>(message: string): UseQueryResult<T, Error> {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetPairing.mockReturnValue({ agentUrl: AGENT_URL, token: 'bearer-token-should-not-appear-in-links' })
+  mockGetPairing.mockReturnValue({
+    agentUrl: AGENT_URL,
+    token: 'bearer-token-should-not-appear-in-links',
+    pairedAt: '2026-06-07T09:00:00.000Z',
+  })
 })
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
