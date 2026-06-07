@@ -148,11 +148,18 @@ export function CodeIntelligencePage(): React.JSX.Element {
     )
   }
 
-  // Derive understand state from health
+  // Derive understand state from health.
+  // Phase 14 review fix: when the health query errored (or schema-drifted —
+  // no data either way), the install state is UNKNOWN: show neither the
+  // install banner nor the update hint, and keep viewer links rendered (the
+  // daemon route 503s gracefully if the viewer is truly missing). Only a
+  // successful health response may claim 'Viewer not installed'.
+  const healthUnknown = healthQuery.isError || healthQuery.data === undefined
   const understandHealth = healthQuery.data?.understand
   // Treat missing understand block (old daemon) as viewer not installed
-  const viewerInstalled = understandHealth?.viewerInstalled ?? false
-  const updateAvailable = understandHealth?.updateAvailable ?? false
+  const viewerInstalled = healthUnknown ? true : (understandHealth?.viewerInstalled ?? false)
+  const showInstallHint = !healthUnknown && !(understandHealth?.viewerInstalled ?? false)
+  const updateAvailable = !healthUnknown && (understandHealth?.updateAvailable ?? false)
   const viewerVersion = understandHealth?.viewerVersion ?? null
   const pluginVersion = understandHealth?.pluginVersion ?? null
 
@@ -170,8 +177,9 @@ export function CodeIntelligencePage(): React.JSX.Element {
       />
 
       {/* Install hint — viewer not installed (D-14-02). role="status" (polite),
-          not "alert": this is a static hint present at render, not an interruption. */}
-      {!viewerInstalled && (
+          not "alert": this is a static hint present at render, not an interruption.
+          Suppressed when health is unknown (errored/no data) — see healthUnknown. */}
+      {showInstallHint && (
         <div
           role="status"
           className="rounded-lg border border-border-subtle bg-card-bg p-4 text-sm text-text-secondary"

@@ -273,6 +273,27 @@ describe('CodeIntelligencePage', () => {
     })
   })
 
+  describe('Test 3b: health unknown (errored / no data) — Phase 14 review fix', () => {
+    it('health query error → NO install banner, NO update hint, viewer links stay rendered', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'fresh', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeErrorResult('daemon unreachable'))
+
+      render(<CodeIntelligencePage />)
+
+      // No misleading 'Viewer not installed' banner when install state is unknown
+      expect(screen.queryByText(/viewer not installed/i)).toBeNull()
+      // No update hint either
+      expect(screen.queryByText(/viewer update available/i)).toBeNull()
+      // Viewer links remain rendered — the daemon route 503s gracefully if needed
+      const link = screen.getByRole('link', { name: /open viewer/i })
+      expect(link).toBeDefined()
+      const expectedHref = `${AGENT_URL}/understand/agenticapps/repo-1/?token=${encodeURIComponent(VIEWER_TOKEN)}`
+      expect(link.getAttribute('href')).toBe(expectedHref)
+    })
+  })
+
   describe('Test 6: loading and error states', () => {
     it('renders loading skeleton when coverage query is pending', () => {
       mockUseCoverage.mockReturnValue(makePendingResult())
