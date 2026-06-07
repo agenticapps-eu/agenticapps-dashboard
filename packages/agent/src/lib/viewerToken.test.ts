@@ -30,6 +30,7 @@ import {
   rotateViewerSecret,
   mintViewerToken,
   verifyViewerToken,
+  InvalidRepoIdError,
 } from './viewerToken.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -201,6 +202,41 @@ describe('mintViewerToken / verifyViewerToken', () => {
     const repoId = 'neuroflash/backend'
     const newToken = mintViewerToken(repoId, secretFile)
     expect(verifyViewerToken(newToken, secretFile)).toBe(repoId)
+  })
+})
+
+// ── Phase 14 review Bundle B-2: mint-time repoId validation ──────────────────
+
+describe('mintViewerToken — mint-time repoId validation (Bundle B-2)', () => {
+  beforeEach(() => {
+    setup()
+    ensureViewerSecretFile(secretFile)
+  })
+  afterEach(teardown)
+
+  it('throws InvalidRepoIdError for uppercase repoId (would mint a dead link)', () => {
+    expect(() => mintViewerToken('agenticapps/MyRepo', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for unknown family', () => {
+    expect(() => mintViewerToken('evil/repo', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for path traversal repo segment', () => {
+    expect(() => mintViewerToken('agenticapps/..', secretFile)).toThrow(InvalidRepoIdError)
+    expect(() => mintViewerToken('agenticapps/a..b', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for missing family segment', () => {
+    expect(() => mintViewerToken('no-slash-here', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('still mints for conforming repoIds in every known family', () => {
+    for (const family of ['agenticapps', 'factiv', 'neuroflash']) {
+      const repoId = `${family}/valid-repo_1.2`
+      const token = mintViewerToken(repoId, secretFile)
+      expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+    }
   })
 })
 

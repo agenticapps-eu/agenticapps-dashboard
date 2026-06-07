@@ -44,6 +44,22 @@ interface ViewerTokenFile {
   rotatedAt: string  // ISO-8601
 }
 
+/**
+ * Bundle B-2 (review): typed error thrown by mintViewerToken when the repoId
+ * does not conform to the D-13-EXT-11 family/repo rules. Verification would
+ * uniformly reject such a token, so minting one would only produce a dead
+ * viewer link — fail loudly at mint time instead.
+ */
+export class InvalidRepoIdError extends Error {
+  constructor(repoId: string) {
+    super(
+      `mintViewerToken: repoId does not conform to family/repo slug rules ` +
+        `(D-13-EXT-11): ${JSON.stringify(repoId)}`,
+    )
+    this.name = 'InvalidRepoIdError'
+  }
+}
+
 // ── In-memory secret ref (auth.ts activeToken pattern) ───────────────────────
 
 let activeViewerSecret = ''
@@ -201,6 +217,9 @@ export function rotateViewerSecret(filePath: string = VIEWER_TOKEN_FILE): Viewer
  * verifyViewerToken uses the identical resolution so both sides always agree.
  */
 export function mintViewerToken(repoId: string, filePath: string = VIEWER_TOKEN_FILE): string {
+  // Bundle B-2: same validation as verify time — never mint a token that
+  // verifyViewerToken would reject (dead viewer links).
+  if (!validateRepoId(repoId)) throw new InvalidRepoIdError(repoId)
   const secret = resolveSecret(filePath)
   const repoB64 = Buffer.from(repoId).toString('base64url')
   const mac = createHmac('sha256', secret).update(repoId).digest('hex')
