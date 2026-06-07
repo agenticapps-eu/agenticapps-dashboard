@@ -476,7 +476,7 @@ Plans:
 **Goal:** Clicking a project's "Knowledge graph" link opens the understand-anything viewer served by the daemon at `/understand/{projectId}/` (prebuilt static build of the plugin's dashboard SPA + its 6 data endpoints re-implemented in Hono with bearer auth over `.understand-anything/`), and the Coverage matrix shows per-repo understand-anything status (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand`. No daemon-triggered LLM scans this phase (analysis is LLM-driven; headless scan is a follow-up candidate).
 **Requirements**: D-14-01..D-14-10 (CONTEXT.md locked decision set; no REQ-IDs minted — decision-driven phase per discuss-phase 2026-06-06). Constraint exception D-14-05 user-RATIFIED.
 **Depends on:** Phase 13
-**Plans:** 4/8 plans executed
+**Plans:** 7/8 plans executed
 
 Plans:
 **Wave 1**
@@ -491,9 +491,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 14-05-PLAN.md — Wave 3 (TDD): daemon viewer route — static serving at /understand/{family}/{repo}/ + 6 root-level token-gated data endpoints, FIX 2 sanitization (D-14-05b), full 12-guard file-content suite (D-14-05 ratified exception), pre-bearerAuth mount, Tailscale parity (D-14-04). depends_on: 14-02
-- [ ] 14-06-PLAN.md — Wave 3 (TDD, parallel): understandScanner (readRepoHeadSha pure-FS + commit-hash staleness, D-14-08) + coverageScan integration with per-row viewerToken mint + /health understand block (D-14-02). depends_on: 14-01, 14-02
-- [ ] 14-07-PLAN.md — Wave 3 (TDD, parallel): CLI `install-understand-viewer` — plugin-cache build (core→dashboard, --base=./) installed to ~/.agenticapps/dashboard/understand-viewer/<version>/ (D-14-01). depends_on: 14-02
+- [x] 14-05-PLAN.md — Wave 3 (TDD): daemon viewer route — static serving at /understand/{family}/{repo}/ + 6 root-level token-gated data endpoints, FIX 2 sanitization (D-14-05b), full 12-guard file-content suite (D-14-05 ratified exception), pre-bearerAuth mount, Tailscale parity (D-14-04). depends_on: 14-02
+- [x] 14-06-PLAN.md — Wave 3 (TDD, parallel): understandScanner (readRepoHeadSha pure-FS + commit-hash staleness, D-14-08) + coverageScan integration with per-row viewerToken mint + /health understand block (D-14-02). depends_on: 14-01, 14-02
+- [x] 14-07-PLAN.md — Wave 3 (TDD, parallel): CLI `install-understand-viewer` — plugin-cache build (core→dashboard, --base=./) installed to ~/.agenticapps/dashboard/understand-viewer/<version>/ (D-14-01). depends_on: 14-02
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
