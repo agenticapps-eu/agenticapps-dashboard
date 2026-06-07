@@ -204,6 +204,44 @@ describe('mintViewerToken / verifyViewerToken', () => {
   })
 })
 
+// ── Phase 14 review Bundle B-1: mint/verify secret-source symmetry ────────────
+
+describe('mint/verify secret-source symmetry (Bundle B-1)', () => {
+  beforeEach(setup)
+  afterEach(teardown)
+
+  it('verifyViewerToken uses the in-memory secret without re-reading the file (hot path)', () => {
+    ensureViewerSecretFile(secretFile) // populates the in-memory secret ref
+    const repoId = 'agenticapps/my-repo'
+    const token = mintViewerToken(repoId, secretFile)
+    // Delete the secret file — both mint and verify must keep working from memory
+    rmSync(secretFile)
+    expect(mintViewerToken(repoId, secretFile)).toBe(token)
+    expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+  })
+
+  it('an explicitly different filePath is read from disk, not served from memory', () => {
+    ensureViewerSecretFile(secretFile) // in-memory ref now bound to secretFile
+    // Craft a SECOND secret file manually (does not touch the module global)
+    const otherFile = join(tmpDir, 'other-viewer-token.json')
+    const otherSecret = 'b'.repeat(64)
+    writeFileSync(
+      otherFile,
+      JSON.stringify({ version: 1, secret: otherSecret, rotatedAt: new Date().toISOString() }),
+      { mode: 0o600 },
+    )
+    const repoId = 'agenticapps/my-repo'
+    // Mint against the OTHER file — must use otherFile's secret, not the in-memory one
+    const tokenOther = mintViewerToken(repoId, otherFile)
+    expect(verifyViewerToken(tokenOther, otherFile)).toBe(repoId)
+    // The same token must NOT verify against the original secret file
+    expect(verifyViewerToken(tokenOther, secretFile)).toBeNull()
+    // And a token minted against the original file must not verify against otherFile
+    const tokenOriginal = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(tokenOriginal, otherFile)).toBeNull()
+  })
+})
+
 // ── Test 7: timingSafeEqual import (structural check) ────────────────────────
 
 describe('viewerToken.ts — timingSafeEqual structural import', () => {
