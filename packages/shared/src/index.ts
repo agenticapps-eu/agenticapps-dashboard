@@ -237,5 +237,6 @@ export {
   buildClaudeMdHelpUrl,
   buildGitnexusInstallClipboardString,
   buildGitnexusIndexClipboardString,
+  buildUnderstandCommand,
 } from './clipboard.js'
-export type { GitnexusIndexCommand } from './clipboard.js'
+export type { GitnexusIndexCommand, UnderstandCommand } from './clipboard.js'
