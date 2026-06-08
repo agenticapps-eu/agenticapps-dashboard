@@ -21,16 +21,17 @@
  *
  * D-13-EXT-04: Jobs retained 60s after settle so SPA's final poll succeeds.
  */
-import { sep } from 'node:path'
-import { homedir } from 'node:os'
-import { existsSync, realpathSync, statSync } from 'node:fs'
-
 import { spawnGitNexusAnalyze } from './coverageSpawn.js'
 import { readRegistry } from './registry.js'
 import {
   buildGitnexusIndexClipboardString,
   type GitnexusScanErrorCode,
 } from '@agenticapps/dashboard-shared'
+import { resolveRepoRoot } from './repoRoot.js'
+
+// Re-exports for backward compat — consumers that imported from gitnexusScan.ts
+// continue to work unchanged (14-PATTERNS.md note 4).
+export { deterministicRepoRoot, derivedRepoId } from './repoRoot.js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -248,16 +249,9 @@ export async function startScan(
 > {
   const repoId = req.target // for scope:'repo' this is 'family/repo'
 
-  // (a) Resolve repo root — try registry first, then deterministic filesystem fallback.
+  // (a) Resolve repo root — registry-first, then deterministic FS fallback (D-14-09).
   const reg = readRegistry(opts.registryFile)
-  const entry = reg.projects.find((p) => derivedRepoId(p.root) === repoId)
-  let repoRoot: string | null = entry ? entry.root : null
-  if (!repoRoot) {
-    const fallback = deterministicRepoRoot(repoId)
-    if (fallback !== null) {
-      repoRoot = fallback
-    }
-  }
+  const repoRoot = resolveRepoRoot(repoId, reg.projects)
   if (!repoRoot) {
     return { ok: false, code: 'REPO_NOT_REGISTERED' }
   }
@@ -472,89 +466,6 @@ async function _doSpawnAndSettle(
 /** TTL eviction: delete job 60s after settle. Timer is unref()'d. */
 function scheduleEviction(scanId: string): void {
   setTimeout(() => scans.delete(scanId), 60_000).unref()
-}
-
-/**
- * D-13-EXT-08 — Deterministic forward resolver for `family/repo` → absolute path.
- * Inverse of `derivedRepoId`: given a `family/repo` repoId from the SPA, compute
- * the canonical absolute path under ~/Sourcecode/ and return it ONLY if the
- * directory exists on disk. Returns null otherwise.
- *
- * D-13-EXT-09 corollary (Codex CRITICAL #2) — Realpath-guarded.
- *   After existence + directory checks, realpath the candidate and refuse
- *   unless the resolved path equals the candidate OR lives under the family
- *   prefix. A symlink at ~/Sourcecode/agenticapps/evil → /etc would otherwise
- *   pass the directory check and let the daemon spawn gitnexus analyze with
- *   cwd=/etc. Mirrors assertSnapshotDirInDaemonHome (server/boot.ts:98-116).
- *
- * D-13-EXT-11 (Codex CRITICAL #1) — Defence-in-depth dot-segment rejection.
- *   The wire schema already rejects `.`, `..`, and `..` substrings, but the
- *   helper may be called from non-route paths in future. Re-check here so the
- *   safety invariant survives refactoring of the wire layer.
- *
- * Family allow-list is enforced (matches derivedRepoId).
- */
-export function deterministicRepoRoot(repoId: string): string | null {
-  const slash = repoId.indexOf('/')
-  if (slash < 1 || slash === repoId.length - 1) return null
-  const family = repoId.slice(0, slash)
-  const repo = repoId.slice(slash + 1)
-  const knownFamilies = ['agenticapps', 'factiv', 'neuroflash'] as const
-  if (!(knownFamilies as readonly string[]).includes(family)) return null
-  if (repo.includes('/') || repo.includes(sep)) return null
-  // D-13-EXT-11 defence-in-depth
-  if (repo === '.' || repo === '..' || repo.includes('..')) return null
-
-  const familyPrefix = `${homedir()}${sep}Sourcecode${sep}${family}${sep}`
-  const root = `${familyPrefix}${repo}`
-  if (!existsSync(root)) return null
-  try {
-    if (!statSync(root).isDirectory()) return null
-  } catch {
-    return null
-  }
-
-  // D-13-EXT-09 corollary — symlink-escape defence (Codex CRITICAL #2).
-  // Compare in canonical (realpath) form on both sides — macOS aliases
-  // /var ↔ /private/var would otherwise produce false negatives when HOME
-  // lives under /var/folders/ (mkdtemp default) but realpath returns /private.
-  let realCandidate: string
-  let realFamilyPrefix: string
-  try {
-    realCandidate = realpathSync.native(root)
-    // realpath does not preserve trailing separator; add one back so the
-    // startsWith check correctly enforces the prefix boundary (otherwise
-    // /Sourcecode/agenticapps would match /Sourcecode/agenticapps-evil).
-    realFamilyPrefix = realpathSync.native(familyPrefix.slice(0, -1)) + sep
-  } catch {
-    return null
-  }
-  // Only check startsWith — `realCandidate` is always {familyPrefix}{repo} so
-  // it cannot equal the bare family root post-realpath. (Previously this had a
-  // defence-in-depth `||` against equality with the family root; removed since
-  // the candidate construction never produces that shape.)
-  if (!realCandidate.startsWith(realFamilyPrefix)) return null
-  return root
-}
-
-/**
- * Derive a canonical `family/repo` repoId from an absolute registry root path.
- * Mirrors the Phase 11 familyOf logic — family roots are ~/Sourcecode/{family}/{repo}.
- *
- * Returns null if the path doesn't match the expected ~/Sourcecode/{family}/{repo} shape.
- */
-export function derivedRepoId(root: string): string | null {
-  const home = homedir()
-  const sourcecode = `${home}${sep}Sourcecode${sep}`
-  if (!root.startsWith(sourcecode)) return null
-  const rel = root.slice(sourcecode.length)
-  const parts = rel.split(sep)
-  if (parts.length < 2 || !parts[0] || !parts[1]) return null
-  const family = parts[0]
-  const repo = parts[1]
-  const knownFamilies = ['agenticapps', 'factiv', 'neuroflash'] as const
-  if (!(knownFamilies as readonly string[]).includes(family)) return null
-  return `${family}/${repo}`
 }
 
 /**

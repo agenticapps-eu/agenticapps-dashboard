@@ -123,6 +123,13 @@ program
   })
 
 program
+  .command('install-understand-viewer')
+  .description('Build and install the understand-anything viewer from the plugin cache')
+  .action(async () => {
+    await (await import('./cli/installUnderstandViewer.js')).runInstallUnderstandViewer()
+  })
+
+program
   .command('install-systemd')
   .description('Install a systemd user unit for the dashboard daemon (does NOT auto-enable)')
   .option('--uninstall', 'remove the systemd unit file')

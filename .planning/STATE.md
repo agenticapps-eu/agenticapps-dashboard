@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-05-25T16:54:53.310Z"
-last_activity: 2026-05-25 -- Phase 13 execution started
+status: milestone_complete
+stopped_at: Milestone complete (Phase 14 was final phase)
+last_updated: 2026-06-08T10:50:00.000Z
+last_activity: 2026-06-08 -- Phase 14 shipped via PR #54
 progress:
-  total_phases: 20
-  completed_phases: 9
-  total_plans: 58
-  completed_plans: 58
-  percent: 100
+  total_phases: 18
+  completed_phases: 15
+  total_plans: 114
+  completed_plans: 113
+  percent: 83
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 13 — gitnexus-scoped-scan-actions-coverage-matrix
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 13 (gitnexus-scoped-scan-actions-coverage-matrix) — EXECUTING
-Plan: 1 of 7
-Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
-Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Executing Phase 13
-Last activity: 2026-05-25 -- Phase 13 execution started
+Phase: 14
+Plan: Not started
+Last shipped: Phase 14 (understand-anything integration) via PR #54 on 2026-06-08
+Milestone: v1.1 — Cross-family observability — COMPLETE (Phase 14 was the final phase; D-10.5-03.calibration-2 ratified 2026-06-08 — floor 80 + waiver clause)
+Status: Phase 14 shipped — PR #54 (awaiting merge)
+Last activity: 2026-06-08 -- Phase 14 shipped via PR #54 (closed: 4 CSO security fixes + /qa + calibration-2 ratified)
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [██████████] 100% complete (Phase 10/10.5/10.6/11/11.1/14 shipped; calibration-2 ratified)
 
 ## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
@@ -45,7 +45,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 
 **Velocity:**
 
-- Total plans completed: 65
+- Total plans completed: 73
 - Average duration: —
 - Total execution time: 0 h
 
@@ -64,6 +64,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 11 | 0 | - | - |
 | 11.1 | 6 | - | - |
 | 11.2 | 6 | - | - |
+| 14 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -94,6 +95,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 - Phase 10.5 inserted 2026-05-13: impeccable skill-driven gate. Phase 6's CI gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`) deleted; replaced by per-phase `<N>-IMPECCABLE.md` artifact authored by running `/impeccable critique` against affected routes at 1440×900. Triggered by tool drift discovered during Phase 10 Gate 4 (`npx impeccable critique` removed in v2.1.8). 5 decisions captured (D-10.5-01..05). Shipped bundled with Phase 10 in PR #28.
 - Phase 10.6 inserted 2026-05-14: three-state GitNexus detection. Coverage scanner upgraded from `existsSync(~/.gitnexus)` boolean to a `gitNexusInstallState` enum (`not-installed` / `installed-no-registry` / `installed-with-registry`). New `detectGitNexusBinary()` probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) stat-only — no shell-out, survives launchd-spawned daemons. New `IndexGitNexusButton` for the middle state. Per-row state under `installed-no-registry` shifts from `'not-applicable'` → `'missing'`. Shipped 2026-05-14 via PR #29 (78b6b6f).
 - Phase 11.1 inserted 2026-05-18 after Phase 11: impeccable p1 polish bundle (URGENT) — addresses the 4 Phase-10-inherited P1s surfaced in `11-IMPECCABLE.md` (column-width drift in CoverageFamilySection, non-sticky CoverageToolbar, missing clipboard-write feedback, `text-text-tertiary` contrast 3.8:1 < WCAG AA 4.5:1). Estimated composite lift 76 → ~82 — produces calibration data point #3 to settle D-10.5-03 floor recalibration (Option B/C/D). Not blocking v1.1 close-out but accepted as the path to close `D-10.5-03.calibration-1` cleanly.
+- Phase 14 added 2026-06-06: Understand-Anything integration — daemon-hosted knowledge-graph viewer + coverage status. Daemon serves a prebuilt static build of the understand-anything plugin's dashboard SPA (plugin cache v2.7.6, `packages/dashboard`) at `/understand/{projectId}/` and re-implements its 6 token-gated data endpoints (`knowledge-graph.json`, `meta.json`, `config.json`, `domain-graph.json`, `diff-overlay.json`, `file-content.json`) in Hono with bearer auth, reading each registered project's `.understand-anything/` directory. Coverage-matrix style status per repo (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand` — no daemon-triggered LLM scans this phase (analysis is LLM-driven, not a binary; headless `claude -p` scan is a follow-up phase candidate). Two constraint exceptions to ratify in discuss-phase: `file-content.json` serves graph-listed source files (broader than `.planning`/`.claude` read allow-list), and the future scan path writes `.understand-anything/` into repos (gitnexus D-13-01 precedent).
 - Phase 11.2 inserted 2026-05-18 after Phase 11.1: impeccable P2 polish bundle (URGENT) — closes the 5 follow-ups surfaced in `11.1-IMPECCABLE.md` §"Phase 11.2 candidate" (column-header tooltips P1 carry-over from Phase 10/11/11.1, per-row in-flight feedback for `gitnexus-analyze` P1, Wiki column width tightening P2 + iPad refresh-icon touch target P2, controlled search input P3, `max-w-prose` PageHeader subtitle P3). Estimated composite lift ~81 → ~85–87 (may hit legacy ≥87 floor without invoking calibration-2 waiver clause). Scopes OUT Coverage responsive collapse below 768px (stays a Phase 12 candidate).
 
 ### Decisions
@@ -137,6 +139,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-06: CoveragePage opts into sticky at all 4 PageHeader render paths (PLI-03) — coverage.lazy.tsx untouched (REVIEWS #9 lock); 4 PageHeader elements verified live (plan-time count of 5 was a counting artifact)
 - [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
+- [Phase 14]: D-10.5-03.calibration-2 — floor RATIFIED at 80 + per-phase structural-debt waiver clause (user, 2026-06-08). Data point #3 = Phase 14 (composite 78; /coverage 80, /code-intelligence 74), confirming band 74/76/78 with /coverage reaching 80. /coverage 80 passes; /code-intelligence 74 waived to the 14.1 polish bundle (recorded in 14-VERIFICATION.md). CLAUDE.md floor line updated 87→80. Closes D-10.5-03.calibration-1.
 
 ### Pending Todos
 
@@ -154,7 +157,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-24T09:41:36.060Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-gitnexus-scoped-scan-actions-coverage-matrix/13-CONTEXT.md
+Last session: 2026-06-06T17:01:43.712Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/DASH-14-understand-anything-integration-daemon-hosted-knowledge-grap/14-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).

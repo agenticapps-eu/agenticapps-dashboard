@@ -728,3 +728,114 @@ describe('CoverageRow — Phase 13 Gap 1 fix (D-13-EXT-08)', () => {
     expect(screen.getByTestId('scan-pill')).toBeInTheDocument()
   })
 })
+
+// ── Phase 14 D-14-06/08/10: Understand column in CoverageRow ────────────────
+
+// Mock UnderstandCopyPill to keep CoverageRow tests focused on wiring, not pill internals.
+vi.mock('./UnderstandCopyPill.js', () => ({
+  UnderstandCopyPill: ({
+    state,
+    viewerUrl,
+    repo,
+  }: {
+    family: string
+    repo: string
+    viewerUrl?: string
+    state: string
+  }) =>
+    React.createElement(
+      'div',
+      {
+        'data-testid': 'understand-pill',
+        'data-state': state,
+        'data-viewer-url': viewerUrl ?? '',
+        'data-repo': repo,
+      },
+      state,
+    ),
+}))
+
+describe('Phase 14 — understand column in CoverageRow (D-14-06/08/10)', () => {
+  // Test 1: fresh state renders viewer link (via UnderstandCopyPill)
+  it('Test-1: understand.state=fresh + viewerUrl renders UnderstandCopyPill with state=fresh and viewerUrl', () => {
+    const viewerUrl = 'http://127.0.0.1:5193/understand/agenticapps/agenticapps-dashboard/?token=abc'
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'fresh', lastAnalyzedAt: '2026-06-07T00:00:00Z' } })}
+            understandViewerUrl={viewerUrl}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('understand-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-state')).toBe('fresh')
+    expect(pill.getAttribute('data-viewer-url')).toBe(viewerUrl)
+  })
+
+  // Test 2: stale renders pill; missing renders pill (different states)
+  it('Test-2a: understand.state=stale renders UnderstandCopyPill with state=stale', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'stale' } })}
+            understandViewerUrl="http://127.0.0.1:5193/understand/agenticapps/agenticapps-dashboard/?token=abc"
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.getByTestId('understand-pill').getAttribute('data-state')).toBe('stale')
+  })
+
+  it('Test-2b: understand.state=missing renders UnderstandCopyPill with state=missing', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'missing' } })}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.getByTestId('understand-pill').getAttribute('data-state')).toBe('missing')
+  })
+
+  // Phase 14 review fix (Bundle D polish): the understand cell title formats
+  // lastAnalyzedAt with formatRelativeTime instead of dumping the raw ISO string.
+  it('Test-2c: understand cell title uses relative time, not the raw ISO timestamp', () => {
+    const lastAnalyzedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
+    const { container } = renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'fresh', lastAnalyzedAt } })}
+          />
+        </tbody>
+      </table>,
+    )
+    const cell = container.querySelector('td[title]')
+    expect(cell).toBeTruthy()
+    const title = cell!.getAttribute('title')!
+    expect(title).toBe('Last analyzed: 3d ago')
+    // Raw ISO timestamp must NOT leak into the tooltip
+    expect(title).not.toContain(lastAnalyzedAt)
+  })
+
+  // Test 3: undefined understand (pre-Phase-14 daemon) renders inert placeholder, no crash
+  it('Test-3: understand=undefined (pre-Phase-14 daemon) renders em-dash placeholder, no crash', () => {
+    const { container } = renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow({ understand: undefined })} />
+        </tbody>
+      </table>,
+    )
+    // Should not crash, should not render UnderstandCopyPill
+    expect(screen.queryByTestId('understand-pill')).toBeNull()
+    // Should render an em-dash or empty cell
+    expect(container.innerHTML).toContain('—')
+  })
+})

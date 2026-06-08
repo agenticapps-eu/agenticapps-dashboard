@@ -33,6 +33,7 @@ import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shar
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
 import { ScanPill } from './ScanPill.js'
+import { UnderstandCopyPill } from './UnderstandCopyPill.js'
 import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { useToast } from '../../ui/Toast.js'
@@ -53,6 +54,11 @@ export interface CoverageFamilySectionMobileProps {
    */
   gitnexusInstalled?: boolean
   gitnexusCanScan?: boolean
+  /**
+   * Phase 14 D-14-03/06/07: per-row understand viewer URLs, keyed by `${family}/${repo}`.
+   * Passed down from CoverageFamilySection. Absent for pre-Phase-14 daemons.
+   */
+  understandViewerUrls?: Readonly<Record<string, string>>
 }
 
 // Display labels for the four column tiles. Lowercased to mirror the existing
@@ -75,6 +81,7 @@ export function CoverageFamilySectionMobile({
   inFlightRefreshes,
   gitnexusInstalled = false,
   gitnexusCanScan = false,
+  understandViewerUrls,
 }: CoverageFamilySectionMobileProps): React.JSX.Element {
   const toast = useToast()
 
@@ -142,6 +149,7 @@ export function CoverageFamilySectionMobile({
           const showScanPill =
             gitnexusInstalled &&
             (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable')
+          const understandViewerUrl = understandViewerUrls?.[id]
           return (
             <article
               key={id}
@@ -184,6 +192,27 @@ export function CoverageFamilySectionMobile({
                     />
                   </div>
                 ))}
+              </div>
+
+              {/* Phase 14 D-14-06/10: understand cell in mobile card.
+                  Back-compat: row.understand undefined on pre-Phase-14 daemons → em-dash. */}
+              <div className="flex flex-col gap-1">
+                <span
+                  title={coverageColumnTooltips.understand}
+                  className="text-xs uppercase tracking-wide text-text-tertiary"
+                >
+                  Understand
+                </span>
+                {row.understand && (row.understand.state === 'fresh' || row.understand.state === 'stale' || row.understand.state === 'missing') ? (
+                  <UnderstandCopyPill
+                    family={row.family}
+                    repo={row.repo}
+                    {...(understandViewerUrl !== undefined ? { viewerUrl: understandViewerUrl } : {})}
+                    state={row.understand.state}
+                  />
+                ) : (
+                  <span className="text-text-tertiary text-xs">—</span>
+                )}
               </div>
 
               <div className="flex justify-end">

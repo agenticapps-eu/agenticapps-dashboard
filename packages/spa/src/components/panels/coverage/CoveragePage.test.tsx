@@ -32,9 +32,22 @@ vi.mock('../../../lib/coverageQueries.js', () => ({
 
 // Mock useHealth — Phase 13 D-13-08: CoveragePage now calls useHealth to get
 // gitnexus.{installed,canScan} for ScanPill props. Default: not installed.
+// Phase 14 review fix: viewer links are gated on understand.viewerInstalled —
+// default mock reports the viewer as installed so link tests exercise the
+// happy path.
 vi.mock('../../../lib/healthQueries.js', () => ({
   useHealth: vi.fn(() => ({
-    data: { ok: true, version: '1.0.0', gitnexus: { installed: false, canScan: false } },
+    data: {
+      ok: true,
+      version: '1.0.0',
+      gitnexus: { installed: false, canScan: false },
+      understand: {
+        viewerInstalled: true,
+        viewerVersion: '2.7.6',
+        pluginVersion: '2.7.6',
+        updateAvailable: false,
+      },
+    },
     isPending: false,
     isError: false,
     error: null,
@@ -46,8 +59,21 @@ vi.mock('../../../lib/clipboardCompat.js', () => ({
   writeToClipboard: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Phase 14 D-14-03: mock getPairing so CoveragePage can derive agentUrl for
+// viewer URLs without touching localStorage. The bearer token is also returned
+// so Test 3 can assert it NEVER appears in constructed viewer URLs.
+vi.mock('../../../lib/pairing.js', () => ({
+  getPairing: vi.fn(() => ({
+    agentUrl: 'http://127.0.0.1:5193',
+    token: 'test-bearer-token-should-never-appear-in-href',
+    pairedAt: '2026-01-01T00:00:00.000Z',
+  })),
+}))
+
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
+import { useHealth } from '../../../lib/healthQueries.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
+import { getPairing } from '../../../lib/pairing.js'
 import { CoveragePage } from './CoveragePage.js'
 
 function makeRow(
@@ -896,5 +922,286 @@ describe('D-13-06 regression: IndexGitNexusButton never rendered in any state', 
     setupCoverage('not-installed')
     render(<CoveragePage />, { wrapper })
     expect(screen.getByRole('button', { name: /^copy npm install -g gitnexus to clipboard$/i })).toBeTruthy()
+  })
+})
+
+// ── Phase 14 D-14-03/06/07: viewer URL construction from per-row scoped token ─
+
+describe('Phase 14 D-14-03: CoveragePage builds viewer URLs from row viewerToken (never bearer)', () => {
+  const AGENT_URL = 'http://127.0.0.1:5193'
+  const BEARER_TOKEN = 'test-bearer-token-should-never-appear-in-href'
+
+  function makeRowWithUnderstand(
+    family: 'agenticapps' | 'factiv' | 'neuroflash',
+    repo: string,
+    viewerToken?: string,
+  ): CoverageRow {
+    return {
+      family,
+      repo,
+      claudeMd: { kind: 'basic', state: 'fresh' },
+      gitNexus: { kind: 'basic', state: 'fresh' },
+      wiki: { kind: 'basic', state: 'fresh' },
+      workflowVersion: {
+        kind: 'workflow',
+        state: 'fresh',
+        installedVersion: '1.7.0',
+        headVersion: '1.7.0',
+        detail: 'equal',
+      },
+      overrideCount: 0,
+      overrides: [],
+      inRegistry: true,
+      understand: viewerToken
+        ? { kind: 'basic', state: 'fresh', viewerToken }
+        : { kind: 'basic', state: 'missing' },
+    }
+  }
+
+  beforeEach(() => {
+    vi.mocked(useCoverageRefresh).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue({ ok: true, kind: 'ok', updatedRow: makeRow('agenticapps', 'x') }),
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      variables: undefined,
+      data: undefined,
+      error: null,
+      reset: vi.fn(),
+      context: undefined,
+      failureCount: 0,
+      failureReason: null,
+      isPaused: false,
+      submittedAt: 0,
+    } as ReturnType<typeof useCoverageRefresh>)
+  })
+
+  it('Test 1: row with viewerToken → viewer link href is {agentUrl}/understand/{family}/{repo}/?token={token}', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows: [makeRowWithUnderstand('agenticapps', 'claude-workflow', 'v1.abc.def')],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    // Must find a link whose href matches the expected viewer URL pattern
+    const expectedUrl = `${AGENT_URL}/understand/agenticapps/claude-workflow/?token=${encodeURIComponent('v1.abc.def')}`
+    const links = container.querySelectorAll('a[href]')
+    const viewerLink = Array.from(links).find(
+      (a) => (a as HTMLAnchorElement).href === expectedUrl,
+    )
+    expect(viewerLink).toBeTruthy()
+  })
+
+  it('Test 2: row without viewerToken → no viewer link rendered for that row', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows: [makeRowWithUnderstand('factiv', 'cparx')], // missing state, no viewerToken
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    // No link should contain /understand/ path
+    const links = Array.from(container.querySelectorAll('a[href]'))
+    const understandLinks = links.filter((a) =>
+      (a as HTMLAnchorElement).href.includes('/understand/'),
+    )
+    expect(understandLinks.length).toBe(0)
+  })
+
+  it('Test 3: bearer token NEVER appears in any constructed viewer URL (D-14-03)', () => {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows: [
+          makeRowWithUnderstand('agenticapps', 'dashboard', 'scoped-viewer-token-xyz'),
+          makeRowWithUnderstand('factiv', 'cparx', 'scoped-viewer-token-abc'),
+        ],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    // getPairing() was called (mocked with bearer token)
+    expect(vi.mocked(getPairing)).toBeCalled()
+
+    // No link href should contain the bearer token
+    const links = Array.from(container.querySelectorAll('a[href]'))
+    const leakingLinks = links.filter((a) =>
+      (a as HTMLAnchorElement).href.includes(BEARER_TOKEN),
+    )
+    expect(leakingLinks.length).toBe(0)
+
+    // All /understand/ links should contain the scoped viewer tokens, not bearer
+    const understandLinks = links.filter((a) =>
+      (a as HTMLAnchorElement).href.includes('/understand/'),
+    )
+    // We have 2 rows each with a viewerToken, so should be 2 understand links
+    expect(understandLinks.length).toBe(2)
+    for (const link of understandLinks) {
+      expect((link as HTMLAnchorElement).href).not.toContain(BEARER_TOKEN)
+    }
+  })
+
+  // ── Phase 14 review fix: viewer links gated on health.understand.viewerInstalled ──
+
+  function setupRowsWithTokens() {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows: [makeRowWithUnderstand('agenticapps', 'claude-workflow', 'v1.abc.def')],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+  }
+
+  it('Test 4: health reports viewerInstalled=false → viewer links suppressed (no 503 dead links)', () => {
+    setupRowsWithTokens()
+    vi.mocked(useHealth).mockReturnValueOnce({
+      data: {
+        ok: true,
+        version: '1.0.0',
+        gitnexus: { installed: false, canScan: false },
+        understand: {
+          viewerInstalled: false,
+          viewerVersion: null,
+          pluginVersion: '2.7.6',
+          updateAvailable: false,
+        },
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    } as ReturnType<typeof useHealth>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    const understandLinks = Array.from(container.querySelectorAll('a[href]')).filter((a) =>
+      (a as HTMLAnchorElement).href.includes('/understand/'),
+    )
+    expect(understandLinks.length).toBe(0)
+  })
+
+  // ── Phase 14 review fix: understand state participates in the status filter ──
+
+  function makeRowWithUnderstandState(
+    repo: string,
+    understandState?: 'fresh' | 'stale' | 'missing',
+  ): CoverageRow {
+    const row = makeRow('agenticapps', repo) // all 4 classic columns fresh
+    if (understandState !== undefined) {
+      row.understand = { kind: 'basic', state: understandState }
+    }
+    return row
+  }
+
+  function setupFilterRows(rows: CoverageRow[]) {
+    vi.mocked(useCoverage).mockReturnValue({
+      data: {
+        schemaVersion: 1,
+        generatedAtIso: new Date().toISOString(),
+        gitNexusInstallState: 'installed-with-registry',
+        workflowHeadVersion: '1.7.0',
+        rows,
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      isLoading: false,
+    } as ReturnType<typeof useCoverage>)
+  }
+
+  it('Filter-1: row fresh on all 4 classic columns but understand MISSING matches the "missing" filter chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-only-understand-missing', 'missing')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✕ Missing' }))
+
+    // Row must still be visible — understand state participates in the filter
+    expect(screen.getByText('repo-only-understand-missing')).toBeTruthy()
+    expect(screen.queryByText(/No repos match your filters/i)).toBeNull()
+  })
+
+  it('Filter-2: row fresh on all 4 classic columns but understand missing does NOT match the "fresh" chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-only-understand-missing', 'missing')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✓ Fresh' }))
+
+    expect(screen.queryByText('repo-only-understand-missing')).toBeNull()
+    expect(screen.getByText(/No repos match your filters/i)).toBeTruthy()
+  })
+
+  it('Filter-3 REGRESSION: row with NO understand key (old daemon) behaves exactly as before — all-fresh row excluded by "missing" chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-old-daemon')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✕ Missing' }))
+
+    expect(screen.queryByText('repo-old-daemon')).toBeNull()
+    expect(screen.getByText(/No repos match your filters/i)).toBeTruthy()
+  })
+
+  it('Filter-4 REGRESSION: row with NO understand key (old daemon) still matches the "fresh" chip', () => {
+    setupFilterRows([makeRowWithUnderstandState('repo-old-daemon')])
+    render(<CoveragePage />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: '✓ Fresh' }))
+
+    expect(screen.getByText('repo-old-daemon')).toBeTruthy()
+    expect(screen.queryByText(/No repos match your filters/i)).toBeNull()
+  })
+
+  it('Test 5: health unavailable (error, no data) → links NOT suppressed (unknown treated as installed)', () => {
+    setupRowsWithTokens()
+    vi.mocked(useHealth).mockReturnValueOnce({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new Error('daemon unreachable'),
+    } as ReturnType<typeof useHealth>)
+
+    const { container } = render(<CoveragePage />, { wrapper })
+
+    // Unknown install state must not strip links — the daemon route 503s
+    // gracefully if the viewer is truly missing.
+    const understandLinks = Array.from(container.querySelectorAll('a[href]')).filter((a) =>
+      (a as HTMLAnchorElement).href.includes('/understand/'),
+    )
+    expect(understandLinks.length).toBe(1)
   })
 })

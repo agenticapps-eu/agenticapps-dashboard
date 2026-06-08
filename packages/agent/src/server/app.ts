@@ -8,7 +8,7 @@ import { logger } from 'hono/logger'
 
 import { PROD_ORIGIN, DEV_ORIGIN, CORS_MAX_AGE_SECONDS } from '../constants.js'
 import { getActiveToken } from '../lib/auth.js'
-import { generateRequestId } from '../lib/logging.js'
+import { generateRequestId, redactTokens } from '../lib/logging.js'
 import { healthRoute } from '../routes/health.js'
 import { adminRoute } from '../routes/admin.js'
 import { registryRoute } from '../routes/registry.js'
@@ -32,6 +32,7 @@ import { skillDriftRoute } from '../routes/skillDrift.js'
 import { conformanceRoute } from '../routes/conformance.js'
 import { registryFixPathRoute } from '../routes/registryFixPath.js'
 import { gitnexusScanRoute } from '../routes/gitnexusScan.js'
+import { understandViewerRoute, understandDataRoute } from '../routes/understandViewer.js'
 
 import { errorHandler } from './middleware/errors.js'
 import { cidrMiddleware } from './middleware/cidr.js'
@@ -47,6 +48,18 @@ export type Variables = {
   authFile?: string
   /** Daemon bind mode — loopback | tailscale | 0.0.0.0. Set from CLI --bind flag at startup. */
   bindMode: BindMode
+  /** Override viewer token file path (for tests). Defaults to VIEWER_TOKEN_FILE constant. */
+  viewerTokenFile?: string
+  /**
+   * Override repoId → root path resolution (for tests).
+   * When set, understandViewer resolves repoIds from this map instead of registry + FS.
+   */
+  viewerRootOverrides?: Record<string, string>
+  /**
+   * Override the viewer install directory base path (for tests).
+   * When set, getInstalledViewerPath() is called on this dir instead of UNDERSTAND_VIEWER_DIR.
+   */
+  viewerDirOverride?: string
 }
 export type Env = { Bindings: HttpBindings; Variables: Variables }
 
@@ -58,6 +71,18 @@ export interface CreateAppOptions {
   authFile?: string
   /** Daemon bind mode — defaults to 'loopback' (safest; refuses scan routes). */
   bindMode?: BindMode
+  /** Override viewer token file path (for isolated testing). */
+  viewerTokenFile?: string
+  /**
+   * Override repoId → root path map (for isolated testing).
+   * Bypasses registry + FS resolution in understandViewer routes.
+   */
+  viewerRootOverrides?: Record<string, string>
+  /**
+   * Override the viewer install directory base path (for isolated testing).
+   * Passed to getInstalledViewerPath() instead of UNDERSTAND_VIEWER_DIR.
+   */
+  viewerDirOverride?: string
 }
 
 /**
@@ -72,6 +97,11 @@ export interface CreateAppOptions {
  *   4. cors            — MUST precede bearerAuth so OPTIONS preflight from
  *                        an allowed-origin browser succeeds without an
  *                        Authorization header (RESEARCH Pitfall 1)
+ *   4a. understandDataRoute  — Phase 14 D-14-03/D-14-04: scoped ?token= auth
+ *                        (per-repo viewer tokens); mounted pre-bearerAuth by
+ *                        design; static assets tokenless (no project data);
+ *                        full Tailscale parity (read-only surface, contrast D-13-11)
+ *   4b. understandViewerRoute — same rationale as 4a (static SPA serving)
  *   5. bearerAuth      — verifyToken reads in-memory activeToken ref at
  *                        request entry (D-15)
  *   6. routes          — business logic
@@ -81,8 +111,9 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   const bindMode: BindMode = opts.bindMode ?? 'loopback'
   const app = new Hono<Env>()
 
-  // 1. Logger
-  app.use(logger())
+  // 1. Logger — print fn redacts ?token= viewer tokens before they hit stdout
+  //    (CSO item 1; Hono's logger logs the full path including query string).
+  app.use(logger((message: string, ...rest: string[]) => console.log(redactTokens(message), ...rest)))
 
   // 2. requestId injection + bindMode + optional file-path overrides (for isolated testing)
   app.use(async (c, next) => {
@@ -90,6 +121,9 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
     c.set('bindMode', bindMode)
     if (opts.registryFile) c.set('registryFile', opts.registryFile)
     if (opts.authFile) c.set('authFile', opts.authFile)
+    if (opts.viewerTokenFile) c.set('viewerTokenFile', opts.viewerTokenFile)
+    if (opts.viewerRootOverrides) c.set('viewerRootOverrides', opts.viewerRootOverrides)
+    if (opts.viewerDirOverride) c.set('viewerDirOverride', opts.viewerDirOverride)
     await next()
   })
 
@@ -108,6 +142,17 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
       credentials: false,
     }),
   )
+
+  // Phase 14 D-14-03/D-14-04: scoped ?token= viewer routes mounted BEFORE bearerAuth.
+  // These routes use per-repo viewer tokens (verifyViewerToken, ?token= param), not
+  // the main bearer token. Mounting here short-circuits the bearerAuth middleware so
+  // the browser can reach data endpoints and static assets without an Authorization header.
+  //
+  // D-14-04: no bindMode check in understandViewer — full Tailscale parity (deliberate
+  // contrast with D-13-11/gitnexusScan which refuses non-loopback because it spawns
+  // processes; these routes are read-only data serving only).
+  app.route('/understand', understandViewerRoute)  // Phase 14 D-14-03/D-14-04
+  app.route('/', understandDataRoute)  // Phase 14 D-14-03/D-14-04: root-absolute data endpoints
 
   // 5. Bearer auth — verifyToken reads in-memory ref at request entry (D-15)
   //    Uses timingSafeEqual to prevent string-equality timing leaks; refuses

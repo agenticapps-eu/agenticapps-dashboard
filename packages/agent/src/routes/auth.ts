@@ -6,6 +6,8 @@ import type { Env } from '../server/app.js'
 export const authRoute = new Hono<Env>()
 
 authRoute.post('/rotate', (c) => {
-  rotateToken()
+  // Thread the per-app file overrides (set by createApp for isolated tests);
+  // production leaves them unset and rotateToken falls back to the constants.
+  rotateToken(c.get('authFile'), c.get('viewerTokenFile'))
   return c.body(null, 204)
 })

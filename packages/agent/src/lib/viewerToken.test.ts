@@ -1,0 +1,366 @@
+/**
+ * viewerToken.test.ts — Plan 14-02, Task 2.
+ *
+ * HMAC-bound per-repo scoped viewer tokens with 0600 secret storage.
+ *
+ * Tests cover all 7 behaviours from the plan:
+ *   1. ensureViewerSecretFile creates viewer-token.json at mode 0600
+ *   2. ensureViewerSecretFile rejects loose permissions (0644) on existing file
+ *   3. mintViewerToken / verifyViewerToken round-trip
+ *   4. verifyViewerToken returns null for malformed/invalid tokens
+ *   5. cross-repo token isolation (token for A does NOT verify as B)
+ *   6. rotateViewerSecret invalidates old tokens
+ *   7. timingSafeEqual usage (structural import check)
+ *
+ * All tests use a tmp dir override — no ~/.agenticapps writes.
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import {
+  mkdtempSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  readFileSync,
+  chmodSync,
+} from 'node:fs'
+import { createHmac } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import {
+  ensureViewerSecretFile,
+  rotateViewerSecret,
+  mintViewerToken,
+  verifyViewerToken,
+  InvalidRepoIdError,
+} from './viewerToken.js'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+let tmpDir: string
+let secretFile: string
+
+function setup(): void {
+  tmpDir = mkdtempSync(join(tmpdir(), 'vt-test-'))
+  secretFile = join(tmpDir, 'viewer-token.json')
+}
+
+function teardown(): void {
+  try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* best-effort */ }
+}
+
+/**
+ * Craft a v2 token (`v2.<base64url(payload)>.<hmac over the b64 segment>`)
+ * with an arbitrary payload, signed with the secret in `file`. Lets tests
+ * exercise the post-HMAC validation path (bad repoId, expiry) with a VALID
+ * signature — something mintViewerToken refuses to produce.
+ */
+function craftV2Token(
+  file: string,
+  payload: { repoId: string; exp?: number; jti?: string },
+): string {
+  const secret = JSON.parse(readFileSync(file, 'utf8')).secret as string
+  const body = JSON.stringify({
+    repoId: payload.repoId,
+    exp: payload.exp ?? Date.now() + 60_000,
+    jti: payload.jti ?? 'a'.repeat(24),
+  })
+  const b64 = Buffer.from(body).toString('base64url')
+  const mac = createHmac('sha256', secret).update(b64).digest('hex')
+  return `v2.${b64}.${mac}`
+}
+
+// ── Test 1: ensureViewerSecretFile creates file at mode 0600 ─────────────────
+
+describe('ensureViewerSecretFile', () => {
+  beforeEach(setup)
+  afterEach(teardown)
+
+  it('creates viewer-token.json with mode 0600 and correct shape', () => {
+    const result = ensureViewerSecretFile(secretFile)
+    const st = statSync(secretFile)
+    expect((st.mode & 0o777)).toBe(0o600)
+    expect(result.version).toBe(1)
+    expect(result.secret).toMatch(/^[0-9a-f]{64}$/)  // 32 bytes hex
+    expect(typeof result.rotatedAt).toBe('string')
+    expect(result.rotatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/) // ISO datetime
+  })
+
+  it('returns existing file without overwriting when already valid', () => {
+    const first = ensureViewerSecretFile(secretFile)
+    const second = ensureViewerSecretFile(secretFile)
+    expect(second.secret).toBe(first.secret)  // same secret, not regenerated
+  })
+
+  // ── Test 2: loose permissions check ──────────────────────────────────────────
+
+  it('throws when existing file has loose permissions (0644)', () => {
+    // Create a 0644 file to simulate insecure permissions
+    writeFileSync(secretFile, JSON.stringify({
+      version: 1,
+      secret: 'a'.repeat(64),
+      rotatedAt: new Date().toISOString(),
+    }))
+    // Set loose permissions
+    chmodSync(secretFile, 0o644)
+
+    expect(() => ensureViewerSecretFile(secretFile)).toThrow()
+  })
+})
+
+// ── Tests 3-6: mintViewerToken / verifyViewerToken ───────────────────────────
+
+describe('mintViewerToken / verifyViewerToken', () => {
+  beforeEach(() => {
+    setup()
+    ensureViewerSecretFile(secretFile)
+  })
+  afterEach(teardown)
+
+  // Test 3: round-trip
+  it('round-trips: verifyViewerToken returns the original repoId', () => {
+    const repoId = 'agenticapps/claude-workflow'
+    const token = mintViewerToken(repoId, secretFile)
+    expect(token).toMatch(/^v2\.[A-Za-z0-9_-]+\.[0-9a-f]{64}$/)
+    const recovered = verifyViewerToken(token, secretFile)
+    expect(recovered).toBe(repoId)
+  })
+
+  it('round-trips: verifyViewerToken works with all known families', () => {
+    for (const family of ['agenticapps', 'factiv', 'neuroflash']) {
+      const repoId = `${family}/test-repo`
+      const token = mintViewerToken(repoId, secretFile)
+      expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+    }
+  })
+
+  // Test 4: malformed/invalid tokens → null
+  it('returns null for token with wrong HMAC (different secret)', () => {
+    // Mint with current secret, then rotate so the secret changes
+    const repoId = 'agenticapps/my-repo'
+    const oldToken = mintViewerToken(repoId, secretFile)
+    rotateViewerSecret(secretFile)
+    // Old token now has wrong HMAC for the new secret
+    expect(verifyViewerToken(oldToken, secretFile)).toBeNull()
+  })
+
+  it('returns null for tampered repoId segment (HMAC mismatch)', () => {
+    const repoId = 'agenticapps/real-repo'
+    const token = mintViewerToken(repoId, secretFile)
+    // Tamper the middle segment (repoId base64)
+    const parts = token.split('.')
+    // Replace with a different repoId's base64
+    const tamperedB64 = Buffer.from('agenticapps/evil-repo').toString('base64url')
+    const tampered = `${parts[0]}.${tamperedB64}.${parts[2]}`
+    expect(verifyViewerToken(tampered, secretFile)).toBeNull()
+  })
+
+  it('returns null for malformed structure: missing dots', () => {
+    expect(verifyViewerToken('notavalidtoken', secretFile)).toBeNull()
+    expect(verifyViewerToken('v1.abc', secretFile)).toBeNull()
+  })
+
+  it('returns null for wrong prefix (not v2 — e.g. the retired v1)', () => {
+    const repoId = 'agenticapps/my-repo'
+    const token = mintViewerToken(repoId, secretFile)
+    const parts = token.split('.')
+    const badPrefix = `v1.${parts[1]}.${parts[2]}`
+    expect(verifyViewerToken(badPrefix, secretFile)).toBeNull()
+  })
+
+  it('returns null for repoId with path traversal (..) even with a valid HMAC', () => {
+    // A properly-signed v2 token whose payload repoId contains '..' — the
+    // post-HMAC validateRepoId guard must still reject it.
+    const craftedToken = craftV2Token(secretFile, { repoId: 'agenticapps/..' })
+    expect(verifyViewerToken(craftedToken, secretFile)).toBeNull()
+  })
+
+  it('returns null for repoId with unknown family even with a valid HMAC', () => {
+    const craftedToken = craftV2Token(secretFile, { repoId: 'evil/repo' })
+    expect(verifyViewerToken(craftedToken, secretFile)).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(verifyViewerToken('', secretFile)).toBeNull()
+  })
+
+  // Test 5: cross-repo token isolation
+  it('token minted for repo A does NOT verify as repo B (HMAC binding)', () => {
+    const tokenA = mintViewerToken('agenticapps/repo-a', secretFile)
+    // verifyViewerToken should only return the correct repoId
+    const result = verifyViewerToken(tokenA, secretFile)
+    expect(result).toBe('agenticapps/repo-a')
+    expect(result).not.toBe('agenticapps/repo-b')
+    // A token can't be crafted for repo-b using repo-a's HMAC
+    const parts = tokenA.split('.')
+    const repoBB64 = Buffer.from('agenticapps/repo-b').toString('base64url')
+    const crossToken = `v2.${repoBB64}.${parts[2]}`
+    expect(verifyViewerToken(crossToken, secretFile)).toBeNull()
+  })
+
+  // Test 6: rotation invalidates previous tokens
+  it('rotateViewerSecret invalidates previously minted tokens', () => {
+    const repoId = 'agenticapps/my-repo'
+    const oldToken = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(oldToken, secretFile)).toBe(repoId) // valid before rotate
+    rotateViewerSecret(secretFile)
+    expect(verifyViewerToken(oldToken, secretFile)).toBeNull() // invalid after rotate
+  })
+
+  it('after rotation, new tokens verify correctly', () => {
+    rotateViewerSecret(secretFile)
+    const repoId = 'neuroflash/backend'
+    const newToken = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(newToken, secretFile)).toBe(repoId)
+  })
+})
+
+// ── Phase 14 review Bundle B-2: mint-time repoId validation ──────────────────
+
+describe('mintViewerToken — mint-time repoId validation (Bundle B-2)', () => {
+  beforeEach(() => {
+    setup()
+    ensureViewerSecretFile(secretFile)
+  })
+  afterEach(teardown)
+
+  it('throws InvalidRepoIdError for uppercase repoId (would mint a dead link)', () => {
+    expect(() => mintViewerToken('agenticapps/MyRepo', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for unknown family', () => {
+    expect(() => mintViewerToken('evil/repo', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for path traversal repo segment', () => {
+    expect(() => mintViewerToken('agenticapps/..', secretFile)).toThrow(InvalidRepoIdError)
+    expect(() => mintViewerToken('agenticapps/a..b', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('throws InvalidRepoIdError for missing family segment', () => {
+    expect(() => mintViewerToken('no-slash-here', secretFile)).toThrow(InvalidRepoIdError)
+  })
+
+  it('still mints for conforming repoIds in every known family', () => {
+    for (const family of ['agenticapps', 'factiv', 'neuroflash']) {
+      const repoId = `${family}/valid-repo_1.2`
+      const token = mintViewerToken(repoId, secretFile)
+      expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+    }
+  })
+})
+
+// ── Phase 14 review Bundle B-1: mint/verify secret-source symmetry ────────────
+
+describe('mint/verify secret-source symmetry (Bundle B-1)', () => {
+  beforeEach(setup)
+  afterEach(teardown)
+
+  it('verifyViewerToken uses the in-memory secret without re-reading the file (hot path)', () => {
+    ensureViewerSecretFile(secretFile) // populates the in-memory secret ref
+    const repoId = 'agenticapps/my-repo'
+    const token = mintViewerToken(repoId, secretFile)
+    // Delete the secret file — both mint and verify must keep working from memory.
+    // Tokens are no longer deterministic (exp + jti), so a fresh mint produces a
+    // DIFFERENT token; assert each still verifies rather than asserting equality.
+    rmSync(secretFile)
+    const freshToken = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(freshToken, secretFile)).toBe(repoId)
+    expect(verifyViewerToken(token, secretFile)).toBe(repoId)
+  })
+
+  it('an explicitly different filePath is read from disk, not served from memory', () => {
+    ensureViewerSecretFile(secretFile) // in-memory ref now bound to secretFile
+    // Craft a SECOND secret file manually (does not touch the module global)
+    const otherFile = join(tmpDir, 'other-viewer-token.json')
+    const otherSecret = 'b'.repeat(64)
+    writeFileSync(
+      otherFile,
+      JSON.stringify({ version: 1, secret: otherSecret, rotatedAt: new Date().toISOString() }),
+      { mode: 0o600 },
+    )
+    const repoId = 'agenticapps/my-repo'
+    // Mint against the OTHER file — must use otherFile's secret, not the in-memory one
+    const tokenOther = mintViewerToken(repoId, otherFile)
+    expect(verifyViewerToken(tokenOther, otherFile)).toBe(repoId)
+    // The same token must NOT verify against the original secret file
+    expect(verifyViewerToken(tokenOther, secretFile)).toBeNull()
+    // And a token minted against the original file must not verify against otherFile
+    const tokenOriginal = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(tokenOriginal, otherFile)).toBeNull()
+  })
+})
+
+// ── CSO item 2: viewer token expiry + nonce ──────────────────────────────────
+
+describe('viewer token expiry + nonce (CSO item 2)', () => {
+  beforeEach(() => {
+    setup()
+    ensureViewerSecretFile(secretFile)
+  })
+  afterEach(teardown)
+
+  function decodePayload(token: string): { repoId: string; exp: number; jti: string } {
+    const b64 = token.split('.')[1]!
+    return JSON.parse(Buffer.from(b64, 'base64url').toString('utf8'))
+  }
+
+  const EIGHT_H = 8 * 60 * 60 * 1000
+
+  it('embeds an exp ~8h in the future and a non-empty jti', () => {
+    const before = Date.now()
+    const token = mintViewerToken('agenticapps/test-repo', secretFile)
+    const after = Date.now()
+    const p = decodePayload(token)
+    expect(p.repoId).toBe('agenticapps/test-repo')
+    expect(typeof p.jti).toBe('string')
+    expect(p.jti.length).toBeGreaterThanOrEqual(16)
+    expect(p.exp).toBeGreaterThanOrEqual(before + EIGHT_H - 2000)
+    expect(p.exp).toBeLessThanOrEqual(after + EIGHT_H + 2000)
+  })
+
+  it('two mints for the same repo produce different tokens (unique jti)', () => {
+    const a = mintViewerToken('agenticapps/test-repo', secretFile)
+    const b = mintViewerToken('agenticapps/test-repo', secretFile)
+    expect(a).not.toBe(b)
+    expect(verifyViewerToken(a, secretFile)).toBe('agenticapps/test-repo')
+    expect(verifyViewerToken(b, secretFile)).toBe('agenticapps/test-repo')
+  })
+
+  it('rejects an already-expired token', () => {
+    const token = mintViewerToken('agenticapps/test-repo', secretFile, { now: 1000, ttlMs: 5000 })
+    expect(verifyViewerToken(token, secretFile)).toBeNull()
+  })
+
+  it('honours an injected verify-time clock at the exp boundary', () => {
+    const now = 1_000_000_000_000
+    const token = mintViewerToken('agenticapps/test-repo', secretFile, { now, ttlMs: 10_000 })
+    expect(verifyViewerToken(token, secretFile, { now: now + 9_999 })).toBe('agenticapps/test-repo')
+    expect(verifyViewerToken(token, secretFile, { now: now + 10_000 })).toBeNull()
+    expect(verifyViewerToken(token, secretFile, { now: now + 20_000 })).toBeNull()
+  })
+
+  it('rejects a validly-signed token that has no exp (exp is mandatory)', () => {
+    const secret = JSON.parse(readFileSync(secretFile, 'utf8')).secret as string
+    const body = JSON.stringify({ repoId: 'agenticapps/test-repo', jti: 'x'.repeat(24) })
+    const b64 = Buffer.from(body).toString('base64url')
+    const mac = createHmac('sha256', secret).update(b64).digest('hex')
+    expect(verifyViewerToken(`v2.${b64}.${mac}`, secretFile)).toBeNull()
+  })
+})
+
+// ── Test 7: timingSafeEqual import (structural check) ────────────────────────
+
+describe('viewerToken.ts — timingSafeEqual structural import', () => {
+  it('module source contains timingSafeEqual import from node:crypto', async () => {
+    // Structural compliance check: the module must import timingSafeEqual from
+    // node:crypto for constant-time MAC comparison (T-14-02-01).
+    const { readFileSync } = await import('node:fs')
+    const moduleSource = readFileSync(
+      new URL('./viewerToken.ts', import.meta.url).pathname.replace('.js', '.ts'),
+      'utf8',
+    )
+    expect(moduleSource).toContain('timingSafeEqual')
+    expect(moduleSource).toContain('node:crypto')
+  })
+})
