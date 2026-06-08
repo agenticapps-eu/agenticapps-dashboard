@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-06-07T09:13:06.974Z"
+status: milestone_complete
+stopped_at: Milestone complete (Phase 14 was final phase)
+last_updated: 2026-06-08T08:42:49.527Z
 last_activity: 2026-06-07 -- Phase 14 execution started
 progress:
   total_phases: 18
   completed_phases: 15
   total_plans: 114
-  completed_plans: 105
+  completed_plans: 113
   percent: 83
 ---
 
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 14 — understand-anything-integration-daemon-hosted-knowledge-grap
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 14 (understand-anything-integration-daemon-hosted-knowledge-grap) — EXECUTING
-Plan: 1 of 8
+Phase: 14
+Plan: Not started
 Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
-Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Executing Phase 14
-Last activity: 2026-06-07 -- Phase 14 execution started
+Milestone: v1.1 — Cross-family observability — COMPLETE (Phase 14 was the final phase; D-10.5-03.calibration-2 ratified 2026-06-08 — floor 80 + waiver clause)
+Status: Milestone complete
+Last activity: 2026-06-08 -- Phase 14 closed (4 CSO security fixes + /qa + calibration-2 ratified)
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
+Progress: v1.0 [██████████] 100% complete  •  v1.1 [██████████] 100% complete (Phase 10/10.5/10.6/11/11.1/14 shipped; calibration-2 ratified)
 
 ## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
@@ -45,7 +45,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 
 **Velocity:**
 
-- Total plans completed: 65
+- Total plans completed: 73
 - Average duration: —
 - Total execution time: 0 h
 
@@ -64,6 +64,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 11 | 0 | - | - |
 | 11.1 | 6 | - | - |
 | 11.2 | 6 | - | - |
+| 14 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -138,6 +139,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-06: CoveragePage opts into sticky at all 4 PageHeader render paths (PLI-03) — coverage.lazy.tsx untouched (REVIEWS #9 lock); 4 PageHeader elements verified live (plan-time count of 5 was a counting artifact)
 - [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
+- [Phase 14]: D-10.5-03.calibration-2 — floor RATIFIED at 80 + per-phase structural-debt waiver clause (user, 2026-06-08). Data point #3 = Phase 14 (composite 78; /coverage 80, /code-intelligence 74), confirming band 74/76/78 with /coverage reaching 80. /coverage 80 passes; /code-intelligence 74 waived to the 14.1 polish bundle (recorded in 14-VERIFICATION.md). CLAUDE.md floor line updated 87→80. Closes D-10.5-03.calibration-1.
 
 ### Pending Todos
 

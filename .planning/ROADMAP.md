@@ -476,7 +476,7 @@ Plans:
 **Goal:** Clicking a project's "Knowledge graph" link opens the understand-anything viewer served by the daemon at `/understand/{projectId}/` (prebuilt static build of the plugin's dashboard SPA + its 6 data endpoints re-implemented in Hono with bearer auth over `.understand-anything/`), and the Coverage matrix shows per-repo understand-anything status (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand`. No daemon-triggered LLM scans this phase (analysis is LLM-driven; headless scan is a follow-up candidate).
 **Requirements**: D-14-01..D-14-10 (CONTEXT.md locked decision set; no REQ-IDs minted — decision-driven phase per discuss-phase 2026-06-06). Constraint exception D-14-05 user-RATIFIED.
 **Depends on:** Phase 13
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -497,7 +497,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 14-08-PLAN.md — Wave 4 (checkpoints): full-suite gate, live e2e viewer verification, 14-IMPECCABLE.md (1440×900 on /coverage + /code-intelligence), two-stage review + /cso (D-14-05 exception + scoped-token surface) + /qa. depends_on: all
+- [x] 14-08-PLAN.md — Wave 4 (checkpoints): full-suite gate, live e2e viewer verification, 14-IMPECCABLE.md (1440×900 on /coverage + /code-intelligence), two-stage review + /cso (D-14-05 exception + scoped-token surface) + /qa. depends_on: all
 
 ---
 
