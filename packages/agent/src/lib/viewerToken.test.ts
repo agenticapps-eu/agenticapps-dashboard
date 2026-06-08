@@ -17,11 +17,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   mkdtempSync,
-  mkdirSync,
   rmSync,
   statSync,
   writeFileSync,
+  readFileSync,
+  chmodSync,
 } from 'node:fs'
+import { createHmac } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -57,8 +59,6 @@ function craftV2Token(
   file: string,
   payload: { repoId: string; exp?: number; jti?: string },
 ): string {
-  const { createHmac } = require('node:crypto')
-  const { readFileSync } = require('node:fs')
   const secret = JSON.parse(readFileSync(file, 'utf8')).secret as string
   const body = JSON.stringify({
     repoId: payload.repoId,
@@ -102,7 +102,6 @@ describe('ensureViewerSecretFile', () => {
       rotatedAt: new Date().toISOString(),
     }))
     // Set loose permissions
-    const { chmodSync } = require('node:fs')
     chmodSync(secretFile, 0o644)
 
     expect(() => ensureViewerSecretFile(secretFile)).toThrow()
@@ -342,8 +341,6 @@ describe('viewer token expiry + nonce (CSO item 2)', () => {
   })
 
   it('rejects a validly-signed token that has no exp (exp is mandatory)', () => {
-    const { createHmac } = require('node:crypto')
-    const { readFileSync } = require('node:fs')
     const secret = JSON.parse(readFileSync(secretFile, 'utf8')).secret as string
     const body = JSON.stringify({ repoId: 'agenticapps/test-repo', jti: 'x'.repeat(24) })
     const b64 = Buffer.from(body).toString('base64url')

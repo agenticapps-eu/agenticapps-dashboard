@@ -13,7 +13,7 @@
  *   Task 3 (RED/GREEN):  static viewer serving + app.ts mount order
  */
 
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import {
   mkdtempSync,
@@ -24,7 +24,6 @@ import {
   symlinkSync,
   utimesSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import { createApp } from '../server/app.js'
@@ -32,7 +31,6 @@ import { setActiveToken, ensureAuthFile } from '../lib/auth.js'
 import {
   ensureViewerSecretFile,
   mintViewerToken,
-  verifyViewerToken,
 } from '../lib/viewerToken.js'
 import { makeTmpHome } from '../lib/__fixtures__/tmpHome.js'
 

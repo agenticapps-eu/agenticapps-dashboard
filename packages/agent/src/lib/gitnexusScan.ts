@@ -27,7 +27,7 @@ import {
   buildGitnexusIndexClipboardString,
   type GitnexusScanErrorCode,
 } from '@agenticapps/dashboard-shared'
-import { deterministicRepoRoot, derivedRepoId, resolveRepoRoot } from './repoRoot.js'
+import { resolveRepoRoot } from './repoRoot.js'
 
 // Re-exports for backward compat — consumers that imported from gitnexusScan.ts
 // continue to work unchanged (14-PATTERNS.md note 4).
