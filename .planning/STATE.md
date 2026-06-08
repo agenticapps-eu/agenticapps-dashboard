@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Cross-family observability
 status: milestone_complete
 stopped_at: Milestone complete (Phase 14 was final phase)
-last_updated: 2026-06-08T08:42:49.527Z
-last_activity: 2026-06-07 -- Phase 14 execution started
+last_updated: 2026-06-08T10:50:00.000Z
+last_activity: 2026-06-08 -- Phase 14 shipped via PR #54
 progress:
   total_phases: 18
   completed_phases: 15
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 Phase: 14
 Plan: Not started
-Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
+Last shipped: Phase 14 (understand-anything integration) via PR #54 on 2026-06-08
 Milestone: v1.1 — Cross-family observability — COMPLETE (Phase 14 was the final phase; D-10.5-03.calibration-2 ratified 2026-06-08 — floor 80 + waiver clause)
-Status: Milestone complete
-Last activity: 2026-06-08 -- Phase 14 closed (4 CSO security fixes + /qa + calibration-2 ratified)
+Status: Phase 14 shipped — PR #54 (awaiting merge)
+Last activity: 2026-06-08 -- Phase 14 shipped via PR #54 (closed: 4 CSO security fixes + /qa + calibration-2 ratified)
 
 Progress: v1.0 [██████████] 100% complete  •  v1.1 [██████████] 100% complete (Phase 10/10.5/10.6/11/11.1/14 shipped; calibration-2 ratified)
 
