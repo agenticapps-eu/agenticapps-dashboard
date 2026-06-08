@@ -1009,6 +1009,88 @@ describe('understandViewer — Task 2: file-content.json guards', () => {
   })
 })
 
+// ── CSO item 3: sensitive-file deny-list backstop ────────────────────────────
+
+describe('understandViewer — file-content deny-list backstop (CSO item 3)', () => {
+  let proj: ReturnType<typeof makeTmpUnderstandProject>
+  let ctx: { app: ReturnType<typeof createApp>; viewerToken: string; cleanup: () => void }
+
+  // Sensitive paths that MUST be refused even though the graph lists them.
+  const deniedPaths = [
+    '.env',
+    '.env.production',
+    'config/secret.pem',
+    'config/server.key',
+    'keys/id_ed25519',
+    'keys/id_rsa',
+    '.git/config',
+  ]
+
+  beforeEach(() => {
+    proj = makeTmpUnderstandProject([])
+
+    // Materialise every sensitive file + one safe control file on disk.
+    const allPaths = [...deniedPaths, 'src/safe.ts']
+    for (const rel of allPaths) {
+      const abs = join(proj.root, rel)
+      mkdirSync(join(abs, '..'), { recursive: true })
+      writeFileSync(abs, 'SECRET=value\n')
+    }
+
+    // A graph that (wrongly) lists ALL of them — the deny-list must still win.
+    writeFileSync(
+      join(proj.uaDir, 'knowledge-graph.json'),
+      makeGraphJson(allPaths.map((rel) => ({ filePath: join(proj.root, rel) }))),
+    )
+
+    const tmp = makeTmpHome()
+    const authFile = join(tmp.configDir, 'auth.json')
+    const registryFile = join(tmp.configDir, 'registry.json')
+    const viewerTokenFile = join(tmp.configDir, 'viewer-token.json')
+    const authFresh = ensureAuthFile(authFile)
+    setActiveToken(authFresh.token)
+    ensureViewerSecretFile(viewerTokenFile)
+    writeFileSync(registryFile, JSON.stringify({
+      version: 1,
+      projects: [{ id: proj.root, root: proj.root, name: 'test' }],
+    }))
+
+    const token = mintViewerToken('agenticapps/test-repo', viewerTokenFile)
+    const app = createApp({
+      registryFile,
+      authFile,
+      viewerTokenFile,
+      viewerRootOverrides: { 'agenticapps/test-repo': proj.root },
+      bindMode: 'loopback',
+    })
+    ctx = { app, viewerToken: token, cleanup: tmp.cleanup }
+  })
+
+  afterEach(() => {
+    proj.cleanup()
+    ctx.cleanup()
+  })
+
+  for (const rel of deniedPaths) {
+    it(`graph-listed "${rel}" is refused with 403 despite membership`, async () => {
+      const res = await ctx.app.request(
+        `http://127.0.0.1:5193/file-content.json?token=${ctx.viewerToken}&path=${encodeURIComponent(rel)}`,
+      )
+      expect(res.status).toBe(403)
+      const body = await res.json() as { error: string; content?: string }
+      // Never leak the secret bytes.
+      expect(body.content).toBeUndefined()
+    })
+  }
+
+  it('non-sensitive graph-listed file still serves 200 (no over-blocking)', async () => {
+    const res = await ctx.app.request(
+      `http://127.0.0.1:5193/file-content.json?token=${ctx.viewerToken}&path=src/safe.ts`,
+    )
+    expect(res.status).toBe(200)
+  })
+})
+
 // ── Task 3: Static viewer serving + app.ts mount order ───────────────────────
 
 describe('understandViewer — Task 3: static viewer serving', () => {

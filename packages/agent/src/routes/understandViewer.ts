@@ -68,6 +68,8 @@ const ERR_FILE_NOT_FOUND = 'File not found'
 const ERR_NOT_A_FILE = 'Path is not a file'
 const ERR_TOO_LARGE = 'File is too large to preview'
 const ERR_BINARY = 'Binary files cannot be previewed'
+/** CSO item 3: sensitive file refused by the deny-list backstop. */
+const ERR_DENIED = 'File is not available for preview'
 
 /** Upstream extension -> language map (replicated from vite.config.ts detectLanguage). */
 const EXT_LANGUAGE: Record<string, string> = {
@@ -247,6 +249,37 @@ function graphFilePathSet(graphFile: string, projectRoot: string): Set<string> {
   }
   graphSetCache.set(graphFile, { mtimeMs, set: allowed })
   return allowed
+}
+
+/**
+ * Sensitive-file deny-list backstop (CSO Phase 14 audit item 3).
+ *
+ * The graph allow-list trusts whatever /understand indexed. If a run ever
+ * indexes a secret (a stray .env, an SSH key, anything under .git/), the
+ * allow-list alone would serve its bytes to any viewer-token holder. This
+ * backstop refuses such paths REGARDLESS of graph membership — defence in
+ * depth, not a replacement for the allow-list.
+ *
+ * Operates on the unix-style safeRelativePath (segments joined by '/').
+ * Matches by path segment and basename:
+ *   - any `.git` segment            → version-control internals
+ *   - basename `.env` or `.env.*`   → dotenv secret files
+ *   - extension `.pem` / `.key`     → private keys / certs
+ *   - basename id_rsa|dsa|ecdsa|ed25519 → SSH private keys (extensionless;
+ *                                     scoped to the standard key names so
+ *                                     source files like id_generator.ts are
+ *                                     not false-positives)
+ */
+const SSH_PRIVATE_KEY_NAMES = new Set(['id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519'])
+
+function isSensitivePath(safeRelativePath: string): boolean {
+  const segments = safeRelativePath.split('/')
+  if (segments.includes('.git')) return true
+  const base = segments[segments.length - 1] ?? ''
+  if (base === '.env' || base.startsWith('.env.')) return true
+  if (base.endsWith('.pem') || base.endsWith('.key')) return true
+  if (SSH_PRIVATE_KEY_NAMES.has(base)) return true
+  return false
 }
 
 // ── Scoped-token middleware ────────────────────────────────────────────────────
@@ -453,6 +486,13 @@ async function handleFileContent(
 
   if (!allowed.has(safeRelativePath)) {
     return c.json({ error: ERR_NOT_IN_GRAPH }, 404)
+  }
+
+  // Deny-list backstop (CSO item 3): refuse sensitive files even when the
+  // graph lists them. Runs after the membership check so a non-listed secret
+  // already 404s as "not in graph"; this catches the graph-listed case.
+  if (isSensitivePath(safeRelativePath)) {
+    return c.json({ error: ERR_DENIED }, 403)
   }
 
   // Guard 8: stat the file
