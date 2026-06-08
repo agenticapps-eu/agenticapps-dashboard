@@ -193,6 +193,9 @@ describe('runInstallUnderstandViewer', () => {
       (c) => c.cwd === coreDir && c.args.includes('install'),
     )
     expect(coreInstallCall).toBeDefined()
+    // Supply-chain hardening (CSO item 5): the install must NOT run lifecycle
+    // scripts from the plugin's transitive dependencies.
+    expect(coreInstallCall!.args).toContain('--ignore-scripts')
 
     // pnpm build in core
     const coreBuildCall = execCalls.find(

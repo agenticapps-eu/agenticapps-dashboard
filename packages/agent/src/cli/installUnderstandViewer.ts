@@ -133,7 +133,9 @@ export async function runInstallUnderstandViewer(): Promise<void> {
     // If node_modules absent in core workspace, install first (RESEARCH assumption A5 mitigation)
     if (!existsSync(coreNodeModules)) {
       try {
-        await exec('pnpm', ['install'], { cwd: coreDir })
+        // --ignore-scripts (CSO item 5, supply-chain): never run lifecycle
+        // scripts from the plugin's transitive dependencies during install.
+        await exec('pnpm', ['install', '--ignore-scripts'], { cwd: coreDir })
       } catch (err) {
         fatal(MSG_CORE_BUILD_FAILED, String(err))
       }
