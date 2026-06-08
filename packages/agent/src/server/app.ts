@@ -8,7 +8,7 @@ import { logger } from 'hono/logger'
 
 import { PROD_ORIGIN, DEV_ORIGIN, CORS_MAX_AGE_SECONDS } from '../constants.js'
 import { getActiveToken } from '../lib/auth.js'
-import { generateRequestId } from '../lib/logging.js'
+import { generateRequestId, redactTokens } from '../lib/logging.js'
 import { healthRoute } from '../routes/health.js'
 import { adminRoute } from '../routes/admin.js'
 import { registryRoute } from '../routes/registry.js'
@@ -111,8 +111,9 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   const bindMode: BindMode = opts.bindMode ?? 'loopback'
   const app = new Hono<Env>()
 
-  // 1. Logger
-  app.use(logger())
+  // 1. Logger — print fn redacts ?token= viewer tokens before they hit stdout
+  //    (CSO item 1; Hono's logger logs the full path including query string).
+  app.use(logger((message: string, ...rest: string[]) => console.log(redactTokens(message), ...rest)))
 
   // 2. requestId injection + bindMode + optional file-path overrides (for isolated testing)
   app.use(async (c, next) => {
