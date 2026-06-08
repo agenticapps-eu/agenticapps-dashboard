@@ -47,6 +47,29 @@ function teardown(): void {
   try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* best-effort */ }
 }
 
+/**
+ * Craft a v2 token (`v2.<base64url(payload)>.<hmac over the b64 segment>`)
+ * with an arbitrary payload, signed with the secret in `file`. Lets tests
+ * exercise the post-HMAC validation path (bad repoId, expiry) with a VALID
+ * signature — something mintViewerToken refuses to produce.
+ */
+function craftV2Token(
+  file: string,
+  payload: { repoId: string; exp?: number; jti?: string },
+): string {
+  const { createHmac } = require('node:crypto')
+  const { readFileSync } = require('node:fs')
+  const secret = JSON.parse(readFileSync(file, 'utf8')).secret as string
+  const body = JSON.stringify({
+    repoId: payload.repoId,
+    exp: payload.exp ?? Date.now() + 60_000,
+    jti: payload.jti ?? 'a'.repeat(24),
+  })
+  const b64 = Buffer.from(body).toString('base64url')
+  const mac = createHmac('sha256', secret).update(b64).digest('hex')
+  return `v2.${b64}.${mac}`
+}
+
 // ── Test 1: ensureViewerSecretFile creates file at mode 0600 ─────────────────
 
 describe('ensureViewerSecretFile', () => {
@@ -99,7 +122,7 @@ describe('mintViewerToken / verifyViewerToken', () => {
   it('round-trips: verifyViewerToken returns the original repoId', () => {
     const repoId = 'agenticapps/claude-workflow'
     const token = mintViewerToken(repoId, secretFile)
-    expect(token).toMatch(/^v1\.[A-Za-z0-9_-]+\.[0-9a-f]{64}$/)
+    expect(token).toMatch(/^v2\.[A-Za-z0-9_-]+\.[0-9a-f]{64}$/)
     const recovered = verifyViewerToken(token, secretFile)
     expect(recovered).toBe(repoId)
   })
@@ -138,35 +161,23 @@ describe('mintViewerToken / verifyViewerToken', () => {
     expect(verifyViewerToken('v1.abc', secretFile)).toBeNull()
   })
 
-  it('returns null for wrong prefix (not v1)', () => {
+  it('returns null for wrong prefix (not v2 — e.g. the retired v1)', () => {
     const repoId = 'agenticapps/my-repo'
     const token = mintViewerToken(repoId, secretFile)
     const parts = token.split('.')
-    const badPrefix = `v2.${parts[1]}.${parts[2]}`
+    const badPrefix = `v1.${parts[1]}.${parts[2]}`
     expect(verifyViewerToken(badPrefix, secretFile)).toBeNull()
   })
 
-  it('returns null for repoId with path traversal (..)', () => {
-    // Construct a token where the decoded repoId contains '..'
-    // Since mintViewerToken won't mint an invalid repoId, we build manually
-    const evilRepoId = 'agenticapps/..'
-    // Can't mint through normal path; craft manually
-    const fakeB64 = Buffer.from(evilRepoId).toString('base64url')
-    const { createHmac } = require('node:crypto')
-    const { readFileSync } = require('node:fs')
-    const raw = JSON.parse(readFileSync(secretFile, 'utf8'))
-    const mac = createHmac('sha256', raw.secret).update(evilRepoId).digest('hex')
-    const craftedToken = `v1.${fakeB64}.${mac}`
+  it('returns null for repoId with path traversal (..) even with a valid HMAC', () => {
+    // A properly-signed v2 token whose payload repoId contains '..' — the
+    // post-HMAC validateRepoId guard must still reject it.
+    const craftedToken = craftV2Token(secretFile, { repoId: 'agenticapps/..' })
     expect(verifyViewerToken(craftedToken, secretFile)).toBeNull()
   })
 
-  it('returns null for repoId with unknown family', () => {
-    const evilRepoId = 'evil/repo'
-    const { createHmac } = require('node:crypto')
-    const { readFileSync } = require('node:fs')
-    const raw = JSON.parse(readFileSync(secretFile, 'utf8'))
-    const mac = createHmac('sha256', raw.secret).update(evilRepoId).digest('hex')
-    const craftedToken = `v1.${Buffer.from(evilRepoId).toString('base64url')}.${mac}`
+  it('returns null for repoId with unknown family even with a valid HMAC', () => {
+    const craftedToken = craftV2Token(secretFile, { repoId: 'evil/repo' })
     expect(verifyViewerToken(craftedToken, secretFile)).toBeNull()
   })
 
@@ -184,7 +195,7 @@ describe('mintViewerToken / verifyViewerToken', () => {
     // A token can't be crafted for repo-b using repo-a's HMAC
     const parts = tokenA.split('.')
     const repoBB64 = Buffer.from('agenticapps/repo-b').toString('base64url')
-    const crossToken = `v1.${repoBB64}.${parts[2]}`
+    const crossToken = `v2.${repoBB64}.${parts[2]}`
     expect(verifyViewerToken(crossToken, secretFile)).toBeNull()
   })
 
@@ -250,9 +261,12 @@ describe('mint/verify secret-source symmetry (Bundle B-1)', () => {
     ensureViewerSecretFile(secretFile) // populates the in-memory secret ref
     const repoId = 'agenticapps/my-repo'
     const token = mintViewerToken(repoId, secretFile)
-    // Delete the secret file — both mint and verify must keep working from memory
+    // Delete the secret file — both mint and verify must keep working from memory.
+    // Tokens are no longer deterministic (exp + jti), so a fresh mint produces a
+    // DIFFERENT token; assert each still verifies rather than asserting equality.
     rmSync(secretFile)
-    expect(mintViewerToken(repoId, secretFile)).toBe(token)
+    const freshToken = mintViewerToken(repoId, secretFile)
+    expect(verifyViewerToken(freshToken, secretFile)).toBe(repoId)
     expect(verifyViewerToken(token, secretFile)).toBe(repoId)
   })
 
@@ -275,6 +289,66 @@ describe('mint/verify secret-source symmetry (Bundle B-1)', () => {
     // And a token minted against the original file must not verify against otherFile
     const tokenOriginal = mintViewerToken(repoId, secretFile)
     expect(verifyViewerToken(tokenOriginal, otherFile)).toBeNull()
+  })
+})
+
+// ── CSO item 2: viewer token expiry + nonce ──────────────────────────────────
+
+describe('viewer token expiry + nonce (CSO item 2)', () => {
+  beforeEach(() => {
+    setup()
+    ensureViewerSecretFile(secretFile)
+  })
+  afterEach(teardown)
+
+  function decodePayload(token: string): { repoId: string; exp: number; jti: string } {
+    const b64 = token.split('.')[1]!
+    return JSON.parse(Buffer.from(b64, 'base64url').toString('utf8'))
+  }
+
+  const EIGHT_H = 8 * 60 * 60 * 1000
+
+  it('embeds an exp ~8h in the future and a non-empty jti', () => {
+    const before = Date.now()
+    const token = mintViewerToken('agenticapps/test-repo', secretFile)
+    const after = Date.now()
+    const p = decodePayload(token)
+    expect(p.repoId).toBe('agenticapps/test-repo')
+    expect(typeof p.jti).toBe('string')
+    expect(p.jti.length).toBeGreaterThanOrEqual(16)
+    expect(p.exp).toBeGreaterThanOrEqual(before + EIGHT_H - 2000)
+    expect(p.exp).toBeLessThanOrEqual(after + EIGHT_H + 2000)
+  })
+
+  it('two mints for the same repo produce different tokens (unique jti)', () => {
+    const a = mintViewerToken('agenticapps/test-repo', secretFile)
+    const b = mintViewerToken('agenticapps/test-repo', secretFile)
+    expect(a).not.toBe(b)
+    expect(verifyViewerToken(a, secretFile)).toBe('agenticapps/test-repo')
+    expect(verifyViewerToken(b, secretFile)).toBe('agenticapps/test-repo')
+  })
+
+  it('rejects an already-expired token', () => {
+    const token = mintViewerToken('agenticapps/test-repo', secretFile, { now: 1000, ttlMs: 5000 })
+    expect(verifyViewerToken(token, secretFile)).toBeNull()
+  })
+
+  it('honours an injected verify-time clock at the exp boundary', () => {
+    const now = 1_000_000_000_000
+    const token = mintViewerToken('agenticapps/test-repo', secretFile, { now, ttlMs: 10_000 })
+    expect(verifyViewerToken(token, secretFile, { now: now + 9_999 })).toBe('agenticapps/test-repo')
+    expect(verifyViewerToken(token, secretFile, { now: now + 10_000 })).toBeNull()
+    expect(verifyViewerToken(token, secretFile, { now: now + 20_000 })).toBeNull()
+  })
+
+  it('rejects a validly-signed token that has no exp (exp is mandatory)', () => {
+    const { createHmac } = require('node:crypto')
+    const { readFileSync } = require('node:fs')
+    const secret = JSON.parse(readFileSync(secretFile, 'utf8')).secret as string
+    const body = JSON.stringify({ repoId: 'agenticapps/test-repo', jti: 'x'.repeat(24) })
+    const b64 = Buffer.from(body).toString('base64url')
+    const mac = createHmac('sha256', secret).update(b64).digest('hex')
+    expect(verifyViewerToken(`v2.${b64}.${mac}`, secretFile)).toBeNull()
   })
 })
 

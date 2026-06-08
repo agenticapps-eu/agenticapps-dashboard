@@ -8,14 +8,24 @@
  *                             repoId before any FS use.
  * ── T-14-02-04 Disclosure  — 0600 atomic write + assertSecurePermissions refusal on loose modes.
  * ── T-14-02-05 Stale token — rotateViewerSecret hooked into rotateToken (D-14-03 rotation story).
+ * ── CSO item 2 Replay  — exp (8h TTL) + jti nonce in the signed payload; verify
+ *                         rejects at/after exp. Bounds replay of a leaked token.
  *
- * TOKEN FORMAT: `v1.<base64url(repoId)>.<hex hmac-sha256(secret, repoId)>`.
+ * TOKEN FORMAT (v2): `v2.<base64url(payloadJson)>.<hex hmac-sha256(secret, payloadB64)>`
+ *   payloadJson = {"repoId":"<family/repo>","exp":<ms-epoch>,"jti":"<hex>"}
+ *   The HMAC is computed over the base64url payload SEGMENT (the exact transmitted
+ *   bytes), so verification needs no canonical re-serialization of the JSON.
+ *
+ * v1 (`v1.<base64url(repoId)>.<hmac(repoId)>`, deterministic, no expiry) is RETIRED:
+ *   verifyViewerToken rejects the v1 prefix. Tokens are re-minted on every coverage
+ *   scan, so no persisted v1 token outlives the format change.
  *
  * Design notes:
  *   - Self-describing: verifyViewerToken recovers repoId from the token itself without external
  *     lookup — required because the upstream viewer's data fetches are root-absolute
  *     (/knowledge-graph.json?token=…) and carry no repoId in the path.
- *   - Deterministic: tokens survive daemon restarts (same secret → same token); no per-repo storage.
+ *   - NON-deterministic (v2): exp + jti make each mint unique. Determinism was dropped
+ *     deliberately (CSO item 2); the SPA always holds a fresh token from the latest scan.
  *   - The repoId inside the token is not secret (it already appears in the viewer URL path);
  *     the HMAC binds it so a token for repo A cannot read repo B.
  *
@@ -58,6 +68,29 @@ export class InvalidRepoIdError extends Error {
     )
     this.name = 'InvalidRepoIdError'
   }
+}
+
+// ── Token lifetime (CSO item 2) ──────────────────────────────────────────────
+
+/**
+ * Default viewer-token lifetime: 8 hours. Long enough to outlast any single
+ * viewing session (the token is frozen into the viewer tab at open time and
+ * reused for every data fetch there), short enough to bound replay of a leaked
+ * or bookmarked token. The dashboard re-mints a fresh token on each coverage
+ * scan, so live links always carry a current token. (User-ratified 2026-06-08.)
+ */
+export const VIEWER_TOKEN_TTL_MS = 8 * 60 * 60 * 1000
+
+interface MintOpts {
+  /** Override "now" (ms epoch) — test seam. Defaults to Date.now(). */
+  now?: number
+  /** Override the TTL (ms) — test seam. Defaults to VIEWER_TOKEN_TTL_MS. */
+  ttlMs?: number
+}
+
+interface VerifyOpts {
+  /** Override "now" (ms epoch) for the expiry check — test seam. */
+  now?: number
 }
 
 // ── In-memory secret ref (auth.ts activeToken pattern) ───────────────────────
@@ -204,26 +237,35 @@ export function rotateViewerSecret(filePath: string = VIEWER_TOKEN_FILE): Viewer
 /**
  * Mint a viewer token for a specific repo.
  *
- * Format: `v1.<base64url(repoId)>.<hex hmac-sha256(secret, repoId)>`
+ * Format (v2): `v2.<base64url(payloadJson)>.<hex hmac-sha256(secret, payloadB64)>`
+ *   payloadJson = {"repoId","exp","jti"}
  *
- * The repoId is encoded as base64url so it can be safely passed in URLs
- * without encoding issues. The HMAC binds it to the secret, so a token
- * for repo A cannot be used to read repo B's data.
+ * exp = now + ttl (default 8h, CSO item 2); jti is a 96-bit random nonce so each
+ * mint is unique. The HMAC is taken over the base64url payload segment so verify
+ * needs no canonical JSON re-serialization. The HMAC binds the whole payload to
+ * the secret, so a token for repo A cannot be used to read repo B's data, and an
+ * expired or tampered payload cannot be re-signed without the secret.
  *
  * Secret source (Bundle B-1): resolveSecret — in-memory activeViewerSecret when
  * it was populated from the SAME filePath (avoids per-call file I/O); reads
- * filePath otherwise. This matches the auth.ts pattern: secrets are loaded once
- * at startup and held in-memory; per-call file reads are unnecessary overhead.
- * verifyViewerToken uses the identical resolution so both sides always agree.
+ * filePath otherwise. verifyViewerToken uses the identical resolution so both
+ * sides always agree.
  */
-export function mintViewerToken(repoId: string, filePath: string = VIEWER_TOKEN_FILE): string {
+export function mintViewerToken(
+  repoId: string,
+  filePath: string = VIEWER_TOKEN_FILE,
+  opts: MintOpts = {},
+): string {
   // Bundle B-2: same validation as verify time — never mint a token that
   // verifyViewerToken would reject (dead viewer links).
   if (!validateRepoId(repoId)) throw new InvalidRepoIdError(repoId)
   const secret = resolveSecret(filePath)
-  const repoB64 = Buffer.from(repoId).toString('base64url')
-  const mac = createHmac('sha256', secret).update(repoId).digest('hex')
-  return `v1.${repoB64}.${mac}`
+  const now = opts.now ?? Date.now()
+  const exp = now + (opts.ttlMs ?? VIEWER_TOKEN_TTL_MS)
+  const jti = randomBytes(12).toString('hex')
+  const payloadB64 = Buffer.from(JSON.stringify({ repoId, exp, jti })).toString('base64url')
+  const mac = createHmac('sha256', secret).update(payloadB64).digest('hex')
+  return `v2.${payloadB64}.${mac}`
 }
 
 /**
@@ -231,50 +273,60 @@ export function mintViewerToken(repoId: string, filePath: string = VIEWER_TOKEN_
  *
  * Uniform null is intentional — no error details to prevent oracle behavior (T-14-02-01).
  *
- * Verification steps:
- *   1. Parse three segments split on '.'; require prefix 'v1'.
- *   2. Base64url-decode the repoId segment.
- *   3. Validate the decoded repoId with D-13-EXT-11 two-layer regex+refine semantics.
- *   4. Recompute HMAC and compare with length-guard + timingSafeEqual.
- *   5. Return repoId on success, null on any failure.
+ * Verification steps (v2):
+ *   1. Parse three segments split on '.'; require prefix 'v2'.
+ *   2. Recompute HMAC over the payload SEGMENT and compare (length-guard + timingSafeEqual)
+ *      BEFORE trusting any payload bytes — authenticate, then parse.
+ *   3. Base64url-decode + JSON-parse the (now integrity-checked) payload.
+ *   4. Validate repoId with D-13-EXT-11 two-layer regex+refine semantics.
+ *   5. Enforce expiry: exp is mandatory and must be strictly in the future (CSO item 2).
+ *   6. Return repoId on success, null on any failure.
  */
-export function verifyViewerToken(token: string, filePath: string = VIEWER_TOKEN_FILE): string | null {
+export function verifyViewerToken(
+  token: string,
+  filePath: string = VIEWER_TOKEN_FILE,
+  opts: VerifyOpts = {},
+): string | null {
   try {
     if (!token) return null
 
     // Step 1: parse structure
     const parts = token.split('.')
     if (parts.length !== 3) return null
-    const [prefix, repoB64, mac] = parts
-    if (prefix !== 'v1') return null
-    if (!repoB64 || !mac) return null
+    const [prefix, payloadB64, mac] = parts
+    if (prefix !== 'v2') return null
+    if (!payloadB64 || !mac) return null
 
-    // Step 2: decode repoId
-    let repoId: string
-    try {
-      repoId = Buffer.from(repoB64, 'base64url').toString('utf8')
-    } catch {
-      return null
-    }
-    if (!repoId) return null
-
-    // Step 3: validate decoded repoId (D-13-EXT-11 two-layer guard)
-    if (!validateRepoId(repoId)) return null
-
-    // Step 4: HMAC comparison using timingSafeEqual (T-14-02-01 constant-time).
+    // Step 2: HMAC over the exact transmitted payload segment, constant-time
+    // (T-14-02-01). Authenticate before parsing attacker-supplied JSON.
     // Secret source mirrors mintViewerToken (Bundle B-1): in-memory ref when it
     // was populated from this same file — no sync readFileSync on the hot path.
     const secret = resolveSecret(filePath)
-    const expected = createHmac('sha256', secret).update(repoId).digest('hex')
-
-    // Length guard before timingSafeEqual: Buffers must be same length to avoid
-    // InvalidArgument errors from Node.js's timingSafeEqual.
+    const expected = createHmac('sha256', secret).update(payloadB64).digest('hex')
     const expectedBuf = Buffer.from(expected, 'hex')
     const providedBuf = Buffer.from(mac, 'hex')
     if (expectedBuf.length !== providedBuf.length || expectedBuf.length === 0) return null
     if (!timingSafeEqual(expectedBuf, providedBuf)) return null
 
-    // Step 5: valid
+    // Step 3: decode + parse the integrity-checked payload
+    let payload: unknown
+    try {
+      payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'))
+    } catch {
+      return null
+    }
+    if (typeof payload !== 'object' || payload === null) return null
+    const { repoId, exp } = payload as { repoId?: unknown; exp?: unknown }
+
+    // Step 4: validate repoId shape (D-13-EXT-11 two-layer guard)
+    if (typeof repoId !== 'string' || !validateRepoId(repoId)) return null
+
+    // Step 5: expiry (CSO item 2) — exp mandatory; reject at/after exp.
+    if (typeof exp !== 'number' || !Number.isFinite(exp)) return null
+    const now = opts.now ?? Date.now()
+    if (exp <= now) return null
+
+    // Step 6: valid
     return repoId
   } catch {
     // Uniform null on ANY failure — no error details to prevent oracle behavior
