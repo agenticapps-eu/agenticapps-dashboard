@@ -2,37 +2,49 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Cross-family observability
-status: milestone_complete
-stopped_at: Milestone complete (Phase 14 was final phase)
-last_updated: 2026-06-08T10:50:00.000Z
-last_activity: 2026-06-08 -- Phase 14 shipped via PR #54
+status: Awaiting next milestone
+stopped_at: Phase 14 context gathered
+last_updated: "2026-06-08T15:58:47.177Z"
+last_activity: 2026-06-08 — Milestone v1.1 completed and archived
 progress:
   total_phases: 18
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 114
   completed_plans: 113
-  percent: 83
+  percent: 89
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-02)
+See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone (v1.2 — held Phase 8 optional integrations, or fleet-conformance follow-through)
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Last shipped: Phase 14 (understand-anything integration) via PR #54 on 2026-06-08
-Milestone: v1.1 — Cross-family observability — COMPLETE (Phase 14 was the final phase; D-10.5-03.calibration-2 ratified 2026-06-08 — floor 80 + waiver clause)
-Status: Phase 14 shipped — PR #54 (awaiting merge)
-Last activity: 2026-06-08 -- Phase 14 shipped via PR #54 (closed: 4 CSO security fixes + /qa + calibration-2 ratified)
+Phase: Milestone v1.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-08 — Milestone v1.1 completed and archived (tag v1.1)
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [██████████] 100% complete (Phase 10/10.5/10.6/11/11.1/14 shipped; calibration-2 ratified)
+## Deferred Items
+
+Items acknowledged and deferred at v1.1 milestone close on 2026-06-08 (proceed-and-acknowledge per /gsd-complete-milestone). 23 items: 21 from the open-artifact audit + Phase 12 close gap + Phase 13 gate gap.
+
+| Category | Item | Status |
+|----------|------|--------|
+| phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | open |
+| phase-close | Phase 13 gate plan 13-04 (gates ritual) | incomplete |
+| debug | family-scan-no-ui-feedback | unknown |
+| debug | per-row-scan-repo-not-registered | diagnosed |
+| uat | Phase 01 HUMAN-UAT (2 pending scenarios) | partial |
+| uat | Phases 03 / 05 / 07 / 13 / 05.1 / 10 / 11 / 11.1 UAT | partial/closed/resolved (0 pending) |
+| verification | Phases 00/01/02/03/04/06/05.1/10/11.1/11.2 VERIFICATION.md | human_needed |
+| infra-gated | Tailscale second-device viewer access (D-14-04) | deferred |
+| structural-debt | /code-intelligence IMPECCABLE composite ~74 (waiver D-10.5-03.calibration-2) | waived → 14.1 polish bundle |
 
 ## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
@@ -161,3 +173,7 @@ Last session: 2026-06-06T17:01:43.712Z
 Stopped at: Phase 14 context gathered
 Resume file: .planning/phases/DASH-14-understand-anything-integration-daemon-hosted-knowledge-grap/14-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

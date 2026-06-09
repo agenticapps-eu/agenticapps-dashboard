@@ -12,19 +12,27 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 
 ### Validated
 
-- **BOOT-01..BOOT-05** — Phase 0 (bootstrap): pnpm workspace skeleton, green CI pipeline (5 gates on push/PR), CF Pages preview deploy reproducibility doc, `@agenticapps/dashboard-agent@0.0.1-alpha.0` placeholder agent CLI ready for tag-driven publish, README at root. Live deploy + tag-publish + branch protection remain as human verification gates persisted in `00-HUMAN-UAT.md`.
+- ✓ **BOOT-01..05** — v1.0 (Phase 0): pnpm workspace, green CI (5 gates), CF Pages preview, placeholder agent CLI, README.
+- ✓ **DAEMON-01..06, AUTH-01..05, REG-01..05, API-01..03** — v1.0 (Phase 1): Hono daemon on `127.0.0.1:5193`, bearer-token + 0600 + rotation + CORS lock, registry CRUD, path allow-list, Tailscale opt-in.
+- ✓ **SPA-01..04** — v1.0 (Phase 2): Vite/React/Tailwind shell, pair flow, onboarding, settings.
+- ✓ **HOME-01..06** — v1.0 (Phase 3): multi-project home, cards, filters/search/sort, register modal.
+- ✓ **DISC-01..03, PHASE-01..05** — v1.0 (Phase 4): Discipline + Phase Progress columns (DISC-04 install-hint partial).
+- ✓ **HEALTH-01..05** — v1.0 (Phase 5): InstalledSkills, SkillHealth (AgentLinter), Observability/Secrets/Integrations health.
+- ✓ **POLISH-01..06** — v1.0 (Phase 6): keyboard shortcuts, install-launchd/systemd, impeccable gate, two-stage review, README (live-reboot + Stage-2 fresh-session sign-offs deferred).
+- ✓ **HELP-01, HELP-06** — v1.0 (Phase 7): `/help` docs site (anchor pages + shortcuts); HELP-02..05 stub/widget polish carried.
+- ✓ **COV-01..12** — v1.1 (Phase 10/10.6): `/coverage` matrix across three families + three-state GitNexus detection; migration 0008.
+- ✓ **TRD-01..05, SKD-01..04, PLI-01..03** — v1.1 (Phase 11): coverage trends (NDJSON snapshots + drift badges) + cross-repo skill drift (SKD-05 sidebar entry partial).
+- ✓ **IMP-01..05** — v1.1 (Phase 11.1/11.2): column-width lock, sticky toolbar, Toast, contrast invariant, tooltips, touch targets.
+- ✓ **D-10.5-01..05** — v1.1 (Phase 10.5): skill-driven impeccable gate; floor recalibrated to ≥ 80 + structural-debt waiver (D-10.5-03.calibration-2, ratified 2026-06-08).
+- ✓ **D-14-01..10** — v1.1 (Phase 14): daemon-hosted understand-anything viewer + Code Intelligence section + scoped HMAC v2 tokens.
 
 ### Active
 
-- [ ] **REG-01–05**: Multi-project registry CRUD (CLI + SPA-driven)
-- [ ] **AUTH-01–05**: Bearer-token auth, 0600 file storage, rotation, CORS lock
-- [ ] **DAEMON-01–06**: Hono server, loopback default, Tailscale support, LaunchAgent install
-- [ ] **API-01–10**: Health, registry, project overview, allow-listed reads, git subprocess, agentlinter
-- [ ] **SPA-01–07**: Vite/React shell, pair flow, onboarding, settings, multi-project home, single-project view
-- [ ] **DISC-01–04**: CommitmentBlock, HookFirings, RationalizationFires panels (left column)
-- [ ] **PHASE-01–05**: PhaseProgress, ExecutionTimeline, ReviewStatus, SecurityStatus, VerificationStatus (center column)
-- [ ] **HEALTH-01–05**: InstalledSkills, SkillHealth (AgentLinter), ObservabilityHealth, SecretsHealth, IntegrationsHealth (right column)
-- [ ] **POLISH-01–04**: Keyboard shortcuts, install-launchd / install-systemd, impeccable critique gate, two-stage review
+- [ ] **REQ-12-* (Phase 12 conformance surface)** — implementation shipped (12-00..05); **close-out gate (12-06) + verification deferred** to v1.2. Carry into next milestone.
+- [ ] **Phase 13 gate close-out (13-04)** — GitNexus scoped-scan actions shipped; gates ritual deferred.
+- [ ] **Phase 14.1 polish bundle** — `/code-intelligence` IMPECCABLE lift (composite ~74 → ≥ 80); structural-debt waiver outstanding.
+- [ ] **SENTRY-/LINEAR-/INFI-*** (Phase 8, held) — optional integrations, gated on upstream tooling.
+- [ ] **OSS-01..03** (Phase 9) — open-source readiness.
 
 ### Out of Scope
 
@@ -73,16 +81,16 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Single repo, three packages (`shared`, `spa`, `agent`) | Shared Zod schemas as single source of truth for wire contracts | — Pending |
-| Static SPA on Cloudflare Pages, no Workers/Functions in v1 | Pure-static keeps deployment auditable; CDN gives multi-device access | — Pending |
-| Local daemon, no cloud storage of registry/auth/project data | Hard architectural commitment from spec §"Constraints I want preserved" | — Pending |
-| `0600` file storage for token (not Keychain) in v1 | Avoids native deps; preserves `npx` install simplicity | — Pending |
-| Bearer token + loopback default; Tailscale opt-in | Defense-in-depth without exposing local services to LAN by accident | — Pending |
-| Sentry / Linear / Infisical as optional, env-var-gated | Phases 0–6 ship a complete dashboard with zero third-party deps | — Pending |
-| Repo private until Phase 6 ships; flip later if quality holds | Reduces external pressure during the discipline-establishing phases | — Pending |
-| MIT license (when public) | Matches the rest of the Claude Code skill ecosystem | — Pending |
-| CF Access email-only on production deploys | Matches "one user, multiple devices" stance | — Pending |
-| Workflow commitment ritual mandatory in every implementing session | Builds Cialdini-style consistency pressure that keeps discipline from eroding | — Pending |
+| Single repo, three packages (`shared`, `spa`, `agent`) | Shared Zod schemas as single source of truth for wire contracts | ✓ Good (v1.0/v1.1) |
+| Static SPA on Cloudflare Pages, no Workers/Functions in v1 | Pure-static keeps deployment auditable; CDN gives multi-device access | ✓ Good (v1.0/v1.1) |
+| Local daemon, no cloud storage of registry/auth/project data | Hard architectural commitment from spec §"Constraints I want preserved" | ✓ Good (v1.0/v1.1) |
+| `0600` file storage for token (not Keychain) in v1 | Avoids native deps; preserves `npx` install simplicity | ✓ Good (v1.0/v1.1) |
+| Bearer token + loopback default; Tailscale opt-in | Defense-in-depth without exposing local services to LAN by accident | ✓ Good (v1.0/v1.1) |
+| Sentry / Linear / Infisical as optional, env-var-gated | Phases 0–6 ship a complete dashboard with zero third-party deps | ✓ Good (v1.0/v1.1) |
+| Repo private until Phase 6 ships; flip later if quality holds | Reduces external pressure during the discipline-establishing phases | ✓ Good (v1.0/v1.1) |
+| MIT license (when public) | Matches the rest of the Claude Code skill ecosystem | ✓ Good (v1.0/v1.1) |
+| CF Access email-only on production deploys | Matches "one user, multiple devices" stance | ✓ Good (v1.0/v1.1) |
+| Workflow commitment ritual mandatory in every implementing session | Builds Cialdini-style consistency pressure that keeps discipline from eroding | ✓ Good (v1.0/v1.1) |
 
 ## Evolution
 
@@ -113,6 +121,20 @@ Post-UAT sticky-layering fix landed (`89d4b2d` + `1efde99`): `PageHeader` uses `
 
 ---
 
-*Last updated: 2026-05-18 after Phase 11.2 (Impeccable P2 polish bundle) execution complete — 6 plans across 3 waves shipped on `feat/11.2-impeccable-p2-polish-bundle`. Closes the 11.1-IMPECCABLE.md P2/P3 follow-up bundle (column-header tooltips + per-row spinner + touch target + controlled search + max-w-prose). v1.1 (Cross-family observability) substantively complete with calibration ratified.*
+## v1.1 milestone close (2026-06-08)
+
+**v1.1 "Cross-family observability" shipped and archived.** Spans Phases 10, 10.5, 10.6, 11, 11.1, 11.2, 12, 13, 14 — the full post-v1.0 observability arc: Coverage Matrix → skill-driven impeccable gate → trends + skill drift → impeccable polish → conformance surface → GitNexus scoped scans → understand-anything knowledge-graph viewer. Final ship PR #54 (merge `f5771fb`), tagged `v1.1`.
+
+**Current state:** three-package pnpm workspace (shared/spa/agent); daemon on `127.0.0.1:5193`; SPA on Cloudflare Pages. Test suite ~2,600+ across packages (agent 1115 + spa 1205 + shared 329 + meta-observer 31 as of Phase 14 close). GitNexus + understand-anything viewer (v2.7.6) installed and integrated.
+
+**Deferred into v1.2** (recorded in MILESTONES.md + STATE.md "Deferred Items"): Phase 12 close-out gate (12-06) + verification; Phase 13 gate (13-04); Phase 14.1 `/code-intelligence` IMPECCABLE lift; 2 open debug sessions; historical human-UAT/verification sign-offs (Phases 00–06, 05.1, 10, 11.1, 11.2); Tailscale second-device viewer (D-14-04, infra-gated).
+
+**Versioning reconciliation:** the ROADMAP/REQUIREMENTS phase bodies labeled Phases 12–14 as "v1.2"; STATE.md's `milestone: v1.1` pointer + the explicit close commit fold them into v1.1. Those "v1.2" strings are now historical; the *next* milestone reuses the v1.2 label.
+
+---
+
+*Last updated: 2026-06-08 after v1.1 (Cross-family observability) milestone close — Phases 10–14 archived, tagged v1.1. See `.planning/MILESTONES.md`.*
+
+*Previous: 2026-05-18 after Phase 11.2 (Impeccable P2 polish bundle) execution complete — 6 plans across 3 waves shipped on `feat/11.2-impeccable-p2-polish-bundle`. Closes the 11.1-IMPECCABLE.md P2/P3 follow-up bundle (column-header tooltips + per-row spinner + touch target + controlled search + max-w-prose). v1.1 (Cross-family observability) substantively complete with calibration ratified.*
 
 *Previous: 2026-05-10 after Phase 5.1 (UI redesign — Cloudflare-inspired sidebar shell) execution complete — 6 plans across 6 waves shipped: design tokens (warm paper, aubergine, accent purple), 7 + 8 UI primitives, AppShellV2 with sectioned Sidebar/TopBar/Breadcrumb/PageHeader, alias-free repalette of all 4 paired routes + 13 panels + 32 shell-adjacent components, legacy AppShell/Header/HomeLayout/ProjectLayout/appShellWidth/ProjectHeader deleted (12 files), VITE_APPSHELL_V2 cutover. Phase required mid-execution recovery (commit 31310d2) — Wave 5 work commits orphaned during fast-forward; cherry-pick + manual cleanup landed the alias migration on the branch. ~1158 workspace tests pass; verification: 7/7 must-haves passed, 2 human items (impeccable critique gate AC-06 + after-shell screenshot AC-08) deferred to Phase 6 POLISH-04 hard gate. Phase 0/1/2/3 HUMAN-UAT debt unchanged.*
