@@ -42,7 +42,7 @@
 
 ### Phase 14.1 IMPECCABLE lift (carry-over)
 
-- [ ] **IMPV-01**: Lift `/code-intelligence` IMPECCABLE composite from ~74 to the ≥ 80 floor (D-10.5-03.calibration-2), committing a refreshed `14.1-IMPECCABLE.md`; retire the outstanding structural-debt waiver or re-record it with justification
+- [x] **IMPV-01**: ✅ Lifted `/code-intelligence` composite **74 → 81** (Nielsen 24→30/40; cog-load 2→0) — error recovery + Retry, communicative Status/Actions cells, relative time, de-uppercased headers, real status-pill tokens. `14.1-IMPECCABLE.md` committed; structural-debt waiver retired. TDD.
 
 ### Cross-cutting invariants (must survive every v1.2 change)
 
@@ -81,7 +81,7 @@
 | GATE-12-01..03 | Phase 12 (close-out) | ✅ Complete (12-VERIFICATION.md) |
 | GATE-13-01 | Phase 13 (close-out) | ✅ Complete (13-VERIFICATION.md) |
 | IMPV-12.1-01 | Phase 12.1 | ✅ Complete (composite 84) |
-| IMPV-01 | Phase 14.1 | Pending |
+| IMPV-01 | Phase 14.1 | ✅ Complete (composite 81) |
 | INV-01..05 | All phases | Pending |
 
 **Coverage:**

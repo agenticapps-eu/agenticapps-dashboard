@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 ## Current Position
 
-Phase: 12 ✅ + 12.1 ✅ + 13 gate CLOSED ✅ → next: Phase 14.1 (/code-intelligence IMPECCABLE lift)
-Plan: 13-04 gate confirmed complete; 13-VERIFICATION.md written (PASS)
-Status: v1.2 in progress — 3 of 5 done (12, 12.1, 13); remain: 14.1, 8
-Last activity: 2026-06-10 — Phase 13 gate closed retrospectively. All 13-04 artifacts already present + passing (CSO 0-HIGH · two-stage REVIEW, S1-01 addressed · IMPECCABLE 84 · UAT resolved); wrote 13-VERIFICATION.md. gitnexusScan 45 tests green.
+Phase: 12 ✅ + 12.1 ✅ + 13 ✅ + 14.1 ✅ → next: Phase 8 (Sentry/Linear/Infisical panels — the final v1.2 phase)
+Plan: 14.1 (/code-intelligence lift) done (TDD, composite 74→81)
+Status: v1.2 in progress — 4 of 5 done; only Phase 8 (net-new feature) remains
+Last activity: 2026-06-10 — Phase 14.1 landed: /code-intelligence lift (error recovery+Retry, communicative Status/Actions cells, relative time, de-uppercased headers, fixed transparent status-pill tokens). Composite 74→81; structural-debt waiver retired. Re-critique caught + fixed a pill-token regression. TDD; 1212 spa tests green.
 
 ## Deferred Items
 

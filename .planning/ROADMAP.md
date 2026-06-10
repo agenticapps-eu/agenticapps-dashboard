@@ -59,8 +59,8 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
   - **Success:** ✅ `12.1-IMPECCABLE.md` composite 84 (≥83); legend + threshold labels render; chart legible without hover.
 - [x] **Phase 13 close-out** — ✅ confirmed `13-04` gate complete (CSO PASS · two-stage REVIEW, HIGH S1-01 addressed · IMPECCABLE 84 · UAT resolved) + wrote `13-VERIFICATION.md` (PASS). gitnexusScan 45 tests green. → GATE-13-01 ✅
   - **Success:** ✅ Phase 13 flips ⚠️ → ✅; `13-VERIFICATION.md` present.
-- [ ] **Phase 14.1: `/code-intelligence` IMPECCABLE lift** — raise composite ~74 → ≥ 80 (D-10.5-03.calibration-2); commit refreshed `14.1-IMPECCABLE.md`. → IMPV-01
-  - **Success:** `14.1-IMPECCABLE.md` composite ≥ 80, or a re-recorded structural-debt waiver with justification.
+- [x] **Phase 14.1: `/code-intelligence` IMPECCABLE lift** — ✅ raised composite **74 → 81** (TDD; error recovery, communicative cells, relative time, header consistency, real status-pill tokens). Structural-debt waiver retired. → IMPV-01 ✅
+  - **Success:** ✅ `14.1-IMPECCABLE.md` composite 81 (≥ 80); waiver retired.
 - [ ] **Phase 8: Optional integration panels** — Sentry + Linear read-only data panels (env-gated daemon routes, 60s cache, graceful empty states) + Infisical-aware env loading + read-only Infisical status reflection. → SENTRY-01..03, LINEAR-01..03, INFI-01..03
   - **Success:** All three panels render "configure to enable" with zero env set; with tokens set they show live data; dashboard fully functional without any of them; no native deps; shared Zod schema for all new wire shapes.
 
@@ -96,6 +96,7 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
 | 12. Conformance surface — gate close-out | v1.2 | 7/7 | ✅ Gate closed (retrospective) | 2026-06-10 |
 | 12.1. Conformance chart legibility (legend + thresholds) | v1.2 | 1/1 | ✅ Complete (composite 80→84) | 2026-06-10 |
 | 13. GitNexus scoped scans — gate close-out | v1.2 | 4/4 | ✅ Gate closed (retrospective) | 2026-06-10 |
+| 14.1. /code-intelligence IMPECCABLE lift | v1.2 | 1/1 | ✅ Complete (composite 74→81) | 2026-06-10 |
 | 14.1. `/code-intelligence` IMPECCABLE lift | v1.2 | 0/TBD | 🔨 Planned | - |
 | 8. Optional Integration Panels | v1.2 | 0/TBD | 🔨 Planned (Infisical now unblocked) | - |
 | 9. Open-source Readiness | v1.3 | 0/TBD | 📋 Deferred | - |
