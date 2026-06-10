@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Cross-family observability
-status: Awaiting next milestone
-stopped_at: Phase 14 context gathered
-last_updated: "2026-06-08T15:58:47.177Z"
-last_activity: 2026-06-08 — Milestone v1.1 completed and archived
+milestone: v1.2
+milestone_name: Optional integrations & fleet-conformance follow-through
+status: planning
+last_updated: "2026-06-10T11:20:55.647Z"
+last_activity: 2026-06-10
 progress:
-  total_phases: 18
-  completed_phases: 16
-  total_plans: 114
-  completed_plans: 113
-  percent: 89
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 ## Current Position
 
-Phase: Milestone v1.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-08 — Milestone v1.1 completed and archived (tag v1.1)
+Status: Defining requirements
+Last activity: 2026-06-10 — Milestone v1.2 started
 
 ## Deferred Items
 

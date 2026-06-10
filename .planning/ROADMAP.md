@@ -8,7 +8,7 @@ Multi-project pipeline dashboard: a hosted static SPA on Cloudflare Pages + a si
 
 - ✅ **v1.0 Working dashboard + /help docs** — Phases 0–7 (+5.1, 6.1) — shipped; tagged `v1.0.0` / `v1.0.1`
 - ✅ **v1.1 Cross-family observability** — Phases 10, 10.5, 10.6, 11, 11.1, 11.2, 12, 13, 14 — shipped 2026-06-08; tagged `v1.1`
-- 📋 **v1.2 (next)** — held Phase 8 (optional integrations: Sentry / Linear / Infisical) + fleet-conformance follow-through (close Phase 12/13 gates, 14.1 polish bundle)
+- 🔨 **v1.2 Optional integrations & fleet-conformance follow-through** (current — opened 2026-06-10) — Phase 8 (optional integration panels: Sentry / Linear / Infisical) + close Phase 12/13 gates + Phase 14.1 IMPECCABLE lift
 - 📋 **v1.3 Open-source readiness** — Phase 9 (LICENSE, CONTRIBUTING, optional public landing)
 
 > Full phase detail, success criteria, decisions, and the v1.1 close-out audit are archived in
@@ -49,10 +49,20 @@ Known deferred items at close: see `.planning/MILESTONES.md` and `.planning/STAT
 
 </details>
 
-### 📋 v1.2 (next — planned)
+### 🔨 v1.2 Optional integrations & fleet-conformance follow-through (current)
 
-- [ ] Phase 8: Optional Integrations (held) — Sentry / Linear / Infisical wiring, gated on upstream tooling
-- [ ] Phase 12/13 gate close-out + Phase 14.1 polish bundle (`/code-intelligence` lift; carry-over)
+Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a green baseline), then the net-new Phase 8 feature work last. Phase 8 is independent of the close-outs and could run in parallel if desired.
+
+- [ ] **Phase 12 close-out** — run deferred `12-06` gate (Stage 1/2 review + `/cso` + `/qa`) + author `12-VERIFICATION.md` and `12-IMPECCABLE.md`. *Impl already shipped in v1.1; gate only.* → GATE-12-01..03
+  - **Success:** `12-VERIFICATION.md` exists with 1:1 evidence per REQ-12-*; REQ-12-* flipped to validated in PROJECT.md.
+- [ ] **Phase 13 close-out** — complete `13-04` gate ritual; confirm `13-CSO.md`/`13-REVIEW.md` completeness; close `13-VERIFICATION.md`. *Impl already shipped in v1.1; gate only.* → GATE-13-01
+  - **Success:** Phase 13 row flips from ⚠️ to ✅; verification artifact present.
+- [ ] **Phase 14.1: `/code-intelligence` IMPECCABLE lift** — raise composite ~74 → ≥ 80 (D-10.5-03.calibration-2); commit refreshed `14.1-IMPECCABLE.md`. → IMPV-01
+  - **Success:** `14.1-IMPECCABLE.md` composite ≥ 80, or a re-recorded structural-debt waiver with justification.
+- [ ] **Phase 8: Optional integration panels** — Sentry + Linear read-only data panels (env-gated daemon routes, 60s cache, graceful empty states) + Infisical-aware env loading + read-only Infisical status reflection. → SENTRY-01..03, LINEAR-01..03, INFI-01..03
+  - **Success:** All three panels render "configure to enable" with zero env set; with tokens set they show live data; dashboard fully functional without any of them; no native deps; shared Zod schema for all new wire shapes.
+
+> Invariants INV-01..05 (read-only FS, no native deps, optional-stays-optional, shared-schema SoT, `0600` secrets) apply across every v1.2 phase.
 
 ### 📋 v1.3 (much later)
 
@@ -81,5 +91,8 @@ Known deferred items at close: see `.planning/MILESTONES.md` and `.planning/STAT
 | 12. Observability Conformance Surface | v1.1 | 6/7 | ⚠️ Impl shipped; gate deferred | 2026-05-20 |
 | 13. GitNexus scoped scan actions | v1.1 | 3/4 | ⚠️ Shipped; gate deferred | 2026-05-25 |
 | 14. Understand-Anything integration | v1.1 | 8/8 | ✅ Complete | 2026-06-08 |
-| 8. Optional Integrations | v1.2 | 0/TBD | ⏸️ Held (upstream tooling) | - |
+| 12. Conformance surface — gate close-out | v1.2 | 6/7 | 🔨 Gate pending (12-06) | - |
+| 13. GitNexus scoped scans — gate close-out | v1.2 | 3/4 | 🔨 Gate pending (13-04) | - |
+| 14.1. `/code-intelligence` IMPECCABLE lift | v1.2 | 0/TBD | 🔨 Planned | - |
+| 8. Optional Integration Panels | v1.2 | 0/TBD | 🔨 Planned (Infisical now unblocked) | - |
 | 9. Open-source Readiness | v1.3 | 0/TBD | 📋 Deferred | - |
