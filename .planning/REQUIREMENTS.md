@@ -34,7 +34,7 @@
 
 ### Phase 13 gate close-out (carry-over)
 
-- [ ] **GATE-13-01**: Complete the incomplete `13-04` gate ritual (two-stage review + `/cso` already present as `13-CSO.md`/`13-REVIEW.md`; confirm completeness and produce/close `13-VERIFICATION.md` for the scoped-scan actions)
+- [x] **GATE-13-01**: ✅ Confirmed `13-04` gate complete — `13-CSO.md` (PASS, 0 HIGH), `13-REVIEW.md` (both stages; HIGH S1-01 addressed), `13-IMPECCABLE.md` (composite 84, clears ≥80 floor), `13-UAT.md` (resolved/pass) — and wrote `13-VERIFICATION.md` (PASS). gitnexusScan tests 45 green.
 
 ### Phase 12.1 conformance chart legibility (emerged from 12-IMPECCABLE)
 
@@ -79,7 +79,7 @@
 | LINEAR-01..03 | Phase 8 | Pending |
 | INFI-01..03 | Phase 8 | Pending |
 | GATE-12-01..03 | Phase 12 (close-out) | ✅ Complete (12-VERIFICATION.md) |
-| GATE-13-01 | Phase 13 (close-out) | Pending |
+| GATE-13-01 | Phase 13 (close-out) | ✅ Complete (13-VERIFICATION.md) |
 | IMPV-12.1-01 | Phase 12.1 | ✅ Complete (composite 84) |
 | IMPV-01 | Phase 14.1 | Pending |
 | INV-01..05 | All phases | Pending |

@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 ## Current Position
 
-Phase: 12 gate CLOSED ✅ + 12.1 COMPLETE ✅ → next: Phase 13 close-out
-Plan: 12-06 gate done; 12.1 (chart legibility) done (TDD, composite 84)
-Status: v1.2 in progress — Phase 12 + 12.1 done; 3 phases remain (13 close-out, 14.1, 8)
-Last activity: 2026-06-10 — Phase 12.1 landed: persistent legend + 70/90 threshold labels in FleetTrendChart (TDD S17/S18 RED→GREEN), composite 80→84, closed code-review IN-06. 1207 spa tests green.
+Phase: 12 ✅ + 12.1 ✅ + 13 gate CLOSED ✅ → next: Phase 14.1 (/code-intelligence IMPECCABLE lift)
+Plan: 13-04 gate confirmed complete; 13-VERIFICATION.md written (PASS)
+Status: v1.2 in progress — 3 of 5 done (12, 12.1, 13); remain: 14.1, 8
+Last activity: 2026-06-10 — Phase 13 gate closed retrospectively. All 13-04 artifacts already present + passing (CSO 0-HIGH · two-stage REVIEW, S1-01 addressed · IMPECCABLE 84 · UAT resolved); wrote 13-VERIFICATION.md. gitnexusScan 45 tests green.
 
 ## Deferred Items
 
@@ -36,7 +36,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-06-08 (proceed-a
 | Category | Item | Status |
 |----------|------|--------|
 | phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | ✅ resolved 2026-06-10 (retrospective close-out; 2 P1s → Phase 12.1) |
-| phase-close | Phase 13 gate plan 13-04 (gates ritual) | incomplete |
+| phase-close | Phase 13 gate plan 13-04 (gates ritual) | ✅ resolved 2026-06-10 (artifacts present + passing; 13-VERIFICATION.md written) |
 | debug | family-scan-no-ui-feedback | unknown |
 | debug | per-row-scan-repo-not-registered | diagnosed |
 | uat | Phase 01 HUMAN-UAT (2 pending scenarios) | partial |
