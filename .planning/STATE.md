@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 ## Current Position
 
-Phase: 12 gate CLOSED ✅ (retrospective) → next: Phase 12.1 (conformance chart legibility)
-Plan: 12-06 (gate) complete; Phase 12.1 not yet planned
-Status: v1.2 in progress — 1st carry-over close-out done
-Last activity: 2026-06-10 — Phase 12 gate closed retrospectively (12-REVIEW 0-crit · 12-SECURITY SECURED 27/27 · 12-IMPECCABLE composite 80 · 12-HUMAN-UAT 4/4 · 12-VERIFICATION PASS). Two P1 chart-legibility findings routed to new Phase 12.1.
+Phase: 12 gate CLOSED ✅ + 12.1 COMPLETE ✅ → next: Phase 13 close-out
+Plan: 12-06 gate done; 12.1 (chart legibility) done (TDD, composite 84)
+Status: v1.2 in progress — Phase 12 + 12.1 done; 3 phases remain (13 close-out, 14.1, 8)
+Last activity: 2026-06-10 — Phase 12.1 landed: persistent legend + 70/90 threshold labels in FleetTrendChart (TDD S17/S18 RED→GREEN), composite 80→84, closed code-review IN-06. 1207 spa tests green.
 
 ## Deferred Items
 

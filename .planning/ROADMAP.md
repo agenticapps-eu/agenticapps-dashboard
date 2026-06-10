@@ -55,8 +55,8 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
 
 - [x] **Phase 12 close-out** — ✅ ran deferred `12-06` gate retrospectively (GSD retro-tools): `12-REVIEW.md` (0 crit) + `12-SECURITY.md` (SECURED 27/27) + `12-HUMAN-UAT.md` (4/4 PASS) + `12-IMPECCABLE.md` (composite 80) + `12-VERIFICATION.md`. *Impl shipped in v1.1; gate only.* → GATE-12-01..03 ✅
   - **Success:** ✅ `12-VERIFICATION.md` present with 1:1 gate evidence; GATE-12-* validated. 2 P1 chart-legibility gaps routed to Phase 12.1.
-- [ ] **Phase 12.1: conformance chart legibility** — fix the two P1s from `12-IMPECCABLE.md`: add a persistent legend (family→color key) + label the 70/90 threshold lines in `FleetTrendChart.tsx`; re-critique to clear the 83–85 band. → IMPV-12.1-01
-  - **Success:** `12.1-IMPECCABLE.md` composite ≥ 83; legend + threshold labels render; chart legible without hover.
+- [x] **Phase 12.1: conformance chart legibility** — ✅ added persistent legend + 70/90 threshold labels to `FleetTrendChart.tsx` (TDD; closed code-review IN-06). Re-critique composite **84**. → IMPV-12.1-01 ✅
+  - **Success:** ✅ `12.1-IMPECCABLE.md` composite 84 (≥83); legend + threshold labels render; chart legible without hover.
 - [ ] **Phase 13 close-out** — complete `13-04` gate ritual; confirm `13-CSO.md`/`13-REVIEW.md` completeness; close `13-VERIFICATION.md`. *Impl already shipped in v1.1; gate only.* → GATE-13-01
   - **Success:** Phase 13 row flips from ⚠️ to ✅; verification artifact present.
 - [ ] **Phase 14.1: `/code-intelligence` IMPECCABLE lift** — raise composite ~74 → ≥ 80 (D-10.5-03.calibration-2); commit refreshed `14.1-IMPECCABLE.md`. → IMPV-01
@@ -94,7 +94,7 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
 | 13. GitNexus scoped scan actions | v1.1 | 3/4 | ⚠️ Shipped; gate deferred | 2026-05-25 |
 | 14. Understand-Anything integration | v1.1 | 8/8 | ✅ Complete | 2026-06-08 |
 | 12. Conformance surface — gate close-out | v1.2 | 7/7 | ✅ Gate closed (retrospective) | 2026-06-10 |
-| 12.1. Conformance chart legibility (legend + thresholds) | v1.2 | 0/TBD | 🔨 Planned (P1 fix from 12-IMPECCABLE) | - |
+| 12.1. Conformance chart legibility (legend + thresholds) | v1.2 | 1/1 | ✅ Complete (composite 80→84) | 2026-06-10 |
 | 13. GitNexus scoped scans — gate close-out | v1.2 | 3/4 | 🔨 Gate pending (13-04) | - |
 | 14.1. `/code-intelligence` IMPECCABLE lift | v1.2 | 0/TBD | 🔨 Planned | - |
 | 8. Optional Integration Panels | v1.2 | 0/TBD | 🔨 Planned (Infisical now unblocked) | - |

@@ -38,7 +38,7 @@
 
 ### Phase 12.1 conformance chart legibility (emerged from 12-IMPECCABLE)
 
-- [ ] **IMPV-12.1-01**: Fix the two P1 findings from `12-IMPECCABLE.md` — add a persistent legend (family→stroke-color key, incl. "fleet") and label the 70 (floor) / 90 (target) threshold lines in `FleetTrendChart.tsx`. Re-critique to composite ≥ 83. Chart must be legible (which line is which family) without hover.
+- [x] **IMPV-12.1-01**: ✅ Added persistent legend (4 series → exact stroke-color swatches) + labeled the 70 (floor) / 90 (target) threshold lines in `FleetTrendChart.tsx`. Re-critique composite **84** (≥83 target met). Chart legible without hover. TDD (S17/S18 RED→GREEN); closed code-review IN-06.
 
 ### Phase 14.1 IMPECCABLE lift (carry-over)
 
@@ -80,7 +80,7 @@
 | INFI-01..03 | Phase 8 | Pending |
 | GATE-12-01..03 | Phase 12 (close-out) | ✅ Complete (12-VERIFICATION.md) |
 | GATE-13-01 | Phase 13 (close-out) | Pending |
-| IMPV-12.1-01 | Phase 12.1 | Pending |
+| IMPV-12.1-01 | Phase 12.1 | ✅ Complete (composite 84) |
 | IMPV-01 | Phase 14.1 | Pending |
 | INV-01..05 | All phases | Pending |
 
