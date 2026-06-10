@@ -385,8 +385,24 @@ describe('CodeIntelligencePage', () => {
 
       render(<CodeIntelligencePage />)
 
-      // The fresh row communicates its state rather than leaving Status empty.
-      expect(screen.getAllByText(/current/i).length).toBeGreaterThanOrEqual(1)
+      // The fresh row communicates its state rather than leaving Status empty,
+      // using a real design token (not a non-existent one that renders transparent).
+      const pill = screen.getByText('current')
+      expect(pill.className).toContain('bg-status-success/10')
+      expect(pill.className).toContain('text-status-success')
+    })
+
+    it('stale status pill uses the real status-warning token (not a transparent one)', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'stale', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      render(<CodeIntelligencePage />)
+
+      const pill = screen.getByText('stale')
+      expect(pill.className).toContain('bg-status-warning/10')
+      expect(pill.className).toContain('text-status-warning')
     })
 
     it('Actions cell explains itself when the viewer is not installed (no blank cell)', () => {

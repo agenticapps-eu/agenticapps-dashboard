@@ -78,11 +78,11 @@ function AnalyzedRow({ row, agentUrl, viewerInstalled }: AnalyzedRowProps): Reac
       <td className="py-3 pr-4 text-sm text-text-secondary">{lastAnalyzedAt ?? '—'}</td>
       <td className="py-3 pr-4">
         {isStale ? (
-          <span className="inline-flex items-center rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning-text">
+          <span className="inline-flex items-center rounded-full bg-status-warning/10 px-2 py-0.5 text-xs font-medium text-status-warning">
             stale
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success-text">
+          <span className="inline-flex items-center rounded-full bg-status-success/10 px-2 py-0.5 text-xs font-medium text-status-success">
             current
           </span>
         )}
