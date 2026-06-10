@@ -23,6 +23,18 @@ const FAMILY_STROKES: Record<(typeof FAMILY_KEYS)[number], string> = {
   factiv: 'stroke-status-warning',
   neuroflash: 'stroke-accent',
 }
+// Persistent legend (Phase 12.1 P1): family/fleet → swatch token, parity with strokes.
+const LEGEND = [
+  ['agenticapps', 'bg-status-info'],
+  ['factiv', 'bg-status-warning'],
+  ['neuroflash', 'bg-accent'],
+  ['fleet', 'bg-text-primary'],
+] as const
+// Threshold rules (Phase 12.1 P1): 70 floor / 90 target, labeled in-chart.
+const THRESHOLDS = [
+  [70, 'floor'],
+  [90, 'target'],
+] as const
 
 export function FleetTrendChart({ series, ariaLabel }: Props): ReactElement {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -47,23 +59,30 @@ export function FleetTrendChart({ series, ariaLabel }: Props): ReactElement {
   const openPanel = (i: number): void => setHoverIdx(i)
 
   return (
-    <div role="img" aria-label={ariaLabel} className="relative">
+    <div>
+      <ul aria-label="Chart legend" className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs text-text-secondary">
+        {LEGEND.map(([label, swatch]) => (
+          <li key={label} className="flex items-center gap-1.5">
+            <span aria-hidden="true" className={`inline-block w-3 h-[3px] rounded-full ${swatch}`} />
+            {label}
+          </li>
+        ))}
+      </ul>
+      <div role="img" aria-label={ariaLabel} className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-        {[0, 25, 50, 75, 100].map((v) => {
-          const isThreshold = v === 70 || v === 90
-          return (
-            <line
-              key={v}
-              x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
-              className={isThreshold ? 'stroke-border-subtle' : 'stroke-border-subtle/50'}
-              {...(isThreshold ? { strokeDasharray: '4 4' } : {})}
-            />
-          )
-        })}
-        {/* Explicit 70 + 90 threshold rules (dashed) on top of base gridlines. */}
-        {[70, 90].map((v) => (
-          <line key={`th-${v}`} x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
-                className="stroke-border-subtle" strokeDasharray="4 4" />
+        {/* Base gridlines (0/25/50/75/100); 70/90 get dedicated dashed rules below. */}
+        {[0, 25, 50, 75, 100].map((v) => (
+          <line key={v} x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
+                className="stroke-border-subtle/50" />
+        ))}
+        {/* Explicit 70 (floor) + 90 (target) threshold rules + labels, on base gridlines. */}
+        {THRESHOLDS.map(([v, label]) => (
+          <g key={`th-${v}`}>
+            <line x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
+                  className="stroke-border-subtle" strokeDasharray="4 4" />
+            <text x={W - PAD.right} y={y(v) - 4} textAnchor="end" fontSize={9}
+                  className="fill-text-tertiary">{v} {label}</text>
+          </g>
         ))}
         {FAMILY_KEYS.map((fam) => (
           <polyline key={fam} points={polyline(fam)} fill="none"
@@ -109,6 +128,7 @@ export function FleetTrendChart({ series, ariaLabel }: Props): ReactElement {
           <tr key={d.date}><td>{d.date}</td><td>{d.fleet}</td><td>{d.agenticapps}</td><td>{d.factiv}</td><td>{d.neuroflash}</td></tr>
         ))}</tbody>
       </table>
+      </div>
     </div>
   )
 }
