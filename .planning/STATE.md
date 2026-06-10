@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Planning next milestone (v1.2 — held Phase 8 optional integrations, or fleet-conformance follow-through)
+**Current focus:** v1.2 in progress — closing carry-over gates then Phase 8 integration panels.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-10 — Milestone v1.2 started
+Phase: 12 gate CLOSED ✅ (retrospective) → next: Phase 12.1 (conformance chart legibility)
+Plan: 12-06 (gate) complete; Phase 12.1 not yet planned
+Status: v1.2 in progress — 1st carry-over close-out done
+Last activity: 2026-06-10 — Phase 12 gate closed retrospectively (12-REVIEW 0-crit · 12-SECURITY SECURED 27/27 · 12-IMPECCABLE composite 80 · 12-HUMAN-UAT 4/4 · 12-VERIFICATION PASS). Two P1 chart-legibility findings routed to new Phase 12.1.
 
 ## Deferred Items
 
@@ -35,7 +35,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-06-08 (proceed-a
 
 | Category | Item | Status |
 |----------|------|--------|
-| phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | open |
+| phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | ✅ resolved 2026-06-10 (retrospective close-out; 2 P1s → Phase 12.1) |
 | phase-close | Phase 13 gate plan 13-04 (gates ritual) | incomplete |
 | debug | family-scan-no-ui-feedback | unknown |
 | debug | per-row-scan-repo-not-registered | diagnosed |

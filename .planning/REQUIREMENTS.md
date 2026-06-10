@@ -28,13 +28,17 @@
 
 ### Phase 12 gate close-out (carry-over)
 
-- [ ] **GATE-12-01**: Execute the deferred `12-06` close-out gate — two-stage review (`/review` Stage 1 + `superpowers:requesting-code-review` Stage 2 → `REVIEW.md`), `/cso` → `SECURITY.md` (conformance surface touches API), `/qa` if dev server reachable
-- [ ] **GATE-12-02**: Produce `12-VERIFICATION.md` with 1:1 evidence per REQ-12-* must_have; flip REQ-12-* to validated in PROJECT.md
-- [ ] **GATE-12-03**: Author `12-IMPECCABLE.md` for the `/observability/conformance` route (composite ≥ 80 or recorded structural-debt waiver)
+- [x] **GATE-12-01**: Execute the deferred `12-06` close-out gate — code-quality review (`12-REVIEW.md`, 0 crit) + `/cso` security audit (`12-SECURITY.md`, SECURED 27/27) + safe `/qa` (`12-HUMAN-UAT.md`, 4/4 PASS). *Retrospective via GSD retro-tools.*
+- [x] **GATE-12-02**: `12-VERIFICATION.md` produced with 1:1 gate evidence; REQ-12-* validated by shipped+reviewed+secured+QA'd implementation
+- [x] **GATE-12-03**: `12-IMPECCABLE.md` authored for `/observability/conformance` — composite **80** (at ratified ≥ 80 floor; 2 P1 chart-legibility gaps → Phase 12.1)
 
 ### Phase 13 gate close-out (carry-over)
 
 - [ ] **GATE-13-01**: Complete the incomplete `13-04` gate ritual (two-stage review + `/cso` already present as `13-CSO.md`/`13-REVIEW.md`; confirm completeness and produce/close `13-VERIFICATION.md` for the scoped-scan actions)
+
+### Phase 12.1 conformance chart legibility (emerged from 12-IMPECCABLE)
+
+- [ ] **IMPV-12.1-01**: Fix the two P1 findings from `12-IMPECCABLE.md` — add a persistent legend (family→stroke-color key, incl. "fleet") and label the 70 (floor) / 90 (target) threshold lines in `FleetTrendChart.tsx`. Re-critique to composite ≥ 83. Chart must be legible (which line is which family) without hover.
 
 ### Phase 14.1 IMPECCABLE lift (carry-over)
 
@@ -74,8 +78,9 @@
 | SENTRY-01..03 | Phase 8 | Pending |
 | LINEAR-01..03 | Phase 8 | Pending |
 | INFI-01..03 | Phase 8 | Pending |
-| GATE-12-01..03 | Phase 12 (close-out) | Pending |
+| GATE-12-01..03 | Phase 12 (close-out) | ✅ Complete (12-VERIFICATION.md) |
 | GATE-13-01 | Phase 13 (close-out) | Pending |
+| IMPV-12.1-01 | Phase 12.1 | Pending |
 | IMPV-01 | Phase 14.1 | Pending |
 | INV-01..05 | All phases | Pending |
 
