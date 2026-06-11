@@ -655,16 +655,22 @@ describe('linear/issues route', () => {
     )
     expect(res1.status).toBe(200)
 
-    // Evict the cache so the second request is a cache miss (forces a fresh fetch)
-    evictLinearCacheProject(projectId)
+    // Advance time past the 60s TTL to force a cache miss on the second request
+    // WITHOUT evicting the cache entry. evictLinearCacheProject would delete lastGood
+    // too, making the stale fallback impossible. Time advancement keeps lastGood intact
+    // while making the value stale.
+    const originalNow = Date.now
+    vi.spyOn(Date, 'now').mockReturnValue(originalNow() + 2 * 60 * 1000)
 
-    // Second request: fetch fails → falls back to lastGood → stale issue
+    // Second request: TTL expired → cache miss → fetch fails → falls back to lastGood
     mockFetch.mockRejectedValueOnce(new TypeError('Network failure'))
 
     const res2 = await app.request(
       `/api/projects/${projectId}/linear/issues`,
       { headers: authHeaders(token) },
     )
+
+    vi.restoreAllMocks()
 
     expect(res2.status).toBe(200)
     const body = await res2.json() as Record<string, unknown>

@@ -534,12 +534,9 @@ describe('sentry route', () => {
           status: 200,
           json: async () => [makeIssue(1)],
         })
-        // Third mock: issues for second request after issues-cache expires
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: async () => [makeIssue(2)],
-        })
+      // Note: no third mock — the second request is a full cache hit (issues TTL 60s not
+      // expired within the same test), so zero fetches are made. A third mockResolvedValueOnce
+      // here would remain unconsumed and corrupt the mock queue for subsequent tests.
 
       const app = createAppWithSentry(registryFile)
       const res1 = await app.request(
@@ -640,8 +637,11 @@ describe('sentry route', () => {
   describe('WR-01: malformed issue rows are filtered, not panel-collapsing', () => {
     it('WR-01a: unknown level coerced to "error", row still included', async () => {
       vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
-      vi.stubEnv('SENTRY_ORG_SLUG', 'acme')
-      vi.stubEnv('SENTRY_PROJECT_SLUG', 'web')
+
+      // Use tier-1 (.sentryclirc) so slug resolution makes ZERO API calls — exactly
+      // ONE fetch occurs (the issues call), keeping the mock sequence clean and
+      // unaffected by prior test state.
+      writeFileSync(join(projectRoot, '.sentryclirc'), makeSentryclircContent('acme', 'web'))
 
       // One issue with an unknown level ("sample") mixed with a valid one
       mockFetch.mockResolvedValueOnce({
@@ -672,8 +672,10 @@ describe('sentry route', () => {
 
     it('WR-01b: row with non-http(s) permalink is skipped, others still returned', async () => {
       vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
-      vi.stubEnv('SENTRY_ORG_SLUG', 'acme')
-      vi.stubEnv('SENTRY_PROJECT_SLUG', 'web')
+
+      // Use tier-1 (.sentryclirc) so slug resolution makes ZERO API calls — exactly
+      // ONE fetch occurs (the issues call), keeping the mock sequence clean.
+      writeFileSync(join(projectRoot, '.sentryclirc'), makeSentryclircContent('acme', 'web'))
 
       // One issue with a javascript: permalink (should be dropped), one valid
       mockFetch.mockResolvedValueOnce({
@@ -702,8 +704,10 @@ describe('sentry route', () => {
 
     it('WR-01c: all rows have non-http(s) permalinks → 200 with empty issues (not 503)', async () => {
       vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
-      vi.stubEnv('SENTRY_ORG_SLUG', 'acme')
-      vi.stubEnv('SENTRY_PROJECT_SLUG', 'web')
+
+      // Use tier-1 (.sentryclirc) so slug resolution makes ZERO API calls — exactly
+      // ONE fetch occurs (the issues call), keeping the mock sequence clean.
+      writeFileSync(join(projectRoot, '.sentryclirc'), makeSentryclircContent('acme', 'web'))
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
