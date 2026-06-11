@@ -66,7 +66,7 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
   - **Plans:** 6 plans (4 waves)
     - [x] 08-01-PLAN.md — Shared Zod schemas (Sentry, Linear, env, INFI-03 scope) [wave 1]
     - [x] 08-02-PLAN.md — Agent libs: outboundFetch (timeout/last-good/classify) + envFile (0600) + ENV_FILE [wave 2]
-    - [ ] 08-03-PLAN.md — Sentry route: slug resolution + /sentry/recent (60s cache, last-good, token-safe) [wave 3]
+    - [x] 08-03-PLAN.md — Sentry route: slug resolution + /sentry/recent (60s cache, last-good, token-safe) [wave 3]
     - [ ] 08-04-PLAN.md — env set/list/unset CLI + boot loadEnvFile + INFI-03 scope reflection [wave 3]
     - [ ] 08-05-PLAN.md — Linear route: branch+log detection + /linear/issues + mount both routes [wave 4]
     - [ ] 08-06-PLAN.md — SPA SentryPanel + LinearPanel + query hooks + SingleProjectView wiring [wave 4]
@@ -126,5 +126,5 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
 | 13. GitNexus scoped scans — gate close-out | v1.2 | 4/4 | ✅ Gate closed (retrospective) | 2026-06-10 |
 | 14.1. /code-intelligence IMPECCABLE lift | v1.2 | 1/1 | ✅ Complete (composite 74→81) | 2026-06-10 |
 | 14.1. `/code-intelligence` IMPECCABLE lift | v1.2 | 0/TBD | 🔨 Planned | - |
-| 8. Optional Integration Panels | v1.2 | 2/6 | In Progress|  |
+| 8. Optional Integration Panels | v1.2 | 3/6 | In Progress|  |
 | 9. Open-source Readiness | v1.3 | 0/TBD | 📋 Deferred | - |

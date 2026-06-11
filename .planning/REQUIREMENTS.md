@@ -12,7 +12,7 @@
 
 - [x] **SENTRY-01**: `GET /api/projects/{id}/sentry/recent` returns recent errors when `SENTRY_AUTH_TOKEN` is set on the daemon
 - [x] **SENTRY-02**: Response cached ~60s; on API failure the panel falls back to "Sentry API unreachable — using cached data from {time}" and never crashes
-- [ ] **SENTRY-03**: Without `SENTRY_AUTH_TOKEN`, the panel shows a "Configure to enable" empty state with a one-paragraph setup guide (link to `/help`)
+- [x] **SENTRY-03**: Without `SENTRY_AUTH_TOKEN`, the panel shows a "Configure to enable" empty state with a one-paragraph setup guide (link to `/help`)
 
 ### Linear integration panel (Phase 8)
 
@@ -46,7 +46,7 @@
 
 ### Cross-cutting invariants (must survive every v1.2 change)
 
-- [ ] **INV-01**: Read-only on project filesystems preserved — no new daemon route writes to a registered project's files (sole exception remains `POST /api/projects/{id}/open`)
+- [x] **INV-01**: Read-only on project filesystems preserved — no new daemon route writes to a registered project's files (sole exception remains `POST /api/projects/{id}/open`)
 - [x] **INV-02**: No native dependencies added to `packages/agent` (no `keytar`, no FFI) — Sentry/Linear clients are pure-JS HTTP
 - [ ] **INV-03**: Optional integrations stay optional — dashboard renders fully and all non-integration routes work with zero of `SENTRY_AUTH_TOKEN` / `LINEAR_API_KEY` / Infisical configured
 - [x] **INV-04**: Shared Zod schema is the single source of truth for any new daemon ↔ SPA wire shape (Sentry/Linear/Infisical payloads); both ends validate
