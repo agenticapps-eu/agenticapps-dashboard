@@ -138,16 +138,33 @@ describe('LinearPanel', () => {
     expect(screen.getByText('Agent unreachable — retrying...')).toBeDefined()
   })
 
-  it('LP4: empty issues array → renders static "LINEAR_API_KEY" configure copy', () => {
-    mockLinear({ data: EMPTY })
+  it('LP3b: not_configured error (daemon 404, key unset) → renders configure-to-enable copy, NOT unreachable (INV-03)', () => {
+    mockLinear({ error: new Error('not_configured') })
     const { container } = render(<LinearPanel projectId="proj-1" />)
-    // Must expand the collapsed panel to check body
+    expect(screen.queryByText('Agent unreachable — retrying...')).toBeNull()
+    // Configure copy is collapsed by default (D-6.1-02) — expand to read it
     fireEvent.click(screen.getByRole('button'))
     expect(container.textContent).toContain('LINEAR_API_KEY')
+    expect(container.textContent).toContain('enable the Linear panel')
+  })
+
+  it('LP3c: loading→not_configured transition stays collapsed (defaultCollapsed survives the state change)', () => {
+    mockLinear({ isLoading: true })
+    const { rerender } = render(<LinearPanel projectId="proj-1" />)
+    mockLinear({ error: new Error('not_configured') })
+    rerender(<LinearPanel projectId="proj-1" />)
+    expect(screen.queryByText(/enable the Linear panel/)).toBeNull()
+  })
+
+  it('LP4: configured but zero issues (HTTP 200 empty) → renders "No recent Linear issues", NOT configure copy', () => {
+    mockLinear({ data: EMPTY })
+    const { container } = render(<LinearPanel projectId="proj-1" />)
+    expect(container.textContent).toContain('No recent Linear issues')
+    expect(container.textContent).not.toContain('LINEAR_API_KEY')
   })
 
   it('LP5: configure copy is static JSX, not sourced from query.data (T-05-05-Static-Copy-Trust)', () => {
-    mockLinear({ data: EMPTY })
+    mockLinear({ error: new Error('not_configured') })
     const { container } = render(<LinearPanel projectId="proj-1" />)
     fireEvent.click(screen.getByRole('button'))
     // The literal must appear verbatim — "Set LINEAR_API_KEY to enable the Linear panel."
@@ -204,10 +221,10 @@ describe('LinearPanel', () => {
     expect(container.textContent).toContain(STALE_DATA.staleFrom!)
   })
 
-  it('LP12: configure empty state has defaultCollapsed (panel starts collapsed, click to expand)', () => {
-    mockLinear({ data: EMPTY })
+  it('LP12: not_configured configure state has defaultCollapsed (panel starts collapsed, click to expand)', () => {
+    mockLinear({ error: new Error('not_configured') })
     render(<LinearPanel projectId="proj-1" />)
-    // D-6.1-02: empty state panel is collapsed by default — header is a button
+    // D-6.1-02: not-configured panel is collapsed by default — header is a button
     const button = screen.getByRole('button')
     expect(button).toBeDefined()
     // The configure copy should NOT be visible initially

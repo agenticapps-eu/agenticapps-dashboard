@@ -101,18 +101,40 @@ describe('SentryPanel', () => {
     expect(screen.getByText('Agent unreachable — retrying...')).toBeDefined()
   })
 
-  it('SP4: empty issues array → renders static "SENTRY_AUTH_TOKEN" configure copy', () => {
-    mockSentry({ data: EMPTY })
+  it('SP3b: not_configured error (daemon 404, token unset) → renders configure-to-enable copy, NOT unreachable (INV-03)', () => {
+    mockSentry({ error: new Error('not_configured') })
     const { container } = render(<SentryPanel projectId="proj-1" />)
-    // Must expand the collapsed panel to check body
+    // Must NOT show the misleading "Agent unreachable" error for a simply-unconfigured integration
+    expect(screen.queryByText('Agent unreachable — retrying...')).toBeNull()
+    // Configure copy is collapsed by default (D-6.1-02) — expand to read it
     fireEvent.click(screen.getByRole('button'))
     expect(container.textContent).toContain('SENTRY_AUTH_TOKEN')
+    expect(container.textContent).toContain('enable the Sentry panel')
+  })
+
+  it('SP3c: loading→not_configured transition stays collapsed (defaultCollapsed survives the state change)', () => {
+    // Reproduces the live bug: the panel first mounts in the loading state
+    // (PanelContainer with collapsed=false), then the query settles to
+    // not_configured. The configure copy must remain hidden until the user
+    // expands it — i.e. defaultCollapsed must take effect across the transition.
+    mockSentry({ isLoading: true })
+    const { rerender } = render(<SentryPanel projectId="proj-1" />)
+    mockSentry({ error: new Error('not_configured') })
+    rerender(<SentryPanel projectId="proj-1" />)
+    expect(screen.queryByText(/enable the Sentry panel/)).toBeNull()
+  })
+
+  it('SP4: configured but zero issues (HTTP 200 empty) → renders "No recent Sentry issues", NOT configure copy', () => {
+    mockSentry({ data: EMPTY })
+    const { container } = render(<SentryPanel projectId="proj-1" />)
+    expect(container.textContent).toContain('No recent Sentry issues')
+    // When the token IS configured, telling the user to set it again would be wrong
+    expect(container.textContent).not.toContain('SENTRY_AUTH_TOKEN')
   })
 
   it('SP5: configure copy is static JSX, not sourced from query.data (T-05-05-Static-Copy-Trust)', () => {
-    // Even with data that has no configureMessage field, the copy must still appear
-    // This test verifies the configure copy is a literal, not data-driven
-    mockSentry({ data: EMPTY })
+    // The configure copy is a literal shown only in the not_configured state.
+    mockSentry({ error: new Error('not_configured') })
     const { container } = render(<SentryPanel projectId="proj-1" />)
     fireEvent.click(screen.getByRole('button'))
     // The literal must appear verbatim — "Set SENTRY_AUTH_TOKEN to enable the Sentry panel."
@@ -180,10 +202,10 @@ describe('SentryPanel', () => {
     expect(container.textContent).toContain(STALE_DATA.staleFrom!)
   })
 
-  it('SP12: configure empty state has defaultCollapsed (panel starts collapsed, click to expand)', () => {
-    mockSentry({ data: EMPTY })
+  it('SP12: not_configured configure state has defaultCollapsed (panel starts collapsed, click to expand)', () => {
+    mockSentry({ error: new Error('not_configured') })
     render(<SentryPanel projectId="proj-1" />)
-    // D-6.1-02: empty state panel is collapsed by default — header is a button
+    // D-6.1-02: not-configured panel is collapsed by default — header is a button
     const button = screen.getByRole('button')
     expect(button).toBeDefined()
     // The configure copy should NOT be visible initially

@@ -83,6 +83,18 @@ function makeDriftResponse() {
   })
 }
 
+function makeNotConfiguredResponse() {
+  // The daemon returns 404 { ok:false, error:'not_configured' } when the
+  // integration env var (SENTRY_AUTH_TOKEN / LINEAR_API_KEY) is unset.
+  const body = { ok: false, error: 'not_configured', requestId: 'req-nc' }
+  return Promise.resolve({
+    ok: false,
+    status: 404,
+    json: () => Promise.resolve(body),
+    clone: () => ({ json: () => Promise.resolve(body) }),
+  })
+}
+
 // ── Valid fixture bodies ──────────────────────────────────────────────────────
 
 const COMMITMENT_BODY = { markdown: '## Workflow commitment\n\nI commit.', sourceFile: 'session-2026.md' }
@@ -936,6 +948,20 @@ describe('useSentryRecent', () => {
 
     qc.clear()
   })
+
+  it('SR7: on 404 not_configured, hook errors with message "not_configured" (INV-03)', async () => {
+    mockFetch.mockResolvedValue(makeNotConfiguredResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSentryRecent('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    // Must be the sentinel 'not_configured', NOT the generic 'HTTP 404',
+    // so the panel renders configure-to-enable copy instead of "unreachable".
+    expect((result.current.error as Error).message).toBe('not_configured')
+
+    qc.clear()
+  })
 })
 
 // ── useLinearIssues ────────────────────────────────────────────────────────────
@@ -1029,6 +1055,18 @@ describe('useLinearIssues', () => {
     expect(acmeCacheData).toEqual(acmeBody)
     expect(betaCacheData).toEqual(betaBody)
     expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('LI7: on 404 not_configured, hook errors with message "not_configured" (INV-03)', async () => {
+    mockFetch.mockResolvedValue(makeNotConfiguredResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLinearIssues('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toBe('not_configured')
 
     qc.clear()
   })

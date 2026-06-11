@@ -56,7 +56,7 @@ import {
   type LinearIssuesResponse,
 } from '@agenticapps/dashboard-shared'
 
-import { apiFetch } from './api.js'
+import { ApiError, apiFetch } from './api.js'
 
 const POLL_MS = 5_000
 const DEFAULT_OBS_LIMIT = 20
@@ -294,9 +294,20 @@ export function useSentryRecent(id: string | null) {
   return useQuery({
     queryKey: ['sentry-recent', id] as const,
     queryFn: async (): Promise<SentryRecentResponse> => {
-      const result = await apiFetch(`/api/projects/${id}/sentry/recent`, SentryRecentResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
-      return result.data
+      try {
+        const result = await apiFetch(`/api/projects/${id}/sentry/recent`, SentryRecentResponseSchema)
+        if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+        return result.data
+      } catch (e) {
+        // The daemon returns 404 not_configured when SENTRY_AUTH_TOKEN is unset.
+        // Surface it as the 'not_configured' sentinel so the panel can render the
+        // configure-to-enable empty state (INV-03) rather than a misleading
+        // "unreachable" error.
+        if (e instanceof ApiError && e.code === 'not_configured') {
+          throw new Error('not_configured')
+        }
+        throw e
+      }
     },
     enabled: id !== null,
     staleTime: SKILLS_TTL_MS,
@@ -317,9 +328,20 @@ export function useLinearIssues(id: string | null) {
   return useQuery({
     queryKey: ['linear-issues', id] as const,
     queryFn: async (): Promise<LinearIssuesResponse> => {
-      const result = await apiFetch(`/api/projects/${id}/linear/issues`, LinearIssuesResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
-      return result.data
+      try {
+        const result = await apiFetch(`/api/projects/${id}/linear/issues`, LinearIssuesResponseSchema)
+        if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+        return result.data
+      } catch (e) {
+        // The daemon returns 404 not_configured when LINEAR_API_KEY is unset.
+        // Surface it as the 'not_configured' sentinel so the panel can render the
+        // configure-to-enable empty state (INV-03) rather than a misleading
+        // "unreachable" error.
+        if (e instanceof ApiError && e.code === 'not_configured') {
+          throw new Error('not_configured')
+        }
+        throw e
+      }
     },
     enabled: id !== null,
     staleTime: SKILLS_TTL_MS,

@@ -7,10 +7,11 @@
  *
  * States:
  *   1. schema_drift error → InlineDrift (INV-04 at the browser boundary)
+ *   1b. not_configured error (daemon 404 when LINEAR_API_KEY unset) → static
+ *       configure-to-enable JSX literal (T-05-05-Static-Copy-Trust), defaultCollapsed (INV-03)
  *   2. isLoading → 'Loading...'
  *   3. Other error / no data → PanelContainer unreachable=true
- *   4a. data.issues.length === 0 / not-configured → static configure-to-enable JSX literal
- *       (T-05-05-Static-Copy-Trust — copy is a literal, never daemon-supplied), defaultCollapsed
+ *   4a. Configured, data.issues.length === 0 → "No recent Linear issues." (healthy empty state)
  *   4b. Happy path → up to 3 issue rows with identifier, title, stateName, assignee, link-out
  *
  * Stale handling:
@@ -62,6 +63,26 @@ export function LinearPanel({ projectId }: LinearPanelProps): React.JSX.Element 
     )
   }
 
+  // 1b. Not configured (daemon 404 not_configured when LINEAR_API_KEY is unset)
+  // → static configure-to-enable copy (INV-03), NOT the unreachable error state.
+  // STATIC JSX literal (T-05-05-Static-Copy-Trust); collapsed by default (D-6.1-02).
+  if (query.error?.message === 'not_configured') {
+    return (
+      // key forces a fresh PanelContainer mount on the loading→not_configured
+      // transition so defaultCollapsed actually takes effect (D-6.1-02). Without
+      // it, React reuses the loading-state instance whose collapsed state was
+      // initialised to false, leaving the configure copy expanded.
+      <PanelContainer key="not-configured" panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed>
+        <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
+          Set <code className="font-mono">LINEAR_API_KEY</code> to enable the Linear panel.{' '}
+          <a href="/help" className="text-accent underline-offset-2 hover:underline">
+            Learn more
+          </a>
+        </p>
+      </PanelContainer>
+    )
+  }
+
   // 2. Loading (copied verbatim from ObservabilityHealth.tsx)
   if (query.isLoading) {
     return (
@@ -82,17 +103,13 @@ export function LinearPanel({ projectId }: LinearPanelProps): React.JSX.Element 
 
   const data = query.data
 
-  // 4a. Not-configured / empty — STATIC JSX literal (T-05-05-Static-Copy-Trust)
-  // D-6.1-02: collapse by default in empty/not-configured state
+  // 4a. Configured but no recent issues (daemon returned HTTP 200 with empty list).
+  // A calm, healthy signal — distinct from the not-configured state above, which
+  // must never tell a user who HAS set LINEAR_API_KEY to set it again.
   if (data.issues.length === 0) {
     return (
-      <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed>
-        <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
-          Set <code className="font-mono">LINEAR_API_KEY</code> to enable the Linear panel.{' '}
-          <a href="/help" className="text-accent underline-offset-2 hover:underline">
-            Learn more
-          </a>
-        </p>
+      <PanelContainer panelId={PANEL_ID} title={PANEL_TITLE}>
+        <p className="text-sm text-text-secondary">No recent Linear issues.</p>
       </PanelContainer>
     )
   }
