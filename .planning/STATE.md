@@ -4,12 +4,12 @@ milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-06-11T07:38:00.544Z"
-last_activity: "2026-06-10 — Phase 14.1 landed: /code-intelligence lift (error recovery+Retry, communicative Status/Actions cells, relative time, de-uppercased headers, fixed transparent status-pill tokens). Composite 74→81; structural-debt waiver retired. Re-critique caught + fixed a pill-token regression. TDD; 1212 spa tests green."
+last_updated: "2026-06-11T09:26:09.377Z"
+last_activity: 2026-06-11 -- Phase 08 planning complete
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 Phase: 12 ✅ + 12.1 ✅ + 13 ✅ + 14.1 ✅ → next: Phase 8 (Sentry/Linear/Infisical panels — the final v1.2 phase)
 Plan: 14.1 (/code-intelligence lift) done (TDD, composite 74→81)
-Status: v1.2 in progress — 4 of 5 done; only Phase 8 (net-new feature) remains
-Last activity: 2026-06-10 — Phase 14.1 landed: /code-intelligence lift (error recovery+Retry, communicative Status/Actions cells, relative time, de-uppercased headers, fixed transparent status-pill tokens). Composite 74→81; structural-debt waiver retired. Re-critique caught + fixed a pill-token regression. TDD; 1212 spa tests green.
+Status: Ready to execute
+Last activity: 2026-06-11 -- Phase 08 planning complete
 
 ## Deferred Items
 
