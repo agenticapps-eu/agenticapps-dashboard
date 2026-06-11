@@ -87,7 +87,7 @@ export function assertSecurePermissions(filePath: string = AUTH_FILE): void {
   }
 }
 
-function ensureConfigDir(dir: string = CONFIG_DIR): void {
+export function ensureConfigDir(dir: string = CONFIG_DIR): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
   }
