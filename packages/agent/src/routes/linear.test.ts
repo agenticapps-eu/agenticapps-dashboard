@@ -631,4 +631,55 @@ describe('linear/issues route', () => {
     expect(() => evictLinearCacheProject(projectId)).not.toThrow()
     expect(() => evictLinearCacheProject('nonexistent-project')).not.toThrow()
   })
+
+  // WR-02: top-level staleReason must be populated when all issues fall back to last-good
+  it('WR-02: top-level staleReason is set when all issues use last-good fallback', async () => {
+    process.env.LINEAR_API_KEY = 'lin_api_test_key'
+    mockRunAllowedGit
+      .mockResolvedValueOnce({ stdout: 'feature/ACME-123-fix', stderr: '', exitCode: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+      .mockResolvedValueOnce({ stdout: 'feature/ACME-123-fix', stderr: '', exitCode: 0 })
+      .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+
+    const app = createAppWithLinear(registryFile)
+
+    // First request: success → populates lastGood for ACME-123
+    mockFetch.mockResolvedValueOnce({
+      ok: true, status: 200,
+      json: async () => makeGraphQLResponse(makeLinearIssueData('ACME-123')),
+      headers: { get: () => null },
+    })
+    const res1 = await app.request(
+      `/api/projects/${projectId}/linear/issues`,
+      { headers: authHeaders(token) },
+    )
+    expect(res1.status).toBe(200)
+
+    // Evict the cache so the second request is a cache miss (forces a fresh fetch)
+    evictLinearCacheProject(projectId)
+
+    // Second request: fetch fails → falls back to lastGood → stale issue
+    mockFetch.mockRejectedValueOnce(new TypeError('Network failure'))
+
+    const res2 = await app.request(
+      `/api/projects/${projectId}/linear/issues`,
+      { headers: authHeaders(token) },
+    )
+
+    expect(res2.status).toBe(200)
+    const body = await res2.json() as Record<string, unknown>
+
+    // All issues are stale — top-level staleReason must be set (WR-02)
+    expect(body.stale).toBe(true)
+    expect(body.staleReason).toBeDefined()
+    expect(['unreachable', 'unauthorized', 'rate-limited']).toContain(body.staleReason)
+
+    // staleFrom must also be set
+    expect(typeof body.staleFrom).toBe('string')
+
+    // The issue itself should be in the array (stale copy from lastGood)
+    const issues = body.issues as Array<Record<string, unknown>>
+    expect(issues.length).toBe(1)
+    expect(issues[0]?.stale).toBe(true)
+  })
 })

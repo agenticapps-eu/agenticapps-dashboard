@@ -315,11 +315,18 @@ linearRoute.get('/:id/linear/issues', async (c) => {
   }
 
   const allStale = issues.length > 0 && issues.every((i) => i.stale)
+  // WR-02: when all issues fell back to last-good, overallStaleReason was never
+  // assigned in the last-good branch (only the no-last-good branch set it).
+  // Derive it from the first stale issue's staleReason so the top-level contract
+  // is fulfilled and the SPA stale banner shows the correct reason.
+  const resolvedStaleReason: LinearIssuesResponse['staleReason'] = allStale
+    ? (overallStaleReason ?? issues.find((i) => i.staleReason)?.staleReason)
+    : undefined
   const response: LinearIssuesResponse = {
     issues,
     stale: allStale,
     staleFrom: allStale && issues[0]?.staleFrom ? issues[0].staleFrom : undefined,
-    staleReason: allStale ? overallStaleReason : undefined,
+    staleReason: resolvedStaleReason,
   }
 
   return outbound(
