@@ -36,7 +36,7 @@ const mockedAgentError = agentError as ReturnType<typeof vi.fn>
 // Stub process.exit so tests don't kill the runner
 // ---------------------------------------------------------------------------
 
-const mockExit = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string | null) => {
+const _mockExit = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string | null) => {
   throw new Error(`process.exit(${_code})`)
 })
 
