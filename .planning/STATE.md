@@ -2,11 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
-status: planning
-last_updated: "2026-06-10T11:20:55.647Z"
-last_activity: 2026-06-10
+status: executing
+stopped_at: Phase 8 context gathered
+last_updated: "2026-06-11T07:38:00.544Z"
+last_activity: "2026-06-10 — Phase 14.1 landed: /code-intelligence lift (error recovery+Retry, communicative Status/Actions cells, relative time, de-uppercased headers, fixed transparent status-pill tokens). Composite 74→81; structural-debt waiver retired. Re-critique caught + fixed a pill-token regression. TDD; 1212 spa tests green."
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -168,9 +169,9 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-06T17:01:43.712Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/DASH-14-understand-anything-integration-daemon-hosted-knowledge-grap/14-CONTEXT.md
+Last session: 2026-06-11T07:38:00.523Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/DASH-08-optional-integration-panels/08-CONTEXT.md
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
 
 ## Operator Next Steps
