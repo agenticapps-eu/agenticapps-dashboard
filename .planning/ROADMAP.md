@@ -66,6 +66,27 @@ Ordering puts the quick carry-over close-outs first (clears v1.1 debt, gives a g
 
 > Invariants INV-01..05 (read-only FS, no native deps, optional-stays-optional, shared-schema SoT, `0600` secrets) apply across every v1.2 phase.
 
+#### Phase 8: Optional Integration Panels
+
+**Goal:** Add read-only Sentry, Linear, and Infisical panels that surface live data when their env vars are configured and show graceful "configure to enable" empty states when they are not — without making the dashboard depend on any of them. Source: spec §"Optional integrations: the contract" (lines 508–544), §"Optional integration routes" (lines 354–369), and `/api/projects/{id}/integrations` (lines 347–351).
+
+**Depends on:** Phase 6 (complete dashboard baseline). Independent of the v1.2 close-out phases.
+
+**Scope:**
+- `GET /api/projects/{id}/integrations` — configured-or-not status for all three (read from project `.env`/config, never a remote service).
+- `GET /api/projects/{id}/sentry/recent` — env-gated (`SENTRY_AUTH_TOKEN`), 60s cache, 404 "not configured" body when unset.
+- `GET /api/projects/{id}/linear/issue/{issueId}` — env-gated (`LINEAR_API_KEY`), 60s cache, 404 "not configured" body when unset.
+- Infisical-aware env loading + read-only `.infisical.json` status reflection (no Infisical API calls).
+- SPA panels for each, with "Configure {ENV_VAR} to enable" empty states and cached-data fallback copy on API failure.
+- Shared Zod schemas in `packages/shared/` for every new wire shape.
+
+**Success Criteria:**
+1. With zero integration env vars set, all three panels render "configure to enable" copy and the dashboard remains fully functional.
+2. With tokens set, Sentry and Linear panels show live data; Infisical status reflects `.infisical.json` presence.
+3. API failures show "unreachable — using cached data from {time}" rather than crashing.
+4. No native dependencies added to `packages/agent/`; secrets handling honors the `0600` constraint.
+5. All new daemon↔SPA wire shapes validate against shared Zod schemas (single source of truth).
+
 ### 📋 v1.3 (much later)
 
 - [ ] Phase 9: Open-source Readiness — LICENSE, CONTRIBUTING, optional public landing
