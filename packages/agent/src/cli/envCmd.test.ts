@@ -111,7 +111,7 @@ describe('runEnvSet', () => {
 
     expect(code).toBe(1)
     expect(mockedAgentError).toHaveBeenCalledOnce()
-    const errMsg: string = mockedAgentError.mock.calls[0][0] as string
+    const errMsg: string = (mockedAgentError.mock.calls[0] as unknown[])[0] as string
     expect(errMsg).toContain('AWS_SECRET')
     expect(errMsg).toMatch(/SENTRY_AUTH_TOKEN|LINEAR_API_KEY|INFISICAL_TOKEN/)
   })
@@ -126,7 +126,7 @@ describe('runEnvSet', () => {
       const mode = statSync(envPath).mode & 0o777
       expect(mode).toBe(0o600)
       expect(mockedAgentLog).toHaveBeenCalledOnce()
-      const logMsg: string = mockedAgentLog.mock.calls[0][0] as string
+      const logMsg: string = (mockedAgentLog.mock.calls[0] as unknown[])[0] as string
       expect(logMsg).toContain('SENTRY_AUTH_TOKEN')
       expect(logMsg).toContain('Restart')
     } finally {
@@ -187,7 +187,7 @@ describe('runEnvUnset', () => {
   it('E4: removes the key from env.json and rewrites at 0600', async () => {
     const { envPath, cleanup } = makeTmpDir()
     try {
-      const { runEnvSet, runEnvUnset } = await getEnvCmd()
+      const { runEnvSet, runEnvUnset, runEnvList } = await getEnvCmd()
 
       await callWithExit(() => runEnvSet('SENTRY_AUTH_TOKEN', 'sntrys_tok', envPath))
       vi.clearAllMocks()
