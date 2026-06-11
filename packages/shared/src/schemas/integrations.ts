@@ -15,10 +15,15 @@ export type IntegrationState = z.infer<typeof IntegrationStateSchema>
 /**
  * GET /api/projects/:id/integrations response.
  * Three integrations: Sentry, Linear, Infisical.
+ * INFI-03: optional scope reflection fields (workspaceId, environment) sourced from
+ * .infisical.json — these are project-config identifiers, not secrets (Research Finding 8).
+ * Existing consumers are unaffected: fields are optional and backward-compatible.
  */
 export const IntegrationsResponseSchema = z.object({
   sentry: IntegrationStateSchema,
   linear: IntegrationStateSchema,
   infisical: IntegrationStateSchema,
+  infisicalWorkspaceId: z.string().optional(),
+  infisicalEnvironment: z.string().optional(),
 })
 export type IntegrationsResponse = z.infer<typeof IntegrationsResponseSchema>
