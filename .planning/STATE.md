@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-06-11T09:26:09.377Z"
-last_activity: 2026-06-11 -- Phase 08 planning complete
+last_updated: "2026-06-11T10:39:53.331Z"
+last_activity: 2026-06-11 -- Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.2 in progress — closing carry-over gates then Phase 8 integration panels.
+**Current focus:** Phase 08 — optional-integration-panels
 
 ## Current Position
 
-Phase: 12 ✅ + 12.1 ✅ + 13 ✅ + 14.1 ✅ → next: Phase 8 (Sentry/Linear/Infisical panels — the final v1.2 phase)
-Plan: 14.1 (/code-intelligence lift) done (TDD, composite 74→81)
-Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 08 planning complete
+Phase: 08 (optional-integration-panels) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 08
+Last activity: 2026-06-11 -- Phase 08 execution started
 
 ## Deferred Items
 
