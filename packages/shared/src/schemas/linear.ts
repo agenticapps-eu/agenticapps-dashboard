@@ -1,6 +1,16 @@
 import { z } from 'zod'
 
 /**
+ * URL constrained to http(s) schemes only (CR-01 — defense against javascript:/data: injection).
+ * z.string().url() accepts any valid URL scheme; this refine rejects non-http(s) at parse time
+ * so a hostile url from upstream surfaces as schema-drift instead of a live link.
+ */
+const HttpUrl = z
+  .string()
+  .url()
+  .refine((u: string) => /^https?:\/\//i.test(u), { message: 'must be http(s)' })
+
+/**
  * A single Linear issue fetched by human-readable identifier (e.g. "ACME-123").
  * Fields mapped from the GraphQL response: state.name → stateName, state.type → stateType,
  * assignee.name → assigneeName (nullable when unassigned).
@@ -9,7 +19,7 @@ import { z } from 'zod'
 export const LinearIssueSchema = z.object({
   identifier: z.string(),
   title: z.string(),
-  url: z.string().url(),
+  url: HttpUrl,
   stateName: z.string(),
   stateType: z.enum(['started', 'completed', 'cancelled', 'backlog', 'unstarted']),
   assigneeName: z.string().nullable(),

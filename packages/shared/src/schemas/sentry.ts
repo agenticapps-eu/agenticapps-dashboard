@@ -1,6 +1,16 @@
 import { z } from 'zod'
 
 /**
+ * URL constrained to http(s) schemes only (CR-01 — defense against javascript:/data: injection).
+ * z.string().url() accepts any valid URL scheme; this refine rejects non-http(s) at parse time
+ * so a hostile permalink from upstream surfaces as schema-drift instead of a live link.
+ */
+const HttpUrl = z
+  .string()
+  .url()
+  .refine((u: string) => /^https?:\/\//i.test(u), { message: 'must be http(s)' })
+
+/**
  * A single Sentry issue from the org-level issues endpoint.
  * A2 defensive: `count` is returned as a JSON string by the Sentry API
  * but may also arrive as a number — transform to string in either case.
@@ -12,7 +22,7 @@ export const SentryIssueSchema = z.object({
   level: z.enum(['fatal', 'error', 'warning', 'info', 'debug']),
   count: z.union([z.string(), z.number()]).transform(String),
   lastSeen: z.string(),
-  permalink: z.string().url(),
+  permalink: HttpUrl,
   shortId: z.string(),
 })
 export type SentryIssue = z.infer<typeof SentryIssueSchema>

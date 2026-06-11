@@ -227,4 +227,32 @@ describe('LinearPanel', () => {
     expect(source).not.toContain('useLinearIssues')
     expect(source).not.toContain('linear/issues')
   })
+
+  // CR-01 defense-in-depth: schema already rejects non-http(s), but the render
+  // guard is a second layer — verify it via a directly-constructed data object
+  // that bypasses schema validation (as if schema parsing were somehow skipped).
+  it('CR-01: render guard — non-http(s) url renders as plain text, not a live link', () => {
+    // Bypass schema by casting — simulates defense-in-depth scenario
+    const dataWithBadUrl: LinearIssuesResponse = {
+      issues: [
+        {
+          identifier: 'BAD-001',
+          title: 'Bad link issue',
+          url: 'javascript:alert(1)' as unknown as `https://${string}`,
+          stateName: 'In Progress',
+          stateType: 'started',
+          assigneeName: null,
+          stale: false,
+        },
+      ],
+      stale: false,
+    }
+    mockLinear({ data: dataWithBadUrl })
+    const { container } = render(<LinearPanel projectId="proj-1" />)
+    // Must NOT render as a live anchor with the malicious href
+    const dangerousLink = container.querySelector('a[href="javascript:alert(1)"]')
+    expect(dangerousLink).toBeNull()
+    // The identifier should still appear as text
+    expect(screen.getByText('BAD-001')).toBeDefined()
+  })
 })

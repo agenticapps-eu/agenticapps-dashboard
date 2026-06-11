@@ -48,6 +48,27 @@ describe('LinearIssueSchema', () => {
       LinearIssueSchema.parse({ ...baseIssue, url: 'not-a-url' })
     ).toThrow()
   })
+
+  // CR-01: javascript:/data: scheme rejection
+  it('CR-01: rejects a javascript: url (XSS vector)', () => {
+    expect(() =>
+      LinearIssueSchema.parse({ ...baseIssue, url: 'javascript:alert(1)' })
+    ).toThrow()
+  })
+
+  it('CR-01: rejects a data: url (XSS vector)', () => {
+    expect(() =>
+      LinearIssueSchema.parse({ ...baseIssue, url: 'data:text/html,<script>alert(1)</script>' })
+    ).toThrow()
+  })
+
+  it('CR-01: accepts https: url', () => {
+    const result = LinearIssueSchema.parse({
+      ...baseIssue,
+      url: 'https://linear.app/acme/issue/ACME-999',
+    })
+    expect(result.url).toContain('https://')
+  })
 })
 
 describe('LinearIssuesResponseSchema', () => {

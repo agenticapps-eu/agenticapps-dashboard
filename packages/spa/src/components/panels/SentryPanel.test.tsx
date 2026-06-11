@@ -192,4 +192,32 @@ describe('SentryPanel', () => {
     fireEvent.click(button)
     expect(screen.getByText(/enable the Sentry panel/)).toBeDefined()
   })
+
+  // CR-01 defense-in-depth: schema already rejects non-http(s), but the render
+  // guard is a second layer — verify it via a directly-constructed data object
+  // that bypasses schema validation (as if schema parsing were somehow skipped).
+  it('CR-01: render guard — non-http(s) permalink renders as plain text, not a live link', () => {
+    // Bypass schema by casting — simulates defense-in-depth scenario
+    const dataWithBadUrl = {
+      issues: [
+        {
+          id: 'x1',
+          title: 'Bad link issue',
+          level: 'error' as const,
+          count: '1',
+          lastSeen: '2026-06-11T10:00:00.000Z',
+          permalink: 'javascript:alert(1)',
+          shortId: 'BAD-001',
+        },
+      ],
+      stale: false,
+    }
+    mockSentry({ data: dataWithBadUrl })
+    const { container } = render(<SentryPanel projectId="proj-1" />)
+    // Must NOT render as a live anchor with the malicious href
+    const dangerousLink = container.querySelector('a[href="javascript:alert(1)"]')
+    expect(dangerousLink).toBeNull()
+    // The shortId should still appear as text
+    expect(screen.getByText('BAD-001')).toBeDefined()
+  })
 })

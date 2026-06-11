@@ -40,6 +40,27 @@ describe('SentryIssueSchema', () => {
   it('rejects a non-URL permalink', () => {
     expect(() => SentryIssueSchema.parse({ ...baseIssue, permalink: 'not-a-url' })).toThrow()
   })
+
+  // CR-01: javascript:/data: scheme rejection
+  it('CR-01: rejects a javascript: permalink (XSS vector)', () => {
+    expect(() =>
+      SentryIssueSchema.parse({ ...baseIssue, permalink: 'javascript:alert(1)' })
+    ).toThrow()
+  })
+
+  it('CR-01: rejects a data: permalink (XSS vector)', () => {
+    expect(() =>
+      SentryIssueSchema.parse({ ...baseIssue, permalink: 'data:text/html,<script>alert(1)</script>' })
+    ).toThrow()
+  })
+
+  it('CR-01: accepts https: permalink', () => {
+    const result = SentryIssueSchema.parse({
+      ...baseIssue,
+      permalink: 'https://sentry.io/organizations/acme/issues/999/',
+    })
+    expect(result.permalink).toContain('https://')
+  })
 })
 
 describe('SentryRecentResponseSchema', () => {

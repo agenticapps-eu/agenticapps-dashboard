@@ -118,15 +118,24 @@ export function SentryPanel({ projectId }: SentryPanelProps): React.JSX.Element 
               </span>
               <span>{Number(issue.count).toLocaleString()} events</span>
               <span>{issue.lastSeen}</span>
-              <a
-                href={issue.permalink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-accent underline-offset-2 hover:underline"
-              >
-                {issue.shortId}
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
+              {/* CR-01 defense-in-depth: only render as live link when scheme is http(s).
+                  The schema already rejects non-http(s) permalinks; this guard handles
+                  any future code path that might bypass schema validation. */}
+              {/^https?:/i.test(issue.permalink) ? (
+                <a
+                  href={issue.permalink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-accent underline-offset-2 hover:underline"
+                >
+                  {issue.shortId}
+                  <ExternalLink size={12} aria-hidden="true" />
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-text-secondary">
+                  {issue.shortId}
+                </span>
+              )}
             </div>
           </li>
         ))}
