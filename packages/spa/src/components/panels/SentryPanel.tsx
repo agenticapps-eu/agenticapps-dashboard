@@ -80,7 +80,7 @@ export function SentryPanel({ projectId }: SentryPanelProps): React.JSX.Element 
         defaultCollapsed
         collapsedHint="not configured"
       >
-        <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
+        <p className="max-w-[75ch] text-sm leading-relaxed text-text-secondary">
           Set <code className="font-mono">SENTRY_AUTH_TOKEN</code> to enable the Sentry panel.{' '}
           <a href="/help" className="text-accent underline-offset-2 hover:underline">
             Learn more
