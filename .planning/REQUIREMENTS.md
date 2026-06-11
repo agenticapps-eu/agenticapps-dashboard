@@ -17,8 +17,8 @@
 ### Linear integration panel (Phase 8)
 
 - [x] **LINEAR-01**: `GET /api/projects/{id}/linear/issue/{issueId}` returns issue title/status/assignee when `LINEAR_API_KEY` is set on the daemon
-- [ ] **LINEAR-02**: Branch-name / commit pattern detection links commits/PRs to Linear issue IDs (the static `Linear: ACME-123` link needs no API call)
-- [ ] **LINEAR-03**: Without `LINEAR_API_KEY`, the panel shows a "Configure to enable" empty state
+- [x] **LINEAR-02**: Branch-name / commit pattern detection links commits/PRs to Linear issue IDs (the static `Linear: ACME-123` link needs no API call)
+- [x] **LINEAR-03**: Without `LINEAR_API_KEY`, the panel shows a "Configure to enable" empty state
 
 ### Infisical surface (Phase 8)
 

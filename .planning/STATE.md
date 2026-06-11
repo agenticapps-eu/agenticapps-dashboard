@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-06-11T11:25:47.591Z"
+stopped_at: Completed 08-05-PLAN.md — Linear route + both routes mounted in app.ts
+last_updated: "2026-06-11T11:38:16.844Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 08 (optional-integration-panels) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-06-11
 
@@ -99,6 +99,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 08 P02 | 8min | 3 tasks | 8 files |
 | Phase 08 P03 | ~8.5 min | 2 tasks | 2 files |
 | Phase 08 P04 | 517 | 3 tasks | 6 files |
+| Phase 08-optional-integration-panels P05 | 517 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Recent decisions affecting current work:
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
 - [Phase 14]: D-10.5-03.calibration-2 — floor RATIFIED at 80 + per-phase structural-debt waiver clause (user, 2026-06-08). Data point #3 = Phase 14 (composite 78; /coverage 80, /code-intelligence 74), confirming band 74/76/78 with /coverage reaching 80. /coverage 80 passes; /code-intelligence 74 waived to the 14.1 polish bundle (recorded in 14-VERIFICATION.md). CLAUDE.md floor line updated 87→80. Closes D-10.5-03.calibration-1.
 - [Phase ?]: ./daemon subpath export in shared — avoids rootDir violation; env.ts absent from browser-facing index.ts (T-08-01/INV-05)
+- [Phase ?]: Cache keyed projectId:issueId for Linear (Pitfall 7) — same issueId across two projects must not share cache entries
+- [Phase ?]: Linear auth: raw API key header (no Bearer prefix) — lin_api_* keys differ from OAuth Bearer tokens
 
 ### Pending Todos
 
@@ -173,8 +176,8 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-11T11:25:47.572Z
-Stopped at: Phase 8 context gathered
+Last session: 2026-06-11T11:38:16.833Z
+Stopped at: Completed 08-05-PLAN.md — Linear route + both routes mounted in app.ts
 Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
 
