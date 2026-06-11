@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
 status: executing
-stopped_at: 08-01 complete — shared Zod schemas for Sentry/Linear/env.json
-last_updated: "2026-06-11T10:45:30.372Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-06-11T10:58:59.535Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 08 (optional-integration-panels) — EXECUTING
-Plan: 2 of 6
-Status: Plan 01 complete — executing Plan 02
-Last activity: 2026-06-11 -- 08-01 shared schemas complete (Sentry/Linear/env.json)
+Plan: 3 of 6
+Status: Ready to execute
+Last activity: 2026-06-11
 
 ## Deferred Items
 
@@ -96,6 +96,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 11 P02 | 15min | 7 tasks | 17 files |
 | Phase 11 P03 | 9min | 2 tasks | 7 files |
 | Phase 11 P06 | 10min | 1 tasks | 6 files |
+| Phase 08 P02 | 8min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
 - [Phase 14]: D-10.5-03.calibration-2 — floor RATIFIED at 80 + per-phase structural-debt waiver clause (user, 2026-06-08). Data point #3 = Phase 14 (composite 78; /coverage 80, /code-intelligence 74), confirming band 74/76/78 with /coverage reaching 80. /coverage 80 passes; /code-intelligence 74 waived to the 14.1 polish bundle (recorded in 14-VERIFICATION.md). CLAUDE.md floor line updated 87→80. Closes D-10.5-03.calibration-1.
+- [Phase ?]: ./daemon subpath export in shared — avoids rootDir violation; env.ts absent from browser-facing index.ts (T-08-01/INV-05)
 
 ### Pending Todos
 
@@ -169,7 +171,7 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-11T10:45:30.358Z
+Last session: 2026-06-11T10:58:54.669Z
 Stopped at: Phase 8 context gathered
 Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
