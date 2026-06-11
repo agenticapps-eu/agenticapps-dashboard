@@ -148,6 +148,7 @@ describe('WR-05: runUnregister evicts panel caches on successful removal', () =>
 
     // Seed readRegistry to return a project with known id
     vi.mocked(readRegistry).mockReturnValue({
+      version: 1,
       projects: [
         {
           id: 'my-project',
@@ -175,7 +176,7 @@ describe('WR-05: runUnregister evicts panel caches on successful removal', () =>
   it('WR-05b: eviction functions NOT called when project is not found (removal returns false)', async () => {
     mockExitAndStderr()
 
-    vi.mocked(readRegistry).mockReturnValue({ projects: [] } as ReturnType<typeof readRegistry>)
+    vi.mocked(readRegistry).mockReturnValue({ version: 1, projects: [] } as ReturnType<typeof readRegistry>)
     vi.mocked(removeProject).mockResolvedValue(false)
 
     await expect(runUnregister('nonexistent-id')).rejects.toThrow('process.exit(1)')
