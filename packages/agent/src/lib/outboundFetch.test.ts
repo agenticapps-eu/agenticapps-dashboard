@@ -151,17 +151,17 @@ describe('fetchWithTimeout', () => {
 
   it('passes the signal through the init object to fetch', async () => {
     const mockResponse = { status: 200, ok: true } as unknown as Response
-    const capturedInits: RequestInit[] = []
+    let capturedInit: RequestInit | undefined
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((_url: string, init: RequestInit) => {
-        capturedInits.push(init)
+        capturedInit = init
         return Promise.resolve(mockResponse)
       }),
     )
 
     await fetchWithTimeout('https://example.com/api', { headers: { Authorization: 'Bearer tok' } })
-    expect(capturedInits[0].signal).toBeInstanceOf(AbortSignal)
+    expect(capturedInit?.signal).toBeInstanceOf(AbortSignal)
   })
 })
 
