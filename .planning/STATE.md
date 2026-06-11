@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
-status: executing
-stopped_at: Completed 08-05-PLAN.md — Linear route + both routes mounted in app.ts
-last_updated: "2026-06-11T11:38:16.844Z"
+status: verifying
+stopped_at: Completed 08-06-PLAN.md — SPA integration panels (SentryPanel + LinearPanel + hooks + SingleProjectView wiring)
+last_updated: "2026-06-11T11:56:00.000Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 0
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 
 ## Current Position
 
-Phase: 08 (optional-integration-panels) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
+Phase: 08 (optional-integration-panels) — COMPLETE
+Plan: 6 of 6 (all plans executed)
+Status: Phase complete — ready for verification
 Last activity: 2026-06-11
 
 ## Deferred Items
@@ -100,6 +100,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 08 P03 | ~8.5 min | 2 tasks | 2 files |
 | Phase 08 P04 | 517 | 3 tasks | 6 files |
 | Phase 08-optional-integration-panels P05 | 517 | 3 tasks | 3 files |
+| Phase 08-optional-integration-panels P06 | ~12 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,8 @@ Recent decisions affecting current work:
 - [Phase ?]: ./daemon subpath export in shared — avoids rootDir violation; env.ts absent from browser-facing index.ts (T-08-01/INV-05)
 - [Phase ?]: Cache keyed projectId:issueId for Linear (Pitfall 7) — same issueId across two projects must not share cache entries
 - [Phase ?]: Linear auth: raw API key header (no Bearer prefix) — lin_api_* keys differ from OAuth Bearer tokens
+- [Phase 08]: Plan 08-06: LinearPanel renders identifier in link only (not a separate span) — avoids duplicate DOM text that breaks RTL getByText; identifier is both label and link-out
+- [Phase 08]: Plan 08-06: E2E route handlers for /sentry/recent + /linear/issues added with empty-issues responses — validates INV-03 (dashboard functional with zero integration env vars)
 
 ### Pending Todos
 
@@ -176,10 +179,10 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-11T11:38:16.833Z
-Stopped at: Completed 08-05-PLAN.md — Linear route + both routes mounted in app.ts
+Last session: 2026-06-11T11:56:00.000Z
+Stopped at: Completed 08-06-PLAN.md — SPA integration panels (SentryPanel + LinearPanel + hooks + SingleProjectView wiring). Phase 08 fully executed; ready for /gsd-verify-phase.
 Resume file: None
-Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
+Next action: Run /gsd-verify-phase 08 — start dev server, verify INV-03 (configure-to-enable empty states), verify INV-04 (schema drift surfaces InlineDrift), visual check both panels in Health column, author 08-IMPECCABLE.md (≥80 composite, per CLAUDE.md D-10.5-02).
 
 ## Operator Next Steps
 

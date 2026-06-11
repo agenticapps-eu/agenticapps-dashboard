@@ -48,7 +48,7 @@
 
 - [x] **INV-01**: Read-only on project filesystems preserved — no new daemon route writes to a registered project's files (sole exception remains `POST /api/projects/{id}/open`)
 - [x] **INV-02**: No native dependencies added to `packages/agent` (no `keytar`, no FFI) — Sentry/Linear clients are pure-JS HTTP
-- [ ] **INV-03**: Optional integrations stay optional — dashboard renders fully and all non-integration routes work with zero of `SENTRY_AUTH_TOKEN` / `LINEAR_API_KEY` / Infisical configured
+- [x] **INV-03**: Optional integrations stay optional — dashboard renders fully and all non-integration routes work with zero of `SENTRY_AUTH_TOKEN` / `LINEAR_API_KEY` / Infisical configured
 - [x] **INV-04**: Shared Zod schema is the single source of truth for any new daemon ↔ SPA wire shape (Sentry/Linear/Infisical payloads); both ends validate
 - [x] **INV-05**: Secrets-on-disk discipline — any new env value lives only in `~/.agenticapps/dashboard/env.json` at mode `0600`; no token is logged or sent to the SPA
 
