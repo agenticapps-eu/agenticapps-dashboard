@@ -55,17 +55,6 @@ const ISSUE_ONE: SentryRecentResponse = {
   stale: false,
 }
 
-const FIVE_ISSUES: SentryRecentResponse = {
-  issues: [
-    { id: '1', title: 'Error A', level: 'error', count: '1', lastSeen: '2026-06-11T10:00:00.000Z', permalink: 'https://sentry.io/org/proj/issues/1/', shortId: 'PROJ-1' },
-    { id: '2', title: 'Warning B', level: 'warning', count: '2', lastSeen: '2026-06-11T10:00:00.000Z', permalink: 'https://sentry.io/org/proj/issues/2/', shortId: 'PROJ-2' },
-    { id: '3', title: 'Fatal C', level: 'fatal', count: '3', lastSeen: '2026-06-11T10:00:00.000Z', permalink: 'https://sentry.io/org/proj/issues/3/', shortId: 'PROJ-3' },
-    { id: '4', title: 'Info D', level: 'info', count: '4', lastSeen: '2026-06-11T10:00:00.000Z', permalink: 'https://sentry.io/org/proj/issues/4/', shortId: 'PROJ-4' },
-    { id: '5', title: 'Debug E', level: 'debug', count: '5', lastSeen: '2026-06-11T10:00:00.000Z', permalink: 'https://sentry.io/org/proj/issues/5/', shortId: 'PROJ-5' },
-  ],
-  stale: false,
-}
-
 const EMPTY: SentryRecentResponse = {
   issues: [],
   stale: false,
