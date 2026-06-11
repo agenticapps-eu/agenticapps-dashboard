@@ -579,4 +579,95 @@ describe('sentry route', () => {
       expect(typeof mod.evictSentryCacheProject).toBe('function')
     })
   })
+
+  // WR-01: defensive normalization — one malformed row must not collapse the panel
+  describe('WR-01: malformed issue rows are filtered, not panel-collapsing', () => {
+    it('WR-01a: unknown level coerced to "error", row still included', async () => {
+      vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
+      vi.stubEnv('SENTRY_ORG_SLUG', 'acme')
+      vi.stubEnv('SENTRY_PROJECT_SLUG', 'web')
+
+      // One issue with an unknown level ("sample") mixed with a valid one
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          { ...makeIssue(1), level: 'sample' },  // unknown level → coerced to 'error'
+          makeIssue(2),
+        ],
+      })
+
+      const app = createAppWithSentry(registryFile)
+      const res = await app.request(
+        `http://127.0.0.1:5193/api/projects/${projectId}/sentry/recent`,
+        { headers: authHeaders(token) },
+      )
+
+      // Panel must succeed (not 503) even though one row had unknown level
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as Record<string, unknown>
+      const issues = body.issues as unknown[]
+      // Both issues survive (unknown level coerced, not dropped)
+      expect(issues.length).toBe(2)
+      // The coerced issue must have level 'error'
+      const coerced = issues[0] as Record<string, unknown>
+      expect(coerced.level).toBe('error')
+    })
+
+    it('WR-01b: row with non-http(s) permalink is skipped, others still returned', async () => {
+      vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
+      vi.stubEnv('SENTRY_ORG_SLUG', 'acme')
+      vi.stubEnv('SENTRY_PROJECT_SLUG', 'web')
+
+      // One issue with a javascript: permalink (should be dropped), one valid
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          { ...makeIssue(1), permalink: 'javascript:alert(1)' },  // dropped
+          makeIssue(2),  // kept
+        ],
+      })
+
+      const app = createAppWithSentry(registryFile)
+      const res = await app.request(
+        `http://127.0.0.1:5193/api/projects/${projectId}/sentry/recent`,
+        { headers: authHeaders(token) },
+      )
+
+      // Panel must succeed — malformed row dropped, valid row returned
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as Record<string, unknown>
+      const issues = body.issues as unknown[]
+      expect(issues.length).toBe(1)
+      const kept = issues[0] as Record<string, unknown>
+      expect(kept.id).toBe('2')
+    })
+
+    it('WR-01c: all rows have non-http(s) permalinks → 200 with empty issues (not 503)', async () => {
+      vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
+      vi.stubEnv('SENTRY_ORG_SLUG', 'acme')
+      vi.stubEnv('SENTRY_PROJECT_SLUG', 'web')
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          { ...makeIssue(1), permalink: 'javascript:alert(1)' },
+          { ...makeIssue(2), permalink: 'data:text/html,bad' },
+        ],
+      })
+
+      const app = createAppWithSentry(registryFile)
+      const res = await app.request(
+        `http://127.0.0.1:5193/api/projects/${projectId}/sentry/recent`,
+        { headers: authHeaders(token) },
+      )
+
+      // Must not crash to 503 — parse succeeds with empty issues array
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as Record<string, unknown>
+      expect(body.issues).toEqual([])
+    })
+  })
 })

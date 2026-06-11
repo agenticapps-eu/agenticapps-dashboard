@@ -374,17 +374,25 @@ sentryRoute.get('/:id/sentry/recent', async (c) => {
       throw new Error('Sentry returned non-array issues response')
     }
 
-    const issues: SentryIssue[] = raw.slice(0, 5).map((item) => {
+    // WR-01: normalize each issue defensively before schema parse so one
+    // malformed row (unknown level, non-http(s) permalink) doesn't collapse
+    // the entire panel to "unreachable" via a Zod parse throw.
+    const VALID_LEVELS = new Set(['fatal', 'error', 'warning', 'info', 'debug'])
+    const issues: SentryIssue[] = raw.slice(0, 5).flatMap((item) => {
       const i = item as Record<string, unknown>
-      return {
+      const level = VALID_LEVELS.has(String(i['level'])) ? String(i['level']) : 'error'
+      const permalink = String(i['permalink'] ?? '')
+      // Skip rows whose permalink isn't http(s) — they cannot be rendered safely
+      if (!/^https?:\/\//i.test(permalink)) return []
+      return [{
         id: String(i['id'] ?? ''),
         title: String(i['title'] ?? ''),
-        level: (i['level'] as SentryIssue['level']) ?? 'error',
+        level: level as SentryIssue['level'],
         count: String(i['count'] ?? '0'),
         lastSeen: String(i['lastSeen'] ?? ''),
-        permalink: String(i['permalink'] ?? ''),
+        permalink,
         shortId: String(i['shortId'] ?? ''),
-      }
+      }]
     })
 
     const data: SentryRecentResponse = { issues, stale: false }
