@@ -50,6 +50,10 @@ import {
   type SecretsResponse,
   IntegrationsResponseSchema,
   type IntegrationsResponse,
+  SentryRecentResponseSchema,
+  type SentryRecentResponse,
+  LinearIssuesResponseSchema,
+  type LinearIssuesResponse,
 } from '@agenticapps/dashboard-shared'
 
 import { apiFetch } from './api.js'
@@ -275,6 +279,51 @@ export function useIntegrations(id: string | null) {
     enabled: id !== null,
     staleTime: POLL_MS,
     refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useSentryRecent — polls GET /api/projects/{id}/sentry/recent every 60s.
+ * Returns up to 5 recent unresolved Sentry issues (D-08-02).
+ * Schema-validates against SentryRecentResponseSchema at the browser boundary (INV-04).
+ * Per-project: id in queryKey (T-05-05-Cross-Project-Cache).
+ * Phase 8 D-08-03.
+ */
+export function useSentryRecent(id: string | null) {
+  return useQuery({
+    queryKey: ['sentry-recent', id] as const,
+    queryFn: async (): Promise<SentryRecentResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/sentry/recent`, SentryRecentResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: SKILLS_TTL_MS,
+    refetchInterval: SKILLS_TTL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
+
+/**
+ * useLinearIssues — polls GET /api/projects/{id}/linear/issues every 60s.
+ * Returns up to 3 Linear issues detected from branch/commit history (D-08-07).
+ * Daemon aggregates branch/commit detection + multi-fetch into one response.
+ * Schema-validates against LinearIssuesResponseSchema at the browser boundary (INV-04).
+ * Per-project: id in queryKey (T-05-05-Cross-Project-Cache).
+ * Phase 8 D-08-07.
+ */
+export function useLinearIssues(id: string | null) {
+  return useQuery({
+    queryKey: ['linear-issues', id] as const,
+    queryFn: async (): Promise<LinearIssuesResponse> => {
+      const result = await apiFetch(`/api/projects/${id}/linear/issues`, LinearIssuesResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: SKILLS_TTL_MS,
+    refetchInterval: SKILLS_TTL_MS,
     refetchIntervalInBackground: false,
   })
 }
