@@ -17,7 +17,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
-
 import type { CoverageResponse, HealthResponse } from '@agenticapps/dashboard-shared'
 import type { UseQueryResult } from '@tanstack/react-query'
 
@@ -38,6 +37,7 @@ vi.mock('../../../lib/pairing.js', () => ({
 import { useCoverage } from '../../../lib/coverageQueries.js'
 import { useHealth } from '../../../lib/healthQueries.js'
 import { getPairing } from '../../../lib/pairing.js'
+
 import { CodeIntelligencePage } from './CodeIntelligencePage.js'
 
 const mockUseCoverage = vi.mocked(useCoverage)
@@ -125,6 +125,7 @@ function makeErrorResult<T>(message: string): UseQueryResult<T, Error> {
     isError: true,
     isSuccess: false,
     error: new Error(message),
+    refetch: vi.fn(),
   } as unknown as UseQueryResult<T, Error>
 }
 
@@ -287,7 +288,7 @@ describe('CodeIntelligencePage', () => {
       expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
     })
 
-    it('valid lastAnalyzedAt renders via locale-default formatting (no hardcoded en-US)', () => {
+    it('valid lastAnalyzedAt renders as relative time (Phase 14.1: consistency + order visibility)', () => {
       mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
         { state: 'fresh', viewerToken: VIEWER_TOKEN },
       ])))
@@ -295,14 +296,17 @@ describe('CodeIntelligencePage', () => {
 
       const { container } = render(<CodeIntelligencePage />)
 
-      // Fixture date: 2026-06-01T10:00:00.000Z — assert the locale-default output
-      const expected = new Date('2026-06-01T10:00:00.000Z').toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-      expect(container.textContent).toContain(expected)
+      // Phase 14.1 lift: the page now speaks relative time like the rest of the app
+      // (formatRelativeTime), so ordering is visible and the locale is not hardcoded.
+      // Fixture date is days in the past → "<n>d ago" (textContent concatenates the
+      // next cell, so match the relative token directly rather than a trailing \b).
+      expect(container.textContent).toMatch(/\d+d ago/)
       expect(container.innerHTML).not.toContain('Invalid Date')
+      // No absolute locale date string leaking through.
+      const localeDate = new Date('2026-06-01T10:00:00.000Z').toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+      })
+      expect(container.textContent).not.toContain(localeDate)
     })
   })
 
@@ -354,6 +358,79 @@ describe('CodeIntelligencePage', () => {
       render(<CodeIntelligencePage />)
 
       expect(screen.getByText(/loading/i)).toBeDefined()
+    })
+  })
+
+  // ── Phase 14.1 IMPECCABLE lift (composite 74 → ≥80): error recovery,
+  //    communicative cells, action affordances, header consistency. ─────────────
+  describe('Phase 14.1: error recovery + cell communication', () => {
+    it('error state offers a Retry action and does NOT print the raw error message', () => {
+      mockUseCoverage.mockReturnValue(makeErrorResult('ECONNREFUSED raw daemon stack 127.0.0.1:5193'))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      render(<CodeIntelligencePage />)
+
+      expect(screen.getByText(/failed to load/i)).toBeDefined()
+      // Retry affordance present (parity with CoveragePage onRetry)
+      expect(screen.getByRole('button', { name: /retry/i })).toBeDefined()
+      // Raw error string is never surfaced to the user
+      expect(screen.queryByText(/ECONNREFUSED raw daemon stack/)).toBeNull()
+    })
+
+    it('fresh rows show a "current" status indicator (not a blank Status cell)', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'fresh', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      render(<CodeIntelligencePage />)
+
+      // The fresh row communicates its state rather than leaving Status empty,
+      // using a real design token (not a non-existent one that renders transparent).
+      const pill = screen.getByText('current')
+      expect(pill.className).toContain('bg-status-success/10')
+      expect(pill.className).toContain('text-status-success')
+    })
+
+    it('stale status pill uses the real status-warning token (not a transparent one)', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'stale', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      render(<CodeIntelligencePage />)
+
+      const pill = screen.getByText('stale')
+      expect(pill.className).toContain('bg-status-warning/10')
+      expect(pill.className).toContain('text-status-warning')
+    })
+
+    it('Actions cell explains itself when the viewer is not installed (no blank cell)', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'fresh', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse({ viewerInstalled: false, viewerVersion: null })))
+
+      render(<CodeIntelligencePage />)
+
+      // No viewer link, but the Actions cell offers a recovery hint rather than blank.
+      expect(screen.queryByRole('link', { name: /open viewer/i })).toBeNull()
+      expect(screen.getAllByText(/install viewer/i).length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('table headers follow app convention — no uppercase tracking-wider tic', () => {
+      mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
+        { state: 'fresh', viewerToken: VIEWER_TOKEN },
+      ])))
+      mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
+
+      const { container } = render(<CodeIntelligencePage />)
+
+      const ths = Array.from(container.querySelectorAll('thead th'))
+      expect(ths.length).toBeGreaterThanOrEqual(6)
+      for (const th of ths) {
+        expect(th.getAttribute('class') ?? '').not.toContain('uppercase')
+      }
     })
   })
 })

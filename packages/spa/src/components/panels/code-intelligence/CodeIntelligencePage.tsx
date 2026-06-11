@@ -21,8 +21,8 @@
  * - NO hex literals
  */
 import React from 'react'
-
 import { ExternalLink } from 'lucide-react'
+import type { CoverageRow } from '@agenticapps/dashboard-shared'
 
 import { PageHeader } from '../../ui/PageHeader.js'
 import { EmptyState } from '../../ui/EmptyState.js'
@@ -30,25 +30,21 @@ import { useCoverage } from '../../../lib/coverageQueries.js'
 import { useHealth } from '../../../lib/healthQueries.js'
 import { getPairing } from '../../../lib/pairing.js'
 import { buildViewerUrl } from '../../../lib/understandViewerUrl.js'
+import { formatRelativeTime } from '../../../lib/relativeTime.js'
 
-import type { CoverageRow } from '@agenticapps/dashboard-shared'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Format a lastAnalyzedAt ISO string for the table cell.
- * Locale-default formatting (no hardcoded locale); invalid dates render as an
- * em dash instead of 'Invalid Date' (Phase 14 review polish).
+ * Format a lastAnalyzedAt ISO string for the table cell as relative time
+ * (Phase 14.1: matches the rest of the app and keeps row ordering visible at
+ * sub-day granularity, where locale-default day formatting collapsed all rows
+ * to the same string). Invalid dates render as an em dash, not 'Invalid Date'.
  */
 function formatAnalyzedDate(iso: string | undefined): string | undefined {
   if (!iso) return undefined
-  const parsed = new Date(iso)
-  if (Number.isNaN(parsed.getTime())) return '—'
-  return parsed.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  if (Number.isNaN(new Date(iso).getTime())) return '—'
+  return formatRelativeTime(iso)
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -81,9 +77,13 @@ function AnalyzedRow({ row, agentUrl, viewerInstalled }: AnalyzedRowProps): Reac
       </td>
       <td className="py-3 pr-4 text-sm text-text-secondary">{lastAnalyzedAt ?? '—'}</td>
       <td className="py-3 pr-4">
-        {isStale && (
-          <span className="inline-flex items-center rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning-text">
+        {isStale ? (
+          <span className="inline-flex items-center rounded-full bg-status-warning/10 px-2 py-0.5 text-xs font-medium text-status-warning">
             stale
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-status-success/10 px-2 py-0.5 text-xs font-medium text-status-success">
+            current
           </span>
         )}
       </td>
@@ -99,7 +99,11 @@ function AnalyzedRow({ row, agentUrl, viewerInstalled }: AnalyzedRowProps): Reac
             Open viewer
             <ExternalLink size={12} aria-hidden="true" />
           </a>
-        ) : null}
+        ) : (
+          <span className="text-xs text-text-tertiary">
+            {viewerInstalled ? 'Viewer unavailable' : 'Install viewer to open'}
+          </span>
+        )}
       </td>
     </tr>
   )
@@ -139,7 +143,16 @@ export function CodeIntelligencePage(): React.JSX.Element {
         />
         <EmptyState
           title="Failed to load knowledge graphs"
-          body={coverageQuery.error?.message ?? 'Daemon returned an error.'}
+          body="The dashboard agent could not be reached. Check that it is running, then retry."
+          action={
+            <button
+              type="button"
+              onClick={() => void coverageQuery.refetch()}
+              className="inline-flex items-center rounded-md border border-border-subtle bg-card-bg px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              Retry
+            </button>
+          }
         />
       </div>
     )
@@ -237,22 +250,22 @@ export function CodeIntelligencePage(): React.JSX.Element {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-border-subtle">
-                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary">
                   Repository
                 </th>
-                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary">
                   Family
                 </th>
-                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary">
                   Analyzed
                 </th>
-                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary">
                   Last analyzed
                 </th>
-                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                <th className="pb-3 pr-4 text-xs font-medium text-text-tertiary">
                   Status
                 </th>
-                <th className="pb-3 text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                <th className="pb-3 text-xs font-medium text-text-tertiary">
                   Actions
                 </th>
               </tr>

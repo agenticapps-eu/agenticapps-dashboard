@@ -8,6 +8,18 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 
 **A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.**
 
+## Current Milestone: v1.2 Optional integrations & fleet-conformance follow-through
+
+**Goal:** Land the held optional-integration panels (Sentry · Linear · Infisical, now unblocked by the completed `secrets-platform` cparx pilot) and close the carry-over conformance debt from v1.1.
+
+**Target features:**
+- **Phase 8 — Optional integration panels.** Sentry · Linear · Infisical read-only status panels. Each shows a "configure to enable" empty state when its env vars are unset; the dashboard stays fully functional without any of them. Infisical surface is a read-only *status reflection* only — secrets infrastructure lives in the separate `agenticapps-eu/secrets-platform` repo, not here.
+- **Phase 12 gate close-out.** Run the deferred `12-06` close-out gate (Stage 1/2 review, `/cso`, `/qa`, `12-IMPECCABLE.md`) and produce `12-VERIFICATION.md`. Implementation (12-00..05) already shipped in v1.1.
+- **Phase 13 gate close-out.** Complete the incomplete `13-04` gate ritual. Implementation (13-00..03) already shipped in v1.1.
+- **Phase 14.1 polish bundle.** Lift `/code-intelligence` IMPECCABLE composite from ~74 to the ≥ 80 floor (D-10.5-03.calibration-2), retiring the outstanding structural-debt waiver.
+
+**Key context:** Most of v1.2 is carry-over close-out of already-shipped v1.1 work; only Phase 8 is net-new. Phase dirs preserved (no `phases.clear`); phase numbering continues from existing. The Infisical panel waits on / reflects the separately-built secrets platform — it is not over-built here.
+
 ## Requirements
 
 ### Validated
@@ -133,7 +145,9 @@ Post-UAT sticky-layering fix landed (`89d4b2d` + `1efde99`): `PageHeader` uses `
 
 ---
 
-*Last updated: 2026-06-08 after v1.1 (Cross-family observability) milestone close — Phases 10–14 archived, tagged v1.1. See `.planning/MILESTONES.md`.*
+*Last updated: 2026-06-10 — milestone **v1.2 "Optional integrations & fleet-conformance follow-through"** opened. Scope: Phase 8 (Sentry/Linear/Infisical panels) + Phase 12/13 gate close-outs + Phase 14.1 IMPECCABLE lift. Phase dirs preserved (no clear); numbering continues. See `.planning/REQUIREMENTS.md` + `.planning/ROADMAP.md`.*
+
+*Previous: 2026-06-08 after v1.1 (Cross-family observability) milestone close — Phases 10–14 archived, tagged v1.1. See `.planning/MILESTONES.md`.*
 
 *Previous: 2026-05-18 after Phase 11.2 (Impeccable P2 polish bundle) execution complete — 6 plans across 3 waves shipped on `feat/11.2-impeccable-p2-polish-bundle`. Closes the 11.1-IMPECCABLE.md P2/P3 follow-up bundle (column-header tooltips + per-row spinner + touch target + controlled search + max-w-prose). v1.1 (Cross-family observability) substantively complete with calibration ratified.*
 

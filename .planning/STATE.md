@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Cross-family observability
-status: Awaiting next milestone
-stopped_at: Phase 14 context gathered
-last_updated: "2026-06-08T15:58:47.177Z"
-last_activity: 2026-06-08 — Milestone v1.1 completed and archived
+milestone: v1.2
+milestone_name: Optional integrations & fleet-conformance follow-through
+status: planning
+last_updated: "2026-06-10T11:20:55.647Z"
+last_activity: 2026-06-10
 progress:
-  total_phases: 18
-  completed_phases: 16
-  total_plans: 114
-  completed_plans: 113
-  percent: 89
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Planning next milestone (v1.2 — held Phase 8 optional integrations, or fleet-conformance follow-through)
+**Current focus:** v1.2 in progress — closing carry-over gates then Phase 8 integration panels.
 
 ## Current Position
 
-Phase: Milestone v1.1 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-08 — Milestone v1.1 completed and archived (tag v1.1)
+Phase: 12 ✅ + 12.1 ✅ + 13 ✅ + 14.1 ✅ → next: Phase 8 (Sentry/Linear/Infisical panels — the final v1.2 phase)
+Plan: 14.1 (/code-intelligence lift) done (TDD, composite 74→81)
+Status: v1.2 in progress — 4 of 5 done; only Phase 8 (net-new feature) remains
+Last activity: 2026-06-10 — Phase 14.1 landed: /code-intelligence lift (error recovery+Retry, communicative Status/Actions cells, relative time, de-uppercased headers, fixed transparent status-pill tokens). Composite 74→81; structural-debt waiver retired. Re-critique caught + fixed a pill-token regression. TDD; 1212 spa tests green.
 
 ## Deferred Items
 
@@ -36,8 +35,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-06-08 (proceed-a
 
 | Category | Item | Status |
 |----------|------|--------|
-| phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | open |
-| phase-close | Phase 13 gate plan 13-04 (gates ritual) | incomplete |
+| phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | ✅ resolved 2026-06-10 (retrospective close-out; 2 P1s → Phase 12.1) |
+| phase-close | Phase 13 gate plan 13-04 (gates ritual) | ✅ resolved 2026-06-10 (artifacts present + passing; 13-VERIFICATION.md written) |
 | debug | family-scan-no-ui-feedback | unknown |
 | debug | per-row-scan-repo-not-registered | diagnosed |
 | uat | Phase 01 HUMAN-UAT (2 pending scenarios) | partial |
