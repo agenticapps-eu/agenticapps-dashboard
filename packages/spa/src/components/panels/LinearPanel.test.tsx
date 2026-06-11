@@ -148,6 +148,13 @@ describe('LinearPanel', () => {
     expect(container.textContent).toContain('enable the Linear panel')
   })
 
+  it('LP3d: not_configured collapsed header shows a "not configured" state hint (glance-ability)', () => {
+    mockLinear({ error: new Error('not_configured') })
+    render(<LinearPanel projectId="proj-1" />)
+    expect(screen.queryByText(/enable the Linear panel/)).toBeNull()
+    expect(screen.getByText('not configured')).toBeDefined()
+  })
+
   it('LP3c: loading→not_configured transition stays collapsed (defaultCollapsed survives the state change)', () => {
     mockLinear({ isLoading: true })
     const { rerender } = render(<LinearPanel projectId="proj-1" />)

@@ -112,6 +112,14 @@ describe('SentryPanel', () => {
     expect(container.textContent).toContain('enable the Sentry panel')
   })
 
+  it('SP3d: not_configured collapsed header shows a "not configured" state hint (glance-ability)', () => {
+    mockSentry({ error: new Error('not_configured') })
+    render(<SentryPanel projectId="proj-1" />)
+    // Panel stays collapsed, but its state is legible without expanding
+    expect(screen.queryByText(/enable the Sentry panel/)).toBeNull()
+    expect(screen.getByText('not configured')).toBeDefined()
+  })
+
   it('SP3c: loading→not_configured transition stays collapsed (defaultCollapsed survives the state change)', () => {
     // Reproduces the live bug: the panel first mounts in the loading state
     // (PanelContainer with collapsed=false), then the query settles to

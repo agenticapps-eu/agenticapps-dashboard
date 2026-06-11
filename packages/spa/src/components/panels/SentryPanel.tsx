@@ -73,7 +73,13 @@ export function SentryPanel({ projectId }: SentryPanelProps): React.JSX.Element 
       // transition so defaultCollapsed actually takes effect (D-6.1-02). Without
       // it, React reuses the loading-state instance whose collapsed state was
       // initialised to false, leaving the configure copy expanded.
-      <PanelContainer key="not-configured" panelId={PANEL_ID} title={PANEL_TITLE} defaultCollapsed>
+      <PanelContainer
+        key="not-configured"
+        panelId={PANEL_ID}
+        title={PANEL_TITLE}
+        defaultCollapsed
+        collapsedHint="not configured"
+      >
         <p className="max-w-[75ch] text-base leading-relaxed text-text-secondary">
           Set <code className="font-mono">SENTRY_AUTH_TOKEN</code> to enable the Sentry panel.{' '}
           <a href="/help" className="text-accent underline-offset-2 hover:underline">
