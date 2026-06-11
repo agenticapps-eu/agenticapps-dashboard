@@ -287,6 +287,58 @@ describe('runEnvList', () => {
     }
   })
 
+  // WR-04: values of length ≤ 8 must be fully masked (no tail revealed)
+  it('WR-04: short value (≤8 chars) is fully masked — no tail in output', async () => {
+    const { envPath, cleanup } = makeTmpDir()
+    try {
+      const shortValue = 'tok12345' // exactly 8 chars — tail must be suppressed
+      const { runEnvSet, runEnvList } = await getEnvCmd()
+
+      await callWithExit(() => runEnvSet('SENTRY_AUTH_TOKEN', shortValue, envPath))
+      vi.clearAllMocks()
+
+      await callWithExit(() => runEnvList(envPath))
+
+      const logCalls = mockedAgentLog.mock.calls.map((c) => c[0] as string)
+      const sentryRow = logCalls.find((l) => l.includes('SENTRY_AUTH_TOKEN'))
+      expect(sentryRow).toBeDefined()
+
+      // Must show '****' with no tail characters from the value
+      expect(sentryRow).toContain('****')
+      // The short value itself must NOT appear anywhere in the output
+      expect(sentryRow).not.toContain(shortValue)
+      // The tail '2345' must NOT appear (would reveal half the value)
+      expect(sentryRow).not.toContain('2345')
+      // Masked form must be exactly '****' (no suffix)
+      expect(sentryRow).toMatch(/\*{4}(?!\w)/)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('WR-04b: value of exactly 9 chars DOES reveal last 4 (boundary check)', async () => {
+    const { envPath, cleanup } = makeTmpDir()
+    try {
+      const nineCharValue = 'tok123456' // 9 chars — tail should be revealed
+      const { runEnvSet, runEnvList } = await getEnvCmd()
+
+      await callWithExit(() => runEnvSet('SENTRY_AUTH_TOKEN', nineCharValue, envPath))
+      vi.clearAllMocks()
+
+      await callWithExit(() => runEnvList(envPath))
+
+      const logCalls = mockedAgentLog.mock.calls.map((c) => c[0] as string)
+      const sentryRow = logCalls.find((l) => l.includes('SENTRY_AUTH_TOKEN'))
+      expect(sentryRow).toBeDefined()
+      // For a 9-char value, last 4 ('3456') should appear
+      expect(sentryRow).toContain('****3456')
+      // Full value must not appear
+      expect(sentryRow).not.toContain(nineCharValue)
+    } finally {
+      cleanup()
+    }
+  })
+
   it('E9: env.json key shows "env.json" as source', async () => {
     const { envPath, cleanup } = makeTmpDir()
     try {

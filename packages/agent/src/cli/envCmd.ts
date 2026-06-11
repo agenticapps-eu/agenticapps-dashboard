@@ -128,12 +128,18 @@ export async function runEnvList(filePath: string = ENV_FILE): Promise<void> {
     const source = fromEnv ? 'process.env' : fromFile ? 'env.json' : '—'
     const status = isSet ? 'set' : 'unset'
 
-    // Masked: last 4 chars only — NEVER the full value
+    // Masked: last 4 chars only when value is long enough (WR-04 — D-08-14).
+    // For values ≤ 8 chars, revealing last-4 exposes most or all of the secret;
+    // suppress the tail entirely so short values are fully masked.
+    // NEVER the full value at any log level (INV-05 / D-08-14).
     let masked: string
     if (fromEnv && process.env[key]) {
-      masked = '****' + process.env[key]!.slice(-4)
+      const value = process.env[key]!
+      const tail = value.length > 8 ? value.slice(-4) : ''
+      masked = '****' + tail
     } else if (fromFile && fileVal) {
-      masked = '****' + fileVal.slice(-4)
+      const tail = fileVal.length > 8 ? fileVal.slice(-4) : ''
+      masked = '****' + tail
     } else {
       masked = '—'
     }
