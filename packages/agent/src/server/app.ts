@@ -26,6 +26,8 @@ import { agentlinterRoute } from '../routes/agentlinter.js'
 import { observabilityRoute } from '../routes/observability.js'
 import { secretsRoute } from '../routes/secrets.js'
 import { integrationsRoute } from '../routes/integrations.js'
+import { sentryRoute } from '../routes/sentry.js'
+import { linearRoute } from '../routes/linear.js'
 import { coverageRoute } from '../routes/coverage.js'
 import { coverageHistoryRoute } from '../routes/coverageHistory.js'
 import { skillDriftRoute } from '../routes/skillDrift.js'
@@ -189,6 +191,8 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/projects', observabilityRoute)
   app.route('/api/projects', secretsRoute)
   app.route('/api/projects', integrationsRoute)
+  app.route('/api/projects', sentryRoute)
+  app.route('/api/projects', linearRoute)
   app.route('/api', coverageRoute)
   app.route('/api', coverageHistoryRoute) // Phase 11 TRD-03 (PD-11-02 bulk-per-repo)
   app.route('/api', skillDriftRoute) // Phase 11 SKD-02, SKD-03 (D-11-14 single-project-per-request)
