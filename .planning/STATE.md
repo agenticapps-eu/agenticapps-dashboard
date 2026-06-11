@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-06-11T10:39:53.331Z"
-last_activity: 2026-06-11 -- Phase 08 execution started
+stopped_at: 08-01 complete — shared Zod schemas for Sentry/Linear/env.json
+last_updated: "2026-06-11T10:45:30.372Z"
+last_activity: 2026-06-11
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 08 (optional-integration-panels) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 08
-Last activity: 2026-06-11 -- Phase 08 execution started
+Plan: 2 of 6
+Status: Plan 01 complete — executing Plan 02
+Last activity: 2026-06-11 -- 08-01 shared schemas complete (Sentry/Linear/env.json)
 
 ## Deferred Items
 
@@ -169,9 +169,9 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-11T07:38:00.523Z
+Last session: 2026-06-11T10:45:30.358Z
 Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/DASH-08-optional-integration-panels/08-CONTEXT.md
+Resume file: None
 Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
 
 ## Operator Next Steps
