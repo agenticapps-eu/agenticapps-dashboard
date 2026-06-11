@@ -363,6 +363,13 @@ sentryRoute.get('/:id/sentry/recent', async (c) => {
       } catch {
         body = undefined
       }
+      // WR-03: a 404 from the issues endpoint means the cached org/project slugs
+      // are stale or wrong (e.g. stale .sentryclirc or renamed project). Evict the
+      // slug cache so the next poll re-resolves slugs instead of persisting the
+      // false "unreachable" state for up to SLUG_TTL_MS (10 min).
+      if (res.status === 404) {
+        slugCache.delete(projectId)
+      }
       throw Object.assign(new Error(`Sentry HTTP ${res.status}`), {
         _sentryStatus: res.status,
         _sentryBody: body,

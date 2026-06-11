@@ -580,6 +580,62 @@ describe('sentry route', () => {
     })
   })
 
+  // WR-03: 404 from issues endpoint evicts slug cache so next poll re-resolves
+  describe('WR-03: 404 from issues endpoint evicts slug cache', () => {
+    it('WR-03: after a 404 issues response, next request re-resolves slugs via /projects/', async () => {
+      vi.stubEnv('SENTRY_AUTH_TOKEN', 'sntrys_test_secret')
+      vi.stubEnv('SENTRY_DSN', 'https://pubkey@o123.ingest.sentry.io/42')
+
+      // Request 1: /projects/ lookup succeeds, issues call returns 404 (stale slug)
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true, status: 200,
+          json: async () => [makeProjectEntry('42', 'web', 'acme')],
+          headers: { get: () => null },
+        })
+        .mockResolvedValueOnce({
+          ok: false, status: 404,
+          json: async () => ({ detail: 'Not found' }),
+          headers: { get: () => null },
+        })
+
+      const app = createAppWithSentry(registryFile)
+      const res1 = await app.request(
+        `http://127.0.0.1:5193/api/projects/${projectId}/sentry/recent`,
+        { headers: authHeaders(token) },
+      )
+      // 404 issues → no last-good → 503
+      expect(res1.status).toBe(503)
+      // 2 fetch calls so far: /projects/ + issues
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+
+      // Request 2: slug cache was evicted by the 404 — must re-call /projects/
+      // then the issues call succeeds
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true, status: 200,
+          json: async () => [makeProjectEntry('42', 'web', 'acme')],
+          headers: { get: () => null },
+        })
+        .mockResolvedValueOnce({
+          ok: true, status: 200,
+          json: async () => [makeIssue(1)],
+          headers: { get: () => null },
+        })
+
+      const res2 = await app.request(
+        `http://127.0.0.1:5193/api/projects/${projectId}/sentry/recent`,
+        { headers: authHeaders(token) },
+      )
+      expect(res2.status).toBe(200)
+      // 2 more fetch calls (slug re-resolution + issues) = 4 total
+      expect(mockFetch).toHaveBeenCalledTimes(4)
+      const calls = mockFetch.mock.calls as [string, ...unknown[]][]
+      // Third call must be a /projects/ re-resolution (not an issues call)
+      expect(calls[2]![0]).toContain('/api/0/projects/')
+    })
+  })
+
   // WR-01: defensive normalization — one malformed row must not collapse the panel
   describe('WR-01: malformed issue rows are filtered, not panel-collapsing', () => {
     it('WR-01a: unknown level coerced to "error", row still included', async () => {
