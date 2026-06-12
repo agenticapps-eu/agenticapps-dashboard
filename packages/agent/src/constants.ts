@@ -8,6 +8,7 @@ export const DEFAULT_HOST = '127.0.0.1'
 export const DEFAULT_PORT = 5193
 export const CONFIG_DIR = join(homedir(), '.agenticapps', 'dashboard')
 export const AUTH_FILE = join(CONFIG_DIR, 'auth.json')
+export const ENV_FILE = join(CONFIG_DIR, 'env.json')
 export const REGISTRY_FILE = join(CONFIG_DIR, 'registry.json')
 export const PIDFILE = join(CONFIG_DIR, 'agent.pid')
 export const SERVER_FILE = join(CONFIG_DIR, 'server.json')

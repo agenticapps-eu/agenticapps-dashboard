@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
-status: planning
-last_updated: "2026-06-10T11:20:55.647Z"
-last_activity: 2026-06-10
+status: verifying
+stopped_at: Completed 08-06-PLAN.md — SPA integration panels (SentryPanel + LinearPanel + hooks + SingleProjectView wiring)
+last_updated: "2026-06-11T11:56:00.000Z"
+last_activity: 2026-06-11
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.2 in progress — closing carry-over gates then Phase 8 integration panels.
+**Current focus:** Phase 08 — optional-integration-panels
 
 ## Current Position
 
-Phase: 12 ✅ + 12.1 ✅ + 13 ✅ + 14.1 ✅ → next: Phase 8 (Sentry/Linear/Infisical panels — the final v1.2 phase)
-Plan: 14.1 (/code-intelligence lift) done (TDD, composite 74→81)
-Status: v1.2 in progress — 4 of 5 done; only Phase 8 (net-new feature) remains
-Last activity: 2026-06-10 — Phase 14.1 landed: /code-intelligence lift (error recovery+Retry, communicative Status/Actions cells, relative time, de-uppercased headers, fixed transparent status-pill tokens). Composite 74→81; structural-debt waiver retired. Re-critique caught + fixed a pill-token regression. TDD; 1212 spa tests green.
+Phase: 08 (optional-integration-panels) — COMPLETE
+Plan: 6 of 6 (all plans executed)
+Status: Phase complete — ready for verification
+Last activity: 2026-06-11
 
 ## Deferred Items
 
@@ -95,6 +96,11 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 11 P02 | 15min | 7 tasks | 17 files |
 | Phase 11 P03 | 9min | 2 tasks | 7 files |
 | Phase 11 P06 | 10min | 1 tasks | 6 files |
+| Phase 08 P02 | 8min | 3 tasks | 8 files |
+| Phase 08 P03 | ~8.5 min | 2 tasks | 2 files |
+| Phase 08 P04 | 517 | 3 tasks | 6 files |
+| Phase 08-optional-integration-panels P05 | 517 | 3 tasks | 3 files |
+| Phase 08-optional-integration-panels P06 | ~12 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -151,6 +157,11 @@ Recent decisions affecting current work:
 - [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
 - [Phase 14]: D-10.5-03.calibration-2 — floor RATIFIED at 80 + per-phase structural-debt waiver clause (user, 2026-06-08). Data point #3 = Phase 14 (composite 78; /coverage 80, /code-intelligence 74), confirming band 74/76/78 with /coverage reaching 80. /coverage 80 passes; /code-intelligence 74 waived to the 14.1 polish bundle (recorded in 14-VERIFICATION.md). CLAUDE.md floor line updated 87→80. Closes D-10.5-03.calibration-1.
+- [Phase ?]: ./daemon subpath export in shared — avoids rootDir violation; env.ts absent from browser-facing index.ts (T-08-01/INV-05)
+- [Phase ?]: Cache keyed projectId:issueId for Linear (Pitfall 7) — same issueId across two projects must not share cache entries
+- [Phase ?]: Linear auth: raw API key header (no Bearer prefix) — lin_api_* keys differ from OAuth Bearer tokens
+- [Phase 08]: Plan 08-06: LinearPanel renders identifier in link only (not a separate span) — avoids duplicate DOM text that breaks RTL getByText; identifier is both label and link-out
+- [Phase 08]: Plan 08-06: E2E route handlers for /sentry/recent + /linear/issues added with empty-issues responses — validates INV-03 (dashboard functional with zero integration env vars)
 
 ### Pending Todos
 
@@ -168,10 +179,10 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-06T17:01:43.712Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/DASH-14-understand-anything-integration-daemon-hosted-knowledge-grap/14-CONTEXT.md
-Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
+Last session: 2026-06-11T11:56:00.000Z
+Stopped at: Completed 08-06-PLAN.md — SPA integration panels (SentryPanel + LinearPanel + hooks + SingleProjectView wiring). Phase 08 fully executed; ready for /gsd-verify-phase.
+Resume file: None
+Next action: Run /gsd-verify-phase 08 — start dev server, verify INV-03 (configure-to-enable empty states), verify INV-04 (schema drift surfaces InlineDrift), visual check both panels in Health column, author 08-IMPECCABLE.md (≥80 composite, per CLAUDE.md D-10.5-02).
 
 ## Operator Next Steps
 

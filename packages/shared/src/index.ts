@@ -125,6 +125,24 @@ export type {
   IntegrationState,
   IntegrationsResponse,
 } from './schemas/integrations.js'
+// Phase 8 — Sentry + Linear shared wire schemas (INV-04)
+// Note: env.ts (EnvFileSchema) is intentionally NOT re-exported here (T-08-01/INV-05/D-08-13)
+export {
+  SentryIssueSchema,
+  SentryRecentResponseSchema,
+} from './schemas/sentry.js'
+export type {
+  SentryIssue,
+  SentryRecentResponse,
+} from './schemas/sentry.js'
+export {
+  LinearIssueSchema,
+  LinearIssuesResponseSchema,
+} from './schemas/linear.js'
+export type {
+  LinearIssue,
+  LinearIssuesResponse,
+} from './schemas/linear.js'
 export {
   ObservabilitySignalSchema,
   ObservabilityToolStateSchema,

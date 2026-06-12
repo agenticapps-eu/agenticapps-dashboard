@@ -10,21 +10,21 @@
 
 ### Sentry integration panel (Phase 8)
 
-- [ ] **SENTRY-01**: `GET /api/projects/{id}/sentry/recent` returns recent errors when `SENTRY_AUTH_TOKEN` is set on the daemon
-- [ ] **SENTRY-02**: Response cached ~60s; on API failure the panel falls back to "Sentry API unreachable — using cached data from {time}" and never crashes
-- [ ] **SENTRY-03**: Without `SENTRY_AUTH_TOKEN`, the panel shows a "Configure to enable" empty state with a one-paragraph setup guide (link to `/help`)
+- [x] **SENTRY-01**: `GET /api/projects/{id}/sentry/recent` returns recent errors when `SENTRY_AUTH_TOKEN` is set on the daemon
+- [x] **SENTRY-02**: Response cached ~60s; on API failure the panel falls back to "Sentry API unreachable — using cached data from {time}" and never crashes
+- [x] **SENTRY-03**: Without `SENTRY_AUTH_TOKEN`, the panel shows a "Configure to enable" empty state with a one-paragraph setup guide (link to `/help`)
 
 ### Linear integration panel (Phase 8)
 
-- [ ] **LINEAR-01**: `GET /api/projects/{id}/linear/issue/{issueId}` returns issue title/status/assignee when `LINEAR_API_KEY` is set on the daemon
-- [ ] **LINEAR-02**: Branch-name / commit pattern detection links commits/PRs to Linear issue IDs (the static `Linear: ACME-123` link needs no API call)
-- [ ] **LINEAR-03**: Without `LINEAR_API_KEY`, the panel shows a "Configure to enable" empty state
+- [x] **LINEAR-01**: `GET /api/projects/{id}/linear/issue/{issueId}` returns issue title/status/assignee when `LINEAR_API_KEY` is set on the daemon
+- [x] **LINEAR-02**: Branch-name / commit pattern detection links commits/PRs to Linear issue IDs (the static `Linear: ACME-123` link needs no API call)
+- [x] **LINEAR-03**: Without `LINEAR_API_KEY`, the panel shows a "Configure to enable" empty state
 
 ### Infisical surface (Phase 8)
 
-- [ ] **INFI-01**: Daemon reads its env from `process.env`; running under `infisical run` makes it Infisical-aware with **no code change**
-- [ ] **INFI-02**: `agentic-dashboard env set` writes to `~/.agenticapps/dashboard/env.json` (mode `0600`) for non-Infisical users
-- [ ] **INFI-03**: Read-only Infisical **status reflection** in the IntegrationsHealth surface — configured-or-not + scope, with a "configure" link. Reflects the separately-built `secrets-platform` (cparx pilot); makes **no** privileged Infisical calls and stores no secrets. Deliberately minimal — not a secrets manager.
+- [x] **INFI-01**: Daemon reads its env from `process.env`; running under `infisical run` makes it Infisical-aware with **no code change**
+- [x] **INFI-02**: `agentic-dashboard env set` writes to `~/.agenticapps/dashboard/env.json` (mode `0600`) for non-Infisical users
+- [x] **INFI-03**: Read-only Infisical **status reflection** in the IntegrationsHealth surface — configured-or-not + scope, with a "configure" link. Reflects the separately-built `secrets-platform` (cparx pilot); makes **no** privileged Infisical calls and stores no secrets. Deliberately minimal — not a secrets manager.
 
 ### Phase 12 gate close-out (carry-over)
 
@@ -46,11 +46,11 @@
 
 ### Cross-cutting invariants (must survive every v1.2 change)
 
-- [ ] **INV-01**: Read-only on project filesystems preserved — no new daemon route writes to a registered project's files (sole exception remains `POST /api/projects/{id}/open`)
-- [ ] **INV-02**: No native dependencies added to `packages/agent` (no `keytar`, no FFI) — Sentry/Linear clients are pure-JS HTTP
-- [ ] **INV-03**: Optional integrations stay optional — dashboard renders fully and all non-integration routes work with zero of `SENTRY_AUTH_TOKEN` / `LINEAR_API_KEY` / Infisical configured
-- [ ] **INV-04**: Shared Zod schema is the single source of truth for any new daemon ↔ SPA wire shape (Sentry/Linear/Infisical payloads); both ends validate
-- [ ] **INV-05**: Secrets-on-disk discipline — any new env value lives only in `~/.agenticapps/dashboard/env.json` at mode `0600`; no token is logged or sent to the SPA
+- [x] **INV-01**: Read-only on project filesystems preserved — no new daemon route writes to a registered project's files (sole exception remains `POST /api/projects/{id}/open`)
+- [x] **INV-02**: No native dependencies added to `packages/agent` (no `keytar`, no FFI) — Sentry/Linear clients are pure-JS HTTP
+- [x] **INV-03**: Optional integrations stay optional — dashboard renders fully and all non-integration routes work with zero of `SENTRY_AUTH_TOKEN` / `LINEAR_API_KEY` / Infisical configured
+- [x] **INV-04**: Shared Zod schema is the single source of truth for any new daemon ↔ SPA wire shape (Sentry/Linear/Infisical payloads); both ends validate
+- [x] **INV-05**: Secrets-on-disk discipline — any new env value lives only in `~/.agenticapps/dashboard/env.json` at mode `0600`; no token is logged or sent to the SPA
 
 ## Deferred (not in v1.2)
 
