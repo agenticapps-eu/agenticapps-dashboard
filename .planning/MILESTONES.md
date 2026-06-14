@@ -1,5 +1,35 @@
 # Milestones
 
+## v1.2 Optional integrations & fleet-conformance follow-through (Shipped: 2026-06-12)
+
+**Scope:** Phase 8 (net-new) + Phase 12 / 12.1 / 13 / 14.1 (carry-over close-out of v1.1-shipped work).
+**Phases:** 5 | **Plans:** 6 (Phase 8) + 4 close-out/lift phases | **Timeline:** 2026-06-10 → 2026-06-12
+**Git:** 66 commits since v1.1 tag; merged to `main` via PR #58 (code) + #59 (planning); tagged `v1.2`.
+
+### Key accomplishments
+
+- **Optional integration panels (Phase 8)** — read-only Sentry, Linear, and Infisical surfaces. Env-gated daemon routes (`/sentry/recent`, `/linear/issues`) with 60s cache, last-good stale fallback, and token-safe responses; `env set/list/unset` CLI writing `~/.agenticapps/dashboard/env.json` at `0600`; Infisical-aware `process.env` loading + read-only `.infisical.json` status reflection. All three panels render "configure to enable" with zero env set and the dashboard stays fully functional (INV-03). Shared Zod schemas as single source of truth. (SENTRY-01..03, LINEAR-01..03, INFI-01..03)
+- **Phase 12 gate close-out** — ran the deferred `12-06` close-out gate retrospectively: `12-REVIEW.md` (0 crit), `12-SECURITY.md` (SECURED 27/27), `12-HUMAN-UAT.md` (4/4 PASS), `12-IMPECCABLE.md` (composite 80), `12-VERIFICATION.md`. (GATE-12-01..03)
+- **Conformance chart legibility (Phase 12.1)** — persistent legend + 70/90 threshold labels on `FleetTrendChart.tsx`; re-critique composite **84**, legible without hover. (IMPV-12.1-01)
+- **Phase 13 gate close-out** — confirmed `13-04` gate complete (CSO PASS, two-stage REVIEW with HIGH S1-01 addressed, IMPECCABLE 84, UAT resolved) and wrote `13-VERIFICATION.md`. Phase 13 flipped ⚠️ → ✅. (GATE-13-01)
+- **`/code-intelligence` IMPECCABLE lift (Phase 14.1)** — composite **74 → 81** (error recovery + Retry, communicative cells, relative time, header consistency, real status-pill tokens); structural-debt waiver retired. (IMPV-01)
+
+### Known deferred items at close (acknowledged as tech debt — see STATE.md "Deferred Items")
+
+22 open-artifact-audit items, all carried over from already-shipped v1.0/v1.1 phases (none v1.2/Phase 8):
+
+- **Verification `human_needed`** on Phases 00/01/02/03/04/06, 05.1, 10, 11.1, 11.2 (historical sign-off backlog).
+- **UAT pending** — Phase 01 (2 scenarios) still partial; remaining phase UATs closed/resolved with 0 open scenarios.
+- **2 open debug sessions** — `family-scan-no-ui-feedback` (unknown), `per-row-scan-repo-not-registered` (diagnosed).
+- **Tailscale second-device viewer access (D-14-04)** — infra-gated; bind parity verified at code/test level only.
+- **`08-IMPECCABLE.md` composite 78** — below the ≥80 floor; accepted under the per-phase structural-debt waiver clause (D-10.5-03.calibration-2).
+
+### Versioning note
+
+This is the **second** use of the "v1.2" label. The v1.1-archived ROADMAP/REQUIREMENTS bodies historically labeled Phases 12–14 as "v1.2 — Fleet conformance & drift visibility"; those were folded into **v1.1** at its 2026-06-08 close. This milestone (Phase 8 + the 12/13/14.1 close-outs) is the real, tagged v1.2.
+
+---
+
 ## v1.1 Cross-family observability (Shipped: 2026-06-08)
 
 **Scope:** Phases 10, 10.5, 10.6, 11, 11.1, 11.2, 12, 13, 14 (the post-v1.0 cross-family observability arc).
