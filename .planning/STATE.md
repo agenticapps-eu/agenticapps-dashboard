@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Optional integrations & fleet-conformance follow-through
-status: verifying
-stopped_at: Completed 08-06-PLAN.md — SPA integration panels (SentryPanel + LinearPanel + hooks + SingleProjectView wiring)
-last_updated: "2026-06-11T11:56:00.000Z"
-last_activity: 2026-06-11
+status: milestone_complete
+stopped_at: v1.2 milestone closed — archived, ROADMAP flipped, tagged v1.2. Next; /gsd-new-milestone for v1.3.
+last_updated: "2026-06-14T07:30:00.000Z"
+last_activity: 2026-06-14
 progress:
-  total_phases: 1
-  completed_phases: 1
+  total_phases: 5
+  completed_phases: 5
   total_plans: 6
   completed_plans: 6
   percent: 100
@@ -18,21 +18,24 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-08)
+See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Phase 08 — optional-integration-panels
+**Current focus:** Planning v1.3 (open-source readiness — Phase 9)
 
 ## Current Position
 
-Phase: 08 (optional-integration-panels) — COMPLETE
-Plan: 6 of 6 (all plans executed)
-Status: Phase complete — ready for verification
-Last activity: 2026-06-11
+Milestone: v1.2 — CLOSED 2026-06-14 (shipped 2026-06-12 via PR #58/#59; tagged v1.2)
+Phase: none active — between milestones
+Status: v1.2 archived (ROADMAP flipped, MILESTONES + RETROSPECTIVE updated, REQUIREMENTS.md reset)
+Last activity: 2026-06-14
+Next: /gsd-new-milestone to define v1.3 (Phase 9 — LICENSE, CONTRIBUTING, optional public landing)
 
 ## Deferred Items
 
-Items acknowledged and deferred at v1.1 milestone close on 2026-06-08 (proceed-and-acknowledge per /gsd-complete-milestone). 23 items: 21 from the open-artifact audit + Phase 12 close gap + Phase 13 gate gap.
+Re-acknowledged and carried forward at **v1.2 milestone close on 2026-06-14** (proceed-and-acknowledge per /gsd-complete-milestone). The open-artifact audit at v1.2 close found 22 items, all carried over from already-shipped v1.0/v1.1 phases (none v1.2/Phase 8): 10 `human_needed` verifications (Phases 00/01/02/03/04/06, 05.1, 10, 11.1, 11.2), 10 UAT statuses (only Phase 01 has 2 genuinely-open scenarios), 2 debug sessions. The 2 v1.1-deferred phase-close items below were **resolved in v1.2**.
+
+Originally acknowledged at v1.1 milestone close on 2026-06-08. 23 items: 21 from the open-artifact audit + Phase 12 close gap + Phase 13 gate gap.
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -179,11 +182,11 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-11T11:56:00.000Z
-Stopped at: Completed 08-06-PLAN.md — SPA integration panels (SentryPanel + LinearPanel + hooks + SingleProjectView wiring). Phase 08 fully executed; ready for /gsd-verify-phase.
+Last session: 2026-06-14T07:30:00.000Z
+Stopped at: v1.2 milestone closed. Phase 8 + close-outs shipped 2026-06-12 (PR #58/#59); milestone archived (v1.2-ROADMAP.md + v1.2-REQUIREMENTS.md), ROADMAP flipped ✅, MILESTONES + RETROSPECTIVE + PROJECT updated, REQUIREMENTS.md reset, tagged v1.2.
 Resume file: None
-Next action: Run /gsd-verify-phase 08 — start dev server, verify INV-03 (configure-to-enable empty states), verify INV-04 (schema drift surfaces InlineDrift), visual check both panels in Health column, author 08-IMPECCABLE.md (≥80 composite, per CLAUDE.md D-10.5-02).
+Next action: Run /gsd-new-milestone to define v1.3 (open-source readiness — Phase 9: LICENSE, CONTRIBUTING, optional public landing).
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Start the next milestone with /gsd-new-milestone (v1.3 — open-source readiness)

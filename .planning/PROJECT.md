@@ -8,17 +8,20 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 
 **A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.**
 
-## Current Milestone: v1.2 Optional integrations & fleet-conformance follow-through
+## Current State: v1.2 shipped (2026-06-12)
 
-**Goal:** Land the held optional-integration panels (Sentry · Linear · Infisical, now unblocked by the completed `secrets-platform` cparx pilot) and close the carry-over conformance debt from v1.1.
+**v1.2 "Optional integrations & fleet-conformance follow-through" shipped and tagged.** Landed the held optional-integration panels (Sentry · Linear · Infisical) and cleared the carry-over conformance debt from v1.1.
 
-**Target features:**
-- **Phase 8 — Optional integration panels.** Sentry · Linear · Infisical read-only status panels. Each shows a "configure to enable" empty state when its env vars are unset; the dashboard stays fully functional without any of them. Infisical surface is a read-only *status reflection* only — secrets infrastructure lives in the separate `agenticapps-eu/secrets-platform` repo, not here.
-- **Phase 12 gate close-out.** Run the deferred `12-06` close-out gate (Stage 1/2 review, `/cso`, `/qa`, `12-IMPECCABLE.md`) and produce `12-VERIFICATION.md`. Implementation (12-00..05) already shipped in v1.1.
-- **Phase 13 gate close-out.** Complete the incomplete `13-04` gate ritual. Implementation (13-00..03) already shipped in v1.1.
-- **Phase 14.1 polish bundle.** Lift `/code-intelligence` IMPECCABLE composite from ~74 to the ≥ 80 floor (D-10.5-03.calibration-2), retiring the outstanding structural-debt waiver.
+**Delivered:**
+- **Phase 8 — Optional integration panels (net-new).** Env-gated read-only Sentry/Linear data routes (60s cache, last-good stale fallback, token-safe) + Infisical-aware env loading + read-only `.infisical.json` status reflection. All three render "configure to enable" with zero env set; the dashboard stays fully functional without any of them (INV-03). `env set/list/unset` CLI writes `~/.agenticapps/dashboard/env.json` at `0600`. Shared Zod schemas as single source of truth.
+- **Phase 12 / 13 gate close-outs.** Ran the deferred `12-06` gate retrospectively (`12-VERIFICATION.md`, REVIEW 0 crit, SECURED 27/27, UAT 4/4) and confirmed `13-04` complete (`13-VERIFICATION.md`).
+- **Phase 12.1 / 14.1 IMPECCABLE lifts.** Conformance chart legibility (composite 80→84) and `/code-intelligence` (74→81, structural-debt waiver retired).
 
-**Key context:** Most of v1.2 is carry-over close-out of already-shipped v1.1 work; only Phase 8 is net-new. Phase dirs preserved (no `phases.clear`); phase numbering continues from existing. The Infisical panel waits on / reflects the separately-built secrets platform — it is not over-built here.
+Shipped via PR #58 (code) + #59 (planning). Test suite ~2,600+ across packages.
+
+## Next Milestone: v1.3 Open-source readiness
+
+**Goal:** Make the repo public-ready — LICENSE (MIT), CONTRIBUTING, and an optional public landing page (Phase 9, OSS-01..03). Not yet started; define via `/gsd-new-milestone`.
 
 ## Requirements
 
@@ -37,14 +40,15 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 - ✓ **IMP-01..05** — v1.1 (Phase 11.1/11.2): column-width lock, sticky toolbar, Toast, contrast invariant, tooltips, touch targets.
 - ✓ **D-10.5-01..05** — v1.1 (Phase 10.5): skill-driven impeccable gate; floor recalibrated to ≥ 80 + structural-debt waiver (D-10.5-03.calibration-2, ratified 2026-06-08).
 - ✓ **D-14-01..10** — v1.1 (Phase 14): daemon-hosted understand-anything viewer + Code Intelligence section + scoped HMAC v2 tokens.
+- ✓ **SENTRY-01..03, LINEAR-01..03, INFI-01..03** — v1.2 (Phase 8): read-only Sentry/Linear/Infisical panels; env-gated routes (60s cache, last-good), `0600` env.json CLI, configure-to-enable empty states; dashboard fully functional without any of them.
+- ✓ **GATE-12-01..03, GATE-13-01** — v1.2: Phase 12/13 close-out gates run; `12-VERIFICATION.md` + `13-VERIFICATION.md` produced.
+- ✓ **IMPV-12.1-01** — v1.2 (Phase 12.1): conformance chart legibility (legend + 70/90 thresholds; composite 80→84).
+- ✓ **IMPV-01** — v1.2 (Phase 14.1): `/code-intelligence` IMPECCABLE lift (composite 74→81); structural-debt waiver retired.
+- ✓ **INV-01..05** — v1.2: read-only FS, no native deps, optional-stays-optional, shared-schema SoT, `0600` secrets — all held across Phase 8.
 
 ### Active
 
-- [ ] **REQ-12-* (Phase 12 conformance surface)** — implementation shipped (12-00..05); **close-out gate (12-06) + verification deferred** to v1.2. Carry into next milestone.
-- [ ] **Phase 13 gate close-out (13-04)** — GitNexus scoped-scan actions shipped; gates ritual deferred.
-- [ ] **Phase 14.1 polish bundle** — `/code-intelligence` IMPECCABLE lift (composite ~74 → ≥ 80); structural-debt waiver outstanding.
-- [ ] **SENTRY-/LINEAR-/INFI-*** (Phase 8, held) — optional integrations, gated on upstream tooling.
-- [ ] **OSS-01..03** (Phase 9) — open-source readiness.
+- [ ] **OSS-01..03** (Phase 9, v1.3) — open-source readiness: LICENSE (MIT), CONTRIBUTING, optional public landing.
 
 ### Out of Scope
 
@@ -103,6 +107,9 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 | MIT license (when public) | Matches the rest of the Claude Code skill ecosystem | ✓ Good (v1.0/v1.1) |
 | CF Access email-only on production deploys | Matches "one user, multiple devices" stance | ✓ Good (v1.0/v1.1) |
 | Workflow commitment ritual mandatory in every implementing session | Builds Cialdini-style consistency pressure that keeps discipline from eroding | ✓ Good (v1.0/v1.1) |
+| `./daemon` subpath export in `shared`; `env.ts` kept out of browser-facing `index.ts` | Avoids rootDir violation and keeps secrets schema off the SPA bundle (T-08-01/INV-05) | ✓ Good (v1.2) |
+| Linear cache keyed `projectId:issueId`; raw API-key header (no `Bearer`) | Same issueId across projects must not share cache; `lin_api_*` keys aren't OAuth Bearer tokens | ✓ Good (v1.2) |
+| `08-IMPECCABLE.md` composite 78 accepted under per-phase structural-debt waiver | Integration-panel surface structurally below the ≥80 floor; waiver clause exists for exactly this (D-10.5-03.calibration-2) | ⚠️ Revisit (v1.2) |
 
 ## Evolution
 
@@ -145,7 +152,9 @@ Post-UAT sticky-layering fix landed (`89d4b2d` + `1efde99`): `PageHeader` uses `
 
 ---
 
-*Last updated: 2026-06-10 — milestone **v1.2 "Optional integrations & fleet-conformance follow-through"** opened. Scope: Phase 8 (Sentry/Linear/Infisical panels) + Phase 12/13 gate close-outs + Phase 14.1 IMPECCABLE lift. Phase dirs preserved (no clear); numbering continues. See `.planning/REQUIREMENTS.md` + `.planning/ROADMAP.md`.*
+*Last updated: 2026-06-14 after **v1.2 "Optional integrations & fleet-conformance follow-through"** milestone close — Phase 8 (Sentry/Linear/Infisical panels) shipped net-new; Phase 12/13 gate close-outs + Phase 12.1/14.1 IMPECCABLE lifts cleared v1.1 carry-over debt. Merged via PR #58/#59, tagged `v1.2`. Archived to `.planning/milestones/v1.2-ROADMAP.md` + `v1.2-REQUIREMENTS.md`. Next: v1.3 open-source readiness (Phase 9).*
+
+*Previous: 2026-06-10 — milestone v1.2 opened. Scope: Phase 8 + Phase 12/13 gate close-outs + Phase 14.1 IMPECCABLE lift.*
 
 *Previous: 2026-06-08 after v1.1 (Cross-family observability) milestone close — Phases 10–14 archived, tagged v1.1. See `.planning/MILESTONES.md`.*
 
