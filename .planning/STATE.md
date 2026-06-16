@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Optional integrations & fleet-conformance follow-through
-status: milestone_complete
-stopped_at: v1.2 milestone closed — archived, ROADMAP flipped, tagged v1.2. Next; /gsd-new-milestone for v1.3.
-last_updated: "2026-06-14T07:30:00.000Z"
-last_activity: 2026-06-14
+milestone: v1.3
+milestone_name: CLAUDE.md Capability-Level Evaluation
+status: planning
+last_updated: "2026-06-16T07:45:45.136Z"
+last_activity: 2026-06-16
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,11 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 
 ## Current Position
 
-Milestone: v1.2 — CLOSED 2026-06-14 (shipped 2026-06-12 via PR #58/#59; tagged v1.2)
-Phase: none active — between milestones
-Status: v1.2 archived (ROADMAP flipped, MILESTONES + RETROSPECTIVE updated, REQUIREMENTS.md reset)
-Last activity: 2026-06-14
-Next: /gsd-new-milestone to define v1.3 (Phase 9 — LICENSE, CONTRIBUTING, optional public landing)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-16 — Milestone v1.3 started
 
 ## Deferred Items
 

@@ -19,9 +19,22 @@ A registry-based, multi-project dashboard that visualizes the running state of t
 
 Shipped via PR #58 (code) + #59 (planning). Test suite ~2,600+ across packages.
 
-## Next Milestone: v1.3 Open-source readiness
+## Current Milestone: v1.3 CLAUDE.md Capability-Level Evaluation
 
-**Goal:** Make the repo public-ready — LICENSE (MIT), CONTRIBUTING, and an optional public landing page (Phase 9, OSS-01..03). Not yet started; define via `/gsd-new-milestone`.
+**Goal:** Grade each registered repo's `CLAUDE.md`/`AGENTS.md` against the RepoRails L0–L6 capability ladder and surface **why** the level was assigned + **how to improve** — across the fleet Coverage Matrix and in a per-project panel.
+
+**Target features:**
+- Phase A — shared `ClaudeMdEval` Zod schema + deterministic `claudeMdLevelScanner` folded into the existing `coverageScan` fan-out (6th scanner); L-level badge column + detail drawer in the Coverage Matrix.
+- Phase B — per-project "CLAUDE.md Maturity" panel (full ladder, per-rung evidence, inferred-L5 flag, next-steps checklist).
+
+**Key context:**
+- Binding input: `docs/superpowers/specs/2026-06-15-claude-md-capability-level-design.md` (brainstormed + approved).
+- Deterministic structural predicates only — no LLM, no new native/cloud deps, read-only on project filesystems.
+- Strict-cumulative ladder (`level = highest N where rungs 1..N pass`); L5 "Maintained" is **inferred** from freshness/coverage-history signals and flagged as such.
+- Reuses AgentLinter's CLAUDE.md parser for content checks (L2/L3); no new daemon route.
+- Each frontend phase commits its `<N>-IMPECCABLE.md` (composite ≥ 80).
+
+**Next Milestone: v1.4 Open-source readiness** (bumped from v1.3) — LICENSE (MIT), CONTRIBUTING, optional public landing page (OSS-01..03). Not yet started.
 
 ## Requirements
 
@@ -48,7 +61,8 @@ Shipped via PR #58 (code) + #59 (planning). Test suite ~2,600+ across packages.
 
 ### Active
 
-- [ ] **OSS-01..03** (Phase 9, v1.3) — open-source readiness: LICENSE (MIT), CONTRIBUTING, optional public landing.
+- [ ] **CML-01..** (v1.3) — CLAUDE.md capability-level evaluation: deterministic L0–L6 scanner, fleet matrix L-level column + drawer, per-project maturity panel (REQ-IDs finalized in REQUIREMENTS.md).
+- [ ] **OSS-01..03** (v1.4, was v1.3) — open-source readiness: LICENSE (MIT), CONTRIBUTING, optional public landing.
 
 ### Out of Scope
 
@@ -152,7 +166,9 @@ Post-UAT sticky-layering fix landed (`89d4b2d` + `1efde99`): `PageHeader` uses `
 
 ---
 
-*Last updated: 2026-06-14 after **v1.2 "Optional integrations & fleet-conformance follow-through"** milestone close — Phase 8 (Sentry/Linear/Infisical panels) shipped net-new; Phase 12/13 gate close-outs + Phase 12.1/14.1 IMPECCABLE lifts cleared v1.1 carry-over debt. Merged via PR #58/#59, tagged `v1.2`. Archived to `.planning/milestones/v1.2-ROADMAP.md` + `v1.2-REQUIREMENTS.md`. Next: v1.3 open-source readiness (Phase 9).*
+*Last updated: 2026-06-16 — milestone **v1.3 "CLAUDE.md Capability-Level Evaluation"** opened. Grades each repo's CLAUDE.md against the RepoRails L0–L6 ladder (fleet matrix column + drawer, per-project maturity panel). Binding spec: `docs/superpowers/specs/2026-06-15-claude-md-capability-level-design.md`. Open-source readiness (former v1.3) bumped to v1.4.*
+
+*Previous: 2026-06-14 after **v1.2 "Optional integrations & fleet-conformance follow-through"** milestone close — Phase 8 (Sentry/Linear/Infisical panels) shipped net-new; Phase 12/13 gate close-outs + Phase 12.1/14.1 IMPECCABLE lifts cleared v1.1 carry-over debt. Merged via PR #58/#59, tagged `v1.2`. Archived to `.planning/milestones/v1.2-ROADMAP.md` + `v1.2-REQUIREMENTS.md`.*
 
 *Previous: 2026-06-10 — milestone v1.2 opened. Scope: Phase 8 + Phase 12/13 gate close-outs + Phase 14.1 IMPECCABLE lift.*
 
