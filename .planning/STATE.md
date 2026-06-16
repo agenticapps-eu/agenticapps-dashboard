@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: CLAUDE.md Capability-Level Evaluation
 status: planning
-last_updated: "2026-06-16T07:45:45.136Z"
+last_updated: "2026-06-16T08:00:00.000Z"
 last_activity: 2026-06-16
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-14)
+See: .planning/PROJECT.md (updated 2026-06-16)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** Planning v1.3 (open-source readiness — Phase 9)
+**Current focus:** v1.3 — CLAUDE.md Capability-Level Evaluation (DASH-15 + DASH-16)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: DASH-15 — Capability-level engine + fleet matrix (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-16 — Milestone v1.3 started
+Status: Roadmap created; awaiting /gsd:plan-phase DASH-15
+Last activity: 2026-06-16 — v1.3 roadmap written (DASH-15 + DASH-16)
+
+Progress bar: `░░░░░░░░░░ 0%` (0/2 phases)
 
 ## Deferred Items
 
@@ -115,6 +117,8 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 - Phase 11.1 inserted 2026-05-18 after Phase 11: impeccable p1 polish bundle (URGENT) — addresses the 4 Phase-10-inherited P1s surfaced in `11-IMPECCABLE.md` (column-width drift in CoverageFamilySection, non-sticky CoverageToolbar, missing clipboard-write feedback, `text-text-tertiary` contrast 3.8:1 < WCAG AA 4.5:1). Estimated composite lift 76 → ~82 — produces calibration data point #3 to settle D-10.5-03 floor recalibration (Option B/C/D). Not blocking v1.1 close-out but accepted as the path to close `D-10.5-03.calibration-1` cleanly.
 - Phase 14 added 2026-06-06: Understand-Anything integration — daemon-hosted knowledge-graph viewer + coverage status. Daemon serves a prebuilt static build of the understand-anything plugin's dashboard SPA (plugin cache v2.7.6, `packages/dashboard`) at `/understand/{projectId}/` and re-implements its 6 token-gated data endpoints (`knowledge-graph.json`, `meta.json`, `config.json`, `domain-graph.json`, `diff-overlay.json`, `file-content.json`) in Hono with bearer auth, reading each registered project's `.understand-anything/` directory. Coverage-matrix style status per repo (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand` — no daemon-triggered LLM scans this phase (analysis is LLM-driven, not a binary; headless `claude -p` scan is a follow-up phase candidate). Two constraint exceptions to ratify in discuss-phase: `file-content.json` serves graph-listed source files (broader than `.planning`/`.claude` read allow-list), and the future scan path writes `.understand-anything/` into repos (gitnexus D-13-01 precedent).
 - Phase 11.2 inserted 2026-05-18 after Phase 11.1: impeccable P2 polish bundle (URGENT) — closes the 5 follow-ups surfaced in `11.1-IMPECCABLE.md` §"Phase 11.2 candidate" (column-header tooltips P1 carry-over from Phase 10/11/11.1, per-row in-flight feedback for `gitnexus-analyze` P1, Wiki column width tightening P2 + iPad refresh-icon touch target P2, controlled search input P3, `max-w-prose` PageHeader subtitle P3). Estimated composite lift ~81 → ~85–87 (may hit legacy ≥87 floor without invoking calibration-2 waiver clause). Scopes OUT Coverage responsive collapse below 768px (stays a Phase 12 candidate).
+- DASH-15 added 2026-06-16: Capability-level engine + fleet matrix. Adds deterministic `claudeMdLevelScanner` as the 6th scanner in the `coverageScan` fan-out. Shared `ClaudeMdEval` Zod schema in `packages/shared`. L-level badge column + click-to-open drawer in the Coverage Matrix route. Frontend-touching phase — must commit `15-IMPECCABLE.md` (composite ≥ 80). Covers CML-01..09. Opens v1.3 milestone.
+- DASH-16 added 2026-06-16: Per-project CLAUDE.md Maturity panel. New panel in the single-project SPA view (peer of Discipline/Health/Skills). Presentation-only on top of DASH-15 data model. Frontend-touching phase — must commit `16-IMPECCABLE.md` (composite ≥ 80). Covers CML-10.
 
 ### Decisions
 
@@ -180,11 +184,11 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-14T07:30:00.000Z
-Stopped at: v1.2 milestone closed. Phase 8 + close-outs shipped 2026-06-12 (PR #58/#59); milestone archived (v1.2-ROADMAP.md + v1.2-REQUIREMENTS.md), ROADMAP flipped ✅, MILESTONES + RETROSPECTIVE + PROJECT updated, REQUIREMENTS.md reset, tagged v1.2.
+Last session: 2026-06-16T08:00:00.000Z
+Stopped at: v1.3 roadmap created. DASH-15 (engine + fleet matrix, CML-01..09) and DASH-16 (per-project panel, CML-10) defined. ROADMAP.md, STATE.md, REQUIREMENTS.md all updated.
 Resume file: None
-Next action: Run /gsd-new-milestone to define v1.3 (open-source readiness — Phase 9: LICENSE, CONTRIBUTING, optional public landing).
+Next action: Run /gsd:plan-phase DASH-15 to decompose the capability-level engine + fleet matrix phase into executable plans.
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone (v1.3 — open-source readiness)
+- Plan DASH-15 with /gsd:plan-phase DASH-15

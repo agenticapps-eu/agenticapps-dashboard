@@ -59,8 +59,13 @@ across the fleet Coverage Matrix and in a per-project panel.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| CML-01..07 | (Phase A — TBD by roadmapper) | pending |
-| CML-08..09 | (Phase A — TBD by roadmapper) | pending |
-| CML-10 | (Phase B — TBD by roadmapper) | pending |
-
-*(Traceability finalized by the roadmapper in ROADMAP.md.)*
+| CML-01 | DASH-15 | pending |
+| CML-02 | DASH-15 | pending |
+| CML-03 | DASH-15 | pending |
+| CML-04 | DASH-15 | pending |
+| CML-05 | DASH-15 | pending |
+| CML-06 | DASH-15 | pending |
+| CML-07 | DASH-15 | pending |
+| CML-08 | DASH-15 | pending |
+| CML-09 | DASH-15 | pending |
+| CML-10 | DASH-16 | pending |

@@ -9,7 +9,8 @@ Multi-project pipeline dashboard: a hosted static SPA on Cloudflare Pages + a si
 - ✅ **v1.0 Working dashboard + /help docs** — Phases 0–7 (+5.1, 6.1) — shipped; tagged `v1.0.0` / `v1.0.1`
 - ✅ **v1.1 Cross-family observability** — Phases 10, 10.5, 10.6, 11, 11.1, 11.2, 12, 13, 14 — shipped 2026-06-08; tagged `v1.1`
 - ✅ **v1.2 Optional integrations & fleet-conformance follow-through** — Phase 8 + Phase 12/12.1/13/14.1 close-outs — shipped 2026-06-12; tagged `v1.2`
-- 📋 **v1.3 Open-source readiness** (next) — Phase 9 (LICENSE, CONTRIBUTING, optional public landing)
+- 📋 **v1.3 CLAUDE.md Capability-Level Evaluation** (current) — DASH-15 + DASH-16 — grades each repo's CLAUDE.md/AGENTS.md against the L0–L6 ladder
+- 🔜 **v1.4 Open-source readiness** (next) — Phase 9 (LICENSE, CONTRIBUTING, optional public landing) — OSS-01..03
 
 > Full phase detail, success criteria, decisions, and close-out audits are archived per milestone in
 > `.planning/milestones/v1.0-…` (history), `v1.1-ROADMAP.md`, and `v1.2-ROADMAP.md`. Requirements are
@@ -64,11 +65,43 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 
 </details>
 
-### 📋 v1.3 Open-source readiness (next)
+### 📋 v1.3 CLAUDE.md Capability-Level Evaluation (current)
+
+- [ ] **DASH-15: Capability-level engine + fleet matrix** — CML-01..09
+- [ ] **DASH-16: Per-project CLAUDE.md Maturity panel** — CML-10
+
+### 🔜 v1.4 Open-source readiness (next)
 
 - [ ] Phase 9: Open-source Readiness — LICENSE, CONTRIBUTING, optional public landing (OSS-01..03)
 
-> Not yet started. Run `/gsd-new-milestone` to define v1.3 requirements and roadmap.
+> Not yet started. Phase number 9 is free; OSS-01..03 will occupy it.
+
+## Phase Details
+
+### DASH-15: Capability-level engine + fleet matrix
+**Goal**: Every repo in the Coverage Matrix displays its L0–L6 capability level, backed by a deterministic engine in the daemon, with a drawer that explains why
+**Depends on**: Phase 14 (scanner fan-out infrastructure, PathResolver pattern, coverageScan fan-out as 6th scanner slot)
+**Requirements**: CML-01, CML-02, CML-03, CML-04, CML-05, CML-06, CML-07, CML-08, CML-09
+**Success Criteria** (what must be TRUE):
+  1. The Coverage Matrix shows a per-repo L-level badge (L0–L6) for every registered project without any 500 errors — a scanner failure yields a degraded row, not a crash
+  2. Clicking a matrix row opens a drawer listing all six rungs with a pass/fail indicator, human-readable evidence, and next-steps advice for the next unmet rung
+  3. The L5 "Maintained" rung is visually flagged as inferred wherever it contributes to the headline level, and the inference flag is never hidden
+  4. A `ClaudeMdEval` Zod schema in `packages/shared` is validated by both daemon and SPA; schema mismatch surfaces as drift rather than a silent type error
+  5. The scanner is read-only, resolver-mediated, and wired as the 6th scanner in the existing `coverageScan` fan-out with no new daemon route or native/cloud dependency
+**Plans**: TBD
+**UI hint**: yes
+
+### DASH-16: Per-project CLAUDE.md Maturity panel
+**Goal**: The single-project view exposes a dedicated "CLAUDE.md Maturity" panel that renders the full L0–L6 ladder with per-rung evidence, the inferred-L5 flag, and a next-steps checklist — presentation-only on top of the Phase A data model
+**Depends on**: DASH-15 (ClaudeMdEval payload in CoverageRow; scanner already running)
+**Requirements**: CML-10
+**Success Criteria** (what must be TRUE):
+  1. The single-project view contains a "CLAUDE.md Maturity" panel as a peer of the Discipline / Health / Skills panels
+  2. The panel renders all six rungs of the ladder, each showing its pass/fail status and the human-readable evidence string(s)
+  3. The L5 rung is visually marked "inferred" when it passes via proxy signals, so the user understands it is not hard-verified
+  4. The next-steps checklist shows only the unmet predicates of the next rung, rendered as concrete actionable advice
+**Plans**: TBD
+**UI hint**: yes
 
 ## Progress
 
@@ -96,4 +129,6 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 | 8. Optional Integration Panels | v1.2 | 6/6 | ✅ Complete | 2026-06-11 |
 | 12.1. Conformance chart legibility | v1.2 | 1/1 | ✅ Complete (80→84) | 2026-06-10 |
 | 14.1. /code-intelligence IMPECCABLE lift | v1.2 | 1/1 | ✅ Complete (74→81) | 2026-06-10 |
-| 9. Open-source Readiness | v1.3 | 0/TBD | 📋 Not started | - |
+| DASH-15. Capability-level engine + fleet matrix | v1.3 | 0/TBD | 📋 Not started | - |
+| DASH-16. Per-project CLAUDE.md Maturity panel | v1.3 | 0/TBD | 📋 Not started | - |
+| 9. Open-source Readiness | v1.4 | 0/TBD | 📋 Not started | - |
