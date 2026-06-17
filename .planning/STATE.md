@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-16)
 
 ## Current Position
 
-Phase: 15 (capability-level-engine-fleet-matrix) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 15
-Last activity: 2026-06-17 -- Phase 15 execution started
+Phase: 15 (capability-level-engine-fleet-matrix) — EXECUTING (PAUSED at checkpoint)
+Plan: 15-04 (Tasks 1–2 done; Task 3 IMPECCABLE gate pending)
+Status: 3/4 plans complete (15-01 schema, 15-02 scanner, 15-03 components — all merged + SUMMARYs). 15-04 column-wiring done & tests green, but PAUSED at the blocking `checkpoint:human-verify` IMPECCABLE gate (user deferred — "will do it later"). Phase NOT verified/complete. No 15-04-SUMMARY.md or 15-IMPECCABLE.md yet.
+Last activity: 2026-06-17 -- Phase 15 waves 1–3 executed; paused at 15-04 IMPECCABLE gate
 
-Progress bar: `░░░░░░░░░░ 0%` (0/2 phases)
+Progress bar: `░░░░░░░░░░ 0%` (0/2 phases — DASH-15 pending IMPECCABLE gate + verification)
 
 ## Deferred Items
 
