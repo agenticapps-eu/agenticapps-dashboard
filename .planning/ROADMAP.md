@@ -67,8 +67,8 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 
 ### 📋 v1.3 CLAUDE.md Capability-Level Evaluation (current)
 
-- [ ] **DASH-15: Capability-level engine + fleet matrix** — CML-01..09
-- [ ] **DASH-16: Per-project CLAUDE.md Maturity panel** — CML-10
+- [ ] **Phase DASH-15: Capability-level engine + fleet matrix** — CML-01..09
+- [ ] **Phase DASH-16: Per-project CLAUDE.md Maturity panel** — CML-10
 
 ### 🔜 v1.4 Open-source readiness (next)
 
@@ -78,7 +78,7 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 
 ## Phase Details
 
-### DASH-15: Capability-level engine + fleet matrix
+### Phase DASH-15: Capability-level engine + fleet matrix
 **Goal**: Every repo in the Coverage Matrix displays its L0–L6 capability level, backed by a deterministic engine in the daemon, with a drawer that explains why
 **Depends on**: Phase 14 (scanner fan-out infrastructure, PathResolver pattern, coverageScan fan-out as 6th scanner slot)
 **Requirements**: CML-01, CML-02, CML-03, CML-04, CML-05, CML-06, CML-07, CML-08, CML-09
@@ -91,7 +91,7 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 **Plans**: TBD
 **UI hint**: yes
 
-### DASH-16: Per-project CLAUDE.md Maturity panel
+### Phase DASH-16: Per-project CLAUDE.md Maturity panel
 **Goal**: The single-project view exposes a dedicated "CLAUDE.md Maturity" panel that renders the full L0–L6 ladder with per-rung evidence, the inferred-L5 flag, and a next-steps checklist — presentation-only on top of the Phase A data model
 **Depends on**: DASH-15 (ClaudeMdEval payload in CoverageRow; scanner already running)
 **Requirements**: CML-10
@@ -129,6 +129,6 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 | 8. Optional Integration Panels | v1.2 | 6/6 | ✅ Complete | 2026-06-11 |
 | 12.1. Conformance chart legibility | v1.2 | 1/1 | ✅ Complete (80→84) | 2026-06-10 |
 | 14.1. /code-intelligence IMPECCABLE lift | v1.2 | 1/1 | ✅ Complete (74→81) | 2026-06-10 |
-| DASH-15. Capability-level engine + fleet matrix | v1.3 | 0/TBD | 📋 Not started | - |
-| DASH-16. Per-project CLAUDE.md Maturity panel | v1.3 | 0/TBD | 📋 Not started | - |
+| Phase DASH-15. Capability-level engine + fleet matrix | v1.3 | 0/TBD | 📋 Not started | - |
+| Phase DASH-16. Per-project CLAUDE.md Maturity panel | v1.3 | 0/TBD | 📋 Not started | - |
 | 9. Open-source Readiness | v1.4 | 0/TBD | 📋 Not started | - |
