@@ -90,8 +90,8 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
   5. The scanner is read-only, resolver-mediated, and wired as the 6th scanner in the existing `coverageScan` fan-out with no new daemon route or native/cloud dependency
 **Plans**: 4 plans across 3 waves
 - [x] 15-01-PLAN.md — ClaudeMdEval shared Zod schema + optional CoverageRow.eval field (Wave 1; CML-07)
-- [ ] 15-02-PLAN.md — deterministic claudeMdLevelScanner L0–L6 engine + 7th coverageScan slot (Wave 2; CML-01..06)
-- [ ] 15-03-PLAN.md — LevelBadgeCell + ClaudeMdLevelDrawer SPA components (Wave 2, parallel; CML-08/09)
+- [x] 15-02-PLAN.md — deterministic claudeMdLevelScanner L0–L6 engine + 7th coverageScan slot (Wave 2; CML-01..06)
+- [x] 15-03-PLAN.md — LevelBadgeCell + ClaudeMdLevelDrawer SPA components (Wave 2, parallel; CML-08/09)
 - [ ] 15-04-PLAN.md — wire level column into coverage table + 15-IMPECCABLE.md gate (Wave 3; CML-08/09)
 **UI hint**: yes
 
