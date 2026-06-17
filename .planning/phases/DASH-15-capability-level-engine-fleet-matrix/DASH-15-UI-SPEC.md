@@ -1,10 +1,11 @@
 ---
 phase: DASH-15
 slug: capability-level-engine-fleet-matrix
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-17
+reviewed_at: 2026-06-17
 ---
 
 # Phase DASH-15 — UI Design Contract
