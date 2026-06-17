@@ -258,3 +258,11 @@ export {
   buildUnderstandCommand,
 } from './clipboard.js'
 export type { GitnexusIndexCommand, UnderstandCommand } from './clipboard.js'
+
+// Phase 15 — CLAUDE.md capability-level schemas (CML-07)
+export {
+  ClaudeMdLevelSchema,
+  RungCheckSchema,
+  ClaudeMdEvalSchema,
+} from './schemas/claudeMdLevel.js'
+export type { ClaudeMdLevel, RungCheck, ClaudeMdEval } from './schemas/claudeMdLevel.js'

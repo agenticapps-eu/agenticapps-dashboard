@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ClaudeMdEvalSchema } from './claudeMdLevel.js'
 
 // 4-state freshness vocabulary (UI-SPEC §4 + COV-11)
 export const CoverageStateSchema = z.enum(['fresh', 'stale', 'missing', 'not-applicable'])
@@ -88,6 +89,9 @@ export const CoverageRowSchema = z.object({
     degraded: z.boolean().optional(),
     degradedReason: z.string().optional(),
   }).strict().optional(),
+  /** DASH-15 CML-07: optional for back-compat with pre-DASH-15 daemons (D-14-08 precedent).
+   *  Absent when the claudeMdLevel scanner throws or is not yet wired; SPA renders "—". */
+  eval: ClaudeMdEvalSchema.optional(),
   degraded: z
     .object({
       reason: z.string(), // e.g. "claudeMd scanner threw: ENOENT"
