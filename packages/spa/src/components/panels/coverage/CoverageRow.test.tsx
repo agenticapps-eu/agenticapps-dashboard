@@ -839,3 +839,120 @@ describe('Phase 14 — understand column in CoverageRow (D-14-06/08/10)', () => 
     expect(container.innerHTML).toContain('—')
   })
 })
+
+// ── Phase 15 DASH-15 CML-08/09: Level column + ClaudeMdLevelDrawer wiring ────
+//
+// LevelBadgeCell and ClaudeMdLevelDrawer are mocked here — wiring tests only.
+// Component internals are tested in LevelBadgeCell.test.tsx + ClaudeMdLevelDrawer.test.tsx.
+
+vi.mock('./LevelBadgeCell.js', () => ({
+  LevelBadgeCell: ({
+    evalData,
+    repoName,
+    onClick,
+  }: {
+    evalData: unknown
+    repoName: string
+    onClick: () => void
+  }) =>
+    React.createElement(
+      'button',
+      {
+        'data-testid': 'level-badge-cell',
+        'data-repo': repoName,
+        'data-has-eval': evalData !== undefined ? 'true' : 'false',
+        onClick,
+      },
+      evalData !== undefined ? `L${(evalData as { level: number }).level}` : '—',
+    ),
+}))
+
+vi.mock('./ClaudeMdLevelDrawer.js', () => ({
+  ClaudeMdLevelDrawer: ({
+    isOpen,
+    repoName,
+  }: {
+    isOpen: boolean
+    onClose: () => void
+    repoName: string
+    evalData: unknown
+  }) =>
+    isOpen
+      ? React.createElement(
+          'div',
+          { 'data-testid': 'level-drawer', 'data-repo': repoName },
+          'drawer-open',
+        )
+      : null,
+}))
+
+const L4_EVAL = {
+  level: 4,
+  levelLabel: 'Abstracted',
+  rungs: [
+    { rung: 1, label: 'Basic', passed: true, evidence: ['git-tracked'] },
+    { rung: 2, label: 'Scoped', passed: true, evidence: ['MUST found'] },
+    { rung: 3, label: 'Structured', passed: true, evidence: ['@import found'] },
+    { rung: 4, label: 'Abstracted', passed: true, evidence: ['paths: frontmatter'] },
+    { rung: 5, label: 'Maintained', passed: false, evidence: ['mtime 180d ago'] },
+    { rung: 6, label: 'Adaptive', passed: false, evidence: ['no mcp.json'] },
+  ],
+  nextSteps: ['Keep CLAUDE.md updated (edit within 90 days) → L5.'],
+  inferred: false,
+}
+
+describe('Phase 15 — level column in CoverageRow (CML-08/09)', () => {
+  it('Level-1: row with eval mounts LevelBadgeCell with the eval data', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow({ eval: L4_EVAL })} />
+        </tbody>
+      </table>,
+    )
+    const badge = screen.getByTestId('level-badge-cell')
+    expect(badge).toBeTruthy()
+    expect(badge.getAttribute('data-has-eval')).toBe('true')
+    expect(badge.getAttribute('data-repo')).toBe('agenticapps-dashboard')
+  })
+
+  it('Level-2: row without eval (undefined) mounts LevelBadgeCell in degraded state (no eval data)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow({ eval: undefined })} />
+        </tbody>
+      </table>,
+    )
+    const badge = screen.getByTestId('level-badge-cell')
+    expect(badge).toBeTruthy()
+    expect(badge.getAttribute('data-has-eval')).toBe('false')
+  })
+
+  it('Level-3: row without eval (undefined) mounts no drawer (drawer gated on row.eval !== undefined)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow({ eval: undefined })} />
+        </tbody>
+      </table>,
+    )
+    // Drawer must not be in DOM when eval is undefined
+    expect(screen.queryByTestId('level-drawer')).toBeNull()
+  })
+
+  it('Level-4: clicking the badge button opens the drawer when row.eval is defined', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow({ eval: L4_EVAL })} />
+        </tbody>
+      </table>,
+    )
+    // Initially closed
+    expect(screen.queryByTestId('level-drawer')).toBeNull()
+    // Click badge to open
+    fireEvent.click(screen.getByTestId('level-badge-cell'))
+    expect(screen.getByTestId('level-drawer')).toBeTruthy()
+  })
+})
