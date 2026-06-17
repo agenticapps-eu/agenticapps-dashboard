@@ -33,6 +33,7 @@ import {
 } from './scanners/workflowVersionScanner.js'
 import { scanOverrideSentinelsForRepo } from './scanners/overrideSentinelScanner.js'
 import { readRepoHeadSha, scanUnderstandForRepo } from './scanners/understandScanner.js'
+import { scanClaudeMdLevel } from './scanners/claudeMdLevelScanner.js'
 import { mintViewerToken } from './viewerToken.js'
 import { makeCoverageResolver, type PathResolver } from './coverageResolver.js'
 
@@ -188,7 +189,7 @@ async function buildRow(
   // a sync throw escape the array literal before allSettled gets a chance to
   // catch it. Wrap in an async IIFE so the throw resolves to a rejected promise
   // that allSettled handles.
-  const [cmS, gnS, wkS, wfS, ovS, unS] = await Promise.allSettled([
+  const [cmS, gnS, wkS, wfS, ovS, unS, lvS] = await Promise.allSettled([
     (async () => scanClaudeMd({ repoAbsPath, resolve }))(),
     (async () => rateGitNexusRepo(gnGlobal, repoAbsPath))(),
     (async () => scanWikiForFamily(familyRoot, repoName, resolve))(),
@@ -196,6 +197,9 @@ async function buildRow(
     (async () => scanOverrideSentinelsForRepo(repoAbsPath, resolve))(),
     // Phase 14 D-14-08: understand-anything staleness detection (pure FS, no subprocess)
     (async () => scanUnderstandForRepo(repoAbsPath, readRepoHeadSha(repoAbsPath)))(),
+    // DASH-15 CML-06: claudeMdLevel scanner — 7th slot (AGREED-2: async IIFE required so
+    // sync throws resolve to rejected promises that allSettled handles correctly).
+    (async () => scanClaudeMdLevel({ repoAbsPath, resolve }))(),
   ])
 
   const rowDegraded: string[] = []
@@ -319,6 +323,18 @@ async function buildRow(
           }
         })()
 
+  // ── eval column (DASH-15 CML-06) ──────────────────────────────────────────
+  // eval is an opaque ClaudeMdEval object — on failure we omit the field entirely
+  // (optional in schema per T-15-01-02 back-compat). Same approach as `understand`.
+  // Use spread-conditional so the key is absent (not undefined) on failure.
+  const evalSpread =
+    lvS.status === 'fulfilled'
+      ? { eval: lvS.value }
+      : (() => {
+          rowDegraded.push(`claudeMdLevel: ${String(lvS.reason)}`)
+          return {}
+        })()
+
   // ── Assemble CoverageRow (public shape) ───────────────────────────────────
   const publicRow: CoverageRow = {
     family,
@@ -338,6 +354,7 @@ async function buildRow(
     // registry projects; this is O(1) per row, no per-row I/O.
     inRegistry: registeredRepoIds.has(`${family}/${repoName}`),
     understand,
+    ...evalSpread,
     ...(rowDegraded.length > 0 ? { degraded: { reason: rowDegraded.join('; ') } } : {}),
   }
 
