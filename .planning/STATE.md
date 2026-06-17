@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: CLAUDE.md Capability-Level Evaluation
-status: planning
-last_updated: "2026-06-16T08:00:00.000Z"
-last_activity: 2026-06-16
+status: executing
+stopped_at: Phase DASH-15 UI-SPEC approved
+last_updated: "2026-06-17T11:47:44.797Z"
+last_activity: 2026-06-17 -- Phase 15 planning complete
 progress:
   total_phases: 2
   completed_phases: 0
@@ -26,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-16)
 
 Phase: DASH-15 — Capability-level engine + fleet matrix (not started)
 Plan: —
-Status: Roadmap created; awaiting /gsd:plan-phase DASH-15
-Last activity: 2026-06-16 — v1.3 roadmap written (DASH-15 + DASH-16)
+Status: Ready to execute
+Last activity: 2026-06-17 -- Phase 15 planning complete
 
 Progress bar: `░░░░░░░░░░ 0%` (0/2 phases)
 
@@ -184,9 +185,9 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-06-16T08:00:00.000Z
-Stopped at: v1.3 roadmap created. DASH-15 (engine + fleet matrix, CML-01..09) and DASH-16 (per-project panel, CML-10) defined. ROADMAP.md, STATE.md, REQUIREMENTS.md all updated.
-Resume file: None
+Last session: 2026-06-17T07:35:32.451Z
+Stopped at: Phase DASH-15 UI-SPEC approved
+Resume file: .planning/phases/DASH-15-capability-level-engine-fleet-matrix/DASH-15-UI-SPEC.md
 Next action: Run /gsd:plan-phase DASH-15 to decompose the capability-level engine + fleet matrix phase into executable plans.
 
 ## Operator Next Steps

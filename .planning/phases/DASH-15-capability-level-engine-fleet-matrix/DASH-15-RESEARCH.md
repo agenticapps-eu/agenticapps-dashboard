@@ -834,7 +834,9 @@ function handleBackdropClick(e: React.MouseEvent<HTMLDialogElement>) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Each question below carries an inline recommendation that the DASH-15 plans adopt verbatim (90-day L5 window, L3 multi-file counting rule, badge-cell click semantics, single `/coverage` IMPECCABLE artifact). Retained as an assumption log with embedded answers.
 
 1. **L5 mtime window — how many days?**
    - What we know: spec says "within the repo's recent-commit window" (not a fixed duration)
