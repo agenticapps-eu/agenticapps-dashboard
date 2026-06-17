@@ -80,7 +80,7 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 
 ### Phase DASH-15: Capability-level engine + fleet matrix
 **Goal**: Every repo in the Coverage Matrix displays its L0–L6 capability level, backed by a deterministic engine in the daemon, with a drawer that explains why
-**Depends on**: Phase 14 (scanner fan-out infrastructure, PathResolver pattern, coverageScan fan-out as 6th scanner slot)
+**Depends on**: Phase 14 (scanner fan-out infrastructure, PathResolver pattern, coverageScan fan-out — new scanner is the 7th slot (Phase 14 understandScanner is already #6))
 **Requirements**: CML-01, CML-02, CML-03, CML-04, CML-05, CML-06, CML-07, CML-08, CML-09
 **Success Criteria** (what must be TRUE):
   1. The Coverage Matrix shows a per-repo L-level badge (L0–L6) for every registered project without any 500 errors — a scanner failure yields a degraded row, not a crash
@@ -88,7 +88,11 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
   3. The L5 "Maintained" rung is visually flagged as inferred wherever it contributes to the headline level, and the inference flag is never hidden
   4. A `ClaudeMdEval` Zod schema in `packages/shared` is validated by both daemon and SPA; schema mismatch surfaces as drift rather than a silent type error
   5. The scanner is read-only, resolver-mediated, and wired as the 6th scanner in the existing `coverageScan` fan-out with no new daemon route or native/cloud dependency
-**Plans**: TBD
+**Plans**: 4 plans across 3 waves
+- [ ] 15-01-PLAN.md — ClaudeMdEval shared Zod schema + optional CoverageRow.eval field (Wave 1; CML-07)
+- [ ] 15-02-PLAN.md — deterministic claudeMdLevelScanner L0–L6 engine + 7th coverageScan slot (Wave 2; CML-01..06)
+- [ ] 15-03-PLAN.md — LevelBadgeCell + ClaudeMdLevelDrawer SPA components (Wave 2, parallel; CML-08/09)
+- [ ] 15-04-PLAN.md — wire level column into coverage table + 15-IMPECCABLE.md gate (Wave 3; CML-08/09)
 **UI hint**: yes
 
 ### Phase DASH-16: Per-project CLAUDE.md Maturity panel
@@ -129,6 +133,6 @@ Full detail archived in `.planning/milestones/v1.2-ROADMAP.md`. Requirements in 
 | 8. Optional Integration Panels | v1.2 | 6/6 | ✅ Complete | 2026-06-11 |
 | 12.1. Conformance chart legibility | v1.2 | 1/1 | ✅ Complete (80→84) | 2026-06-10 |
 | 14.1. /code-intelligence IMPECCABLE lift | v1.2 | 1/1 | ✅ Complete (74→81) | 2026-06-10 |
-| Phase DASH-15. Capability-level engine + fleet matrix | v1.3 | 0/TBD | 📋 Not started | - |
+| Phase DASH-15. Capability-level engine + fleet matrix | v1.3 | 0/4 | 📋 Not started | - |
 | Phase DASH-16. Per-project CLAUDE.md Maturity panel | v1.3 | 0/TBD | 📋 Not started | - |
 | 9. Open-source Readiness | v1.4 | 0/TBD | 📋 Not started | - |
