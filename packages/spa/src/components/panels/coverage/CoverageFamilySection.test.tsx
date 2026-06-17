@@ -349,14 +349,15 @@ describe('column-width lock (IMP-01)', () => {
       ),
     )
     const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(7)
+    expect(cols).toHaveLength(8)   // DASH-15: level column added between claudeMd and gitNexus
     expect(cols[0]?.className).toBe(COVERAGE_COL_WIDTHS.repo)
     expect(cols[1]?.className).toBe(COVERAGE_COL_WIDTHS.claudeMd)
-    expect(cols[2]?.className).toBe(COVERAGE_COL_WIDTHS.gitNexus)
-    expect(cols[3]?.className).toBe(COVERAGE_COL_WIDTHS.wiki)
-    expect(cols[4]?.className).toBe(COVERAGE_COL_WIDTHS.workflow)
-    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.understand)
-    expect(cols[6]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
+    expect(cols[2]?.className).toBe(COVERAGE_COL_WIDTHS.level)
+    expect(cols[3]?.className).toBe(COVERAGE_COL_WIDTHS.gitNexus)
+    expect(cols[4]?.className).toBe(COVERAGE_COL_WIDTHS.wiki)
+    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.workflow)
+    expect(cols[6]?.className).toBe(COVERAGE_COL_WIDTHS.understand)
+    expect(cols[7]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
   })
 
   it('marks <table> as table-fixed', () => {
@@ -453,14 +454,14 @@ describe('column-header tooltips', () => {
     expect(screen.getByText('Installed version of `agenticapps-workflow`. Compared against the current scaffolder release.')).toBeInTheDocument()
   })
 
-  it('the Repo and Actions <th> elements do NOT render tooltips — 5 tooltips total (Phase 14 adds Understand)', () => {
+  it('the Repo and Actions <th> elements do NOT render tooltips — 6 tooltips total (DASH-15 adds Level)', () => {
     render(
       withQC(
         <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
       ),
     )
-    // 5: claudeMd, gitNexus, wiki, workflowVersion, understand
-    expect(screen.queryAllByRole('tooltip')).toHaveLength(5)
+    // 6: claudeMd, level, gitNexus, wiki, workflowVersion, understand
+    expect(screen.queryAllByRole('tooltip')).toHaveLength(6)
   })
 })
 
@@ -533,7 +534,7 @@ describe('CoverageFamilySection viewport branching (12-05)', () => {
     expect(container.querySelector('table')).not.toBeNull()
   })
 
-  it('renders <colgroup> in desktop branch (Phase 11.1 IMP-01 regression — re-confirmed under viewport branch, 7 cols after Phase 14)', () => {
+  it('renders <colgroup> in desktop branch (Phase 11.1 IMP-01 regression — re-confirmed under viewport branch, 8 cols after DASH-15)', () => {
     installMatchMedia(
       (q) =>
         q === '(min-width: 1024px)' ||
@@ -550,7 +551,7 @@ describe('CoverageFamilySection viewport branching (12-05)', () => {
       ),
     )
     const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(7)
+    expect(cols).toHaveLength(8)   // DASH-15: level col added between claudeMd and gitNexus
   })
 
   it('renders mobile card layout when matchMedia mock forces xs (no min-width queries match)', () => {
@@ -854,7 +855,7 @@ describe('Phase 14 review fix — understand state participates in worst-state-w
 
 describe('Phase 14 — understand column in desktop CoverageFamilySection (D-14-06)', () => {
   // Test 4: desktop section renders the new <col> + <th> with Tooltip-wrapped "Understand" header
-  it('Test-4: desktop section renders <col> for understand column in colgroup (7 total)', () => {
+  it('Test-4: desktop section renders <col> for understand column in colgroup (8 total after DASH-15)', () => {
     const { container } = render(
       withQC(
         <CoverageFamilySection
@@ -865,7 +866,7 @@ describe('Phase 14 — understand column in desktop CoverageFamilySection (D-14-
       ),
     )
     const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(7)
+    expect(cols).toHaveLength(8)   // DASH-15: level col between claudeMd and gitNexus
   })
 
   it('Test-4b: desktop section renders Understand <th> header visible in thead', () => {
@@ -892,7 +893,7 @@ describe('Phase 14 — understand column in desktop CoverageFamilySection (D-14-
         />,
       ),
     )
-    // 5 tooltips total now (claudeMd + gitNexus + wiki + workflowVersion + understand)
-    expect(screen.queryAllByRole('tooltip')).toHaveLength(5)
+    // 6 tooltips total now (claudeMd + level + gitNexus + wiki + workflowVersion + understand)
+    expect(screen.queryAllByRole('tooltip')).toHaveLength(6)
   })
 })

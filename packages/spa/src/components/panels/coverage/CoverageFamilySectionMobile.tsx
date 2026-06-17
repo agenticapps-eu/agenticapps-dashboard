@@ -22,7 +22,7 @@
  * - NO hex literals
  * - NO shadcn aliases
  */
-import React from 'react'
+import React, { useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import type {
   CoverageRow as CoverageRowData,
@@ -34,6 +34,8 @@ import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
 import { ScanPill } from './ScanPill.js'
 import { UnderstandCopyPill } from './UnderstandCopyPill.js'
+import { LevelBadgeCell } from './LevelBadgeCell.js'
+import { ClaudeMdLevelDrawer } from './ClaudeMdLevelDrawer.js'
 import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { useToast } from '../../ui/Toast.js'
@@ -72,6 +74,160 @@ const COLUMN_LABELS = {
 } as const
 
 const COLUMN_KEYS = ['claudeMd', 'gitNexus', 'wiki', 'workflowVersion'] as const
+
+// ── MobileRowCard ─────────────────────────────────────────────────────────────
+// Extracted into its own component so the level badge drawer can use useState
+// (Rules of Hooks: hooks cannot be called inside a map callback).
+
+interface MobileRowCardProps {
+  row: CoverageRowData
+  isInFlight: boolean
+  showScanPill: boolean
+  gitnexusCanScan: boolean
+  gitnexusInstalled: boolean
+  understandViewerUrl: string | undefined
+  onRefresh?: (action: CoverageRefreshAction, context: CoverageRowContext) => void
+}
+
+function MobileRowCard({
+  row,
+  isInFlight,
+  showScanPill,
+  gitnexusCanScan,
+  gitnexusInstalled,
+  understandViewerUrl,
+  onRefresh,
+}: MobileRowCardProps): React.JSX.Element {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const id = `${row.family}/${row.repo}`
+
+  return (
+    <article
+      key={id}
+      role="listitem"
+      className="rounded-lg border border-border-subtle bg-card-bg p-4 flex flex-col gap-3"
+    >
+      <header className="flex items-center justify-between gap-2">
+        <h3 className="text-base font-semibold text-text-primary truncate">
+          {row.repo}
+        </h3>
+        <OverrideChip
+          count={row.overrideCount}
+          overrides={row.overrides}
+          repoName={row.repo}
+        />
+      </header>
+
+      <div
+        className="grid grid-cols-2 gap-3"
+        role="list"
+        aria-label={`Coverage states for ${row.repo}`}
+      >
+        {COLUMN_KEYS.map((col) => (
+          <div
+            key={col}
+            role="listitem"
+            className="flex flex-col gap-1"
+          >
+            <span
+              title={coverageColumnTooltips[col]}
+              className="text-xs uppercase tracking-wide text-text-tertiary"
+            >
+              {COLUMN_LABELS[col]}
+            </span>
+            <CoverageCell
+              column={col}
+              state={row[col]}
+              repoName={row.repo}
+              drift={null}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Phase 14 D-14-06/10: understand cell in mobile card.
+          Back-compat: row.understand undefined on pre-Phase-14 daemons → em-dash. */}
+      <div className="flex flex-col gap-1">
+        <span
+          title={coverageColumnTooltips.understand}
+          className="text-xs uppercase tracking-wide text-text-tertiary"
+        >
+          Understand
+        </span>
+        {row.understand && (row.understand.state === 'fresh' || row.understand.state === 'stale' || row.understand.state === 'missing') ? (
+          <UnderstandCopyPill
+            family={row.family}
+            repo={row.repo}
+            {...(understandViewerUrl !== undefined ? { viewerUrl: understandViewerUrl } : {})}
+            state={row.understand.state}
+          />
+        ) : (
+          <span className="text-text-tertiary text-xs">—</span>
+        )}
+      </div>
+
+      {/* DASH-15 CML-08/09: Level badge tile — same standalone pattern as understand.
+          LevelBadgeCell renders — (degraded) or an interactive button; the drawer
+          is gated on row.eval !== undefined (mirrors CoverageRow desktop wiring). */}
+      <div className="flex flex-col gap-1">
+        <span
+          title={coverageColumnTooltips.level}
+          className="text-xs uppercase tracking-wide text-text-tertiary"
+        >
+          Level
+        </span>
+        <LevelBadgeCell
+          evalData={row.eval}
+          repoName={row.repo}
+          onClick={() => setDrawerOpen(true)}
+        />
+        {row.eval !== undefined && (
+          <ClaudeMdLevelDrawer
+            isOpen={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            repoName={row.repo}
+            evalData={row.eval}
+          />
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        {showScanPill ? (
+          <ScanPill
+            scope="repo"
+            target={`${row.family}/${row.repo}`}
+            canScan={gitnexusCanScan}
+            installed={gitnexusInstalled}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onRefresh?.('gitnexus-analyze', {
+                family: row.family,
+                repo: row.repo,
+              })
+            }}
+            disabled={isInFlight}
+            {...(isInFlight ? { 'aria-busy': true } : {})}
+            aria-label={`Refresh GitNexus index for ${row.repo}`}
+            className="min-w-[44px] min-h-[44px] p-[15px] rounded-md bg-card-bg border border-border-subtle text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+          >
+            {isInFlight ? (
+              <Loader2
+                size={14}
+                aria-hidden="true"
+                className="animate-spin"
+              />
+            ) : (
+              <RefreshCw size={14} aria-hidden="true" />
+            )}
+          </button>
+        )}
+      </div>
+    </article>
+  )
+}
 
 export function CoverageFamilySectionMobile({
   family,
@@ -151,105 +307,16 @@ export function CoverageFamilySectionMobile({
             (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable')
           const understandViewerUrl = understandViewerUrls?.[id]
           return (
-            <article
+            <MobileRowCard
               key={id}
-              role="listitem"
-              className="rounded-lg border border-border-subtle bg-card-bg p-4 flex flex-col gap-3"
-            >
-              <header className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-semibold text-text-primary truncate">
-                  {row.repo}
-                </h3>
-                <OverrideChip
-                  count={row.overrideCount}
-                  overrides={row.overrides}
-                  repoName={row.repo}
-                />
-              </header>
-
-              <div
-                className="grid grid-cols-2 gap-3"
-                role="list"
-                aria-label={`Coverage states for ${row.repo}`}
-              >
-                {COLUMN_KEYS.map((col) => (
-                  <div
-                    key={col}
-                    role="listitem"
-                    className="flex flex-col gap-1"
-                  >
-                    <span
-                      title={coverageColumnTooltips[col]}
-                      className="text-xs uppercase tracking-wide text-text-tertiary"
-                    >
-                      {COLUMN_LABELS[col]}
-                    </span>
-                    <CoverageCell
-                      column={col}
-                      state={row[col]}
-                      repoName={row.repo}
-                      drift={null}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Phase 14 D-14-06/10: understand cell in mobile card.
-                  Back-compat: row.understand undefined on pre-Phase-14 daemons → em-dash. */}
-              <div className="flex flex-col gap-1">
-                <span
-                  title={coverageColumnTooltips.understand}
-                  className="text-xs uppercase tracking-wide text-text-tertiary"
-                >
-                  Understand
-                </span>
-                {row.understand && (row.understand.state === 'fresh' || row.understand.state === 'stale' || row.understand.state === 'missing') ? (
-                  <UnderstandCopyPill
-                    family={row.family}
-                    repo={row.repo}
-                    {...(understandViewerUrl !== undefined ? { viewerUrl: understandViewerUrl } : {})}
-                    state={row.understand.state}
-                  />
-                ) : (
-                  <span className="text-text-tertiary text-xs">—</span>
-                )}
-              </div>
-
-              <div className="flex justify-end">
-                {showScanPill ? (
-                  <ScanPill
-                    scope="repo"
-                    target={`${row.family}/${row.repo}`}
-                    canScan={gitnexusCanScan}
-                    installed={gitnexusInstalled}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onRefresh?.('gitnexus-analyze', {
-                        family: row.family,
-                        repo: row.repo,
-                      })
-                    }}
-                    disabled={isInFlight}
-                    {...(isInFlight ? { 'aria-busy': true } : {})}
-                    aria-label={`Refresh GitNexus index for ${row.repo}`}
-                    className="min-w-[44px] min-h-[44px] p-[15px] rounded-md bg-card-bg border border-border-subtle text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
-                  >
-                    {isInFlight ? (
-                      <Loader2
-                        size={14}
-                        aria-hidden="true"
-                        className="animate-spin"
-                      />
-                    ) : (
-                      <RefreshCw size={14} aria-hidden="true" />
-                    )}
-                  </button>
-                )}
-              </div>
-            </article>
+              row={row}
+              isInFlight={isInFlight}
+              showScanPill={showScanPill}
+              gitnexusCanScan={gitnexusCanScan}
+              gitnexusInstalled={gitnexusInstalled}
+              understandViewerUrl={understandViewerUrl}
+              {...(onRefresh !== undefined ? { onRefresh } : {})}
+            />
           )
         })}
       </div>

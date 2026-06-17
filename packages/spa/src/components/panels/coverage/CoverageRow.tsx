@@ -21,6 +21,8 @@ import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
 import { ScanPill } from './ScanPill.js'
 import { UnderstandCopyPill } from './UnderstandCopyPill.js'
+import { LevelBadgeCell } from './LevelBadgeCell.js'
+import { ClaudeMdLevelDrawer } from './ClaudeMdLevelDrawer.js'
 import { useCoverageHistory } from '../../../lib/coverageHistoryQueries.js'
 import { formatRelativeTime } from '../../../lib/relativeTime.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
@@ -88,6 +90,7 @@ export function CoverageRow({
   understandViewerUrl,
 }: CoverageRowProps): React.JSX.Element {
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const options = getRefreshOptions(row)
 
@@ -154,6 +157,27 @@ export function CoverageRow({
           drift={cellDrifts?.claudeMd ?? null}
         />
       </td>
+
+      {/* DASH-15 CML-08/09: L-level badge column — after claudeMd, before gitNexus */}
+      <td className={`${COVERAGE_COL_WIDTHS.level} px-2 py-2`}>
+        <LevelBadgeCell
+          evalData={row.eval}
+          repoName={row.repo}
+          onClick={() => setDrawerOpen(true)}
+        />
+        {/* Drawer rendered inline — local state approach (RESEARCH §SPA Drawer).
+            Native <dialog> renders in the top layer regardless of DOM position.
+            Gated on row.eval !== undefined: no drawer for degraded rows. */}
+        {row.eval !== undefined && (
+          <ClaudeMdLevelDrawer
+            isOpen={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            repoName={row.repo}
+            evalData={row.eval}
+          />
+        )}
+      </td>
+
       <td className={`${COVERAGE_COL_WIDTHS.gitNexus} px-2 py-2`}>
         {/* Phase 13 D-13-08 + D-13-EXT-08 (Gap 1 fix): show ScanPill when gitnexus
             is installed AND the row is in a scannable state (missing/not-applicable).

@@ -262,6 +262,7 @@ export function CoverageFamilySection({
             <colgroup>
               <col className={COVERAGE_COL_WIDTHS.repo} />
               <col className={COVERAGE_COL_WIDTHS.claudeMd} />
+              <col className={COVERAGE_COL_WIDTHS.level} />   {/* DASH-15 CML-08 */}
               <col className={COVERAGE_COL_WIDTHS.gitNexus} />
               <col className={COVERAGE_COL_WIDTHS.wiki} />
               <col className={COVERAGE_COL_WIDTHS.workflow} />
@@ -272,6 +273,7 @@ export function CoverageFamilySection({
               <tr className="text-xs text-text-tertiary border-b border-border-subtle">
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg py-2 pr-3 px-4 font-medium">Repo</th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.claudeMd}>CLAUDE.md</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.level}>Level</Tooltip></th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.gitNexus}>GitNexus</Tooltip></th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.wiki}>Wiki</Tooltip></th>
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.workflowVersion}>Workflow</Tooltip></th>
