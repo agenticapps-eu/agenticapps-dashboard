@@ -69,12 +69,12 @@ as px equivalents. Inherited; not re-derived._
 
 | Role | Token | Size | Weight | Line Height | Usage in this phase |
 |------|-------|------|--------|-------------|---------------------|
-| Badge label | `text-xs` | 12px | `font-medium` (500) | n/a (single line) | "L4" text inside badge pill |
+| Badge label | `text-xs` | 12px | `font-semibold` (600) | n/a (single line) | "L4" text inside badge pill |
 | Body / evidence | `text-sm` | 12px | `font-normal` (400) | 1.5 | Rung evidence strings, next-steps copy |
 | Label / rung name | `text-sm` | 12px | `font-semibold` (600) | 1.5 | Rung name ("Basic", "Scoped", etc.) |
 | Drawer heading | `text-xl` | 20px | `font-semibold` (600) | 1.2 (`leading-snug`) | Drawer header "L4 — Abstracted" (matches RegisterModal `text-xl font-semibold`) |
 
-**Two weights only:** 400 (`font-normal`) for body/evidence + 600 (`font-semibold`) for labels, headings, badge text. No 700 in this phase.
+**Two weights only:** 400 (`font-normal`) for body/evidence + 600 (`font-semibold`) for labels, headings, badge text, and inferred sigil. No 700, no 500 in this phase.
 
 ---
 
@@ -151,8 +151,8 @@ interface LevelBadgeCellProps {
 [  —  ]          — undefined eval (pre-DASH-15 daemon or degraded)
 ```
 
-- Label text: `"L{level}"` e.g. `"L4"`. Font: `text-xs font-medium`.
-- Size: `px-2 py-0.5 rounded-md` — matches existing `Pill.tsx` geometry exactly.
+- Label text: `"L{level}"` e.g. `"L4"`. Font: `text-xs font-semibold`.
+- Size: `px-2 py-1 rounded-md` — matches existing `Pill.tsx` geometry exactly.
 - Colors: from the L-level color mapping table above.
 - The `<button>` wrapping the pill: `w-full h-full flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md`.
 
@@ -179,7 +179,7 @@ aria-label="CLAUDE.md level for {repoName}: not available"
 **In `LevelBadgeCell`:**
 When `eval.inferred === true`, append an inline `<span>` INSIDE the badge pill:
 ```html
-<span class="ml-1 text-[10px] font-medium bg-accent-bg text-accent rounded px-0.5">~</span>
+<span class="ml-1 text-[10px] font-semibold bg-accent-bg text-accent rounded px-1">~</span>
 ```
 The `~` glyph is the "inferred" sigil. It must appear in the rendered DOM at all times when `eval.inferred === true` — not only on hover. `aria-label` on the `<button>` includes the word "inferred" when this condition holds:
 ```
@@ -189,7 +189,7 @@ The `~` glyph is the "inferred" sigil. It must appear in the rendered DOM at all
 **In `ClaudeMdLevelDrawer` (L5 rung row):**
 When the L5 rung entry has `rung.inferred === true`, add directly after the rung name:
 ```html
-<span class="ml-1 text-[10px] font-medium bg-accent-bg text-accent rounded px-0.5" aria-label="inferred">~</span>
+<span class="ml-1 text-[10px] font-semibold bg-accent-bg text-accent rounded px-1" aria-label="inferred">~</span>
 ```
 Additionally, directly below the L5 rung row, show an always-visible callout:
 ```html
@@ -264,14 +264,14 @@ dark:shadow-none shadow-card backdrop:bg-text-primary/50
     <h2 class="text-xl font-semibold leading-snug text-text-primary">
       {repoName}
     </h2>
-    <p class="text-sm text-text-secondary mt-0.5">
+    <p class="text-sm text-text-secondary mt-1">
       CLAUDE.md capability level
     </p>
   </div>
   <!-- Headline level badge (large, not a button — decorative) -->
   <span class="inline-flex items-center rounded-md px-3 py-1 text-sm font-semibold {levelTokens.bg} {levelTokens.text}">
     L{evalData.level} — {evalData.levelLabel}
-    {evalData.inferred && <span class="ml-1 text-[10px] font-medium bg-accent-bg text-accent rounded px-0.5">~</span>}
+    {evalData.inferred && <span class="ml-1 text-[10px] font-semibold bg-accent-bg text-accent rounded px-1">~</span>}
   </span>
   <!-- Dismiss button -->
   <button type="button" aria-label="Close capability level drawer" onClick={onClose}
@@ -286,7 +286,7 @@ dark:shadow-none shadow-card backdrop:bg-text-primary/50
 ```
 <ul role="list" class="space-y-3 mb-6">
   {evalData.rungs.map(rung => (
-    <li key={rung.rung} class="flex flex-col gap-0.5">
+    <li key={rung.rung} class="flex flex-col gap-1">
       <!-- Row: icon + rung name + inferred sigil -->
       <div class="flex items-center gap-2">
         {rung.passed
@@ -297,13 +297,13 @@ dark:shadow-none shadow-card backdrop:bg-text-primary/50
           L{rung.rung} — {rung.label}
         </span>
         {rung.inferred && (
-          <span class="ml-0.5 text-[10px] font-medium bg-accent-bg text-accent rounded px-0.5"
+          <span class="ml-1 text-[10px] font-semibold bg-accent-bg text-accent rounded px-1"
                 aria-label="inferred">~</span>
         )}
       </div>
 
       <!-- Evidence strings (indented under icon+name) -->
-      <ul class="pl-6 space-y-0.5">
+      <ul class="pl-6 space-y-1">
         {rung.evidence.map((ev, i) => (
           <li key={i} class="text-xs text-text-secondary">{ev}</li>
         ))}
@@ -339,7 +339,7 @@ dark:shadow-none shadow-card backdrop:bg-text-primary/50
 When `evalData.nextSteps.length === 0`:
 ```
 <div class="border-t border-border-subtle pt-4">
-  <p class="text-sm text-status-success font-medium">
+  <p class="text-sm text-status-success font-semibold">
     Fully adaptive — all six rungs complete.
   </p>
 </div>
