@@ -56,7 +56,8 @@ export function LevelBadgeCell({
     )
   }
 
-  const tokens = LEVEL_TOKEN_MAP[evalData.level] ?? LEVEL_TOKEN_MAP[0]
+  const FALLBACK_TOKENS = { bg: 'bg-text-tertiary/10', text: 'text-text-tertiary' }
+  const tokens = LEVEL_TOKEN_MAP[evalData.level] ?? FALLBACK_TOKENS
 
   // aria-label includes ", inferred" when eval.inferred is true (UI-SPEC §Copywriting)
   const ariaLabel = evalData.inferred
