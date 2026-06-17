@@ -43,9 +43,9 @@ describe('ClaudeMdLevelSchema', () => {
 })
 
 describe('RungCheckSchema', () => {
-  it('parses a complete rung with all fields', () => {
+  it('parses a complete rung, stripping unknown keys', () => {
     const input = { ...validRung, line: undefined, fix: undefined }
-    expect(RungCheckSchema.parse(validRung)).toEqual(validRung)
+    expect(RungCheckSchema.parse(input)).toEqual(validRung)
   })
 
   it('parses rung without optional inferred field', () => {
