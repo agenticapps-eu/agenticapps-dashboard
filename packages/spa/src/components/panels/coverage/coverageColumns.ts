@@ -3,6 +3,7 @@
 export const COVERAGE_COL_WIDTHS = Object.freeze({
   repo:     'w-72',       // 288px — repo names (max measured 280)
   claudeMd: 'w-32',       // 128px — 4-state freshness + subtext
+  level:    'w-20',       //  80px — L-level badge (DASH-15 CML-08); 240px slack vs 1440px viewport
   gitNexus: 'w-36',       // 144px — max measured 131px > 124px threshold (PD-11.1-06: bumped from w-32)
   // PD-11.2-01: w-[22rem] (352px) → w-72 (288px) — 11.1-IMPECCABLE.md P2 #3, D-11.2-09.
   //   Over-allocated: max measured content 150px (sha+timestamp); 288px = 138px breathing room.

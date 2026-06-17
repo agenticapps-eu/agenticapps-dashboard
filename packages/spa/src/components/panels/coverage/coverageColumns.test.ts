@@ -11,16 +11,22 @@ import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 const COVERAGE_DIR = resolve(__dirname)
 
 describe('COVERAGE_COL_WIDTHS', () => {
-  it('has exactly 7 keys: repo, claudeMd, gitNexus, wiki, workflow, understand, actions', () => {
+  it('has exactly 8 keys: repo, claudeMd, level, gitNexus, wiki, workflow, understand, actions', () => {
     const keys = Object.keys(COVERAGE_COL_WIDTHS)
-    expect(keys).toHaveLength(7)
+    expect(keys).toHaveLength(8)
     expect(keys).toContain('repo')
     expect(keys).toContain('claudeMd')
+    expect(keys).toContain('level')
     expect(keys).toContain('gitNexus')
     expect(keys).toContain('wiki')
     expect(keys).toContain('workflow')
     expect(keys).toContain('understand')
     expect(keys).toContain('actions')
+  })
+
+  // DASH-15 CML-08: level column — 80px badge, sits between claudeMd and gitNexus
+  it('level column width is w-20 (80px)', () => {
+    expect(COVERAGE_COL_WIDTHS.level).toBe('w-20')
   })
 
   it('every value is a string starting with w- (Tailwind width class)', () => {

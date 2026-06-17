@@ -6,6 +6,7 @@
 
 export const coverageColumnTooltips = {
   claudeMd:        'Project AI instructions file. Must exist in repo root for AI coding agents to pick up project conventions.',
+  level:           'CLAUDE.md capability level (L0–L6). Click for rung details.',  // DASH-15 CML-08
   gitNexus:        'Local code index for repo-aware AI search. Built by `gitnexus analyze`; stored under `~/.gitnexus`.',
   wiki:            'Compiled knowledge base from CLAUDE.md, ADRs, READMEs. Built by `/wiki-compile`.',
   workflowVersion: 'Installed version of `agenticapps-workflow`. Compared against the current scaffolder release.',
