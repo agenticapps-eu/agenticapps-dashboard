@@ -1,17 +1,21 @@
 import {
   closeSync,
   constants as fsConstants,
+  mkdirSync,
   mkdtempSync,
   openSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   unlinkSync,
+  utimesSync,
+  writeFileSync,
 } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import { makeTmpHome, makeTmpProject } from './__fixtures__/tmpHome.js'
 import {
@@ -24,6 +28,7 @@ import {
   listProjectsWithStatus,
   slugify,
   assertRegistrationAllowed,
+  withRegistryLock,
   RegistrationPathBlocked,
 } from './registry.js'
 
@@ -406,6 +411,64 @@ describe('assertRegistrationAllowed (B2 confused-deputy stopgap)', () => {
   })
 })
 
+// ── Codex WARNING #2 hardening (D-13-EXT-09 corollary) ───────────────────────
+//
+// A registered path of the shape ~/Sourcecode/{known-family}/{repo}/{subdir}
+// silently hijacks scans for {family}/{repo} into the subdir, because
+// derivedRepoId() only reads the first two path segments past ~/Sourcecode/.
+// assertRegistrationAllowed now rejects such paths at registration time.
+describe('assertRegistrationAllowed — D-13-EXT-09 subdir hijack defence (Codex WARNING #2)', () => {
+  let stashedHome: string | undefined
+  let fakeHome: string
+
+  beforeEach(() => {
+    stashedHome = process.env.HOME
+    fakeHome = mkdtempSync(join(tmpdir(), 'dash-home-subdir-'))
+    process.env.HOME = fakeHome
+    mkdirSync(join(fakeHome, 'Sourcecode', 'agenticapps', 'repo', 'subdir'), { recursive: true })
+    mkdirSync(join(fakeHome, 'Sourcecode', 'factiv', 'cparx', 'apps', 'web'), { recursive: true })
+  })
+
+  afterEach(() => {
+    if (stashedHome !== undefined) process.env.HOME = stashedHome
+    else delete process.env.HOME
+    try { rmSync(fakeHome, { recursive: true, force: true }) } catch { /* best-effort */ }
+  })
+
+  it('throws when path is a subdirectory of ~/Sourcecode/{known-family}/{repo}', () => {
+    const subdir = join(fakeHome, 'Sourcecode', 'agenticapps', 'repo', 'subdir')
+    expect(() => assertRegistrationAllowed(subdir)).toThrow(/sourcecode-family-subdir/)
+  })
+
+  it('throws for deeply nested subdirs as well', () => {
+    const deep = join(fakeHome, 'Sourcecode', 'factiv', 'cparx', 'apps', 'web')
+    expect(() => assertRegistrationAllowed(deep)).toThrow(/sourcecode-family-subdir/)
+  })
+
+  it('allows ~/Sourcecode/{family}/{repo} itself (canonical project root)', () => {
+    const repoRoot = join(fakeHome, 'Sourcecode', 'agenticapps', 'repo')
+    expect(() => assertRegistrationAllowed(repoRoot)).not.toThrow()
+  })
+
+  it('allows ~/Sourcecode/{family} (family root — no repo specified)', () => {
+    // Not a typical registration target, but the rule should not over-block.
+    const familyRoot = join(fakeHome, 'Sourcecode', 'agenticapps')
+    expect(() => assertRegistrationAllowed(familyRoot)).not.toThrow()
+  })
+
+  it('allows ~/Sourcecode/{non-family-name}/{any-depth} (rule scoped to known families)', () => {
+    const nonFamilyDeep = join(fakeHome, 'Sourcecode', 'misc', 'a', 'b', 'c')
+    mkdirSync(nonFamilyDeep, { recursive: true })
+    expect(() => assertRegistrationAllowed(nonFamilyDeep)).not.toThrow()
+  })
+
+  it('allows paths outside ~/Sourcecode/ entirely', () => {
+    const outside = join(fakeHome, 'Projects', 'misc')
+    mkdirSync(outside, { recursive: true })
+    expect(() => assertRegistrationAllowed(outside)).not.toThrow()
+  })
+})
+
 describe('registry mutation lock', () => {
   // Regression for Codex F4 followup (TODOS.md) + the symmetric daemon-route
   // gap noted in writeRegistry's comment.
@@ -498,6 +561,140 @@ describe('registry mutation lock', () => {
       expect(readRegistry(regFile).projects[0]!.tags).toEqual(['old'])
     } finally {
       held.release()
+      cleanup()
+    }
+  })
+})
+
+// ── Followup #9 — PID-aware stale-lock detection ─────────────────────────────
+//
+// Background: withRegistryLock today serialises through `<registry>.lock` via
+// O_EXCL + 5s timeout. If a holder crashes between acquire and unlink, the
+// lock file lingers and the next mutation surfaces `registry_lock_timeout`
+// after 5s wall-clock — for every call until an operator manually removes
+// the file. The fix is to detect orphan locks via the recorded PID +
+// lockfile mtime and evict them in-band.
+describe('withRegistryLock stale-lock detection (Followup #9)', () => {
+  // PID that almost certainly does not exist on this host. Node's process.kill
+  // throws ESRCH for non-existent PIDs; we rely on that to simulate a crashed
+  // lock holder without spawning + killing a child.
+  const DEAD_PID = 999_999_999
+
+  it('writes the holder PID into the lock file during fn() execution', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const lockFile = `${regFile}.lock`
+    try {
+      let pidInsideFn: number | undefined
+      await withRegistryLock(
+        () => {
+          pidInsideFn = parseInt(readFileSync(lockFile, 'utf8').trim(), 10)
+        },
+        { lockFile },
+      )
+      expect(pidInsideFn).toBe(process.pid)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('evicts a stale lock (dead PID AND mtime > 30s ago) and acquires successfully', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const lockFile = `${regFile}.lock`
+    try {
+      // Plant a stale lock: dead PID + backdate the mtime by 60s.
+      writeFileSync(lockFile, `${DEAD_PID}\n`, { mode: 0o600 })
+      const oldSec = Date.now() / 1000 - 60
+      utimesSync(lockFile, oldSec, oldSec)
+
+      // Without stale-lock detection this would hit the 200ms ceiling and
+      // throw registry_lock_timeout. WITH detection, it must succeed because
+      // the crashed holder's lock is reclaimable.
+      const result = await withRegistryLock(() => 'acquired', {
+        lockFile,
+        maxWaitMs: 200,
+      })
+      expect(result).toBe('acquired')
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('does NOT evict a lock whose PID is alive, even when the lockfile is old', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const lockFile = `${regFile}.lock`
+    try {
+      // Live PID (our own) + backdated mtime. Real-world equivalent: a
+      // legitimate long-running mutation. Must NOT be evicted.
+      writeFileSync(lockFile, `${process.pid}\n`, { mode: 0o600 })
+      const oldSec = Date.now() / 1000 - 60
+      utimesSync(lockFile, oldSec, oldSec)
+
+      await expect(
+        withRegistryLock(() => 'should-not-run', { lockFile, maxWaitMs: 150 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+    } finally {
+      try { unlinkSync(lockFile) } catch { /* test-cleanup */ }
+      cleanup()
+    }
+  })
+
+  it('does NOT evict a fresh lock even when its PID is dead', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const lockFile = `${regFile}.lock`
+    try {
+      // Dead PID but fresh mtime — could be a holder that just opened the
+      // lock and is mid-fn(). Must NOT be evicted; respects the 30s age
+      // floor to avoid stealing a lock from a healthy holder.
+      writeFileSync(lockFile, `${DEAD_PID}\n`, { mode: 0o600 })
+
+      await expect(
+        withRegistryLock(() => 'should-not-run', { lockFile, maxWaitMs: 150 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+    } finally {
+      try { unlinkSync(lockFile) } catch { /* test-cleanup */ }
+      cleanup()
+    }
+  })
+
+  it('evicts an empty/unparseable lockfile if it is older than the staleness floor', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const lockFile = `${regFile}.lock`
+    try {
+      // Legacy lock file (pre-fix) — no PID written. Stale if old enough.
+      writeFileSync(lockFile, '', { mode: 0o600 })
+      const oldSec = Date.now() / 1000 - 60
+      utimesSync(lockFile, oldSec, oldSec)
+
+      const result = await withRegistryLock(() => 'acquired', {
+        lockFile,
+        maxWaitMs: 200,
+      })
+      expect(result).toBe('acquired')
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('does NOT evict an empty/unparseable lockfile if it is fresh', async () => {
+    const { configDir, cleanup } = makeTmpHome()
+    const regFile = join(configDir, 'registry.json')
+    const lockFile = `${regFile}.lock`
+    try {
+      // Empty content + fresh mtime: a holder that crashed between O_CREAT
+      // and writing its PID. The 30s age floor protects against evicting
+      // such mid-write states prematurely.
+      writeFileSync(lockFile, '', { mode: 0o600 })
+
+      await expect(
+        withRegistryLock(() => 'should-not-run', { lockFile, maxWaitMs: 150 }),
+      ).rejects.toThrow(/registry_lock_timeout/)
+    } finally {
+      try { unlinkSync(lockFile) } catch { /* test-cleanup */ }
       cleanup()
     }
   })

@@ -67,6 +67,27 @@ export const CoverageRowSchema = z.object({
   workflowVersion: CoverageWorkflowColumnSchema,
   overrideCount: z.number().int().nonnegative(),
   overrides: z.array(OverrideEntrySchema),
+  /** D-13-EXT-07 / D-13-EXT-10: is this repo's absolute path in the dashboard
+   *  project registry? Optional (D-13-EXT-10) — older daemons omit it and the
+   *  SPA must render gracefully without the field. Metadata only since
+   *  D-13-EXT-08 removed the render gate; not used to gate UI affordances.
+   *  Closes Codex WARNING #6. */
+  inRegistry: z.boolean().optional(),
+  /** Phase 14 D-14-08 staleness + D-14-03 per-repo scoped viewer token.
+   *  Optional (D-13-EXT-10 precedent) — pre-Phase-14 daemons omit it.
+   *  viewerToken is minted daemon-side (HMAC-bound to repoId, lower privilege
+   *  than bearer token). Set only when state is fresh or stale (viewer link
+   *  is renderable); absent on missing rows. */
+  understand: z.object({
+    kind: z.literal('basic'),
+    state: CoverageStateSchema,
+    lastAnalyzedAt: z.string().optional(),
+    analyzedCommit: z.string().optional(),
+    analyzedFiles: z.number().int().nonnegative().optional(),
+    viewerToken: z.string().optional(),
+    degraded: z.boolean().optional(),
+    degradedReason: z.string().optional(),
+  }).strict().optional(),
   degraded: z
     .object({
       reason: z.string(), // e.g. "claudeMd scanner threw: ENOENT"

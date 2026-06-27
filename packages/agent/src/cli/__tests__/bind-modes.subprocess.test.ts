@@ -13,8 +13,16 @@ beforeAll(() => {
   if (r.status !== 0) throw new Error('build failed')
 }, 60_000)
 
-describe('--bind tailscale (Tailscale absent on this dev machine)', () => {
-  it('exits 1 with EXACT spec remediation message (D-17)', () => {
+// This spec only holds on machines WITHOUT a working Tailscale daemon — when
+// Tailscale is up, `start --bind tailscale` legitimately binds and exits 0.
+// Detect availability the same way getTailscaleIP() does (binary in PATH + IPv4).
+const tailscalePresent = ((): boolean => {
+  const r = spawnSync('tailscale', ['ip', '-4'], { encoding: 'utf8', timeout: 3_000 })
+  return r.status === 0 && /\d+\.\d+\.\d+\.\d+/.test(r.stdout ?? '')
+})()
+
+describe('--bind tailscale (spec applies only when Tailscale is absent)', () => {
+  it.skipIf(tailscalePresent)('exits 1 with EXACT spec remediation message (D-17)', () => {
     const { home, cleanup } = makeIsolatedHome()
     try {
       // tailscale is not installed on this CI/dev machine — process.env.PATH has no tailscale binary.

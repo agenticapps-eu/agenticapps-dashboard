@@ -51,6 +51,7 @@ function makeRow(
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: registry membership default — tests not exercising the gate set true
   }
 }
 

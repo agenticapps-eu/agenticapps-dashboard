@@ -22,12 +22,14 @@ import { ExecutionTimeline } from './panels/ExecutionTimeline.js'
 import { HookFirings } from './panels/HookFirings.js'
 import { InstalledSkills } from './panels/InstalledSkills.js'
 import { IntegrationsHealth } from './panels/IntegrationsHealth.js'
+import { LinearPanel } from './panels/LinearPanel.js'
 import { ObservabilityHealth } from './panels/ObservabilityHealth.js'
 import { PhaseProgress } from './panels/PhaseProgress.js'
 import { RationalizationFires } from './panels/RationalizationFires.js'
 import { ReviewStatus } from './panels/ReviewStatus.js'
 import { SecretsHealth } from './panels/SecretsHealth.js'
 import { SecurityStatus } from './panels/SecurityStatus.js'
+import { SentryPanel } from './panels/SentryPanel.js'
 import { SkillHealth } from './panels/SkillHealth.js'
 import { VerificationStatus } from './panels/VerificationStatus.js'
 
@@ -74,6 +76,8 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           <ObservabilityHealth projectId={projectId} />
           <SecretsHealth projectId={projectId} />
           <IntegrationsHealth projectId={projectId} />
+          <SentryPanel projectId={projectId} />
+          <LinearPanel projectId={projectId} />
           <InstalledSkills projectId={projectId} />
         </section>
       </div>
