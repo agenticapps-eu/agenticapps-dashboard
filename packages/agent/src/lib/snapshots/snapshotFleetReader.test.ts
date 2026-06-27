@@ -17,7 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync as mockedReadFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -32,7 +32,6 @@ vi.mock('node:fs', async () => {
   }
 })
 
-import { readFileSync as mockedReadFileSync } from 'node:fs'
 import { readDailySeriesForFleet } from './snapshotFleetReader.js'
 import { RETENTION_DAYS } from './snapshotPaths.js'
 
