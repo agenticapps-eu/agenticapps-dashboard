@@ -8,12 +8,17 @@
       "types": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./daemon": {
+      "types": "./src/daemon.ts",
+      "import": "./dist/daemon.js",
+      "default": "./dist/daemon.js"
     }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsup src/index.ts --format esm --out-dir dist"
+    "build": "tsup src/index.ts src/daemon.ts --format esm --out-dir dist"
   },
   "dependencies": {
     "zod": "catalog:"

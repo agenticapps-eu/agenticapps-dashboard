@@ -46,6 +46,8 @@ vi.mock('../lib/projectQueries.js', () => ({
   useObservability: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useSecrets: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useIntegrations: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useSentryRecent: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useLinearIssues: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
 }))
 
 import { SingleProjectView } from './SingleProjectView.js'

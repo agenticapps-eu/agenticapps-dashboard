@@ -145,6 +145,10 @@ const INTEGRATIONS_RESPONSE = {
   linear: 'not-detected' as const,
   infisical: 'not-detected' as const,
 }
+// Phase 8 mock responses — minimal valid shapes for SentryPanel + LinearPanel (INV-03).
+// Empty issues arrays exercise the "not configured / configure to enable" state.
+const SENTRY_RECENT_RESPONSE = { issues: [], stale: false }
+const LINEAR_ISSUES_RESPONSE = { issues: [], stale: false }
 
 /** Build a mock apiFetch handler for the /projects/acme API surface. */
 function buildMockApiFetch(overrides: Record<string, unknown> = {}) {
@@ -189,6 +193,13 @@ function buildMockApiFetch(overrides: Record<string, unknown> = {}) {
     }
     if (path === '/api/projects/acme/integrations') {
       return { ok: true, data: overrides['integrations'] ?? INTEGRATIONS_RESPONSE }
+    }
+    // Phase 8 integration panel routes — return empty-issue responses (INV-03: no env vars needed)
+    if (path === '/api/projects/acme/sentry/recent') {
+      return { ok: true, data: overrides['sentryRecent'] ?? SENTRY_RECENT_RESPONSE }
+    }
+    if (path === '/api/projects/acme/linear/issues') {
+      return { ok: true, data: overrides['linearIssues'] ?? LINEAR_ISSUES_RESPONSE }
     }
     // Default fallback
     return { ok: true, data: {} }

@@ -65,6 +65,7 @@ function row(spec: RowSpec): CoverageRow {
     workflowVersion: workflow(spec.workflowVersion),
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: scoring helper default — tests not exercising the gate
   }
 }
 

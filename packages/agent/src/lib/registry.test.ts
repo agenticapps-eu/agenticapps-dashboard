@@ -1,6 +1,7 @@
 import {
   closeSync,
   constants as fsConstants,
+  mkdirSync,
   mkdtempSync,
   openSync,
   readFileSync,
@@ -14,7 +15,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import { makeTmpHome, makeTmpProject } from './__fixtures__/tmpHome.js'
 import {
@@ -406,6 +407,64 @@ describe('assertRegistrationAllowed (B2 confused-deputy stopgap)', () => {
     } finally {
       cleanup()
     }
+  })
+})
+
+// ── Codex WARNING #2 hardening (D-13-EXT-09 corollary) ───────────────────────
+//
+// A registered path of the shape ~/Sourcecode/{known-family}/{repo}/{subdir}
+// silently hijacks scans for {family}/{repo} into the subdir, because
+// derivedRepoId() only reads the first two path segments past ~/Sourcecode/.
+// assertRegistrationAllowed now rejects such paths at registration time.
+describe('assertRegistrationAllowed — D-13-EXT-09 subdir hijack defence (Codex WARNING #2)', () => {
+  let stashedHome: string | undefined
+  let fakeHome: string
+
+  beforeEach(() => {
+    stashedHome = process.env.HOME
+    fakeHome = mkdtempSync(join(tmpdir(), 'dash-home-subdir-'))
+    process.env.HOME = fakeHome
+    mkdirSync(join(fakeHome, 'Sourcecode', 'agenticapps', 'repo', 'subdir'), { recursive: true })
+    mkdirSync(join(fakeHome, 'Sourcecode', 'factiv', 'cparx', 'apps', 'web'), { recursive: true })
+  })
+
+  afterEach(() => {
+    if (stashedHome !== undefined) process.env.HOME = stashedHome
+    else delete process.env.HOME
+    try { rmSync(fakeHome, { recursive: true, force: true }) } catch { /* best-effort */ }
+  })
+
+  it('throws when path is a subdirectory of ~/Sourcecode/{known-family}/{repo}', () => {
+    const subdir = join(fakeHome, 'Sourcecode', 'agenticapps', 'repo', 'subdir')
+    expect(() => assertRegistrationAllowed(subdir)).toThrow(/sourcecode-family-subdir/)
+  })
+
+  it('throws for deeply nested subdirs as well', () => {
+    const deep = join(fakeHome, 'Sourcecode', 'factiv', 'cparx', 'apps', 'web')
+    expect(() => assertRegistrationAllowed(deep)).toThrow(/sourcecode-family-subdir/)
+  })
+
+  it('allows ~/Sourcecode/{family}/{repo} itself (canonical project root)', () => {
+    const repoRoot = join(fakeHome, 'Sourcecode', 'agenticapps', 'repo')
+    expect(() => assertRegistrationAllowed(repoRoot)).not.toThrow()
+  })
+
+  it('allows ~/Sourcecode/{family} (family root — no repo specified)', () => {
+    // Not a typical registration target, but the rule should not over-block.
+    const familyRoot = join(fakeHome, 'Sourcecode', 'agenticapps')
+    expect(() => assertRegistrationAllowed(familyRoot)).not.toThrow()
+  })
+
+  it('allows ~/Sourcecode/{non-family-name}/{any-depth} (rule scoped to known families)', () => {
+    const nonFamilyDeep = join(fakeHome, 'Sourcecode', 'misc', 'a', 'b', 'c')
+    mkdirSync(nonFamilyDeep, { recursive: true })
+    expect(() => assertRegistrationAllowed(nonFamilyDeep)).not.toThrow()
+  })
+
+  it('allows paths outside ~/Sourcecode/ entirely', () => {
+    const outside = join(fakeHome, 'Projects', 'misc')
+    mkdirSync(outside, { recursive: true })
+    expect(() => assertRegistrationAllowed(outside)).not.toThrow()
   })
 })
 

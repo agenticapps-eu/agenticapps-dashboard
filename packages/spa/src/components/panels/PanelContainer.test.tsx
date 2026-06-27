@@ -196,4 +196,35 @@ describe('D-6.1-02 progressive disclosure', () => {
       expect(c).not.toMatch(/transition|rotate|animate-|motion-/)
     })
   })
+
+  it('D6102-i: collapsedHint renders in the header when collapsed (state visible at a glance)', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed collapsedHint="not configured">
+        <p>body</p>
+      </PanelContainer>,
+    )
+    // Body still hidden, but the state hint is visible without expanding
+    expect(screen.queryByText('body')).toBeNull()
+    expect(screen.getByText('not configured')).toBeInTheDocument()
+  })
+
+  it('D6102-j: collapsedHint is hidden once the panel is expanded (full content takes over)', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed collapsedHint="not configured">
+        <p>body</p>
+      </PanelContainer>,
+    )
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('body')).toBeInTheDocument()
+    expect(screen.queryByText('not configured')).toBeNull()
+  })
+
+  it('D6102-k: no collapsedHint → no hint text (back-compat)', () => {
+    render(
+      <PanelContainer panelId="p1" title="X" defaultCollapsed>
+        <p>body</p>
+      </PanelContainer>,
+    )
+    expect(screen.queryByText('not configured')).toBeNull()
+  })
 })

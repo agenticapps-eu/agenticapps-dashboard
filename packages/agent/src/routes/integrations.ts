@@ -94,6 +94,14 @@ integrationsRoute.get('/:id/integrations', async (c) => {
     sentry: computeIntegrationState({ envVarPresent: sentryEnvPresent, signalDetected: sentrySignalDetected }),
     linear: computeIntegrationState({ envVarPresent: linearEnvPresent, signalDetected: linearSignalDetected }),
     infisical: computeIntegrationState({ envVarPresent: infisicalEnvPresent, signalDetected: infisicalSignalDetected }),
+    // INFI-03: read-only scope metadata — safe config identifiers, not secrets (Research Finding 8)
+    // Only present when .infisical.json is present-valid; absent otherwise (backward-compatible, INV-03)
+    ...(infisicalConfig.state === 'present-valid' && {
+      infisicalWorkspaceId: infisicalConfig.workspaceId,
+      ...(infisicalConfig.defaultEnvironment !== undefined && {
+        infisicalEnvironment: infisicalConfig.defaultEnvironment,
+      }),
+    }),
   }
 
   cache.set(projectId, { value, cachedAtMs: now })
