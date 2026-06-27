@@ -21,12 +21,24 @@
  * never throws — failures yield `suggestedPath: null` and the SPA prompts
  * the user to paste the corrected path (D-12-21).
  *
+ * Per-cycle index reuse (F9): `detectPathDrift` builds an origin-URL →
+ * realpath index ONCE per drift cycle via `buildOriginIndex` and reuses it
+ * for every drifted entry's lookup. Total work is O(F × M × readFile) per
+ * cycle regardless of how many entries drifted. The standalone
+ * `inferSuggestedPath(url)` form remains for callers that look up a single
+ * URL and rebuilds the index per call.
+ *
  * THREAT BOUNDARIES (see plan §threat_model):
  *   - T-12-SUPPLY-CHAIN: NO subprocess. `.git/config` is read via fs.readFile
  *     + regex parsing only — matches RESEARCH §Environment availability
  *     fallback. Zero new runtime deps.
  *   - T-12-PATH-TRAVERSAL: family-root scan is one level deep (matches Phase
  *     10 repo discovery cadence) — no recursive readdir.
+ *   - Symlink candidates inside a family root are skipped via `lstat`
+ *     before any `readFile`/`realpath` runs against them (F10). An attacker
+ *     who can write inside a family root cannot trick the detector into
+ *     surfacing an out-of-family path via a symlink whose target carries a
+ *     chosen origin URL.
  *   - Defence-in-depth: every fs call is wrapped in try/catch returning a
  *     defensive default. The detector NEVER throws — registry-read failure
  *     yields [], per-entry probe failure is silently skipped.
@@ -37,7 +49,7 @@
  * errors) are not expected here — this is pure read-side observability.
  */
 import { existsSync, readdirSync } from 'node:fs'
-import { readFile, realpath } from 'node:fs/promises'
+import { lstat, readFile, realpath } from 'node:fs/promises'
 import { join, sep } from 'node:path'
 
 import type { PathDriftEntry } from '@agenticapps/dashboard-shared'
@@ -112,21 +124,43 @@ async function realFamilyRoot(family: ScannedFamily): Promise<string | null> {
 }
 
 /**
- * Best-effort: find a directory inside any family root whose `.git/config`
- * carries the given origin URL. Returns the matched candidate's realpath, or
- * null if nothing matches.
+ * Returns true iff `path` is itself a symlink (lstat does NOT follow links).
+ * Failure (e.g. ENOENT between readdir and lstat) returns false so the caller
+ * still attempts the readGitOrigin — a missing/unreadable candidate is then
+ * harmlessly skipped by readGitOrigin's own try/catch.
  *
- * Algorithm:
- *   1. For each family: realpath the family root (skip on failure).
- *   2. readdirSync(familyRoot) one level deep (skip on failure).
- *   3. For each candidate: readGitOrigin; on match, return realpath(candidate).
- *
- * Anti-pattern guards:
- *   - NO recursive descent — one level deep only.
- *   - NO subprocess — uses fs.readFile + regex (T-12-SUPPLY-CHAIN).
- *   - NEVER raises — all fs operations are try/catch-bounded.
+ * F10 defence: a symlink candidate planted in a family root could otherwise
+ * be followed by `readFile(<candidate>/.git/config)` + `realpath(candidate)`,
+ * surfacing an out-of-family path as a suggestion. We refuse to descend into
+ * any symlinked candidate.
  */
-export async function inferSuggestedPath(originUrl: string): Promise<string | null> {
+async function isSymlink(path: string): Promise<boolean> {
+  try {
+    const st = await lstat(path)
+    return st.isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Build an origin-URL → realpath(candidate) index by scanning every family
+ * root one level deep ONCE. Symlink candidates are skipped (F10). First URL
+ * match wins (mirrors the previous per-call first-hit semantics of
+ * inferSuggestedPath). NEVER raises.
+ *
+ * F9 defence: the previous shape made `inferSuggestedPath` re-scan every
+ * family root on every drifted entry, yielding O(D × F × M × readFile) per
+ * drift cycle. With the index built once and reused for each lookup, work
+ * collapses to O(F × M × readFile) per drift cycle regardless of D.
+ *
+ * Threat boundaries are unchanged from the per-call form:
+ *   - NO recursive descent — one level deep per family root.
+ *   - NO subprocess — fs.readFile + regex (T-12-SUPPLY-CHAIN).
+ *   - Symlink candidates filtered before any readFile/realpath touches them.
+ */
+export async function buildOriginIndex(): Promise<Map<string, string>> {
+  const idx = new Map<string, string>()
   for (const family of SCANNED_FAMILIES) {
     const familyRoot = await realFamilyRoot(family)
     if (!familyRoot) continue
@@ -140,19 +174,37 @@ export async function inferSuggestedPath(originUrl: string): Promise<string | nu
 
     for (const entry of entries) {
       const candidate = join(familyRoot, entry)
+      if (await isSymlink(candidate)) continue
       const candidateOrigin = await readGitOrigin(candidate)
-      if (candidateOrigin === originUrl) {
-        try {
-          return await realpath(candidate)
-        } catch {
-          // Fallback: candidate exists per readdir but realpath failed
-          // (e.g. dangling symlink between calls) — return the join'd path.
-          return candidate
-        }
+      if (!candidateOrigin) continue
+      if (idx.has(candidateOrigin)) continue // first hit wins
+      try {
+        idx.set(candidateOrigin, await realpath(candidate))
+      } catch {
+        // realpath failed even though readdir + lstat-not-symlink succeeded
+        // (e.g. permissions race). Fall back to the joined path so the
+        // index still answers — the caller can attempt the path and the
+        // SPA will surface the suggested-path read failure if it now
+        // breaks.
+        idx.set(candidateOrigin, candidate)
       }
     }
   }
-  return null
+  return idx
+}
+
+/**
+ * Best-effort: find a directory inside any family root whose `.git/config`
+ * carries the given origin URL. Returns the matched candidate's realpath, or
+ * null if nothing matches. Symlink candidates are skipped.
+ *
+ * Thin wrapper over `buildOriginIndex` — preserves the standalone API for
+ * callers that look up a single URL. For batched lookups across N drifted
+ * entries, `detectPathDrift` builds the index ONCE and queries it directly.
+ */
+export async function inferSuggestedPath(originUrl: string): Promise<string | null> {
+  const idx = await buildOriginIndex()
+  return idx.get(originUrl) ?? null
 }
 
 /**
@@ -245,6 +297,23 @@ export async function detectPathDrift(
   }
 
   const result: PathDriftEntry[] = []
+
+  // F9: build the origin-URL → realpath index LAZILY exactly once per drift
+  // cycle. Most scans return zero drifted entries; the index build (which
+  // touches every candidate `.git/config`) should not run in the happy path.
+  // Once built, every subsequent drift lookup is an O(1) Map.get.
+  let originIndex: Map<string, string> | null = null
+  const lookupSuggestedPath = async (originUrl: string): Promise<string | null> => {
+    if (!originIndex) {
+      try {
+        originIndex = await buildOriginIndex()
+      } catch {
+        originIndex = new Map()
+      }
+    }
+    return originIndex.get(originUrl) ?? null
+  }
+
   for (const project of projects) {
     let probe: ProbeResult
     try {
@@ -259,7 +328,7 @@ export async function detectPathDrift(
     let suggestedPath: string | null = null
     if (probe.originUrl) {
       try {
-        suggestedPath = await inferSuggestedPath(probe.originUrl)
+        suggestedPath = await lookupSuggestedPath(probe.originUrl)
       } catch {
         suggestedPath = null
       }
