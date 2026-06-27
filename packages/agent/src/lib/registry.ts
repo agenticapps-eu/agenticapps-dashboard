@@ -16,6 +16,7 @@ import {
   statSync,
   readdirSync,
   unlinkSync,
+  writeSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve, sep } from 'node:path'
@@ -228,19 +229,80 @@ export function writeRegistry(reg: RegistryFile, filePath: string = REGISTRY_FIL
  *
  * Implementation: open `<registry>.lock` with O_EXCL — fails with EEXIST
  * when another holder has it. Retry every 25ms up to maxWaitMs (default
- * 5s). On success, run fn(), then unlink the lock on the way out.
+ * 5s). On success, write the holder's PID into the lock file (best-effort
+ * — write failure does not abort acquisition), run fn(), then unlink the
+ * lock on the way out.
  *
- * Stale-lock risk: if a holder crashes between open and unlink, the lock
- * file lingers and subsequent acquirers time out. The 5s ceiling means at
- * worst the next caller surfaces a clear timeout error rather than silently
- * waiting forever; operators can `rm registry.json.lock` manually. A
- * PID-aware stale-detection layer is a follow-up (out of scope for the
- * Codex F4 fix).
+ * Stale-lock detection (Followup #9): if a holder crashes between
+ * O_EXCL+O_CREAT and unlinkSync, the lock file lingers and subsequent
+ * acquirers would time out forever. On every EEXIST we therefore check
+ * whether the existing lock is reclaimable via `tryEvictStaleLock`:
+ *   1. lockfile mtime older than STALE_LOCK_MIN_AGE_MS (30s), AND
+ *   2. EITHER the recorded PID is dead (process.kill(pid, 0) → ESRCH),
+ *      OR the lock body is empty/unparseable (legacy locks pre-fix, or
+ *      a holder that crashed before writing its PID).
+ * Both conditions must hold — a live holder MUST NOT be evicted, and a
+ * fresh lock MUST NOT be evicted (its holder may still be mid-fn).
+ *
+ * Cross-platform: `process.kill(pid, 0)` works on macOS, Linux, and
+ * Windows (Node treats signal 0 as a no-op existence check). PID reuse
+ * by an unrelated process is a known false-negative — we leave such a
+ * lock alone and fall back to the 5s timeout.
  *
  * Usage: any read-modify-write over the registry should wrap its three
- * steps in this helper. fix-path uses it; CLI commands (register etc.)
- * should adopt it in a follow-up since they currently RMW without locking.
+ * steps in this helper. All four mutation functions (addProject,
+ * removeProject, renameProject, setTags) and the fix-path route route
+ * through this lock per PR #40.
  */
+const STALE_LOCK_MIN_AGE_MS = 30_000
+
+/**
+ * Decide whether an existing `<registry>.lock` is a crash-orphan and
+ * reclaim it if so. Returns true iff the lock was evicted (caller should
+ * immediately retry the O_EXCL open).
+ */
+function tryEvictStaleLock(lockFile: string): boolean {
+  let mtimeMs: number
+  try {
+    mtimeMs = statSync(lockFile).mtimeMs
+  } catch {
+    // Lock vanished between EEXIST and stat — a concurrent acquirer
+    // released or evicted it. Tell the caller to retry the open.
+    return true
+  }
+  if (Date.now() - mtimeMs < STALE_LOCK_MIN_AGE_MS) return false
+
+  // Lock is old enough to be a candidate. Read the recorded PID.
+  let pid: number | undefined
+  try {
+    const content = readFileSync(lockFile, 'utf8').trim()
+    const n = Number.parseInt(content, 10)
+    if (Number.isFinite(n) && n > 0) pid = n
+  } catch {
+    // Unreadable — fall through to "no parseable PID" branch below.
+  }
+
+  if (pid !== undefined) {
+    try {
+      process.kill(pid, 0) // signal 0 = existence check
+      return false // holder is alive (or signalable) — do NOT evict
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      // ESRCH = no such process. Anything else (EPERM = exists but not
+      // ours to signal, EINVAL = bad signal) means "don't evict".
+      if (code !== 'ESRCH') return false
+    }
+  }
+  // Old AND (dead PID OR no parseable PID) → safe to reclaim.
+  try {
+    unlinkSync(lockFile)
+  } catch {
+    // Lost the race to another evictor — fine, the O_EXCL retry will
+    // either acquire or hit a fresh holder.
+  }
+  return true
+}
+
 export async function withRegistryLock<T>(
   fn: () => Promise<T> | T,
   opts: { lockFile?: string; maxWaitMs?: number } = {},
@@ -256,9 +318,22 @@ export async function withRegistryLock<T>(
         fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
         0o600,
       )
+      // Record our PID so future acquirers can detect a crash-orphan
+      // lock via tryEvictStaleLock. Write failure is non-fatal — the
+      // lock is already acquired and our identity is the only thing at
+      // stake (next evictor will fall back to mtime-only).
+      try {
+        writeSync(fd, Buffer.from(`${process.pid}\n`))
+      } catch {
+        /* PID recording is best-effort — lock acquisition stands */
+      }
       break
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+      // Try to reclaim a crash-orphan lock before counting this against
+      // the timeout — successful eviction means the next loop iteration
+      // can acquire immediately.
+      if (tryEvictStaleLock(lockFile)) continue
       if (Date.now() - start > maxWaitMs) {
         throw new Error(`registry_lock_timeout: ${lockFile}`)
       }
