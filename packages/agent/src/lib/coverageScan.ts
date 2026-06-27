@@ -17,12 +17,13 @@
  *
  * T-10-03-06: 30s memo cache absorbs repeat reads after the cold scan.
  */
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { homedir } from 'node:os'
 
 import type { CoverageResponse, CoverageRow } from '@agenticapps/dashboard-shared'
 
 import { discoverRepos } from './repoDiscovery.js'
+import { readRegistry } from './registry.js'
 import { scanClaudeMd } from './scanners/claudeMdScanner.js'
 import { scanGitNexusGlobal, rateGitNexusRepo } from './scanners/gitNexusScanner.js'
 import { scanWikiForFamily } from './scanners/wikiScanner.js'
@@ -31,6 +32,8 @@ import {
   scanWorkflowVersionForRepo,
 } from './scanners/workflowVersionScanner.js'
 import { scanOverrideSentinelsForRepo } from './scanners/overrideSentinelScanner.js'
+import { readRepoHeadSha, scanUnderstandForRepo } from './scanners/understandScanner.js'
+import { mintViewerToken } from './viewerToken.js'
 import { makeCoverageResolver, type PathResolver } from './coverageResolver.js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -52,6 +55,16 @@ export interface ScanCoverageOptions {
   sourcecodeRootOverride?: string // tests pass tmpdir
   gitnexusHomeOverride?: string   // tests pass tmpdir
   migrationsDirOverride?: string  // tests pass tmpdir
+  /** D-13-EXT-07 / Gap 1: tests pass a tmpdir-resident registry.json so the
+   *  scanner can intersect filesystem-discovered repos with registered repos
+   *  without touching ~/.agenticapps/dashboard/registry.json. Production
+   *  callers pass undefined and readRegistry uses REGISTRY_FILE default. */
+  registryFileOverride?: string
+  /** Phase 14 review (test isolation): tests pass a tmpdir-resident
+   *  viewer-token.json so mintViewerToken never reads/writes the real
+   *  ~/.agenticapps/dashboard/viewer-token.json. Production callers pass
+   *  undefined and mintViewerToken uses the VIEWER_TOKEN_FILE default. */
+  viewerTokenFileOverride?: string
 }
 
 // ── Internal scan ─────────────────────────────────────────────────────────────
@@ -88,11 +101,34 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
   // readWorkflowHeadVersion signature: (migrationsDirOverride?: string)
   const workflowHead = readWorkflowHeadVersion(migrationsDir)
 
+  // D-13-EXT-07 Gap-1 closure: precompute registered repoIds once per scan.
+  // readRegistry returns an empty {projects:[]} when the registry file is missing
+  // BUT only if its parent directory exists & is writable — see registry.ts:172-187
+  // ensureRegistryFile semantics. Tests pass a tmpdir-resident path; production
+  // passes undefined and readRegistry uses REGISTRY_FILE default which is always
+  // initialised by daemon startup.
+  const reg = readRegistry(opts.registryFileOverride)
+  const registeredRepoIds: ReadonlySet<string> = new Set(
+    reg.projects
+      .map((p) => familyRepoIdFromRoot(p.root, sourcecodeRoot))
+      .filter((x): x is string => x !== null),
+  )
+
   // Step 4: Per-repo fan-out using Promise.all across repos (parallelism per Claude's Discretion).
   // Each repo's 5 scanners use Promise.allSettled internally (AGREED-2 partial-failure isolation).
   const internalRows: InternalCoverageRow[] = await Promise.all(
     repos.map((repo) =>
-      buildRow(repo.absPath, repo.family, repo.name, sourcecodeRoot, gnGlobal, workflowHead, resolve),
+      buildRow(
+        repo.absPath,
+        repo.family,
+        repo.name,
+        sourcecodeRoot,
+        gnGlobal,
+        workflowHead,
+        resolve,
+        registeredRepoIds,
+        opts.viewerTokenFileOverride,
+      ),
     ),
   )
 
@@ -140,6 +176,8 @@ async function buildRow(
   gnGlobal: ReturnType<typeof scanGitNexusGlobal>,
   workflowHead: string | null,
   resolve: PathResolver,
+  registeredRepoIds: ReadonlySet<string>,
+  viewerTokenFile?: string,
 ): Promise<InternalCoverageRow> {
   const familyRoot = join(sourcecodeRoot, family)
 
@@ -150,12 +188,14 @@ async function buildRow(
   // a sync throw escape the array literal before allSettled gets a chance to
   // catch it. Wrap in an async IIFE so the throw resolves to a rejected promise
   // that allSettled handles.
-  const [cmS, gnS, wkS, wfS, ovS] = await Promise.allSettled([
+  const [cmS, gnS, wkS, wfS, ovS, unS] = await Promise.allSettled([
     (async () => scanClaudeMd({ repoAbsPath, resolve }))(),
     (async () => rateGitNexusRepo(gnGlobal, repoAbsPath))(),
     (async () => scanWikiForFamily(familyRoot, repoName, resolve))(),
     (async () => scanWorkflowVersionForRepo(repoAbsPath, workflowHead, resolve))(),
     (async () => scanOverrideSentinelsForRepo(repoAbsPath, resolve))(),
+    // Phase 14 D-14-08: understand-anything staleness detection (pure FS, no subprocess)
+    (async () => scanUnderstandForRepo(repoAbsPath, readRepoHeadSha(repoAbsPath)))(),
   ])
 
   const rowDegraded: string[] = []
@@ -234,6 +274,51 @@ async function buildRow(
     rowDegraded.push(`overrides: ${String(ovS.reason)}`)
   }
 
+  // ── understand column (Phase 14 D-14-08 + D-14-03) ────────────────────────
+  // repoId used as the HMAC binding for the viewer token (D-14-03: per-repo scoped)
+  const repoId = `${family}/${repoName}`
+  const understand: CoverageRow['understand'] =
+    unS.status === 'fulfilled'
+      ? (() => {
+          const scan = unS.value
+          if (scan.state === 'missing') {
+            // Missing rows carry no viewerToken (viewer link not renderable)
+            return { kind: 'basic' as const, state: 'missing' as const }
+          }
+          // Fresh or stale rows carry a viewer token (D-14-03) + metadata.
+          // Bundle B-3 (review): a mint failure must degrade the row (AGREED-2
+          // pattern), NOT reject the whole Promise.all → /api/coverage 500.
+          // On failure the viewerToken is omitted and the column marked degraded.
+          let viewerToken: string | undefined
+          let mintError: string | undefined
+          try {
+            viewerToken = mintViewerToken(repoId, viewerTokenFile)
+          } catch (err) {
+            mintError = String(err)
+            rowDegraded.push(`understand: viewer token mint failed: ${mintError}`)
+          }
+          return {
+            kind: 'basic' as const,
+            state: scan.state,
+            ...(scan.lastAnalyzedAt !== undefined ? { lastAnalyzedAt: scan.lastAnalyzedAt } : {}),
+            ...(scan.analyzedCommit !== undefined ? { analyzedCommit: scan.analyzedCommit } : {}),
+            ...(scan.analyzedFiles !== undefined ? { analyzedFiles: scan.analyzedFiles } : {}),
+            ...(viewerToken !== undefined
+              ? { viewerToken }
+              : { degraded: true, degradedReason: `viewer token mint failed: ${mintError}` }),
+          }
+        })()
+      : (() => {
+          // AGREED-2: scanner rejection → degraded missing state
+          rowDegraded.push(`understand: ${String(unS.reason)}`)
+          return {
+            kind: 'basic' as const,
+            state: 'missing' as const,
+            degraded: true,
+            degradedReason: String(unS.reason),
+          }
+        })()
+
   // ── Assemble CoverageRow (public shape) ───────────────────────────────────
   const publicRow: CoverageRow = {
     family,
@@ -248,6 +333,11 @@ async function buildRow(
       sinceIso: o.sinceIso,
       source: o.source,
     })),
+    // D-13-EXT-07 / Gap-1 closure: registry membership lookup. registeredRepoIds
+    // is a precomputed ReadonlySet built once per scan from the dashboard
+    // registry projects; this is O(1) per row, no per-row I/O.
+    inRegistry: registeredRepoIds.has(`${family}/${repoName}`),
+    understand,
     ...(rowDegraded.length > 0 ? { degraded: { reason: rowDegraded.join('; ') } } : {}),
   }
 
@@ -264,4 +354,24 @@ async function buildRow(
 function stripInternal(internal: InternalCoverageRow): CoverageRow {
   const { absPath: _omit, ...publicRow } = internal
   return publicRow
+}
+
+/**
+ * D-13-EXT-07: derive `family/repo` from an absolute path under sourcecodeRoot.
+ * Inlined here (vs imported from gitnexusScan.ts:367 derivedRepoId) to avoid
+ * any risk of import-cycle and to let coverage scanner tests run without
+ * pulling gitnexusScan's module-level state. Kept in lockstep manually —
+ * if gitnexusScan.ts:derivedRepoId semantics change, update both.
+ */
+function familyRepoIdFromRoot(root: string, sourcecodeRoot: string): string | null {
+  const prefix = sourcecodeRoot.endsWith(sep) ? sourcecodeRoot : sourcecodeRoot + sep
+  if (!root.startsWith(prefix)) return null
+  const rel = root.slice(prefix.length)
+  const parts = rel.split(sep)
+  if (parts.length < 2 || !parts[0] || !parts[1]) return null
+  const family = parts[0]
+  const repo = parts[1]
+  const knownFamilies = ['agenticapps', 'factiv', 'neuroflash'] as const
+  if (!(knownFamilies as readonly string[]).includes(family)) return null
+  return `${family}/${repo}`
 }

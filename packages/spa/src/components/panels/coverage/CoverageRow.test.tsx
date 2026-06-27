@@ -27,6 +27,7 @@ function makeRow(overrides: Partial<CoverageRowData> = {}): CoverageRowData {
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: default true so existing render-gate tests keep passing
     ...overrides,
   }
 }
@@ -47,6 +48,36 @@ vi.mock('../../../lib/pairing.js', () => ({
     token: 'test-token-1234',
     pairedAt: '2026-01-01T00:00:00.000Z',
   })),
+}))
+
+// Phase 13: mock ScanPill so it renders a deterministic test-id without
+// requiring ToastProvider / QueryClientProvider nesting. The wiring tests
+// assert the correct props were forwarded — not ScanPill's internal states.
+vi.mock('./ScanPill.js', () => ({
+  ScanPill: ({
+    scope,
+    target,
+    canScan,
+    installed,
+  }: {
+    scope: string
+    target: string
+    canScan: boolean
+    installed: boolean
+  }) => {
+    if (!installed) return null
+    return React.createElement(
+      'button',
+      {
+        'data-testid': 'scan-pill',
+        'data-scope': scope,
+        'data-target': target,
+        'data-can-scan': String(canScan),
+        disabled: !canScan || undefined,
+      },
+      'Scan',
+    )
+  },
 }))
 
 const mockFetch = vi.fn()
@@ -516,5 +547,295 @@ describe('refresh button touch target (D-11.2-11)', () => {
     // animate-spin on the icon SVG (Plan 02 contract)
     const svg = button.querySelector('svg')
     expect(svg?.getAttribute('class') ?? '').toContain('animate-spin')
+  })
+})
+
+// ── Phase 13 D-13-08: ScanPill wiring in gitNexus cell ──────────────────────
+
+describe('Phase 13 ScanPill wiring in gitNexus cell (D-13-08)', () => {
+  it("renders ScanPill in gitNexus cell when state='missing' AND gitnexusInstalled=true AND canScan=true", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-scope')).toBe('repo')
+    expect(pill.getAttribute('data-target')).toBe('agenticapps/agenticapps-dashboard')
+    expect(pill.getAttribute('data-can-scan')).toBe('true')
+  })
+
+  it("renders ScanPill in gitNexus cell when state='not-applicable' AND gitnexusInstalled=true AND canScan=true", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'not-applicable' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-target')).toBe('agenticapps/agenticapps-dashboard')
+  })
+
+  it("renders ScanPill disabled (canScan=false) when gitnexusInstalled=true AND canScan=false (Tailscale D-13-11b)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={false}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('scan-pill')
+    expect(pill).toBeTruthy()
+    expect(pill).toBeDisabled()
+    expect(pill.getAttribute('data-can-scan')).toBe('false')
+  })
+
+  it("does NOT render ScanPill when gitnexusInstalled=false — existing cell renders instead", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={false}
+            gitnexusCanScan={false}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    // The normal CoverageCell should still render (aria-label on the figure)
+    expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
+  })
+
+  it("does NOT render ScanPill when row.gitNexus.state='fresh' (already indexed — no scan needed)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'fresh' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByLabelText(/gitNexus for/i)).toBeTruthy()
+  })
+
+  // I-4 (Stage-2 review): for state='missing' the ScanPill is the canonical
+  // surface — the refresh popover must NOT also offer 'Run gitnexus analyze',
+  // otherwise the user has two parallel ways to trigger the same scan.
+  it("I-4: refresh popover does NOT offer gitnexus-analyze for state='missing' (ScanPill is the only entry)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'missing' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions/i }))
+    // ScanPill is present (state='missing' + installed)
+    expect(screen.getByTestId('scan-pill')).toBeTruthy()
+    // Popover does NOT contain a duplicate gitnexus-analyze entry
+    expect(screen.queryByText(/gitnexus analyze/i)).toBeNull()
+  })
+
+  it("I-4: refresh popover STILL offers gitnexus-analyze for state='stale' (no ScanPill in that case)", () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ gitNexus: { kind: 'basic', state: 'stale' } })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /refresh actions/i }))
+    expect(screen.queryByTestId('scan-pill')).toBeNull()
+    expect(screen.getByText(/gitnexus analyze/i)).toBeTruthy()
+  })
+})
+
+// ── Phase 13 D-13-EXT-08: inRegistry is metadata only — ScanPill renders on
+// every scannable row regardless of registry membership. The daemon's startScan
+// resolves ~/Sourcecode/{family}/{repo} deterministically when the repo is not
+// in the dashboard registry. D-13-EXT-08 SUPERSEDES D-13-EXT-07 (which gated
+// ScanPill on inRegistry, removing the feature for the typical filesystem-
+// discovered row). ──
+
+describe('CoverageRow — Phase 13 Gap 1 fix (D-13-EXT-08)', () => {
+  it('renders ScanPill in gitNexus cell when inRegistry=true', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({
+              gitNexus: { kind: 'basic', state: 'missing' },
+              inRegistry: true,
+            })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.getByTestId('scan-pill')).toBeInTheDocument()
+  })
+
+  it('STILL renders ScanPill when inRegistry=false (D-13-EXT-08 supersedes D-13-EXT-07)', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({
+              gitNexus: { kind: 'basic', state: 'missing' },
+              inRegistry: false,
+            })}
+            gitnexusInstalled={true}
+            gitnexusCanScan={true}
+          />
+        </tbody>
+      </table>,
+    )
+    // Daemon resolves ~/Sourcecode/{family}/{repo} when not in registry. The
+    // SPA renders ScanPill on every missing/not-applicable row when gitnexus
+    // is installed; registry-membership is metadata for future tooltips, not
+    // a render gate.
+    expect(screen.getByTestId('scan-pill')).toBeInTheDocument()
+  })
+})
+
+// ── Phase 14 D-14-06/08/10: Understand column in CoverageRow ────────────────
+
+// Mock UnderstandCopyPill to keep CoverageRow tests focused on wiring, not pill internals.
+vi.mock('./UnderstandCopyPill.js', () => ({
+  UnderstandCopyPill: ({
+    state,
+    viewerUrl,
+    repo,
+  }: {
+    family: string
+    repo: string
+    viewerUrl?: string
+    state: string
+  }) =>
+    React.createElement(
+      'div',
+      {
+        'data-testid': 'understand-pill',
+        'data-state': state,
+        'data-viewer-url': viewerUrl ?? '',
+        'data-repo': repo,
+      },
+      state,
+    ),
+}))
+
+describe('Phase 14 — understand column in CoverageRow (D-14-06/08/10)', () => {
+  // Test 1: fresh state renders viewer link (via UnderstandCopyPill)
+  it('Test-1: understand.state=fresh + viewerUrl renders UnderstandCopyPill with state=fresh and viewerUrl', () => {
+    const viewerUrl = 'http://127.0.0.1:5193/understand/agenticapps/agenticapps-dashboard/?token=abc'
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'fresh', lastAnalyzedAt: '2026-06-07T00:00:00Z' } })}
+            understandViewerUrl={viewerUrl}
+          />
+        </tbody>
+      </table>,
+    )
+    const pill = screen.getByTestId('understand-pill')
+    expect(pill).toBeTruthy()
+    expect(pill.getAttribute('data-state')).toBe('fresh')
+    expect(pill.getAttribute('data-viewer-url')).toBe(viewerUrl)
+  })
+
+  // Test 2: stale renders pill; missing renders pill (different states)
+  it('Test-2a: understand.state=stale renders UnderstandCopyPill with state=stale', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'stale' } })}
+            understandViewerUrl="http://127.0.0.1:5193/understand/agenticapps/agenticapps-dashboard/?token=abc"
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.getByTestId('understand-pill').getAttribute('data-state')).toBe('stale')
+  })
+
+  it('Test-2b: understand.state=missing renders UnderstandCopyPill with state=missing', () => {
+    renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'missing' } })}
+          />
+        </tbody>
+      </table>,
+    )
+    expect(screen.getByTestId('understand-pill').getAttribute('data-state')).toBe('missing')
+  })
+
+  // Phase 14 review fix (Bundle D polish): the understand cell title formats
+  // lastAnalyzedAt with formatRelativeTime instead of dumping the raw ISO string.
+  it('Test-2c: understand cell title uses relative time, not the raw ISO timestamp', () => {
+    const lastAnalyzedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
+    const { container } = renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow
+            row={makeRow({ understand: { kind: 'basic', state: 'fresh', lastAnalyzedAt } })}
+          />
+        </tbody>
+      </table>,
+    )
+    const cell = container.querySelector('td[title]')
+    expect(cell).toBeTruthy()
+    const title = cell!.getAttribute('title')!
+    expect(title).toBe('Last analyzed: 3d ago')
+    // Raw ISO timestamp must NOT leak into the tooltip
+    expect(title).not.toContain(lastAnalyzedAt)
+  })
+
+  // Test 3: undefined understand (pre-Phase-14 daemon) renders inert placeholder, no crash
+  it('Test-3: understand=undefined (pre-Phase-14 daemon) renders em-dash placeholder, no crash', () => {
+    const { container } = renderInQC(
+      <table>
+        <tbody>
+          <CoverageRow row={makeRow({ understand: undefined })} />
+        </tbody>
+      </table>,
+    )
+    // Should not crash, should not render UnderstandCopyPill
+    expect(screen.queryByTestId('understand-pill')).toBeNull()
+    // Should render an em-dash or empty cell
+    expect(container.innerHTML).toContain('—')
   })
 })

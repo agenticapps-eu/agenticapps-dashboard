@@ -28,6 +28,8 @@ import {
   useObservability,
   useSecrets,
   useIntegrations,
+  useSentryRecent,
+  useLinearIssues,
 } from './projectQueries.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -78,6 +80,18 @@ function makeDriftResponse() {
     status: 200,
     json: () => Promise.resolve({ unexpected: 'drift' }),
     clone: () => ({ json: () => Promise.resolve({ unexpected: 'drift' }) }),
+  })
+}
+
+function makeNotConfiguredResponse() {
+  // The daemon returns 404 { ok:false, error:'not_configured' } when the
+  // integration env var (SENTRY_AUTH_TOKEN / LINEAR_API_KEY) is unset.
+  const body = { ok: false, error: 'not_configured', requestId: 'req-nc' }
+  return Promise.resolve({
+    ok: false,
+    status: 404,
+    json: () => Promise.resolve(body),
+    clone: () => ({ json: () => Promise.resolve(body) }),
   })
 }
 
@@ -803,6 +817,256 @@ describe('useIntegrations', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+})
+
+// ── Fixtures for Phase 8 integration panel hooks ──────────────────────────────
+
+const SENTRY_RECENT_BODY = {
+  issues: [
+    {
+      id: 'abc123',
+      title: 'TypeError: Cannot read property of undefined',
+      level: 'error',
+      count: '42',
+      lastSeen: '2026-06-11T10:00:00.000Z',
+      permalink: 'https://sentry.io/organizations/acme/issues/1234/',
+      shortId: 'ACME-1234',
+    },
+  ],
+  stale: false,
+}
+
+const LINEAR_ISSUES_BODY = {
+  issues: [
+    {
+      identifier: 'ACME-123',
+      title: 'Fix login redirect',
+      url: 'https://linear.app/acme/issue/ACME-123',
+      stateName: 'In Progress',
+      stateType: 'started',
+      assigneeName: 'Donald',
+      stale: false,
+    },
+  ],
+  stale: false,
+}
+
+// ── useSentryRecent ────────────────────────────────────────────────────────────
+
+describe('useSentryRecent', () => {
+  it('SR1: fetches /api/projects/acme/sentry/recent and returns data on 200 + valid body', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(SENTRY_RECENT_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSentryRecent('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(SENTRY_RECENT_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/sentry/recent')
+
+    qc.clear()
+  })
+
+  it('SR2: queryKey is [sentry-recent, id] (per-project cross-project cache safety)', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useSentryRecent('acme'), { wrapper })
+
+    const keys = qc.getQueryCache().getAll().map((q) => q.queryKey)
+    expect(keys).toContainEqual(['sentry-recent', 'acme'])
+
+    qc.clear()
+  })
+
+  it('SR3: on schema drift body, hook enters error state with schema_drift: prefix (INV-04)', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSentryRecent('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+
+  it('SR4: when id is null, hook is idle (not triggered)', () => {
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSentryRecent(null), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    qc.clear()
+  })
+
+  it('SR5: staleTime is 60_000, refetchInterval is 60_000, refetchIntervalInBackground is false', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useSentryRecent('acme'), { wrapper })
+
+    const cache = qc.getQueryCache()
+    const queries = cache.getAll()
+    const q = queries.find((q) => JSON.stringify(q.queryKey) === JSON.stringify(['sentry-recent', 'acme']))
+    expect(q).toBeDefined()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts = q?.options as any
+    expect(opts?.staleTime).toBe(60_000)
+    expect(opts?.refetchInterval).toBe(60_000)
+    expect(opts?.refetchIntervalInBackground).toBe(false)
+
+    qc.clear()
+  })
+
+  it('SR6: cross-project cache isolation — distinct cache slots for acme vs beta', async () => {
+    const acmeBody = { issues: [], stale: false }
+    const betaBody = { issues: [], stale: true, staleFrom: '2026-06-11T09:00:00Z', staleReason: 'unreachable' }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useSentryRecent('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useSentryRecent('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['sentry-recent', 'acme'])
+    const betaCacheData = qc.getQueryData(['sentry-recent', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('SR7: on 404 not_configured, hook errors with message "not_configured" (INV-03)', async () => {
+    mockFetch.mockResolvedValue(makeNotConfiguredResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useSentryRecent('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    // Must be the sentinel 'not_configured', NOT the generic 'HTTP 404',
+    // so the panel renders configure-to-enable copy instead of "unreachable".
+    expect((result.current.error as Error).message).toBe('not_configured')
+
+    qc.clear()
+  })
+})
+
+// ── useLinearIssues ────────────────────────────────────────────────────────────
+
+describe('useLinearIssues', () => {
+  it('LI1: fetches /api/projects/acme/linear/issues and returns data on 200 + valid body', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(LINEAR_ISSUES_BODY))
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLinearIssues('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(LINEAR_ISSUES_BODY)
+    const callUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(callUrl).toContain('/api/projects/acme/linear/issues')
+
+    qc.clear()
+  })
+
+  it('LI2: queryKey is [linear-issues, id] (per-project cross-project cache safety)', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useLinearIssues('acme'), { wrapper })
+
+    const keys = qc.getQueryCache().getAll().map((q) => q.queryKey)
+    expect(keys).toContainEqual(['linear-issues', 'acme'])
+
+    qc.clear()
+  })
+
+  it('LI3: on schema drift body, hook enters error state with schema_drift: prefix (INV-04)', async () => {
+    mockFetch.mockResolvedValue(makeDriftResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLinearIssues('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toMatch(/^schema_drift:/)
+
+    qc.clear()
+  })
+
+  it('LI4: when id is null, hook is idle (not triggered)', () => {
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLinearIssues(null), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    qc.clear()
+  })
+
+  it('LI5: staleTime is 60_000, refetchInterval is 60_000, refetchIntervalInBackground is false', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useLinearIssues('acme'), { wrapper })
+
+    const cache = qc.getQueryCache()
+    const queries = cache.getAll()
+    const q = queries.find((q) => JSON.stringify(q.queryKey) === JSON.stringify(['linear-issues', 'acme']))
+    expect(q).toBeDefined()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts = q?.options as any
+    expect(opts?.staleTime).toBe(60_000)
+    expect(opts?.refetchInterval).toBe(60_000)
+    expect(opts?.refetchIntervalInBackground).toBe(false)
+
+    qc.clear()
+  })
+
+  it('LI6: cross-project cache isolation — distinct cache slots for acme vs beta', async () => {
+    const acmeBody = { issues: [], stale: false }
+    const betaBody = { issues: [], stale: true, staleFrom: '2026-06-11T09:00:00Z', staleReason: 'unreachable' }
+
+    mockFetch.mockImplementation((url: string) => {
+      if ((url as string).includes('/acme/')) return Promise.resolve(makeSuccessResponse(acmeBody))
+      if ((url as string).includes('/beta/')) return Promise.resolve(makeSuccessResponse(betaBody))
+      return Promise.reject(new Error('unexpected url'))
+    })
+
+    const { qc, wrapper } = makeWrapper()
+
+    const { result: acmeResult } = renderHook(() => useLinearIssues('acme'), { wrapper })
+    const { result: betaResult } = renderHook(() => useLinearIssues('beta'), { wrapper })
+
+    await waitFor(() => expect(acmeResult.current.isSuccess).toBe(true))
+    await waitFor(() => expect(betaResult.current.isSuccess).toBe(true))
+
+    const acmeCacheData = qc.getQueryData(['linear-issues', 'acme'])
+    const betaCacheData = qc.getQueryData(['linear-issues', 'beta'])
+
+    expect(acmeCacheData).toEqual(acmeBody)
+    expect(betaCacheData).toEqual(betaBody)
+    expect(acmeCacheData).not.toEqual(betaCacheData)
+
+    qc.clear()
+  })
+
+  it('LI7: on 404 not_configured, hook errors with message "not_configured" (INV-03)', async () => {
+    mockFetch.mockResolvedValue(makeNotConfiguredResponse())
+
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useLinearIssues('acme'), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect((result.current.error as Error).message).toBe('not_configured')
 
     qc.clear()
   })

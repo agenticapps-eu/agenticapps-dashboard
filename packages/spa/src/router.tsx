@@ -141,6 +141,17 @@ const conformanceRoute = createRoute({
 }).lazy(() => import('./routes/observability.conformance.lazy.js').then((m) => m.Route))
 
 /**
+ * codeIntelligenceRoute — /code-intelligence page under the _appshell layout.
+ * Phase 14 D-14-06: Code Intelligence sidebar section; knowledge-graph discoverability surface.
+ * Section placed between Observability and ACCOUNT (user sidebar-architecture preference:
+ * new section with growth room for future GitNexus explorer entries).
+ */
+const codeIntelligenceRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/code-intelligence',
+}).lazy(() => import('./routes/code-intelligence.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -184,6 +195,7 @@ const routeTree = rootRoute.addChildren([
     coverageRoute, // Phase 10 D-10-08 — /coverage under _appshell
     observabilitySkillDriftRoute, // Phase 11 D-11-08 — /observability/skill-drift under _appshell
     conformanceRoute, // Phase 12 D-12-01 — /observability/conformance under _appshell
+    codeIntelligenceRoute, // Phase 14 D-14-06 — /code-intelligence under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

@@ -166,6 +166,30 @@ describe('FleetTrendChart', () => {
     expect(wrapper?.getAttribute('aria-label')).toBe('Fleet conformance trend last 90 days')
   })
 
+  it('S17: persistent legend maps all 4 series (3 families + fleet) to a swatch (Phase 12.1 P1)', () => {
+    const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
+    const legend = container.querySelector('[aria-label="Chart legend"]')
+    expect(legend).toBeTruthy()
+    const items = legend!.querySelectorAll('li')
+    expect(items.length).toBe(4)
+    const text = legend!.textContent ?? ''
+    for (const label of ['agenticapps', 'factiv', 'neuroflash', 'fleet']) {
+      expect(text.toLowerCase()).toContain(label)
+    }
+    // Each item carries a colored swatch (a span with a bg-* token).
+    expect(legend!.querySelectorAll('span[class*="bg-"]').length).toBe(4)
+  })
+
+  it('S18: 70 (floor) and 90 (target) threshold rules are labeled in-chart (Phase 12.1 P1)', () => {
+    const { container } = render(<FleetTrendChart series={NINETY} ariaLabel="trend" />)
+    const svgText = Array.from(container.querySelectorAll('svg text')).map((t) => t.textContent ?? '')
+    expect(svgText.some((t) => /floor/i.test(t))).toBe(true)
+    expect(svgText.some((t) => /target/i.test(t))).toBe(true)
+    // Labels are right-anchored (do not inflate the ≤7 middle-anchored date-label count).
+    const middleTexts = Array.from(container.querySelectorAll('svg text[text-anchor="middle"]'))
+    expect(middleTexts.length).toBeLessThanOrEqual(7)
+  })
+
   it('S15: LOC budget — file has ≤ 120 non-blank non-comment lines (D-12-08)', async () => {
     const source = await loadSource('src/components/panels/conformance/FleetTrendChart.tsx')
     let inBlock = false

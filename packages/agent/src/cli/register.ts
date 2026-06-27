@@ -1,9 +1,12 @@
 import pc from 'picocolors'
 
 import { agentError, agentLog } from '../lib/logging.js'
-import { addProject, RegistrationPathBlocked, removeProject } from '../lib/registry.js'
+import { addProject, readRegistry, RegistrationPathBlocked, removeProject } from '../lib/registry.js'
 import { ensureAuthFile } from '../lib/auth.js'
 import { exitOnRegistryLockTimeout } from '../lib/cliErrors.js'
+import { evictSentryCacheProject } from '../routes/sentry.js'
+import { evictLinearCacheProject } from '../routes/linear.js'
+import { evictIntegrationsCacheProject } from '../routes/integrations.js'
 
 import { discoverProjects, registerInteractive, type RegisterInteractiveOpts } from './discover.js'
 
@@ -93,6 +96,17 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
 
 export async function runUnregister(idOrPath: string): Promise<void> {
   ensureAuthFile() // D-01 lazy init
+
+  // WR-05: resolve the project id BEFORE removal so we can evict panel caches.
+  // Project ids are slug-based (not UUID) and can be reused after re-registration,
+  // so stale cache entries from a previous registration at the same path would be
+  // served under the new registration if not evicted here.
+  const reg = readRegistry()
+  const entry = reg.projects.find(
+    (p) => p.id === idOrPath || p.root === idOrPath,
+  )
+  const resolvedId = entry?.id
+
   let removed: boolean
   try {
     removed = await removeProject(idOrPath)
@@ -101,6 +115,13 @@ export async function runUnregister(idOrPath: string): Promise<void> {
     throw err
   }
   if (removed) {
+    // Evict panel caches for the removed project to prevent stale cache reuse
+    // across re-registration (WR-05 — ids are reusable slugs, not UUIDs).
+    if (resolvedId) {
+      evictSentryCacheProject(resolvedId)
+      evictLinearCacheProject(resolvedId)
+      evictIntegrationsCacheProject(resolvedId)
+    }
     agentLog(pc.green(`unregistered ${idOrPath}`))
     process.exit(0)
   }
