@@ -170,6 +170,32 @@ describe('PathDriftPanel', () => {
     expect(btn.disabled).toBe(false)
   })
 
+  it('P6b: manual-path input shows inline help listing the three family roots (F13)', () => {
+    // F13 — without this hint a user who pastes a bad path 10 times in 10s
+    // hits the daemon's rate-limit with no actionable guidance. The help
+    // text surfaces the standard layout up front so the first paste is
+    // typically valid; aria-describedby wires it to the input for AT users.
+    const { wrapper } = makeWrapper()
+    render(<PathDriftPanel drifted={ONE_WITHOUT_SUGGESTION} />, { wrapper })
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    const helpId = input.getAttribute('aria-describedby')
+    expect(helpId).toBeTruthy()
+    const help = document.getElementById(helpId!)
+    expect(help).toBeTruthy()
+    const text = help!.textContent ?? ''
+    expect(text).toMatch(/agenticapps/i)
+    expect(text).toMatch(/factiv/i)
+    expect(text).toMatch(/neuroflash/i)
+  })
+
+  it('P6c: inline help is NOT rendered when a suggestedPath is available (no input → no help) (F13)', () => {
+    const { wrapper } = makeWrapper()
+    render(<PathDriftPanel drifted={ONE_WITH_SUGGESTION} />, { wrapper })
+    // No textbox = no manual input branch = no help text.
+    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(document.querySelector('[id^="drift-help-"]')).toBeNull()
+  })
+
   it('P7: clicking Fix path — POSTs to /api/admin/registry/fix-path with {id, newPath}', async () => {
     mockFetch.mockReturnValue(makeFetchResponse(REGISTRY_ENTRY_BODY))
     const { wrapper } = makeWrapper()

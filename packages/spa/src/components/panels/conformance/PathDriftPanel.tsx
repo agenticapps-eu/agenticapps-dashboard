@@ -172,17 +172,34 @@ export function PathDriftPanel({ drifted }: PathDriftPanelProps): ReactElement |
                     {entry.suggestedPath}
                   </span>
                 ) : (
-                  <input
-                    type="text"
-                    value={manual}
-                    onChange={(e) =>
-                      setManualPaths((prev) => ({ ...prev, [entry.id]: e.target.value }))
-                    }
-                    maxLength={4096}
-                    placeholder="Paste corrected path"
-                    aria-label={`Manual path for ${entry.id}`}
-                    className="font-mono text-xs border border-border-subtle rounded px-2 py-1 min-w-0 flex-1 bg-app-bg text-text-primary"
-                  />
+                  // F13 — manual-path input has no client-side validation
+                  // hint. Combined with the 10-req/10s server rate-limit on
+                  // /fix-path, a user without context could paste 10 wrong
+                  // paths and trip the rate-limiter before getting a single
+                  // actionable error. The inline `aria-describedby` help
+                  // text surfaces the three family roots so first-try
+                  // success is the common case.
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <input
+                      type="text"
+                      value={manual}
+                      onChange={(e) =>
+                        setManualPaths((prev) => ({ ...prev, [entry.id]: e.target.value }))
+                      }
+                      maxLength={4096}
+                      placeholder="Paste corrected path"
+                      aria-label={`Manual path for ${entry.id}`}
+                      aria-describedby={`drift-help-${entry.id}`}
+                      className="font-mono text-xs border border-border-subtle rounded px-2 py-1 min-w-0 bg-app-bg text-text-primary"
+                    />
+                    <span
+                      id={`drift-help-${entry.id}`}
+                      className="mt-1 text-text-tertiary text-[10px] leading-tight"
+                    >
+                      Must be under one of: <code>~/Sourcecode/agenticapps</code>,{' '}
+                      <code>~/Sourcecode/factiv</code>, or <code>~/Sourcecode/neuroflash</code>.
+                    </span>
+                  </div>
                 )}
                 <button
                   type="button"
