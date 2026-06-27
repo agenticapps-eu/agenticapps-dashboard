@@ -32,6 +32,8 @@ import type {
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageCell } from './CoverageCell.js'
 import { OverrideChip } from './OverrideChip.js'
+import { ScanPill } from './ScanPill.js'
+import { UnderstandCopyPill } from './UnderstandCopyPill.js'
 import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { useToast } from '../../ui/Toast.js'
@@ -44,6 +46,19 @@ export interface CoverageFamilySectionMobileProps {
   gitNexusInstallState: GitNexusInstallState
   onRefresh?: (action: CoverageRefreshAction, context: CoverageRowContext) => void
   inFlightRefreshes?: ReadonlySet<string>
+  /**
+   * Phase 13 D-13-08 + Stage-2 I-3: gitnexus health props for per-row ScanPill
+   * on mobile. Sourced from GET /health response.gitnexus, passed down from
+   * CoverageFamilySection. Defaults to false when health data is unavailable
+   * (safe fallback: ScanPill renders nothing, refresh button still shown).
+   */
+  gitnexusInstalled?: boolean
+  gitnexusCanScan?: boolean
+  /**
+   * Phase 14 D-14-03/06/07: per-row understand viewer URLs, keyed by `${family}/${repo}`.
+   * Passed down from CoverageFamilySection. Absent for pre-Phase-14 daemons.
+   */
+  understandViewerUrls?: Readonly<Record<string, string>>
 }
 
 // Display labels for the four column tiles. Lowercased to mirror the existing
@@ -64,6 +79,9 @@ export function CoverageFamilySectionMobile({
   gitNexusInstallState,
   onRefresh,
   inFlightRefreshes,
+  gitnexusInstalled = false,
+  gitnexusCanScan = false,
+  understandViewerUrls,
 }: CoverageFamilySectionMobileProps): React.JSX.Element {
   const toast = useToast()
 
@@ -124,6 +142,14 @@ export function CoverageFamilySectionMobile({
         {rows.map((row) => {
           const id = refreshKey(row.family, row.repo)
           const isInFlight = !!inFlightRefreshes?.has(id)
+          // Stage-2 I-3: mobile parity with desktop CoverageRow.tsx — ScanPill
+          // is the canonical scan affordance for unscanned rows (D-13-08).
+          // ScanPill and the legacy refresh button are mutually exclusive to
+          // avoid the double-dispatch surface I-4 fixed on desktop.
+          const showScanPill =
+            gitnexusInstalled &&
+            (row.gitNexus.state === 'missing' || row.gitNexus.state === 'not-applicable')
+          const understandViewerUrl = understandViewerUrls?.[id]
           return (
             <article
               key={id}
@@ -168,30 +194,60 @@ export function CoverageFamilySectionMobile({
                 ))}
               </div>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onRefresh?.('gitnexus-analyze', {
-                      family: row.family,
-                      repo: row.repo,
-                    })
-                  }}
-                  disabled={isInFlight}
-                  {...(isInFlight ? { 'aria-busy': true } : {})}
-                  aria-label={`Refresh GitNexus index for ${row.repo}`}
-                  className="min-w-[44px] min-h-[44px] p-[15px] rounded-md bg-card-bg border border-border-subtle text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+              {/* Phase 14 D-14-06/10: understand cell in mobile card.
+                  Back-compat: row.understand undefined on pre-Phase-14 daemons → em-dash. */}
+              <div className="flex flex-col gap-1">
+                <span
+                  title={coverageColumnTooltips.understand}
+                  className="text-xs uppercase tracking-wide text-text-tertiary"
                 >
-                  {isInFlight ? (
-                    <Loader2
-                      size={14}
-                      aria-hidden="true"
-                      className="animate-spin"
-                    />
-                  ) : (
-                    <RefreshCw size={14} aria-hidden="true" />
-                  )}
-                </button>
+                  Understand
+                </span>
+                {row.understand && (row.understand.state === 'fresh' || row.understand.state === 'stale' || row.understand.state === 'missing') ? (
+                  <UnderstandCopyPill
+                    family={row.family}
+                    repo={row.repo}
+                    {...(understandViewerUrl !== undefined ? { viewerUrl: understandViewerUrl } : {})}
+                    state={row.understand.state}
+                  />
+                ) : (
+                  <span className="text-text-tertiary text-xs">—</span>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                {showScanPill ? (
+                  <ScanPill
+                    scope="repo"
+                    target={`${row.family}/${row.repo}`}
+                    canScan={gitnexusCanScan}
+                    installed={gitnexusInstalled}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRefresh?.('gitnexus-analyze', {
+                        family: row.family,
+                        repo: row.repo,
+                      })
+                    }}
+                    disabled={isInFlight}
+                    {...(isInFlight ? { 'aria-busy': true } : {})}
+                    aria-label={`Refresh GitNexus index for ${row.repo}`}
+                    className="min-w-[44px] min-h-[44px] p-[15px] rounded-md bg-card-bg border border-border-subtle text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+                  >
+                    {isInFlight ? (
+                      <Loader2
+                        size={14}
+                        aria-hidden="true"
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <RefreshCw size={14} aria-hidden="true" />
+                    )}
+                  </button>
+                )}
               </div>
             </article>
           )

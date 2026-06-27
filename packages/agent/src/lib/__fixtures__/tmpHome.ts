@@ -4,16 +4,42 @@ import { join } from 'node:path'
 
 /**
  * Create a tmp directory that mimics ~/.agenticapps/dashboard layout.
- * Returns { homeDir, configDir, cleanup }.
+ *
+ * @param opts.overrideHomeEnv  When true, sets process.env.HOME (or
+ *   USERPROFILE on win32) to the tmp homeDir for the lifetime of the
+ *   fixture so any code that calls `os.homedir()` resolves to the
+ *   sandbox. Restored on cleanup. Use for tests whose production-code
+ *   under test reads homedir() and would otherwise touch the real
+ *   ~/Sourcecode/* tree (I-1 / Stage-2 review).
  */
-export function makeTmpHome(): { homeDir: string; configDir: string; cleanup: () => void } {
+export function makeTmpHome(opts: { overrideHomeEnv?: boolean } = {}): {
+  homeDir: string
+  configDir: string
+  cleanup: () => void
+} {
   const homeDir = mkdtempSync(join(tmpdir(), 'agentic-test-'))
   const configDir = join(homeDir, '.agenticapps', 'dashboard')
   mkdirSync(configDir, { recursive: true, mode: 0o700 })
+
+  const envKey = process.platform === 'win32' ? 'USERPROFILE' : 'HOME'
+  const restoreEnv: (() => void) | null = opts.overrideHomeEnv
+    ? (() => {
+        const prev = process.env[envKey]
+        process.env[envKey] = homeDir
+        return () => {
+          if (prev === undefined) delete process.env[envKey]
+          else process.env[envKey] = prev
+        }
+      })()
+    : null
+
   return {
     homeDir,
     configDir,
-    cleanup: () => rmSync(homeDir, { recursive: true, force: true }),
+    cleanup: () => {
+      if (restoreEnv) restoreEnv()
+      rmSync(homeDir, { recursive: true, force: true })
+    },
   }
 }
 

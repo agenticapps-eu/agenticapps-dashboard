@@ -16,6 +16,8 @@
 import { useState, type KeyboardEvent, type ReactElement } from 'react'
 import type { ConformanceDayPoint } from '@agenticapps/dashboard-shared'
 
+import { FleetTrendDataTable, FleetTrendLegend, FleetTrendTooltip } from './FleetTrendChartParts.js'
+
 interface Props {
   series: ConformanceDayPoint[]
   ariaLabel: string
@@ -31,6 +33,11 @@ const FAMILY_STROKES: Record<(typeof FAMILY_KEYS)[number], string> = {
   factiv: 'stroke-status-warning',
   neuroflash: 'stroke-accent',
 }
+// Threshold rules (Phase 12.1 P1): 70 floor / 90 target, labeled in-chart.
+const THRESHOLDS = [
+  [70, 'floor'],
+  [90, 'target'],
+] as const
 
 export function FleetTrendChart({ series, ariaLabel }: Props): ReactElement {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -68,25 +75,25 @@ export function FleetTrendChart({ series, ariaLabel }: Props): ReactElement {
   }
 
   return (
-    <div role="img" aria-label={ariaLabel} className="relative">
+    <div>
+      <FleetTrendLegend />
+      <div role="img" aria-label={ariaLabel} className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto outline-none"
            tabIndex={0} role="application" aria-label={ariaLabel}
            onKeyDown={onSvgKeyDown} onBlur={() => setCursorIdx(null)}>
-        {[0, 25, 50, 75, 100].map((v) => {
-          const isThreshold = v === 70 || v === 90
-          return (
-            <line
-              key={v}
-              x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
-              className={isThreshold ? 'stroke-border-subtle' : 'stroke-border-subtle/50'}
-              {...(isThreshold ? { strokeDasharray: '4 4' } : {})}
-            />
-          )
-        })}
-        {/* Explicit 70 + 90 threshold rules (dashed) on top of base gridlines. */}
-        {[70, 90].map((v) => (
-          <line key={`th-${v}`} x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
-                className="stroke-border-subtle" strokeDasharray="4 4" />
+        {/* Base gridlines (0/25/50/75/100); 70/90 get dedicated dashed rules below. */}
+        {[0, 25, 50, 75, 100].map((v) => (
+          <line key={v} x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
+                className="stroke-border-subtle/50" />
+        ))}
+        {/* Explicit 70 (floor) + 90 (target) threshold rules + labels, on base gridlines. */}
+        {THRESHOLDS.map(([v, label]) => (
+          <g key={`th-${v}`}>
+            <line x1={PAD.left} y1={y(v)} x2={W - PAD.right} y2={y(v)}
+                  className="stroke-border-subtle" strokeDasharray="4 4" />
+            <text x={W - PAD.right} y={y(v) - 4} textAnchor="end" fontSize={9}
+                  className="fill-text-tertiary">{v} {label}</text>
+          </g>
         ))}
         {FAMILY_KEYS.map((fam) => (
           <polyline key={fam} points={polyline(fam)} fill="none"
@@ -122,22 +129,9 @@ export function FleetTrendChart({ series, ariaLabel }: Props): ReactElement {
                 className="fill-text-tertiary">{v}</text>
         ))}
       </svg>
-      {activeIdx !== null && series[activeIdx] && (
-        <div className="absolute top-0 right-0 bg-card-bg border border-border-subtle rounded-md p-3 shadow-card text-sm z-[var(--z-overlay)]">
-          <div className="font-semibold">{series[activeIdx]!.date}</div>
-          <div>Fleet: <strong>{series[activeIdx]!.fleet}%</strong></div>
-          <div>agenticapps: {series[activeIdx]!.agenticapps}%</div>
-          <div>factiv: {series[activeIdx]!.factiv}%</div>
-          <div>neuroflash: {series[activeIdx]!.neuroflash}%</div>
-        </div>
-      )}
-      <table className="sr-only">
-        <caption>Daily fleet conformance scores (last {n} days)</caption>
-        <thead><tr><th>Date</th><th>Fleet</th><th>agenticapps</th><th>factiv</th><th>neuroflash</th></tr></thead>
-        <tbody>{series.map((d) => (
-          <tr key={d.date}><td>{d.date}</td><td>{d.fleet}</td><td>{d.agenticapps}</td><td>{d.factiv}</td><td>{d.neuroflash}</td></tr>
-        ))}</tbody>
-      </table>
+      <FleetTrendTooltip series={series} activeIdx={activeIdx} />
+      <FleetTrendDataTable series={series} n={n} />
+      </div>
     </div>
   )
 }
