@@ -36,6 +36,13 @@ export interface PanelContainerProps {
   unreachable?: boolean
   /** D-6.1-02: when true, collapses body until header click. Defaults to false (back-compat). */
   defaultCollapsed?: boolean
+  /**
+   * Subtle, right-aligned state hint shown in the header ONLY while collapsed
+   * (e.g. "not configured"). Lets a collapsed panel signal its state at a glance
+   * without forcing the user to expand it. Hidden once expanded (the body content
+   * becomes the source of truth). No effect unless `defaultCollapsed` is set.
+   */
+  collapsedHint?: string
   children: React.ReactNode
 }
 
@@ -45,6 +52,7 @@ export function PanelContainer({
   stale = false,
   unreachable = false,
   defaultCollapsed = false,
+  collapsedHint,
   children,
 }: PanelContainerProps): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
@@ -77,11 +85,16 @@ export function PanelContainer({
               {title}
             </h2>
           </button>
-          {stale && (
-            <span className="rounded-md bg-card-bg-hover px-2 py-0.5 text-xs font-semibold text-status-warning">
-              Stale
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {collapsed && collapsedHint && (
+              <span className="text-xs text-text-tertiary">{collapsedHint}</span>
+            )}
+            {stale && (
+              <span className="rounded-md bg-card-bg-hover px-2 py-0.5 text-xs font-semibold text-status-warning">
+                Stale
+              </span>
+            )}
+          </div>
         </header>
         {unreachable && (
           <div className="flex items-center gap-2 text-sm text-status-warning">

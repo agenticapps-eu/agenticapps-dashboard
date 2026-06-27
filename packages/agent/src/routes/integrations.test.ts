@@ -266,4 +266,78 @@ describe('GET /api/projects/:id/integrations', () => {
     // (Companion grep assertion is in the plan verification section.)
     expect(true).toBe(true)
   })
+
+  // ── INFI-03: read-only Infisical scope reflection ────────────────────────
+
+  it('I11 (INFI-03): present-valid .infisical.json → response carries infisicalWorkspaceId + infisicalEnvironment', async () => {
+    vi.stubEnv('SENTRY_AUTH_TOKEN', '')
+    vi.stubEnv('LINEAR_API_KEY', '')
+    vi.stubEnv('INFISICAL_TOKEN', '')
+    vi.stubEnv('INFISICAL_API_TOKEN', '')
+
+    writeFileSync(
+      join(projectRoot, '.infisical.json'),
+      JSON.stringify({ workspaceId: 'ws_1', defaultEnvironment: 'dev' }),
+    )
+
+    const app = createApp({ registryFile })
+    const res = await app.request(
+      `http://127.0.0.1:5193/api/projects/${projectId}/integrations`,
+      { headers: authHeaders(token) },
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    const parsed = IntegrationsResponseSchema.parse(data)
+    expect(parsed.infisicalWorkspaceId).toBe('ws_1')
+    expect(parsed.infisicalEnvironment).toBe('dev')
+  })
+
+  it('I12 (INFI-03): absent .infisical.json → scope fields omitted; existing state fields intact', async () => {
+    vi.stubEnv('SENTRY_AUTH_TOKEN', '')
+    vi.stubEnv('LINEAR_API_KEY', '')
+    vi.stubEnv('INFISICAL_TOKEN', '')
+    vi.stubEnv('INFISICAL_API_TOKEN', '')
+    // No .infisical.json written — absent
+
+    const app = createApp({ registryFile })
+    const res = await app.request(
+      `http://127.0.0.1:5193/api/projects/${projectId}/integrations`,
+      { headers: authHeaders(token) },
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    const parsed = IntegrationsResponseSchema.parse(data)
+
+    // Scope fields must be absent (backward-compatible, INV-03)
+    expect(parsed.infisicalWorkspaceId).toBeUndefined()
+    expect(parsed.infisicalEnvironment).toBeUndefined()
+
+    // Existing three-state fields must still be present and valid
+    expect(['configured', 'present-but-not-configured', 'not-detected']).toContain(parsed.sentry)
+    expect(['configured', 'present-but-not-configured', 'not-detected']).toContain(parsed.linear)
+    expect(['configured', 'present-but-not-configured', 'not-detected']).toContain(parsed.infisical)
+  })
+
+  it('I13 (INFI-03): present-valid without defaultEnvironment → infisicalEnvironment omitted, workspaceId present', async () => {
+    vi.stubEnv('SENTRY_AUTH_TOKEN', '')
+    vi.stubEnv('LINEAR_API_KEY', '')
+    vi.stubEnv('INFISICAL_TOKEN', '')
+    vi.stubEnv('INFISICAL_API_TOKEN', '')
+
+    writeFileSync(
+      join(projectRoot, '.infisical.json'),
+      JSON.stringify({ workspaceId: 'ws_2' }), // no defaultEnvironment
+    )
+
+    const app = createApp({ registryFile })
+    const res = await app.request(
+      `http://127.0.0.1:5193/api/projects/${projectId}/integrations`,
+      { headers: authHeaders(token) },
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    const parsed = IntegrationsResponseSchema.parse(data)
+    expect(parsed.infisicalWorkspaceId).toBe('ws_2')
+    expect(parsed.infisicalEnvironment).toBeUndefined()
+  })
 })

@@ -55,6 +55,7 @@ vi.mock('../lib/coverageScan.js', () => ({
           },
           overrideCount: 0,
           overrides: [],
+          inRegistry: true, // D-13-EXT-07
         },
       ],
     },
@@ -75,6 +76,7 @@ vi.mock('../lib/coverageScan.js', () => ({
         },
         overrideCount: 0,
         overrides: [],
+        inRegistry: true, // D-13-EXT-07
       },
     ],
   }),
@@ -100,6 +102,10 @@ import { _resetRefreshLocksForTests } from './coverage.js'
 import * as coverageSpawnMod from '../lib/coverageSpawn.js'
 import * as coverageScanMod from '../lib/coverageScan.js'
 import * as repoDiscoveryMod from '../lib/repoDiscovery.js'
+import {
+  _activeChildrenForTests,
+  disposeAllInflightScans,
+} from '../lib/gitnexusScan.js'
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` }
@@ -174,6 +180,7 @@ function makeTestSetup() {
             },
             overrideCount: 0,
             overrides: [],
+            inRegistry: true, // D-13-EXT-07
           },
         ],
       },
@@ -193,6 +200,7 @@ function makeTestSetup() {
           },
           overrideCount: 0,
           overrides: [],
+          inRegistry: true, // D-13-EXT-07
         },
       ],
     })
@@ -310,6 +318,7 @@ describe('GET /api/coverage', () => {
           },
           overrideCount: 0,
           overrides: [],
+          inRegistry: true, // D-13-EXT-07
         },
       ],
     })
@@ -672,5 +681,79 @@ describe('POST /api/coverage/refresh', () => {
     expect(body.kind).toBe('error')
     expect(body.exitCode).toBe(1)
     expect(body.stderr).toBe('analyze failed')
+  })
+})
+
+// ── D-13-EXT-16 — extend shutdown disposer to coverage refresh path ──────────
+//
+// D-13-EXT-13 wired disposeAllInflightScans() into the scan-job spawn path
+// (gitnexusScan._doSpawnAndSettle). POST /api/coverage/refresh ALSO spawns
+// `gitnexus analyze` and could leak a long-running child on daemon shutdown.
+// The route MUST pass the same tracking onSubprocess callback so the child
+// is in activeChildren and SIGTERM'd by disposeAllInflightScans().
+describe('POST /api/coverage/refresh — shutdown disposer wiring (D-13-EXT-16)', () => {
+  const setup = makeTestSetup()
+
+  afterEach(() => {
+    // Drain anything the test added to activeChildren so we don't leak state.
+    disposeAllInflightScans()
+  })
+
+  it('passes a tracking onSubprocess callback to spawnGitNexusAnalyze', async () => {
+    const app = createApp({ authFile: setup.getAuthFile() })
+    const res = await app.request('http://127.0.0.1:5193/api/coverage/refresh', {
+      method: 'POST',
+      headers: {
+        ...authHeaders(setup.getToken()),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        family: 'agenticapps',
+        repo: 'dashboard',
+        action: 'gitnexus-analyze',
+      }),
+    })
+    expect(res.status).toBe(200)
+
+    const calls = vi.mocked(coverageSpawnMod.spawnGitNexusAnalyze).mock.calls
+    expect(calls.length).toBeGreaterThanOrEqual(1)
+    const firstCall = calls[0]
+    expect(firstCall).toBeDefined()
+    const onSubprocess = firstCall![1]
+    expect(typeof onSubprocess).toBe('function')
+  })
+
+  it('the wired callback registers the subprocess in activeChildren so disposeAllInflightScans can SIGTERM it', async () => {
+    const app = createApp({ authFile: setup.getAuthFile() })
+    const res = await app.request('http://127.0.0.1:5193/api/coverage/refresh', {
+      method: 'POST',
+      headers: {
+        ...authHeaders(setup.getToken()),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        family: 'agenticapps',
+        repo: 'dashboard',
+        action: 'gitnexus-analyze',
+      }),
+    })
+    expect(res.status).toBe(200)
+
+    const calls = vi.mocked(coverageSpawnMod.spawnGitNexusAnalyze).mock.calls
+    const firstCall = calls[0]
+    expect(firstCall).toBeDefined()
+    const onSubprocess = firstCall![1] as ((sp: unknown) => void) | undefined
+    expect(onSubprocess).toBeDefined()
+
+    // Synthesise a Promise-shaped subprocess handle. The tracking chain inside
+    // the callback only needs .finally() (inherited from Promise.prototype)
+    // and identity for Set membership. .kill is patched so disposeAll's
+    // SIGTERM call in afterEach does not throw.
+    const fakeSp = new Promise(() => {}) as Promise<unknown> & { kill: () => void }
+    fakeSp.kill = () => {}
+
+    expect(_activeChildrenForTests()).not.toContain(fakeSp as never)
+    onSubprocess!(fakeSp)
+    expect(_activeChildrenForTests()).toContain(fakeSp as never)
   })
 })

@@ -13,6 +13,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { execa } from 'execa'
+import { buildGitnexusIndexClipboardString } from '@agenticapps/dashboard-shared'
 
 /** D-5-21: 5-minute timeout for gitnexus analyze. */
 const SPAWN_TIMEOUT_MS = 5 * 60 * 1000
@@ -51,26 +52,39 @@ export type SpawnResult =
  *
  * Security invariants (T-10-03-02 / T-10-03-03 / D-5-21):
  *  1. Binary resolved via PATH lookup — NEVER `npx gitnexus`.
- *  2. execa called with argv-array: execa(absoluteBinPath, ['analyze'], opts).
- *  3. No shell string, no template literals, no execa.command().
- *  4. cwd is a parameter — repo name never interpolated into argv.
+ *  2. execa called with argv-array form (no shell string, no template literals,
+ *     no execa.command()). Argv is sourced from the shared D-13-10 helper.
+ *  3. cwd is a parameter — repo name never interpolated into argv.
  *
  * @param repoAbsPath  Absolute path to the repo to analyze (used as cwd).
  */
-export async function spawnGitNexusAnalyze(repoAbsPath: string): Promise<SpawnResult> {
+export async function spawnGitNexusAnalyze(
+  repoAbsPath: string,
+  /**
+   * D-13-EXT-13 (Codex WARNING #5) — optional callback invoked synchronously
+   * with the execa subprocess handle immediately after spawning. Callers may
+   * register the handle with a shutdown disposer for kill-on-SIGTERM behaviour.
+   * The callback runs before the spawn settles; it must not throw.
+   */
+  onSubprocess?: (sp: ReturnType<typeof execa>) => void,
+): Promise<SpawnResult> {
   // D-5-21: PATH lookup only — never `npx gitnexus`
   const cmd = await resolveGitNexusBin()
   if (!cmd) return { kind: 'not-installed' }
 
+  // T-10-03-02: argv-array form — cmd is an absolute path, args is a plain array.
+  // D-13-10: argv sourced from the shared helper so this spawn and the SPA
+  // clipboard fallback stay in lockstep (single source of truth).
+  const sp = execa(cmd, [...buildGitnexusIndexClipboardString().argv], {
+    cwd: repoAbsPath,
+    timeout: SPAWN_TIMEOUT_MS,
+  })
+  if (onSubprocess) onSubprocess(sp)
   try {
-    // T-10-03-02: argv-array form — cmd is an absolute path, args is a plain array
-    const result = await execa(cmd, ['analyze'], {
-      cwd: repoAbsPath,
-      timeout: SPAWN_TIMEOUT_MS,
-    })
+    const result = await sp
     return { kind: 'ok', stdout: result.stdout }
   } catch (e: unknown) {
-    const err = e as { timedOut?: boolean; exitCode?: number; stderr?: string }
+    const err = e as { timedOut?: boolean; exitCode?: number; stderr?: string; isCanceled?: boolean }
     if (err?.timedOut) return { kind: 'timeout' }
     return {
       kind: 'error',

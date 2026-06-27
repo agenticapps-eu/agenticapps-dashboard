@@ -38,6 +38,7 @@ import {
   invalidateCoverageCache,
 } from '../lib/coverageCache.js'
 import { spawnGitNexusAnalyze } from '../lib/coverageSpawn.js'
+import { makeTrackingOnSubprocess } from '../lib/gitnexusScan.js'
 import { discoverRepos } from '../lib/repoDiscovery.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
@@ -137,9 +138,11 @@ coverageRoute.post('/coverage/refresh', async (c) => {
 
     // 5. Dispatch to spawn module — the only allowed action is gitnexus-analyze
     //    (enforced at schema parse above; D-10-09 wiki-compile rejected before reaching here).
+    //    D-13-EXT-16: pass the tracking onSubprocess so disposeAllInflightScans()
+    //    can SIGTERM this child if the daemon shuts down mid-analyze.
     let result: Awaited<ReturnType<typeof spawnGitNexusAnalyze>>
     try {
-      result = await spawnGitNexusAnalyze(canonicalAbs)
+      result = await spawnGitNexusAnalyze(canonicalAbs, makeTrackingOnSubprocess())
     } catch (err) {
       return {
         ok: false,

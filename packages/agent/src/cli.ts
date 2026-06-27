@@ -100,6 +100,31 @@ program
     await (await import('./cli/registryCmd.js')).runTag(id, tags)
   })
 
+const envCmd = program
+  .command('env')
+  .description('Manage env.json secrets store (allow-listed keys, 0600)')
+
+envCmd
+  .command('set <key> <value>')
+  .description('Store an allow-listed env key in ~/.agenticapps/dashboard/env.json')
+  .action(async (key: string, value: string) => {
+    await (await import('./cli/envCmd.js')).runEnvSet(key, value)
+  })
+
+envCmd
+  .command('list')
+  .description('List stored env keys (redacted — never prints full values)')
+  .action(async () => {
+    await (await import('./cli/envCmd.js')).runEnvList()
+  })
+
+envCmd
+  .command('unset <key>')
+  .description('Remove an allow-listed env key from env.json')
+  .action(async (key: string) => {
+    await (await import('./cli/envCmd.js')).runEnvUnset(key)
+  })
+
 program
   .command('rotate-token')
   .description('Invalidate the current token and issue a new one')
@@ -120,6 +145,13 @@ program
   .option('--uninstall', 'remove the LaunchAgent plist')
   .action(async (opts) => {
     await (await import('./cli/installLaunchd.js')).runInstallLaunchd(opts)
+  })
+
+program
+  .command('install-understand-viewer')
+  .description('Build and install the understand-anything viewer from the plugin cache')
+  .action(async () => {
+    await (await import('./cli/installUnderstandViewer.js')).runInstallUnderstandViewer()
   })
 
 program

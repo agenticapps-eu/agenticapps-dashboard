@@ -1,11 +1,16 @@
 /**
  * Sidebar — 240px left navigation sidebar (Phase 5.1 Wave 1).
  *
- * Sections (top → bottom): WORKSPACE → Observability → ACCOUNT.
+ * Sections (top → bottom): WORKSPACE → Observability → Code Intelligence → ACCOUNT.
  * Projects sub-list sourced from useRegistryList() directly (RESEARCH OQ-4 resolution).
  *
  * Phase 10 D-10-08 (COV-09): OBSERVE section replaced with Observability section containing
  * a single Coverage entry linking to /coverage. Section architecture allows growth.
+ *
+ * Phase 14 D-14-06: Code Intelligence section inserted between Observability and ACCOUNT.
+ * Contains Knowledge graphs entry linking to /code-intelligence. Section as new peer
+ * (not sub-item) per user sidebar-architecture preference: new section with growth room
+ * for future GitNexus explorer entries.
  *
  * Constraints (D-5.1-10):
  * - NO transition utilities
@@ -13,7 +18,7 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, Layers, TrendingUp } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban, Layers, TrendingUp, Network } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
@@ -87,6 +92,17 @@ export function Sidebar(): React.JSX.Element {
             to="/observability/conformance"
             icon={<TrendingUp size={16} aria-hidden="true" />}
             label="Conformance"
+          />
+        </SidebarSection>
+
+        {/* Code Intelligence section — Phase 14 D-14-06. Inserted between Observability
+            and ACCOUNT as a NEW section (not sub-item) per user sidebar-architecture
+            preference: section with growth room for future GitNexus explorer entries. */}
+        <SidebarSection label="Code Intelligence">
+          <SidebarItem
+            to="/code-intelligence"
+            icon={<Network size={16} aria-hidden="true" />}
+            label="Knowledge graphs"
           />
         </SidebarSection>
 

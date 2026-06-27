@@ -5,12 +5,14 @@ import {
   assertSecurePermissions,
   InsecurePermissionsError,
 } from '../lib/auth.js'
+import { ensureViewerSecretFile } from '../lib/viewerToken.js'
 import { ensureRegistryFile } from '../lib/registry.js'
 import { assertNoStaleDaemon, StaleDaemonError } from '../lib/pidfile.js'
 import { createApp } from '../server/app.js'
 import { bootDaemon } from '../server/boot.js'
 import { getTailscaleIP, getTailscaleHostname, TailscaleNotDetectedError } from '../lib/tailscale.js'
 import { agentError } from '../lib/logging.js'
+import { loadEnvFile } from '../lib/envFile.js'
 import { AUTH_FILE, DEFAULT_HOST, DEFAULT_PORT } from '../constants.js'
 
 export interface StartOpts {
@@ -43,6 +45,17 @@ export async function runStart(opts: StartOpts): Promise<void> {
 
     ensureRegistryFile()
     let auth = ensureAuthFile()
+    ensureViewerSecretFile() // D-14-03: viewer secret alongside bearer token
+
+    // Phase 8 D-08-12/15: load env.json, merge under process.env (must not block start)
+    try {
+      loadEnvFile()
+    } catch (e) {
+      agentError(
+        `env.json corrupt or unreadable — skipping env merge; run \`env set\` to reset: ${(e as Error).message}`,
+      )
+      // daemon continues — D-08-15 "never blocks boot" (Pitfall 4)
+    }
 
     // D-14: auto-rotate on version mismatch or 30-day expiry
     if (shouldAutoRotate(auth)) {
@@ -104,7 +117,7 @@ export async function runStart(opts: StartOpts): Promise<void> {
   // D-18: CIDR enforcement ON by default for non-loopback binds; opt-out via --no-enforce-cidr
   const enforceCIDR = bindMode !== 'loopback' && opts.enforceCidr !== false
 
-  const app = createApp({ enforceCIDR })
+  const app = createApp({ enforceCIDR, bindMode })
   await bootDaemon({
     app,
     host,
