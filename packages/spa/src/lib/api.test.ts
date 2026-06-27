@@ -107,6 +107,56 @@ describe('apiFetch', () => {
     await expect(apiFetch('/health', HealthResponseSchema)).rejects.toBeInstanceOf(ApiError)
   })
 
+  // ── Testing #6 — apiFetch body parsing pins the daemon-supplied error code ───
+  //
+  // Strengthens the P9-* parameterised tests in PathDriftPanel.test.tsx:
+  // those tests verify the FINAL toast text after the code propagates
+  // through extractErrorCode → errorCodeToMessage. This test verifies the
+  // code arrives at the boundary in the first place — apiFetch reads the
+  // 422 body and lifts `error` onto ApiError.code. Without this, a
+  // regression that silently drops `code` would only be caught by the
+  // toast-text suite (slower + indirect).
+  it('Testing #6 [apiFetch body parse]: 422 ErrorResponseSchema body propagates code + requestId onto ApiError', async () => {
+    fetchSpy.mockResolvedValue(
+      new Response(
+        JSON.stringify({ ok: false, error: 'newPath_blocked', requestId: 'req-xyz' }),
+        { status: 422, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    let captured: ApiError | undefined
+    try {
+      await apiFetch('/health', HealthResponseSchema)
+    } catch (err) {
+      if (err instanceof ApiError) captured = err
+    }
+    expect(captured).toBeInstanceOf(ApiError)
+    expect(captured?.status).toBe(422)
+    expect(captured?.code).toBe('newPath_blocked')
+    expect(captured?.requestId).toBe('req-xyz')
+  })
+
+  it('Testing #6 [apiFetch body parse]: non-JSON 422 body yields ApiError with code=undefined', async () => {
+    // Defensive — when the daemon hands back garbage instead of JSON we must
+    // still surface the HTTP status, with code undefined. The PathDriftPanel
+    // mapper falls back to "Fix failed" in this case (errorCodeToMessage
+    // default branch); we pin that the boundary still throws cleanly.
+    fetchSpy.mockResolvedValue(
+      new Response('totally not json', {
+        status: 422,
+        headers: { 'Content-Type': 'text/plain' },
+      }),
+    )
+    let captured: ApiError | undefined
+    try {
+      await apiFetch('/health', HealthResponseSchema)
+    } catch (err) {
+      if (err instanceof ApiError) captured = err
+    }
+    expect(captured).toBeInstanceOf(ApiError)
+    expect(captured?.status).toBe(422)
+    expect(captured?.code).toBeUndefined()
+  })
+
   // D-12: SPA must never call /api/registry/register directly (CLI-only route)
   it('D-12: apiFetch throws hard error for /api/registry/register before any fetch', async () => {
     await expect(apiFetch('/api/registry/register', z.object({}))).rejects.toThrow(/CLI-only/)

@@ -1,0 +1,102 @@
+# Project Retrospective
+
+*A living document updated after each milestone. Lessons feed forward into future planning.*
+
+## Milestone: v1.1 — Cross-family observability
+
+**Shipped:** 2026-06-08
+**Phases:** 9 (10, 10.5, 10.6, 11, 11.1, 11.2, 12, 13, 14) | **Plans:** ~55 | **Span:** 2026-05-13 → 2026-06-08
+
+### What Was Built
+- `/coverage` matrix across three client families (CLAUDE.md / GitNexus / wiki / workflow freshness) + three-state GitNexus detection (Phase 10/10.6); ships as migration 0008.
+- Coverage trends (local NDJSON snapshots + per-cell drift badges) and a cross-repo `/observability/skill-drift` matrix (Phase 11).
+- `/observability/conformance` — pure-SVG 90-day fleet trend chart, per-family conformance scores, registry path-drift fix affordance (Phase 12).
+- GitNexus scoped scan actions — per-family/per-repo daemon-driven `gitnexus analyze` from the matrix (Phase 13).
+- Daemon-hosted understand-anything knowledge-graph viewer with scoped HMAC v2 tokens + Code Intelligence sidebar section (Phase 14).
+- Skill-driven impeccable gate replacing the broken CI gate; floor recalibrated to ≥ 80 + structural-debt waiver (Phase 10.5).
+
+### What Worked
+- **Wire-schema-first discipline** (`packages/shared` Zod barrel) kept daemon↔SPA contracts honest across 9 phases; "schema drift" surfaced mismatches at runtime instead of in production.
+- **Reusing the Phase 10 scanner architecture** (Promise.allSettled partial-failure isolation, 30s daemon cache, the coverage orchestrator) made Phases 11–14 additive rather than rearchitecting.
+- **Zero-third-party-JS stance held** — pure-SVG fleet chart (≤120 LOC), in-house Tooltip/Toast primitives, no chart library, no native deps.
+- **Inserted polish phases (10.5, 10.6, 11.1, 11.2)** let impeccable debt be paid in tight, reviewable bundles instead of accreting.
+
+### What Was Inefficient
+- **Phase 12 and 13 shipped their implementation but never ran their close-out gate plans** (12-06, 13-04) — no 12-VERIFICATION.md. Easy to lose track of "impl done" vs "phase closed" when momentum carries to the next phase.
+- **Milestone bookkeeping drifted** — ROADMAP/REQUIREMENTS labeled Phases 12–14 "v1.2" while STATE.md said "v1.1"; reconciled only at close.
+- **CI lint was not part of the local phase gate** — Phase 14 failed CI on 11 eslint errors after merge-readiness (the gate ran typecheck/build/test, not `pnpm lint`).
+- **`gsd-sdk` milestone tooling mis-parsed this ROADMAP** (returned 0 phases; scraped junk "One-liner:" accomplishments) — MILESTONES.md had to be authored by hand.
+
+### Patterns Established
+- Per-phase `<N>-IMPECCABLE.md` artifact as the design-quality gate (D-10.5-02), with an empirically calibrated composite floor (≥ 80) + structural-debt waiver clause.
+- Daemon write affordances follow a single discipline: bearer-auth → rate-limit → Zod `.strict()` → realpath/blocklist containment → atomic write, with structured error codes (no FS path leakage). Reused across registry-fix-path, gitnexus-scan, and understand-viewer.
+- New sidebar capabilities grow the Observability/Code-Intelligence sections additively (peer `SidebarItem`, never reorder) per the user's sidebar-architecture preference.
+
+### Key Lessons
+1. **Run `pnpm lint` before shipping** — CI enforces it as a hard gate but the GSD phase gate skips it. (Saved as a memory.)
+2. **Close phases, don't just ship them** — run the gate/verification plan before moving on, or the milestone close inherits a pile of "impl done, not closed" debt.
+3. **Keep one authoritative milestone pointer** — when phase bodies and STATE.md disagree on version, reconcile immediately, not at close.
+4. **Don't trust `gsd-sdk milestone.complete` accomplishments blindly** on a large/non-standard ROADMAP — verify the generated MILESTONES.md.
+
+### Cost Observations
+- Model mix: predominantly Opus (Opus 4.7/4.8 1M context) for planning + execution; parallel executor/worktree agents during wave execution.
+- Notable: worktree-based parallel execution + two-stage review (gstack `/review` + superpowers fresh-context review) per phase was the steady cadence.
+
+---
+
+## Milestone: v1.2 — Optional integrations & fleet-conformance follow-through
+
+**Shipped:** 2026-06-12
+**Phases:** 5 (8, 12 close-out, 12.1, 13 close-out, 14.1) | **Plans:** 6 (Phase 8) + 4 close-out/lift | **Span:** 2026-06-10 → 2026-06-12
+
+### What Was Built
+- Optional integration panels (Phase 8, net-new): env-gated read-only Sentry/Linear routes (60s cache, last-good stale fallback, token-safe) + Infisical-aware `process.env` loading + read-only `.infisical.json` status reflection; `env set/list/unset` CLI writing `~/.agenticapps/dashboard/env.json` at `0600`; SPA SentryPanel + LinearPanel with "configure to enable" empty states.
+- Phase 12 close-out gate run retrospectively (`12-VERIFICATION.md`; REVIEW 0 crit, SECURED 27/27, UAT 4/4) and Phase 13 gate confirmed (`13-VERIFICATION.md`).
+- IMPECCABLE lifts: conformance chart legibility 80→84 (Phase 12.1) and `/code-intelligence` 74→81 with the structural-debt waiver retired (Phase 14.1).
+
+### What Worked
+- **Acting on the v1.1 lessons** — the two carry-over close-outs (Phase 12/13 gates) that v1.1's retro flagged as "shipped but not closed" were explicitly scheduled and cleared this milestone.
+- **Wire-schema-first held again** — all new Sentry/Linear/Infisical wire shapes went through the shared Zod barrel; INV-04 verified both ends.
+- **Optional-stays-optional proved out** — E2E handlers with empty responses validated INV-03 (dashboard fully functional with zero integration env vars).
+
+### What Was Inefficient
+- **The milestone shipped but wasn't closed for ~2 days** — Phase 8 merged to `main` (PR #58/#59) on 2026-06-12, but the milestone close ritual (tag, archive, ROADMAP flip) didn't run until 2026-06-14. A session even began to re-create the already-merged PR before checking merge status. (Saved as a memory: check merge status before PR-branch surgery.)
+- **`gsd-pr-branch` cherry-pick filtering fought the interleaved 60-commit history** (zsh word-splitting, STATE.md conflicts, double-added test files) — a tree-level diff or squash snapshot is more robust than commit-by-commit replay when transient `.planning` commits interleave code commits.
+
+### Patterns Established
+- Phase 8 confirmed the daemon's outbound-integration shape: `outboundFetch` (timeout + classifyError + last-good CacheEntry) as the single seam for all third-party HTTP, keeping panels crash-free on API failure.
+- Collapsed panels carry an at-a-glance "not configured" signal (IMPECCABLE lift) at `text-sm` to match sibling panel states.
+
+### Key Lessons
+1. **Close the milestone promptly after the last PR merges** — "shipped" ≠ "closed"; the tag/archive/roadmap-flip is the close, and it drifted 2 days here.
+2. **Verify merge status before any PR-branch surgery** — compare `main` vs branch trees + `gh pr list` first; identical trees mean it already shipped.
+3. **Prefer tree-level snapshots over commit-by-commit cherry-pick** when filtering `.planning` noise out of a long interleaved branch.
+
+### Cost Observations
+- Model mix: predominantly Opus (Opus 4.8 1M context).
+- Notable: most of the milestone was carry-over close-out of v1.1 work; only Phase 8 was net-new feature build.
+
+---
+
+## Cross-Milestone Trends
+
+### Process Evolution
+
+| Milestone | Phases | Key Change |
+|-----------|--------|------------|
+| v1.0 | 10 (0–7 incl. 5.1/6.1) | Established workspace, daemon, SPA, two-stage review + impeccable CI gate |
+| v1.1 | 9 (10–14) | Retired CI impeccable gate → skill-driven per-phase artifact; cross-family observability surface; daemon write affordances |
+| v1.2 | 5 (8, 12/12.1, 13, 14.1) | Optional integrations (Sentry/Linear/Infisical); cleared v1.1 carry-over gate debt; mostly close-out, one net-new phase |
+
+### Cumulative Quality
+
+| Milestone | Tests (approx) | Zero-Dep Additions |
+|-----------|----------------|--------------------|
+| v1.0 | ~1,380 | maintained (no native deps) |
+| v1.1 | ~2,600+ | maintained (pure-SVG chart, in-house Tooltip/Toast, no chart lib) |
+| v1.2 | ~2,600+ | maintained (pure-JS HTTP integration clients, no native deps — INV-02) |
+
+### Top Lessons (Verified Across Milestones)
+1. Wire-schema-first (shared Zod barrel) is the backbone — every phase that respected it integrated cleanly.
+2. Tight inserted polish phases beat letting design/impeccable debt accrete.
+3. "Shipped" ≠ "closed" — run the gate/verification at phase close and the milestone tag/archive promptly, or debt and bookkeeping drift accumulate (v1.1 deferred gates; v1.2 close drifted 2 days post-merge).

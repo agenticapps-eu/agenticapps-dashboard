@@ -28,6 +28,13 @@
  *      matches D-12-01 + D-11-08
  * S17: Sidebar source imports TrendingUp from lucide-react (icon used for Conformance,
  *      visually distinct from Activity / Layers)
+ *
+ * Phase 14 Plan 04 (D-14-06 / user sidebar-architecture preference: new section with growth room):
+ *
+ * S18: Sidebar renders a "Code Intelligence" section between Observability and ACCOUNT
+ * S19: Code Intelligence section contains a "Knowledge graphs" item linking to /code-intelligence
+ * S20: Code Intelligence section order — appears after Observability and before ACCOUNT
+ * S21: Sidebar source imports Network from lucide-react (icon for Knowledge graphs entry)
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -253,5 +260,52 @@ describe('Sidebar', () => {
     expect(matches.length).toBeGreaterThanOrEqual(2)
     // Import statement contains TrendingUp.
     expect(source).toMatch(/from ['"]lucide-react['"][\s\S]*?TrendingUp|TrendingUp[\s\S]*?from ['"]lucide-react['"]/)
+  })
+
+  it('S18: renders a "Code Intelligence" section between Observability and ACCOUNT (Phase 14 D-14-06)', () => {
+    render(<Sidebar />)
+    expect(screen.getByText('Code Intelligence')).toBeDefined()
+  })
+
+  it('S19: Code Intelligence section contains a "Knowledge graphs" item linking to /code-intelligence', () => {
+    render(<Sidebar />)
+    const knowledgeGraphsLink = screen.getByRole('link', { name: /^Knowledge graphs$/i })
+    expect(knowledgeGraphsLink).toBeDefined()
+    expect(knowledgeGraphsLink.getAttribute('href')).toBe('/code-intelligence')
+  })
+
+  it('S20: Code Intelligence appears after Observability and before ACCOUNT in sidebar order', () => {
+    const { container } = render(<Sidebar />)
+    const text = container.textContent ?? ''
+    const obsIdx = text.indexOf('Observability')
+    const ciIdx = text.indexOf('Code Intelligence')
+    const accIdx = text.indexOf('ACCOUNT')
+    expect(obsIdx).toBeGreaterThanOrEqual(0)
+    expect(ciIdx).toBeGreaterThan(obsIdx)
+    expect(accIdx).toBeGreaterThan(ciIdx)
+  })
+
+  it('S21: Sidebar source imports Network from lucide-react (Code Intelligence icon)', async () => {
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+    const candidates = [
+      path.resolve(process.cwd(), 'src/components/ui/Sidebar.tsx'),
+      path.resolve(process.cwd(), 'packages/spa/src/components/ui/Sidebar.tsx'),
+    ]
+    let source: string | null = null
+    for (const c of candidates) {
+      try {
+        source = await fs.readFile(c, 'utf8')
+        break
+      } catch {
+        // continue
+      }
+    }
+    if (source === null) throw new Error('Sidebar.tsx not found')
+    // Network appears in the lucide-react import line AND in JSX usage.
+    const matches = source.match(/\bNetwork\b/g) ?? []
+    expect(matches.length).toBeGreaterThanOrEqual(2)
+    // Import statement contains Network.
+    expect(source).toMatch(/Network[\s\S]*?from ['"]lucide-react['"]/)
   })
 })

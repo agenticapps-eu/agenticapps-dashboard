@@ -96,6 +96,7 @@ const COVERAGE_ROW = {
   },
   overrideCount: 0,
   overrides: [],
+  inRegistry: true, // D-13-EXT-07: queries fixture default — wire-contract round trip
 }
 
 const COVERAGE_RESPONSE_BODY = {

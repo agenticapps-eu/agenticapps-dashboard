@@ -67,6 +67,7 @@ const THREE_ROW_FIXTURE = {
         },
         overrideCount: 0,
         overrides: [],
+        inRegistry: true, // D-13-EXT-07
       },
       {
         family: 'factiv' as const,
@@ -82,6 +83,7 @@ const THREE_ROW_FIXTURE = {
         },
         overrideCount: 0,
         overrides: [],
+        inRegistry: true, // D-13-EXT-07
       },
       {
         family: 'neuroflash' as const,
@@ -97,6 +99,7 @@ const THREE_ROW_FIXTURE = {
         },
         overrideCount: 0,
         overrides: [],
+        inRegistry: true, // D-13-EXT-07
       },
     ],
   },

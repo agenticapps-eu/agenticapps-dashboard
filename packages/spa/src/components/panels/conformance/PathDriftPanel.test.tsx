@@ -259,6 +259,11 @@ describe('PathDriftPanel', () => {
     { code: 'newPath_outside_family_roots', expected: /outside the family roots/i },
     { code: 'newPath_unresolvable', expected: /does not exist on disk/i },
     { code: 'invalid_request', expected: /invalid request/i },
+    // Testing #10 — the two codes whose toast paths were previously
+    // un-asserted at the SPA layer. errorCodeToMessage already maps both;
+    // these tests close the gap so the mapping cannot regress silently.
+    { code: 'rate_limited', expected: /too many requests/i },
+    { code: 'project_not_found', expected: /no longer in registry/i },
   ] as const
 
   for (const { code, expected } of code422) {

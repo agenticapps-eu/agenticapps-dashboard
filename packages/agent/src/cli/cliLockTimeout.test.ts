@@ -8,6 +8,10 @@
  * in registry.test.ts). What we're testing is the CLI wiring: every callsite
  * routes the error through exitOnRegistryLockTimeout.
  *
+ * Also covers WR-05: runUnregister evicts panel caches on successful removal
+ * so stale cache entries are not served under a re-registered project at the
+ * same path (ids are reusable slugs, not UUIDs).
+ *
  * RED first per workflow contract.
  */
 
@@ -21,6 +25,7 @@ vi.mock('../lib/registry.js', async (orig) => {
     removeProject: vi.fn(),
     renameProject: vi.fn(),
     setTags: vi.fn(),
+    readRegistry: vi.fn().mockReturnValue({ projects: [] }),
   }
 })
 
@@ -28,7 +33,25 @@ vi.mock('../lib/auth.js', () => ({
   ensureAuthFile: vi.fn(),
 }))
 
-import { addProject, removeProject, renameProject, setTags } from '../lib/registry.js'
+vi.mock('../routes/sentry.js', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>
+  return { ...actual, evictSentryCacheProject: vi.fn() }
+})
+
+vi.mock('../routes/linear.js', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>
+  return { ...actual, evictLinearCacheProject: vi.fn() }
+})
+
+vi.mock('../routes/integrations.js', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>
+  return { ...actual, evictIntegrationsCacheProject: vi.fn() }
+})
+
+import { addProject, removeProject, renameProject, setTags, readRegistry } from '../lib/registry.js'
+import { evictSentryCacheProject } from '../routes/sentry.js'
+import { evictLinearCacheProject } from '../routes/linear.js'
+import { evictIntegrationsCacheProject } from '../routes/integrations.js'
 import { runRegister, runUnregister } from './register.js'
 import { runRename, runTag } from './registryCmd.js'
 
@@ -105,5 +128,62 @@ describe('CLI commands surface registry_lock_timeout as exit(1) instead of crash
       runRegister(undefined, { auto: '/tmp/parent', yes: true }),
     ).rejects.toThrow('process.exit(1)')
     expect(exitSpy).toHaveBeenCalledWith(1)
+  })
+})
+
+// WR-05: runUnregister must evict panel caches on successful removal.
+// Project ids are slug-based (not UUIDs) and CAN be reused if a project at
+// the same path is re-registered — stale cache entries would otherwise be
+// served under the new registration.
+describe('WR-05: runUnregister evicts panel caches on successful removal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('WR-05: evicts sentry, linear, and integrations caches for the removed project id', async () => {
+    const { exitSpy } = mockExitAndStderr()
+
+    // Seed readRegistry to return a project with known id
+    vi.mocked(readRegistry).mockReturnValue({
+      version: 1,
+      projects: [
+        {
+          id: 'my-project',
+          name: 'My Project',
+          root: '/home/user/my-project',
+          client: null,
+          addedAt: '2026-06-11T00:00:00Z',
+          tags: [],
+        },
+      ],
+    } as ReturnType<typeof readRegistry>)
+
+    // removeProject returns true (successful removal)
+    vi.mocked(removeProject).mockResolvedValue(true)
+
+    await expect(runUnregister('my-project')).rejects.toThrow('process.exit(0)')
+    expect(exitSpy).toHaveBeenCalledWith(0)
+
+    // All three eviction functions must have been called with the resolved id
+    expect(vi.mocked(evictSentryCacheProject)).toHaveBeenCalledWith('my-project')
+    expect(vi.mocked(evictLinearCacheProject)).toHaveBeenCalledWith('my-project')
+    expect(vi.mocked(evictIntegrationsCacheProject)).toHaveBeenCalledWith('my-project')
+  })
+
+  it('WR-05b: eviction functions NOT called when project is not found (removal returns false)', async () => {
+    mockExitAndStderr()
+
+    vi.mocked(readRegistry).mockReturnValue({ version: 1, projects: [] } as ReturnType<typeof readRegistry>)
+    vi.mocked(removeProject).mockResolvedValue(false)
+
+    await expect(runUnregister('nonexistent-id')).rejects.toThrow('process.exit(1)')
+
+    // No eviction when nothing was removed
+    expect(vi.mocked(evictSentryCacheProject)).not.toHaveBeenCalled()
+    expect(vi.mocked(evictLinearCacheProject)).not.toHaveBeenCalled()
+    expect(vi.mocked(evictIntegrationsCacheProject)).not.toHaveBeenCalled()
   })
 })

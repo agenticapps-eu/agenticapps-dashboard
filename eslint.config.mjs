@@ -13,6 +13,11 @@ export default tseslint.config(
       '**/.vite/**',
       '.claude/worktrees/**',
       '.claude/skills/**',
+      // Worktree-agent staging area (`.clone/worktrees/<id>/` created by
+      // `Agent({ isolation: "worktree" })`). These are full git worktrees that
+      // shouldn't be linted by the host repo; CI never has them, but local
+      // sessions accumulate stale copies that re-trigger lint errors.
+      '.clone/**',
       // Vendored upstream fork (D-5-21). Cherry-picks land here verbatim;
       // applying our lint rules would churn upstream-style code and break sync.
       'packages/agentlinter/**',
