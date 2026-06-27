@@ -6,12 +6,16 @@
  * interpret it as shell tokens. execa uses argv arrays — no shell injection. (T-01-02-10)
  */
 import {
+  closeSync,
+  constants as fsConstants,
   existsSync,
   mkdirSync,
+  openSync,
   readFileSync,
   realpathSync,
   statSync,
   readdirSync,
+  unlinkSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve, sep } from 'node:path'
@@ -29,6 +33,8 @@ import {
 import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { invalidateConformanceCache } from './conformanceCache.js'
+import { invalidateCoverageCache } from './coverageCache.js'
 import { parseOrCorrupt } from './stateCorruption.js'
 
 export type { RegistryEntry, RegistryFile, RegistryListItem }
@@ -161,6 +167,23 @@ export function assertRegistrationAllowed(canonicalRoot: string): void {
   if (pathEqualsOrIsUnder(canonicalRoot, CONFIG_DIR)) {
     throw new RegistrationPathBlocked(canonicalRoot, "daemon's own state directory")
   }
+  // D-13-EXT-09 corollary — Subdir hijack defence (Codex WARNING #2).
+  //   ~/Sourcecode/{family}/{repo} is the canonical project root for the three
+  //   known families. derivedRepoId() / deterministicRepoRoot() use family + repo
+  //   as the unique key, so registering a deeper subdir (e.g. .../repo/subdir)
+  //   makes the scan path resolution ambiguous and silently misroutes scans
+  //   into the subdirectory. Block at registration time. Scoped to known
+  //   families — non-family paths under ~/Sourcecode/ (e.g. ~/Sourcecode/misc/...)
+  //   are unaffected.
+  const sourcecodePrefix = `${home}${sep}Sourcecode${sep}`
+  if (canonicalRoot.startsWith(sourcecodePrefix)) {
+    const rel = canonicalRoot.slice(sourcecodePrefix.length)
+    const parts = rel.split(sep).filter((p) => p.length > 0)
+    const knownFamilies = new Set(['agenticapps', 'factiv', 'neuroflash'])
+    if (parts.length > 2 && knownFamilies.has(parts[0]!)) {
+      throw new RegistrationPathBlocked(canonicalRoot, 'sourcecode-family-subdir')
+    }
+  }
 }
 
 export function ensureRegistryFile(filePath: string = REGISTRY_FILE): void {
@@ -184,6 +207,72 @@ export function writeRegistry(reg: RegistryFile, filePath: string = REGISTRY_FIL
   const validated = RegistryFileSchema.parse(reg)
   ensureConfigDir(dirname(filePath))
   atomicWriteFile(filePath, JSON.stringify(validated, null, 2), 0o600)
+  // Every registry mutation can change the conformance + coverage view —
+  // invalidate the per-process caches HERE so the next GET re-scans. Previously
+  // only the fix-path route invalidated, leaving register/unregister/rename/tag
+  // (CLI + /api/registry/register-confirm) able to serve stale data for up to
+  // 30s. Cache modules are singletons per process; invalidation from the CLI
+  // is a no-op (its cache instance is never populated), so this is safe.
+  invalidateConformanceCache()
+  invalidateCoverageCache()
+}
+
+/**
+ * Cross-process advisory lock for the read-modify-write window over
+ * registry.json. atomicWriteFile() guarantees each write is atomic, but a
+ * concurrent CLI mutation (`agentic-dashboard register`) that lands between
+ * the daemon's readRegistry and writeRegistry would clobber the daemon's
+ * change. The plan's A4 ratification claimed POSIX-rename serialised
+ * concurrent writes — that is wrong; rename is atomic per call, not across
+ * RMW. This helper closes that window with an O_EXCL lock file.
+ *
+ * Implementation: open `<registry>.lock` with O_EXCL — fails with EEXIST
+ * when another holder has it. Retry every 25ms up to maxWaitMs (default
+ * 5s). On success, run fn(), then unlink the lock on the way out.
+ *
+ * Stale-lock risk: if a holder crashes between open and unlink, the lock
+ * file lingers and subsequent acquirers time out. The 5s ceiling means at
+ * worst the next caller surfaces a clear timeout error rather than silently
+ * waiting forever; operators can `rm registry.json.lock` manually. A
+ * PID-aware stale-detection layer is a follow-up (out of scope for the
+ * Codex F4 fix).
+ *
+ * Usage: any read-modify-write over the registry should wrap its three
+ * steps in this helper. fix-path uses it; CLI commands (register etc.)
+ * should adopt it in a follow-up since they currently RMW without locking.
+ */
+export async function withRegistryLock<T>(
+  fn: () => Promise<T> | T,
+  opts: { lockFile?: string; maxWaitMs?: number } = {},
+): Promise<T> {
+  const lockFile = opts.lockFile ?? `${REGISTRY_FILE}.lock`
+  const maxWaitMs = opts.maxWaitMs ?? 5000
+  const start = Date.now()
+  let fd: number | null = null
+  while (true) {
+    try {
+      fd = openSync(
+        lockFile,
+        fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL,
+        0o600,
+      )
+      break
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+      if (Date.now() - start > maxWaitMs) {
+        throw new Error(`registry_lock_timeout: ${lockFile}`)
+      }
+      await new Promise((r) => setTimeout(r, 25))
+    }
+  }
+  try {
+    return await fn()
+  } finally {
+    if (fd !== null) {
+      try { closeSync(fd) } catch { /* already closed */ }
+    }
+    try { unlinkSync(lockFile) } catch { /* best-effort cleanup */ }
+  }
 }
 
 export interface AddResult {
@@ -191,39 +280,75 @@ export interface AddResult {
   alreadyRegistered: boolean
 }
 
+export interface RegistryMutationLockOpts {
+  /** Override the per-call lock timeout (ms). Defaults to withRegistryLock's
+   *  5000ms ceiling. Exposed so callers under heavy contention — and tests —
+   *  can pick a different ceiling. */
+  maxWaitMs?: number
+}
+
+/**
+ * Build the withRegistryLock opts for a given registry path + caller overrides.
+ * Keeps the lockFile derivation in one place so it always tracks the registry
+ * file (never the global REGISTRY_FILE constant when the caller passed a
+ * fixture path).
+ */
+function lockOptsFor(
+  filePath: string,
+  lockOpts: RegistryMutationLockOpts,
+): { lockFile: string; maxWaitMs?: number } {
+  const out: { lockFile: string; maxWaitMs?: number } = {
+    lockFile: `${filePath}.lock`,
+  }
+  if (lockOpts.maxWaitMs !== undefined) out.maxWaitMs = lockOpts.maxWaitMs
+  return out
+}
+
 /**
  * Add a project to the registry. Idempotent on path collision (D-10).
  * Slug collisions get -2, -3 suffixes.
+ *
+ * Wraps the read-modify-write in withRegistryLock so a concurrent CLI or
+ * daemon mutation cannot clobber this addition last-writer-wins. Path
+ * validation (canonicaliseRoot + assertRegistrationAllowed) runs OUTSIDE the
+ * lock — it is pure and benefits no one by serialising. Errors from those
+ * (RegistrationPathBlocked) reach the caller without ever taking the lock.
  */
-export function addProject(
+export async function addProject(
   pathArg: string,
   opts: { name?: string; client?: string | null; tags?: string[] } = {},
   filePath: string = REGISTRY_FILE,
-): AddResult {
+  lockOpts: RegistryMutationLockOpts = {},
+): Promise<AddResult> {
   const root = canonicaliseRoot(pathArg)
   assertRegistrationAllowed(root)
-  const reg = readRegistry(filePath)
-  const existing = reg.projects.find((p) => p.root === root)
-  if (existing) return { entry: existing, alreadyRegistered: true }
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const existing = reg.projects.find((p) => p.root === root)
+      if (existing) return { entry: existing, alreadyRegistered: true }
 
-  const baseSlug = slugify(opts.name ?? basename(root))
-  let id = baseSlug
-  let n = 2
-  while (reg.projects.some((p) => p.id === id)) {
-    id = `${baseSlug}-${n}`
-    n += 1
-  }
-  const entry: RegistryEntry = RegistryEntrySchema.parse({
-    id,
-    name: opts.name ?? basename(root),
-    root,
-    client: opts.client ?? null,
-    addedAt: new Date().toISOString(),
-    tags: opts.tags ?? [],
-  })
-  reg.projects.push(entry)
-  writeRegistry(reg, filePath)
-  return { entry, alreadyRegistered: false }
+      const baseSlug = slugify(opts.name ?? basename(root))
+      let id = baseSlug
+      let n = 2
+      while (reg.projects.some((p) => p.id === id)) {
+        id = `${baseSlug}-${n}`
+        n += 1
+      }
+      const entry: RegistryEntry = RegistryEntrySchema.parse({
+        id,
+        name: opts.name ?? basename(root),
+        root,
+        client: opts.client ?? null,
+        addedAt: new Date().toISOString(),
+        tags: opts.tags ?? [],
+      })
+      reg.projects.push(entry)
+      writeRegistry(reg, filePath)
+      return { entry, alreadyRegistered: false }
+    },
+    lockOptsFor(filePath, lockOpts),
+  )
 }
 
 /**
@@ -236,49 +361,67 @@ export function addProject(
  * always works even when the filesystem path is gone. Walk-up canonicalisation
  * is a possible future improvement; not blocking the v1 ship.
  */
-export function removeProject(
+export async function removeProject(
   idOrPath: string,
   filePath: string = REGISTRY_FILE,
-): boolean {
-  const reg = readRegistry(filePath)
+  lockOpts: RegistryMutationLockOpts = {},
+): Promise<boolean> {
   // Try both the canonical (realpath-resolved when reachable) AND the plain
   // resolve() form, so the user can remove with the same path string they used
   // at registration even if it later became unreachable.
   const targetCanonical = canonicaliseRoot(idOrPath)
   const targetResolved = resolve(idOrPath)
-  const before = reg.projects.length
-  reg.projects = reg.projects.filter(
-    (p) => p.id !== idOrPath && p.root !== targetCanonical && p.root !== targetResolved,
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const before = reg.projects.length
+      reg.projects = reg.projects.filter(
+        (p) => p.id !== idOrPath && p.root !== targetCanonical && p.root !== targetResolved,
+      )
+      if (reg.projects.length === before) return false
+      writeRegistry(reg, filePath)
+      return true
+    },
+    lockOptsFor(filePath, lockOpts),
   )
-  if (reg.projects.length === before) return false
-  writeRegistry(reg, filePath)
-  return true
 }
 
-export function renameProject(
+export async function renameProject(
   id: string,
   newName: string,
   filePath: string = REGISTRY_FILE,
-): boolean {
-  const reg = readRegistry(filePath)
-  const entry = reg.projects.find((p) => p.id === id)
-  if (!entry) return false
-  entry.name = newName
-  writeRegistry(reg, filePath)
-  return true
+  lockOpts: RegistryMutationLockOpts = {},
+): Promise<boolean> {
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const entry = reg.projects.find((p) => p.id === id)
+      if (!entry) return false
+      entry.name = newName
+      writeRegistry(reg, filePath)
+      return true
+    },
+    lockOptsFor(filePath, lockOpts),
+  )
 }
 
-export function setTags(
+export async function setTags(
   id: string,
   tags: string[],
   filePath: string = REGISTRY_FILE,
-): boolean {
-  const reg = readRegistry(filePath)
-  const entry = reg.projects.find((p) => p.id === id)
-  if (!entry) return false
-  entry.tags = tags
-  writeRegistry(reg, filePath)
-  return true
+  lockOpts: RegistryMutationLockOpts = {},
+): Promise<boolean> {
+  return withRegistryLock(
+    () => {
+      const reg = readRegistry(filePath)
+      const entry = reg.projects.find((p) => p.id === id)
+      if (!entry) return false
+      entry.tags = tags
+      writeRegistry(reg, filePath)
+      return true
+    },
+    lockOptsFor(filePath, lockOpts),
+  )
 }
 
 /**

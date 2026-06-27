@@ -11,14 +11,15 @@ import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
 const COVERAGE_DIR = resolve(__dirname)
 
 describe('COVERAGE_COL_WIDTHS', () => {
-  it('has exactly 6 keys: repo, claudeMd, gitNexus, wiki, workflow, actions', () => {
+  it('has exactly 7 keys: repo, claudeMd, gitNexus, wiki, workflow, understand, actions', () => {
     const keys = Object.keys(COVERAGE_COL_WIDTHS)
-    expect(keys).toHaveLength(6)
+    expect(keys).toHaveLength(7)
     expect(keys).toContain('repo')
     expect(keys).toContain('claudeMd')
     expect(keys).toContain('gitNexus')
     expect(keys).toContain('wiki')
     expect(keys).toContain('workflow')
+    expect(keys).toContain('understand')
     expect(keys).toContain('actions')
   })
 
@@ -31,6 +32,36 @@ describe('COVERAGE_COL_WIDTHS', () => {
 
   it('the constants object is frozen (as const — immutable at runtime)', () => {
     expect(Object.isFrozen(COVERAGE_COL_WIDTHS)).toBe(true)
+  })
+
+  // Regression lock — these 5 entries are unchanged in Phase 11.2 Plan 03
+  it('repo column width is w-72 (288px)', () => {
+    expect(COVERAGE_COL_WIDTHS.repo).toBe('w-72')
+  })
+  it('claudeMd column width is w-32 (128px)', () => {
+    expect(COVERAGE_COL_WIDTHS.claudeMd).toBe('w-32')
+  })
+  it('gitNexus column width is w-36 (144px)', () => {
+    expect(COVERAGE_COL_WIDTHS.gitNexus).toBe('w-36')
+  })
+  it('workflow column width is w-32 (128px)', () => {
+    expect(COVERAGE_COL_WIDTHS.workflow).toBe('w-32')
+  })
+  it('actions column width is w-12 (48px) — widened from w-8 for 44×44px button per D-11.2-12', () => {
+    expect(COVERAGE_COL_WIDTHS.actions).toBe('w-12')
+  })
+
+  // Plan 03 (D-11.2-09): wiki tightening, then Phase 14 review fix: w-72 → w-60.
+  // The new Understand column (w-36/144px) pushed total table width ~46px past
+  // a 1440 viewport at 1440×900. Wiki had ~138px breathing room over its
+  // ~150px max-measured content — reclaim 48px from it.
+  it('wiki column width is w-60 (240px) — reclaimed 48px for the Understand column (Phase 14 review fix)', () => {
+    expect(COVERAGE_COL_WIDTHS.wiki).toBe('w-60')
+  })
+
+  // Phase 14 (D-14-06): understand column — same density as gitNexus (link + pill)
+  it('understand column width is w-36 (144px) — matches gitNexus density (viewer link + copy pill)', () => {
+    expect(COVERAGE_COL_WIDTHS.understand).toBe('w-36')
   })
 })
 

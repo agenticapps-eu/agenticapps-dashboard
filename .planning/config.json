@@ -14,7 +14,7 @@
     "research_before_questions": false,
     "_auto_chain_active": false,
     "ui_safety_gate": false,
-    "ui_phase": false
+    "ui_phase": true
   },
   "planning": {
     "commit_docs": true,

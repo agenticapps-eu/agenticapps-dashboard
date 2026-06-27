@@ -26,16 +26,24 @@ import {
 
 import { PageHeader } from '../../ui/PageHeader.js'
 import { useCoverage, useCoverageRefresh } from '../../../lib/coverageQueries.js'
+import { useHealth } from '../../../lib/healthQueries.js'
+import { getPairing } from '../../../lib/pairing.js'
+import { buildViewerUrl } from '../../../lib/understandViewerUrl.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { useToast } from '../../ui/Toast.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { CoverageToolbar } from './CoverageToolbar.js'
 import type { CoverageStatusFilter } from './CoverageToolbar.js'
-import { CoverageFamilySection } from './CoverageFamilySection.js'
+import { CoverageFamilySection, refreshKey } from './CoverageFamilySection.js'
 import { CoverageEmptyState } from './CoverageEmptyState.js'
 import { RefreshAllStaleButton } from './RefreshAllStaleButton.js'
 import { InstallGitNexusButton } from './InstallGitNexusButton.js'
-import { IndexGitNexusButton } from './IndexGitNexusButton.js'
+// IndexGitNexusButton DELETED — D-13-06. Per-row + per-family ScanPill replaced it.
+// The binary-not-installed fallback (InstallGitNexusButton) is preserved (D-13-07).
+
+// Phase 14 D-14-03/06/07: viewer URLs are built with the shared buildViewerUrl
+// helper (lib/understandViewerUrl.ts) from the per-row scoped viewerToken — the
+// main bearer token from getPairing() is NEVER included (T-14-03-01).
 
 const FAMILIES: CoverageFamily[] = ['agenticapps', 'factiv', 'neuroflash']
 
@@ -70,9 +78,13 @@ function statusFromFilter(filter: CoverageStatusFilter): string | undefined {
 }
 
 // Row matches filter (union of selected states across any column)
+// Phase 14 review fix: understand participates when present. Undefined
+// understand (pre-Phase-14 daemon) is simply excluded — old rows filter
+// exactly as before.
 function rowMatchesFilter(row: CoverageRow, filter: CoverageStatusFilter): boolean {
   if (filter.all) return true
   const cols = [row.claudeMd.state, row.gitNexus.state, row.wiki.state, row.workflowVersion.state]
+  if (row.understand) cols.push(row.understand.state)
   return (
     (filter.missing && cols.includes('missing')) ||
     (filter.stale && cols.includes('stale')) ||
@@ -83,7 +95,41 @@ function rowMatchesFilter(row: CoverageRow, filter: CoverageStatusFilter): boole
 export function CoveragePage(): React.JSX.Element {
   const query = useCoverage()
   const refresh = useCoverageRefresh()
+  const health = useHealth()
   const navigate = useNavigate()
+
+  // Phase 13 D-13-08 + D-13-11b: extract gitnexus health data for ScanPill props.
+  // Defaults to false when health data is unavailable — safe fallback (no Scan pill shown).
+  const gitnexusInstalled = health.data?.gitnexus?.installed ?? false
+  const gitnexusCanScan = health.data?.gitnexus?.canScan ?? false
+
+  // Phase 14 review fix: suppress viewer URLs when /health positively reports
+  // the viewer as NOT installed (links would 503). When health is unavailable
+  // (loading/error — no data), do NOT suppress: unknown is treated as installed
+  // since the daemon route degrades gracefully with a 503 + install hint.
+  const understandViewerInstalled =
+    health.data === undefined ? true : health.data.understand?.viewerInstalled === true
+
+  // Phase 14 D-14-03/06/07: build per-row understand viewer URLs from the scoped
+  // viewerToken on each row (NOT the bearer token from getPairing).
+  // Keyed by `${family}/${repo}` — matches refreshKey() convention.
+  // Computed once at render top-level (not inside the filtered useMemo to avoid
+  // URL loss when rows are filtered out; the URL map spans the full allRows set).
+  // When unpaired, the empty map is passed and every cell shows no link.
+  const pairing = getPairing()
+  const understandViewerUrls = useMemo((): Readonly<Record<string, string>> => {
+    if (!pairing || !understandViewerInstalled) return {}
+    const urls: Record<string, string> = {}
+    for (const row of query.data?.rows ?? []) {
+      const vt = row.understand?.viewerToken
+      if (vt) {
+        urls[`${row.family}/${row.repo}`] = buildViewerUrl(pairing.agentUrl, row.family, row.repo, vt)
+      }
+    }
+    return urls
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.data, pairing?.agentUrl, understandViewerInstalled])
+
   const toast = useToast()
   // URL state (strict:false — /coverage route may not have validateSearch yet; Plan 07 wires it)
   const search = useSearch({ strict: false }) as { status?: string; q?: string }
@@ -92,6 +138,15 @@ export function CoveragePage(): React.JSX.Element {
     filterFromStatus(search.status),
   )
   const [searchText, setSearchText] = useState(search.q ?? '')
+
+  // Set of `${family}/${repo}` keys with a gitnexus-analyze refresh currently
+  // in-flight. Replaces the prior last-write-wins read of `refresh.variables`
+  // so two concurrent row clicks each keep their own spinner+disabled state
+  // until their individual mutateAsync resolves (Phase 11.2 stage-1 /review
+  // cross-model finding — Claude F4 / Codex #1).
+  const [inFlightRefreshes, setInFlightRefreshes] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
 
   // Sync filter to URL
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,13 +191,51 @@ export function CoveragePage(): React.JSX.Element {
     ) => {
       void (async () => {
         switch (action) {
-          case 'gitnexus-analyze':
-            await refresh.mutateAsync({
-              family: context.family,
-              repo: context.repo,
-              action: 'gitnexus-analyze',
+          case 'gitnexus-analyze': {
+            const key = refreshKey(context.family, context.repo)
+            setInFlightRefreshes((prev) => {
+              const next = new Set(prev)
+              next.add(key)
+              return next
             })
+            try {
+              // CoverageRefreshResponseSchema is a discriminated union: the
+              // daemon can resolve with ok:false (kind: 'not-installed' |
+              // 'timeout' | 'error') WITHOUT throwing. Route those to the
+              // error toast — only ok:true is a success (Phase 11.2 stage-1
+              // /review cross-model finding).
+              const res = await refresh.mutateAsync({
+                family: context.family,
+                repo: context.repo,
+                action: 'gitnexus-analyze',
+              })
+              if (res.ok) {
+                toast.show({
+                  message: `Indexed ${context.family}/${context.repo}`,
+                  variant: 'success',
+                })
+              } else {
+                toast.show({
+                  message: `Indexing failed (${res.kind})`,
+                  variant: 'error',
+                })
+              }
+            } catch (err) {
+              // Network/schema-drift errors still throw via mutateAsync.
+              const reason = err instanceof Error ? err.message : String(err)
+              toast.show({
+                message: `Indexing failed: ${reason}`,
+                variant: 'error',
+              })
+            } finally {
+              setInFlightRefreshes((prev) => {
+                const next = new Set(prev)
+                next.delete(key)
+                return next
+              })
+            }
             break
+          }
           case 'wiki-compile-clipboard': {
             const ok = await writeToClipboard(buildWikiCompileClipboardString(context.family))
             toast.show(
@@ -167,7 +260,7 @@ export function CoveragePage(): React.JSX.Element {
         }
       })()
     },
-    [navigate, refresh],
+    [navigate, refresh, toast],
   )
 
   // useMemo hooks must be called unconditionally (React rules of hooks)
@@ -272,9 +365,12 @@ export function CoveragePage(): React.JSX.Element {
               rows={filtered}
               onRefresh={(req) => refresh.mutateAsync(req)}
             />
-          ) : data.gitNexusInstallState === 'installed-no-registry' ? (
-            <IndexGitNexusButton />
           ) : (
+            // D-13-06: IndexGitNexusButton removed. For both 'not-installed' and
+            // 'installed-no-registry' states, the page header shows InstallGitNexusButton.
+            // Per-row + per-family ScanPill (Phase 13) handles the installed-no-registry
+            // scan affordance. D-13-07: InstallGitNexusButton is the binary-not-installed
+            // fallback and remains unchanged.
             <InstallGitNexusButton />
           )
         }
@@ -305,6 +401,10 @@ export function CoveragePage(): React.JSX.Element {
               rows={byFamily[family]}
               gitNexusInstallState={data.gitNexusInstallState}
               onRefresh={handleRefresh}
+              inFlightRefreshes={inFlightRefreshes}
+              gitnexusInstalled={gitnexusInstalled}
+              gitnexusCanScan={gitnexusCanScan}
+              understandViewerUrls={understandViewerUrls}
             />
           ))}
         </div>

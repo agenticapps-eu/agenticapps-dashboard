@@ -32,19 +32,51 @@ import type {
 } from '@agenticapps/dashboard-shared'
 import { buildGitnexusInstallClipboardString } from '@agenticapps/dashboard-shared'
 import { CoverageRow } from './CoverageRow.js'
+import type { CoverageRowProps } from './CoverageRow.js'
+import { ScanPill } from './ScanPill.js'
+import { CoverageFamilySectionMobile } from './CoverageFamilySectionMobile.js'
 import { writeToClipboard } from '../../../lib/clipboardCompat.js'
 import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { coverageColumnTooltips } from './coverageColumnTooltips.js'
 import { useToast } from '../../ui/Toast.js'
+import { Tooltip } from '../../ui/Tooltip.js'
+import { useViewportBreakpoint } from '../../../lib/useViewportBreakpoint.js'
+
+/**
+ * Stable key for a row's in-flight refresh slot. Same convention used in
+ * CoveragePage when adding/removing entries from the inFlightRefreshes Set.
+ */
+export function refreshKey(family: CoverageFamily, repo: string): string {
+  return `${family}/${repo}`
+}
 
 export interface CoverageFamilySectionProps {
   family: CoverageFamily
   rows: ReadonlyArray<CoverageRowData>  // already filtered (parent applies filter+search)
   gitNexusInstallState: GitNexusInstallState  // 10.6: 3-state replaces boolean
   onRefresh?: CoverageRowProps['onRefresh']
+  /**
+   * Set of `${family}/${repo}` keys currently in-flight for a gitnexus-analyze
+   * refresh. Replaces the prior `refreshIsPending`+`refreshVariables` pair so
+   * concurrent row refreshes each retain their own pending+disabled state.
+   * Phase 11.2 stage-1 /review cross-model finding (Claude F4 / Codex #1).
+   */
+  inFlightRefreshes?: ReadonlySet<string>
+  /**
+   * Phase 13 D-13-08 + D-13-11b: gitnexus health props for per-family ScanPill
+   * and for passing down to each CoverageRow's per-repo ScanPill.
+   * Sourced from GET /health response.gitnexus — passed down from CoveragePage.
+   * Defaults to false when health data is unavailable (safe fallback: no Scan pill shown).
+   */
+  gitnexusInstalled?: boolean
+  gitnexusCanScan?: boolean
+  /**
+   * Phase 14 D-14-03/06/07: per-row understand viewer URLs, keyed by `${family}/${repo}`.
+   * Built by CoveragePage from `agentUrl/understand/{family}/{repo}/?token={viewerToken}`.
+   * Absent for pre-Phase-14 daemons or when pairing is missing.
+   */
+  understandViewerUrls?: Readonly<Record<string, string>>
 }
-
-// We reference CoverageRowProps so import it
-import type { CoverageRowProps } from './CoverageRow.js'
 
 // UI-SPEC §5: localStorage key format (locked)
 function storageKey(family: CoverageFamily): string {
@@ -53,7 +85,10 @@ function storageKey(family: CoverageFamily): string {
 
 // CODEX MED: worst-state-wins per row
 // Priority: missing > stale > fresh > not-applicable
-// Returns the worst state across all 4 columns for a given row
+// Returns the worst state across all columns for a given row.
+// Phase 14 review fix: understand participates when present. Undefined
+// understand (pre-Phase-14 daemon) is excluded from aggregation — old rows
+// aggregate exactly as before.
 function worstState(row: CoverageRowData): CoverageState | 'not-applicable' {
   const states: CoverageState[] = [
     row.claudeMd.state,
@@ -61,6 +96,7 @@ function worstState(row: CoverageRowData): CoverageState | 'not-applicable' {
     row.wiki.state,
     row.workflowVersion.state,
   ]
+  if (row.understand) states.push(row.understand.state)
   if (states.includes('missing')) return 'missing'
   if (states.includes('stale')) return 'stale'
   if (states.includes('fresh')) return 'fresh'
@@ -88,7 +124,24 @@ export function CoverageFamilySection({
   rows,
   gitNexusInstallState,
   onRefresh,
+  inFlightRefreshes,
+  gitnexusInstalled = false,
+  gitnexusCanScan = false,
+  understandViewerUrls,
 }: CoverageFamilySectionProps): React.JSX.Element {
+  // Phase 12 Plan 12-05 (D-12-23 + D-12-24): viewport branch — at xs (<640px
+  // Tailwind 4) render the card-per-row sibling; otherwise the desktop
+  // table + col-group render below is untouched (Phase 11.1 IMP-01 +
+  // 11.2 D-11.2-11 invariants preserved).
+  //
+  // Rules of Hooks compliance: ALL hooks run unconditionally before the
+  // viewport branch's early return. The breakpoint change therefore never
+  // shortens the hook list across re-renders of the same instance — only
+  // the JSX path diverges. The desktop branch's useState/useEffect still
+  // initialise their localStorage-backed `collapsed` state even when mobile
+  // renders, which is fine: that state is cheap and is consumed on a future
+  // viewport crossing back to >= sm.
+  const breakpoint = useViewportBreakpoint()
   const toast = useToast()
   const key = storageKey(family)
 
@@ -109,6 +162,26 @@ export function CoverageFamilySection({
       // ignore localStorage errors (private browsing etc.)
     }
   }, [collapsed, key])
+
+  // D-12-23 / Plan 12-05: "card-per-row layout under <768px". Tailwind's
+  // `xs` is <640px and `sm` is 640–767px — the plan's "<768px" threshold
+  // covers both. Previously this branched only on 'xs', leaving the 640–
+  // 767px range (Android phones in landscape, small tablets, iPad portrait
+  // at 768px is borderline) stuck on the desktop table.
+  if (breakpoint === 'xs' || breakpoint === 'sm') {
+    return (
+      <CoverageFamilySectionMobile
+        family={family}
+        rows={rows}
+        gitNexusInstallState={gitNexusInstallState}
+        gitnexusInstalled={gitnexusInstalled}
+        gitnexusCanScan={gitnexusCanScan}
+        {...(onRefresh !== undefined ? { onRefresh } : {})}
+        {...(inFlightRefreshes !== undefined ? { inFlightRefreshes } : {})}
+        {...(understandViewerUrls !== undefined ? { understandViewerUrls } : {})}
+      />
+    )
+  }
 
   const { miss, stale, fresh } = computeCounts(rows)
   const bodyId = `family-${family}-body`
@@ -142,6 +215,19 @@ export function CoverageFamilySection({
             <span className="text-sm text-status-warning">⚠ {stale}</span>
             <span className="text-sm text-status-success">✓ {fresh}</span>
           </button>
+
+          {/* Phase 13 D-13-08: per-family ScanPill in header bar — next to aggregate chips.
+              Gated on gitnexusInstalled (binary present). ScanPill handles canScan=false
+              with a disabled+tooltip state (D-13-11b). Returns null when installed=false
+              so the install hint below remains the only affordance in that case (D-13-07). */}
+          {gitnexusInstalled && (
+            <ScanPill
+              scope="family"
+              target={family}
+              canScan={gitnexusCanScan}
+              installed={gitnexusInstalled}
+            />
+          )}
 
           {/* CODEX HIGH-6 Option A: per-family GitNexus install hint (not page-level banner).
               10.6: only fires for 'not-installed' — when binary is present but registry
@@ -179,28 +265,38 @@ export function CoverageFamilySection({
               <col className={COVERAGE_COL_WIDTHS.gitNexus} />
               <col className={COVERAGE_COL_WIDTHS.wiki} />
               <col className={COVERAGE_COL_WIDTHS.workflow} />
+              <col className={COVERAGE_COL_WIDTHS.understand} />
               <col className={COVERAGE_COL_WIDTHS.actions} />
             </colgroup>
             <thead>
               <tr className="text-xs text-text-tertiary border-b border-border-subtle">
                 <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg py-2 pr-3 px-4 font-medium">Repo</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">CLAUDE.md</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">GitNexus</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Wiki</th>
-                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium">Workflow</th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.claudeMd}>CLAUDE.md</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.gitNexus}>GitNexus</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.wiki}>Wiki</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.workflowVersion}>Workflow</Tooltip></th>
+                <th scope="col" className="sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg px-2 py-2 font-medium"><Tooltip content={coverageColumnTooltips.understand}>Understand</Tooltip></th>
                 <th scope="col" className={`sticky top-[calc(var(--ph-h)+1.5625rem)] z-10 bg-card-bg pl-2 py-2 ${COVERAGE_COL_WIDTHS.actions}`}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {rows.map((row) => (
-                <CoverageRow
-                  key={`${row.family}-${row.repo}`}
-                  row={row}
-                  {...(onRefresh !== undefined ? { onRefresh } : {})}
-                />
-              ))}
+              {rows.map((row) => {
+                const pending = !!inFlightRefreshes?.has(refreshKey(row.family, row.repo))
+                const repoKey = `${row.family}/${row.repo}`
+                return (
+                  <CoverageRow
+                    key={`${row.family}-${row.repo}`}
+                    row={row}
+                    pending={pending}
+                    gitnexusInstalled={gitnexusInstalled}
+                    gitnexusCanScan={gitnexusCanScan}
+                    {...(understandViewerUrls?.[repoKey] !== undefined ? { understandViewerUrl: understandViewerUrls[repoKey] } : {})}
+                    {...(onRefresh !== undefined ? { onRefresh } : {})}
+                  />
+                )
+              })}
             </tbody>
           </table>
         </div>

@@ -36,7 +36,7 @@ describe('GET /api/projects/:id/git', () => {
     await execa('git', ['config', 'user.name', 'Test'], { cwd: proj.root })
     await execa('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: proj.root })
 
-    const result = addProject(proj.root, {}, registryFile)
+    const result = await addProject(proj.root, {}, registryFile)
     projectId = result.entry.id
   })
 

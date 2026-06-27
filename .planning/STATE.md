@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Cross-family observability
-status: shipped
-stopped_at: Phase 11.1 (impeccable p1 polish bundle) shipped via PR #36 (merge commit 8fe463a). v1.1 substantially complete — Phase 12 prepped on `feat/observability-conformance-surface`.
-last_updated: "2026-05-18T13:32:30.000Z"
-last_activity: 2026-05-18
+milestone: v1.2
+milestone_name: Optional integrations & fleet-conformance follow-through
+status: milestone_complete
+stopped_at: v1.2 milestone closed — archived, ROADMAP flipped, tagged v1.2. Next; /gsd-new-milestone for v1.3.
+last_updated: "2026-06-14T07:30:00.000Z"
+last_activity: 2026-06-14
 progress:
-  total_phases: 17
-  completed_phases: 9
-  total_plans: 57
-  completed_plans: 57
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 6
+  completed_plans: 6
   percent: 100
 ---
 
@@ -18,21 +18,36 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-02)
+See: .planning/PROJECT.md (updated 2026-06-14)
 
 **Core value:** A single place to see, from any device, what every AgenticApps project's pipeline is doing right now — without ever sending project data to a remote service.
-**Current focus:** v1.1 close-out audit; next move = ratify D-10.5-03.calibration-2 ADR or open Phase 11.2 / Phase 12
+**Current focus:** Planning v1.3 (open-source readiness — Phase 9)
 
 ## Current Position
 
-Phase: 11.1 SHIPPED (merge commit 8fe463a on main)
-Plan: 6/6 plans complete; all 5 IMP-* requirements verified
-Last shipped: Phase 11.1 (impeccable p1 polish bundle) via PR #36 on 2026-05-18
-Milestone: v1.1 — Cross-family observability — substantially complete (Phase 10/10.5/10.6/11/11.1 all shipped); pending only D-10.5-03.calibration-2 ADR ratification
-Status: Phase complete; awaiting next-phase route
-Last activity: 2026-05-18
+Milestone: v1.2 — CLOSED 2026-06-14 (shipped 2026-06-12 via PR #58/#59; tagged v1.2)
+Phase: none active — between milestones
+Status: v1.2 archived (ROADMAP flipped, MILESTONES + RETROSPECTIVE updated, REQUIREMENTS.md reset)
+Last activity: 2026-06-14
+Next: /gsd-new-milestone to define v1.3 (Phase 9 — LICENSE, CONTRIBUTING, optional public landing)
 
-Progress: v1.0 [██████████] 100% complete  •  v1.1 [█████████■] ~90% (Phase 10/10.5/10.6/11/11.1 shipped; calibration ADR pending; Phase 12 prepped)
+## Deferred Items
+
+Re-acknowledged and carried forward at **v1.2 milestone close on 2026-06-14** (proceed-and-acknowledge per /gsd-complete-milestone). The open-artifact audit at v1.2 close found 22 items, all carried over from already-shipped v1.0/v1.1 phases (none v1.2/Phase 8): 10 `human_needed` verifications (Phases 00/01/02/03/04/06, 05.1, 10, 11.1, 11.2), 10 UAT statuses (only Phase 01 has 2 genuinely-open scenarios), 2 debug sessions. The 2 v1.1-deferred phase-close items below were **resolved in v1.2**.
+
+Originally acknowledged at v1.1 milestone close on 2026-06-08. 23 items: 21 from the open-artifact audit + Phase 12 close gap + Phase 13 gate gap.
+
+| Category | Item | Status |
+|----------|------|--------|
+| phase-close | Phase 12 gate plan 12-06 (review/cso/qa/impeccable) never run; no 12-VERIFICATION.md | ✅ resolved 2026-06-10 (retrospective close-out; 2 P1s → Phase 12.1) |
+| phase-close | Phase 13 gate plan 13-04 (gates ritual) | ✅ resolved 2026-06-10 (artifacts present + passing; 13-VERIFICATION.md written) |
+| debug | family-scan-no-ui-feedback | unknown |
+| debug | per-row-scan-repo-not-registered | diagnosed |
+| uat | Phase 01 HUMAN-UAT (2 pending scenarios) | partial |
+| uat | Phases 03 / 05 / 07 / 13 / 05.1 / 10 / 11 / 11.1 UAT | partial/closed/resolved (0 pending) |
+| verification | Phases 00/01/02/03/04/06/05.1/10/11.1/11.2 VERIFICATION.md | human_needed |
+| infra-gated | Tailscale second-device viewer access (D-14-04) | deferred |
+| structural-debt | /code-intelligence IMPECCABLE composite ~74 (waiver D-10.5-03.calibration-2) | waived → 14.1 polish bundle |
 
 ## v1.0.1 Follow-ups (✅ CLOSED 2026-05-14)
 
@@ -45,7 +60,7 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 
 **Velocity:**
 
-- Total plans completed: 59
+- Total plans completed: 73
 - Average duration: —
 - Total execution time: 0 h
 
@@ -63,6 +78,8 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | 07 | 5 | - | - |
 | 11 | 0 | - | - |
 | 11.1 | 6 | - | - |
+| 11.2 | 6 | - | - |
+| 14 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -82,6 +99,11 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 | Phase 11 P02 | 15min | 7 tasks | 17 files |
 | Phase 11 P03 | 9min | 2 tasks | 7 files |
 | Phase 11 P06 | 10min | 1 tasks | 6 files |
+| Phase 08 P02 | 8min | 3 tasks | 8 files |
+| Phase 08 P03 | ~8.5 min | 2 tasks | 2 files |
+| Phase 08 P04 | 517 | 3 tasks | 6 files |
+| Phase 08-optional-integration-panels P05 | 517 | 3 tasks | 3 files |
+| Phase 08-optional-integration-panels P06 | ~12 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -93,6 +115,8 @@ Both items captured in `.planning/phases/07-help-docs-v1-0/deferred-items.md` ar
 - Phase 10.5 inserted 2026-05-13: impeccable skill-driven gate. Phase 6's CI gate (`.github/workflows/impeccable.yml` + `scripts/check-impeccable-score.mjs`) deleted; replaced by per-phase `<N>-IMPECCABLE.md` artifact authored by running `/impeccable critique` against affected routes at 1440×900. Triggered by tool drift discovered during Phase 10 Gate 4 (`npx impeccable critique` removed in v2.1.8). 5 decisions captured (D-10.5-01..05). Shipped bundled with Phase 10 in PR #28.
 - Phase 10.6 inserted 2026-05-14: three-state GitNexus detection. Coverage scanner upgraded from `existsSync(~/.gitnexus)` boolean to a `gitNexusInstallState` enum (`not-installed` / `installed-no-registry` / `installed-with-registry`). New `detectGitNexusBinary()` probes well-known prefixes (XDG, fnm, nvm, npm-global, volta, bun, homebrew, /usr/local) stat-only — no shell-out, survives launchd-spawned daemons. New `IndexGitNexusButton` for the middle state. Per-row state under `installed-no-registry` shifts from `'not-applicable'` → `'missing'`. Shipped 2026-05-14 via PR #29 (78b6b6f).
 - Phase 11.1 inserted 2026-05-18 after Phase 11: impeccable p1 polish bundle (URGENT) — addresses the 4 Phase-10-inherited P1s surfaced in `11-IMPECCABLE.md` (column-width drift in CoverageFamilySection, non-sticky CoverageToolbar, missing clipboard-write feedback, `text-text-tertiary` contrast 3.8:1 < WCAG AA 4.5:1). Estimated composite lift 76 → ~82 — produces calibration data point #3 to settle D-10.5-03 floor recalibration (Option B/C/D). Not blocking v1.1 close-out but accepted as the path to close `D-10.5-03.calibration-1` cleanly.
+- Phase 14 added 2026-06-06: Understand-Anything integration — daemon-hosted knowledge-graph viewer + coverage status. Daemon serves a prebuilt static build of the understand-anything plugin's dashboard SPA (plugin cache v2.7.6, `packages/dashboard`) at `/understand/{projectId}/` and re-implements its 6 token-gated data endpoints (`knowledge-graph.json`, `meta.json`, `config.json`, `domain-graph.json`, `diff-overlay.json`, `file-content.json`) in Hono with bearer auth, reading each registered project's `.understand-anything/` directory. Coverage-matrix style status per repo (analyzed / stale vs `meta.json` gitCommitHash / missing) with a copy-command pill for `/understand` — no daemon-triggered LLM scans this phase (analysis is LLM-driven, not a binary; headless `claude -p` scan is a follow-up phase candidate). Two constraint exceptions to ratify in discuss-phase: `file-content.json` serves graph-listed source files (broader than `.planning`/`.claude` read allow-list), and the future scan path writes `.understand-anything/` into repos (gitnexus D-13-01 precedent).
+- Phase 11.2 inserted 2026-05-18 after Phase 11.1: impeccable P2 polish bundle (URGENT) — closes the 5 follow-ups surfaced in `11.1-IMPECCABLE.md` §"Phase 11.2 candidate" (column-header tooltips P1 carry-over from Phase 10/11/11.1, per-row in-flight feedback for `gitnexus-analyze` P1, Wiki column width tightening P2 + iPad refresh-icon touch target P2, controlled search input P3, `max-w-prose` PageHeader subtitle P3). Estimated composite lift ~81 → ~85–87 (may hit legacy ≥87 floor without invoking calibration-2 waiver clause). Scopes OUT Coverage responsive collapse below 768px (stays a Phase 12 candidate).
 
 ### Decisions
 
@@ -135,6 +159,12 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-06: CoveragePage opts into sticky at all 4 PageHeader render paths (PLI-03) — coverage.lazy.tsx untouched (REVIEWS #9 lock); 4 PageHeader elements verified live (plan-time count of 5 was a counting artifact)
 - [Phase 11]: Post-UAT sticky-layering fix — PageHeader uses `-mt-6 sticky top-[-1.5rem] min-h-14` to sit flush with TopBar/RepairBanner (commit `89d4b2d`); family-header rebased to `top-8` + column-headers to `top-[5.0625rem]` so the three-element sticky stack is gapless (commit `1efde99`). Live-verified at scrollY 0/200/400/800/1200/1600.
 - [Phase 11]: D-10.5-03.calibration-1 — interim recalibration after 2 data points (Phase 10 = 74, Phase 11 = 76, both Nielsen 24/40). Empirical band 74-76; 87 floor confirmed empirically unreachable on the Coverage surface. Candidate recalibration to ≥ 80 with structural-debt waiver clause (Option B), NOT yet ratified — final decision deferred to D-10.5-03.calibration-2 after data point #3 lands. See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
+- [Phase 14]: D-10.5-03.calibration-2 — floor RATIFIED at 80 + per-phase structural-debt waiver clause (user, 2026-06-08). Data point #3 = Phase 14 (composite 78; /coverage 80, /code-intelligence 74), confirming band 74/76/78 with /coverage reaching 80. /coverage 80 passes; /code-intelligence 74 waived to the 14.1 polish bundle (recorded in 14-VERIFICATION.md). CLAUDE.md floor line updated 87→80. Closes D-10.5-03.calibration-1.
+- [Phase ?]: ./daemon subpath export in shared — avoids rootDir violation; env.ts absent from browser-facing index.ts (T-08-01/INV-05)
+- [Phase ?]: Cache keyed projectId:issueId for Linear (Pitfall 7) — same issueId across two projects must not share cache entries
+- [Phase ?]: Linear auth: raw API key header (no Bearer prefix) — lin_api_* keys differ from OAuth Bearer tokens
+- [Phase 08]: Plan 08-06: LinearPanel renders identifier in link only (not a separate span) — avoids duplicate DOM text that breaks RTL getByText; identifier is both label and link-out
+- [Phase 08]: Plan 08-06: E2E route handlers for /sentry/recent + /linear/issues added with empty-issues responses — validates INV-03 (dashboard functional with zero integration env vars)
 
 ### Pending Todos
 
@@ -152,7 +182,11 @@ Five follow-ups (tracked in TaskList; see Session Continuity → Next action):
 
 ## Session Continuity
 
-Last session: 2026-05-16T14:28:31.887Z
-Stopped at: Completed 11-06-PLAN.md (Phase 10.6 polish bundle — sticky PageHeader + opacity-30 + CoveragePage opt-in)
+Last session: 2026-06-14T07:30:00.000Z
+Stopped at: v1.2 milestone closed. Phase 8 + close-outs shipped 2026-06-12 (PR #58/#59); milestone archived (v1.2-ROADMAP.md + v1.2-REQUIREMENTS.md), ROADMAP flipped ✅, MILESTONES + RETROSPECTIVE + PROJECT updated, REQUIREMENTS.md reset, tagged v1.2.
 Resume file: None
-Next action: work through the 5 Pending Todos above. Recommended order: (1) ADR-0011 push → (2) migration 0008 investigation → (3) v1.0.1 follow-ups → (4) 10.6 polish triage → (5) Phase 11 audit (last because it depends on the others for full state visibility).
+Next action: Run /gsd-new-milestone to define v1.3 (open-source readiness — Phase 9: LICENSE, CONTRIBUTING, optional public landing).
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone (v1.3 — open-source readiness)

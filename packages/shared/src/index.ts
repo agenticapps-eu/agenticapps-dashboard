@@ -125,6 +125,24 @@ export type {
   IntegrationState,
   IntegrationsResponse,
 } from './schemas/integrations.js'
+// Phase 8 — Sentry + Linear shared wire schemas (INV-04)
+// Note: env.ts (EnvFileSchema) is intentionally NOT re-exported here (T-08-01/INV-05/D-08-13)
+export {
+  SentryIssueSchema,
+  SentryRecentResponseSchema,
+} from './schemas/sentry.js'
+export type {
+  SentryIssue,
+  SentryRecentResponse,
+} from './schemas/sentry.js'
+export {
+  LinearIssueSchema,
+  LinearIssuesResponseSchema,
+} from './schemas/linear.js'
+export type {
+  LinearIssue,
+  LinearIssuesResponse,
+} from './schemas/linear.js'
 export {
   ObservabilitySignalSchema,
   ObservabilityToolStateSchema,
@@ -198,10 +216,45 @@ export type {
   SkillDriftResponse,
 } from './schemas/skillDrift.js'
 
+// Phase 12 — observability conformance surface (D-12-14/15/16)
+export {
+  ConformanceTierSchema,
+  tierOf,
+  ConformanceDayPointSchema,
+  PathDriftReasonSchema,
+  PathDriftEntrySchema,
+  ConformanceResponseSchema,
+  RegistryFixPathRequestSchema,
+} from './schemas/conformance.js'
+export type {
+  ConformanceTier,
+  ConformanceDayPoint,
+  PathDriftReason,
+  PathDriftEntry,
+  ConformanceResponse,
+  RegistryFixPathRequest,
+} from './schemas/conformance.js'
+
+// Phase 13 — gitnexus scoped scan actions (D-13-01..11)
+export {
+  GitnexusScanErrorCodeSchema,
+  GitnexusScanRequestSchema,
+  GitnexusScanResponseSchema,
+  GitnexusScanProgressSchema,
+} from './schemas/gitnexusScan.js'
+export type {
+  GitnexusScanErrorCode,
+  GitnexusScanRequest,
+  GitnexusScanResponse,
+  GitnexusScanProgress,
+} from './schemas/gitnexusScan.js'
+
 export {
   buildWikiCompileClipboardString,
   buildWorkflowUpdateClipboardString,
   buildClaudeMdHelpUrl,
   buildGitnexusInstallClipboardString,
   buildGitnexusIndexClipboardString,
+  buildUnderstandCommand,
 } from './clipboard.js'
+export type { GitnexusIndexCommand, UnderstandCommand } from './clipboard.js'

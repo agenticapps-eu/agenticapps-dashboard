@@ -95,7 +95,7 @@ export async function registerInteractive(
       results.push({ match: m, registered: false, reason: 'declined' })
       continue
     }
-    const r = addProject(m.root, {}, opts.registryFile)
+    const r = await addProject(m.root, {}, opts.registryFile)
     results.push({
       match: m,
       registered: !r.alreadyRegistered,

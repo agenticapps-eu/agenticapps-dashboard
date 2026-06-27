@@ -1,8 +1,12 @@
 import pc from 'picocolors'
 
 import { agentError, agentLog } from '../lib/logging.js'
-import { addProject, RegistrationPathBlocked, removeProject } from '../lib/registry.js'
+import { addProject, readRegistry, RegistrationPathBlocked, removeProject } from '../lib/registry.js'
 import { ensureAuthFile } from '../lib/auth.js'
+import { exitOnRegistryLockTimeout } from '../lib/cliErrors.js'
+import { evictSentryCacheProject } from '../routes/sentry.js'
+import { evictLinearCacheProject } from '../routes/linear.js'
+import { evictIntegrationsCacheProject } from '../routes/integrations.js'
 
 import { discoverProjects, registerInteractive, type RegisterInteractiveOpts } from './discover.js'
 
@@ -39,7 +43,13 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
     }
     if (opts.yes !== undefined) interactiveOpts.yes = opts.yes
     if (opts.dryRun !== undefined) interactiveOpts.dryRun = opts.dryRun
-    const results = await registerInteractive(matches, interactiveOpts)
+    let results: Awaited<ReturnType<typeof registerInteractive>>
+    try {
+      results = await registerInteractive(matches, interactiveOpts)
+    } catch (err) {
+      exitOnRegistryLockTimeout(err)
+      throw err
+    }
     for (const r of results) {
       if (r.reason === 'new') agentLog(pc.green(`registered ${r.match.name} (${r.match.root})`))
       else if (r.reason === 'already')
@@ -61,14 +71,15 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
     tags: opts.tag ?? [],
   }
   if (opts.name !== undefined) addOpts.name = opts.name
-  let result: ReturnType<typeof addProject>
+  let result: Awaited<ReturnType<typeof addProject>>
   try {
-    result = addProject(pathArg, addOpts)
+    result = await addProject(pathArg, addOpts)
   } catch (err) {
     if (err instanceof RegistrationPathBlocked) {
       agentError(`refusing to register ${err.target}: ${err.reason}`)
       process.exit(1)
     }
+    exitOnRegistryLockTimeout(err)
     throw err
   }
   if (result.alreadyRegistered) {
@@ -85,8 +96,32 @@ export async function runRegister(pathArg: string | undefined, opts: RegisterOpt
 
 export async function runUnregister(idOrPath: string): Promise<void> {
   ensureAuthFile() // D-01 lazy init
-  const removed = removeProject(idOrPath)
+
+  // WR-05: resolve the project id BEFORE removal so we can evict panel caches.
+  // Project ids are slug-based (not UUID) and can be reused after re-registration,
+  // so stale cache entries from a previous registration at the same path would be
+  // served under the new registration if not evicted here.
+  const reg = readRegistry()
+  const entry = reg.projects.find(
+    (p) => p.id === idOrPath || p.root === idOrPath,
+  )
+  const resolvedId = entry?.id
+
+  let removed: boolean
+  try {
+    removed = await removeProject(idOrPath)
+  } catch (err) {
+    exitOnRegistryLockTimeout(err)
+    throw err
+  }
   if (removed) {
+    // Evict panel caches for the removed project to prevent stale cache reuse
+    // across re-registration (WR-05 — ids are reusable slugs, not UUIDs).
+    if (resolvedId) {
+      evictSentryCacheProject(resolvedId)
+      evictLinearCacheProject(resolvedId)
+      evictIntegrationsCacheProject(resolvedId)
+    }
     agentLog(pc.green(`unregistered ${idOrPath}`))
     process.exit(0)
   }

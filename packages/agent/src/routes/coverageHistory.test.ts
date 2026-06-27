@@ -72,6 +72,7 @@ function makeScanRow(family: 'agenticapps' | 'factiv' | 'neuroflash', repo: stri
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07
   }
 }
 

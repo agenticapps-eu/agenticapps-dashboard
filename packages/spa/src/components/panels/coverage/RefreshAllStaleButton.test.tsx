@@ -28,6 +28,7 @@ function makeRow(repo: string, gitNexusState: 'fresh' | 'stale' | 'missing' = 'f
     },
     overrideCount: 0,
     overrides: [],
+    inRegistry: true, // D-13-EXT-07: refresh-all fixture default — tests not exercising the gate
   }
 }
 

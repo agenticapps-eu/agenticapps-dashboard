@@ -27,8 +27,8 @@ describe('snapshotPaths', () => {
     )
   })
 
-  it('RETENTION_DAYS is exactly 14 (D-11-01 lock)', () => {
-    expect(RETENTION_DAYS).toBe(14)
+  it('RETENTION_DAYS is exactly 90 (D-12-09 — Phase 12 90-day fleet trend chart)', () => {
+    expect(RETENTION_DAYS).toBe(90)
   })
 
   it('isoDateFromDate returns UTC date slice (not local) — Pitfall 4', () => {

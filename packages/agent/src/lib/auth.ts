@@ -15,10 +15,17 @@ import { dirname, basename } from 'node:path'
 import { AuthFileSchema, type AuthFile } from '@agenticapps/dashboard-shared'
 
 import { AGENT_VERSION } from '../version.js'
-import { AUTH_FILE, CONFIG_DIR, TOKEN_ROTATION_DAYS } from '../constants.js'
+import {
+  AUTH_FILE,
+  CONFIG_DIR,
+  TOKEN_ROTATION_DAYS,
+  VIEWER_TOKEN_FILE,
+} from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { agentError } from './logging.js'
 import { parseOrCorrupt } from './stateCorruption.js'
+import { rotateViewerSecret } from './viewerToken.js'
 
 export type { AuthFile }
 
@@ -80,7 +87,7 @@ export function assertSecurePermissions(filePath: string = AUTH_FILE): void {
   }
 }
 
-function ensureConfigDir(dir: string = CONFIG_DIR): void {
+export function ensureConfigDir(dir: string = CONFIG_DIR): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
   }
@@ -138,7 +145,10 @@ export function ensureAuthFile(filePath: string = AUTH_FILE): AuthFile {
  * In-flight requests that captured the old token complete normally.
  * New requests presenting the old token return 401.
  */
-export function rotateToken(filePath: string = AUTH_FILE): AuthFile {
+export function rotateToken(
+  filePath: string = AUTH_FILE,
+  viewerTokenFile: string = VIEWER_TOKEN_FILE,
+): AuthFile {
   const next: AuthFile = {
     version: 1,
     token: generateToken(),
@@ -147,6 +157,19 @@ export function rotateToken(filePath: string = AUTH_FILE): AuthFile {
   }
   writeAuthFile(next, filePath) // write file FIRST
   setActiveToken(next.token) // then flip in-memory ref
+  // D-14-03 rotation: viewer tokens rotate with the bearer token — single rotation
+  // story. The viewer path is threaded (not hardcoded) so callers that pass a
+  // custom authFile (every test) never touch the real ~/.agenticapps file.
+  // Partial-failure ordering: the bearer rotation above has already committed
+  // (file + in-memory ref), so a viewer-secret failure must not make rotateToken
+  // appear failed — warn and continue.
+  try {
+    rotateViewerSecret(viewerTokenFile)
+  } catch (err) {
+    agentError(
+      `viewer-secret rotation failed (bearer token rotated successfully): ${(err as Error).message}`,
+    )
+  }
   return next
 }
 
