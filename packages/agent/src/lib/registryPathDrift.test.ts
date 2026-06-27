@@ -315,6 +315,30 @@ describe('registryPathDrift › inferSuggestedPath', () => {
     const result = await inferSuggestedPath('git@github.com:other/x.git')
     expect(result).toBeNull()
   })
+
+  // ── Testing #11 — malformed `.git/config` shapes the per-section parser must reject ───
+  //
+  // Post per-section parser (fix #2): `[remote "origin"]` followed by no body
+  // and nothing else MUST yield null, NOT a leaked url from elsewhere or a
+  // throw. This shape is distinct from the cross-section regression above
+  // (origin + sibling upstream with a url): here there is nothing TO borrow
+  // from, so the assertion pins the no-url branch directly.
+  it('Testing #11 [malformed .git/config]: origin section with no url and nothing else → null', async () => {
+    const family = join(tmpRoot, 'fake-agenticapps-empty-origin')
+    mkdirSync(family)
+    const candidate = join(family, 'empty-origin')
+    mkdirSync(join(candidate, '.git'), { recursive: true })
+    writeFileSync(
+      join(candidate, '.git', 'config'),
+      '[remote "origin"]\n',
+    )
+    pointFamilyRoot('agenticapps', family)
+
+    // Any URL lookup against this family must return null — the only
+    // candidate has an origin section with no url key.
+    const result = await inferSuggestedPath('git@github.com:any/thing.git')
+    expect(result).toBeNull()
+  })
 })
 
 /**
