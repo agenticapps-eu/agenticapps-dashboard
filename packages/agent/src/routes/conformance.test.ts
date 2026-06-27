@@ -46,7 +46,8 @@ function fakePayload() {
       factiv: 90,
       neuroflash: 90,
     },
-    delta14d: { fleet: 0, agenticapps: 0, factiv: 0, neuroflash: 0 },
+    baselineDays: 14,
+    deltaBaseline: { fleet: 0, agenticapps: 0, factiv: 0, neuroflash: 0 },
     series: [],
     drifted: [],
   }

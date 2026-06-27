@@ -86,7 +86,8 @@ const CONFORMANCE_RESPONSE_BODY = {
     factiv: 84,
     neuroflash: 85,
   },
-  delta14d: {
+  baselineDays: 14,
+  deltaBaseline: {
     fleet: 3,
     agenticapps: 5,
     factiv: -1,

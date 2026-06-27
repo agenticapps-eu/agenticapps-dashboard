@@ -34,7 +34,7 @@ const validToday = {
   neuroflash: 92,
 }
 
-const validDelta14d = {
+const validDeltaBaseline = {
   fleet: 2,
   agenticapps: -3,
   factiv: 5,
@@ -44,7 +44,8 @@ const validDelta14d = {
 const validResponse = {
   schemaVersion: 1 as const,
   today: validToday,
-  delta14d: validDelta14d,
+  baselineDays: 14,
+  deltaBaseline: validDeltaBaseline,
   series: [validDayPoint],
   drifted: [],
 }

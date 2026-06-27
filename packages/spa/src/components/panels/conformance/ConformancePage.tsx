@@ -172,7 +172,8 @@ export function ConformancePage(): ReactElement {
             key={fam}
             family={fam}
             score={data.today[fam]}
-            delta14d={data.delta14d[fam]}
+            delta={data.deltaBaseline[fam]}
+            baselineDays={data.baselineDays}
           />
         ))}
       </section>

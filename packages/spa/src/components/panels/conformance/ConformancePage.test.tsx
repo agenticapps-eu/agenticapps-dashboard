@@ -9,7 +9,7 @@
  * - P4: PathDriftPanel renders only when data.drifted.length > 0
  * - P5: 3 FamilyCards (agenticapps, factiv, neuroflash) render on happy path
  * - P6: each FamilyCard receives today.{family} as `score`
- * - P7: each FamilyCard receives delta14d.{family} as `delta14d`
+ * - P7: each FamilyCard receives deltaBaseline.{family} as `delta` + baselineDays
  * - P8: FleetTrendChart renders with data.series
  * - P9: sticky PageHeader (data-testid="page-header-sticky") with title "Fleet conformance"
  * - P10: trend section uses aria-labelledby for SR navigation
@@ -87,7 +87,8 @@ function makeData(overrides: Partial<ConformanceResponse> = {}): ConformanceResp
       factiv: 84,
       neuroflash: 85,
     },
-    delta14d: {
+    baselineDays: 14,
+    deltaBaseline: {
       fleet: 3,
       agenticapps: 5,
       factiv: -2,
@@ -246,14 +247,14 @@ describe('ConformancePage', () => {
     expect(cardScores).toEqual(['91', '73', '64'])
   })
 
-  it('P7: passes delta14d.{family} as delta14d to each FamilyCard', () => {
+  it('P7: passes deltaBaseline.{family} as delta to each FamilyCard (with baselineDays)', () => {
     mockUseConformance.mockReturnValue({
       isPending: false,
       isLoading: false,
       isError: false,
       error: null,
       data: makeData({
-        delta14d: { fleet: 0, agenticapps: 7, factiv: -4, neuroflash: 0 },
+        deltaBaseline: { fleet: 0, agenticapps: 7, factiv: -4, neuroflash: 0 },
       }),
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useConformance>)

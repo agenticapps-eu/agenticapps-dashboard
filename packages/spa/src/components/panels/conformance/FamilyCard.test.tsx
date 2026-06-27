@@ -8,7 +8,7 @@
  * - family name rendering
  * - score display
  * - tier pill class per tier boundary (≥90 green, 70-89 amber, <70 red)
- * - delta14d glyph: up-arrow (text-status-success), down-arrow (text-status-error),
+ * - delta glyph: up-arrow (text-status-success), down-arrow (text-status-error),
  *   em-dash for 0 (no glyph)
  * - SECURITY: no hex literals; no dangerous-inner-html prop (T-12-XSS)
  */
@@ -24,35 +24,35 @@ const DANGEROUS_INNER_HTML = `dangerously${'Set'}InnerHTML`
 
 describe('FamilyCard', () => {
   it('F1: renders family name', () => {
-    render(<FamilyCard family="agenticapps" score={92} delta14d={3} />)
+    render(<FamilyCard family="agenticapps" score={92} delta={3} baselineDays={14} />)
     expect(screen.getByText(/agenticapps/i)).toBeTruthy()
   })
 
   it('F2: renders score as a number (0-100 integer)', () => {
-    render(<FamilyCard family="factiv" score={87} delta14d={2} />)
+    render(<FamilyCard family="factiv" score={87} delta={2} baselineDays={14} />)
     expect(screen.getByText(/87/)).toBeTruthy()
   })
 
   it('F3: tier pill applies status-success class when score >= 90 (green)', () => {
-    const { container } = render(<FamilyCard family="agenticapps" score={90} delta14d={0} />)
+    const { container } = render(<FamilyCard family="agenticapps" score={90} delta={0} baselineDays={14} />)
     const html = container.innerHTML
     expect(html).toMatch(/status-success/)
   })
 
   it('F4: tier pill applies status-warning class when 70 <= score < 90 (amber)', () => {
-    const { container } = render(<FamilyCard family="factiv" score={85} delta14d={0} />)
+    const { container } = render(<FamilyCard family="factiv" score={85} delta={0} baselineDays={14} />)
     const html = container.innerHTML
     expect(html).toMatch(/status-warning/)
   })
 
   it('F5: tier pill applies status-error class when score < 70 (red)', () => {
-    const { container } = render(<FamilyCard family="neuroflash" score={45} delta14d={-5} />)
+    const { container } = render(<FamilyCard family="neuroflash" score={45} delta={-5} baselineDays={14} />)
     const html = container.innerHTML
     expect(html).toMatch(/status-error/)
   })
 
-  it('F6: renders up-arrow + N for positive delta14d (text-status-success)', () => {
-    const { container } = render(<FamilyCard family="agenticapps" score={88} delta14d={5} />)
+  it('F6: renders up-arrow + N for positive delta (text-status-success)', () => {
+    const { container } = render(<FamilyCard family="agenticapps" score={88} delta={5} baselineDays={14} />)
     expect(screen.getByText(/▲/)).toBeTruthy()
     // Delta value 5 is rendered (score 88 + "14d trend" don't contain 5).
     expect(screen.getByText(/5/)).toBeTruthy()
@@ -61,16 +61,16 @@ describe('FamilyCard', () => {
     expect(html).toMatch(/text-status-success/)
   })
 
-  it('F7: renders down-arrow + N for negative delta14d (text-status-error)', () => {
-    const { container } = render(<FamilyCard family="agenticapps" score={88} delta14d={-3} />)
+  it('F7: renders down-arrow + N for negative delta (text-status-error)', () => {
+    const { container } = render(<FamilyCard family="agenticapps" score={88} delta={-3} baselineDays={14} />)
     expect(screen.getByText(/▼/)).toBeTruthy()
     // Displays absolute value 3 (not -3). Score 88 + "14d trend" don't contain 3.
     expect(screen.getByText(/3/)).toBeTruthy()
     expect(container.innerHTML).toMatch(/text-status-error/)
   })
 
-  it('F8: renders em-dash for delta14d 0 (no arrow glyph)', () => {
-    render(<FamilyCard family="agenticapps" score={92} delta14d={0} />)
+  it('F8: renders em-dash for delta 0 (no arrow glyph)', () => {
+    render(<FamilyCard family="agenticapps" score={92} delta={0} baselineDays={14} />)
     expect(screen.getByText(/—/)).toBeTruthy()
     expect(screen.queryByText(/▲/)).toBeNull()
     expect(screen.queryByText(/▼/)).toBeNull()

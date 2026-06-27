@@ -89,7 +89,8 @@ describe('readRegistry / writeRegistry', () => {
           factiv: 50,
           neuroflash: 50,
         },
-        delta14d: { fleet: 0, agenticapps: 0, factiv: 0, neuroflash: 0 },
+        baselineDays: 14,
+        deltaBaseline: { fleet: 0, agenticapps: 0, factiv: 0, neuroflash: 0 },
         series: [],
         drifted: [],
       })
