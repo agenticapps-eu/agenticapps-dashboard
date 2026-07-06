@@ -122,3 +122,10 @@ This project is indexed by GitNexus as **agenticapps-dashboard** (6712 symbols, 
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+
+## Workflow
+
+This project uses the AgenticApps Superpowers + GSD + gstack workflow.
+Full hooks, rituals, and red-flag tables: [`.claude/claude-md/workflow.md`](.claude/claude-md/workflow.md).
+Vendored — re-sync via `/update-agenticapps-workflow`.
