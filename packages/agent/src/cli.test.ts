@@ -4,20 +4,11 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { HealthResponseSchema } from '@agenticapps/dashboard-shared'
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const packageRoot = resolve(__dirname, '..')
 const cliBundle = resolve(packageRoot, 'dist/cli.js')
-
-beforeAll(() => {
-  // Build the bundle once before all tests so we exercise the published artifact.
-  // Uses spawnSync with an argv array — no shell interpretation, no injection surface (T-00-07).
-  const build = spawnSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-  if (build.status !== 0) {
-    throw new Error(`pnpm build failed with status ${build.status}`)
-  }
-}, 60_000)
 
 describe('agentic-dashboard CLI (built dist/cli.js)', () => {
   it('exits 0 and prints version on --version', () => {

@@ -1,8 +1,5 @@
-import { spawnSync } from 'node:child_process'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   RegistryListResponseSchema,
   StatusResponseSchema,
@@ -10,13 +7,6 @@ import {
 
 import { makeIsolatedHome, runAgent } from './__shared__/spawnAgent.js'
 
-
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../')
-
-beforeAll(() => {
-  const r = spawnSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-  if (r.status !== 0) throw new Error('build failed')
-}, 60_000)
 
 describe('list subprocess', () => {
   it('list --json emits valid RegistryListResponseSchema JSON (D-04)', () => {
