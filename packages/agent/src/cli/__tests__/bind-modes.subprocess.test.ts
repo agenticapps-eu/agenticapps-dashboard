@@ -1,17 +1,8 @@
 import { spawnSync, spawn } from 'node:child_process'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 import { makeIsolatedHome, cliBundle } from './__shared__/spawnAgent.js'
-
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../')
-
-beforeAll(() => {
-  const r = spawnSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-  if (r.status !== 0) throw new Error('build failed')
-}, 60_000)
 
 // This spec only holds on machines WITHOUT a working Tailscale daemon — when
 // Tailscale is up, `start --bind tailscale` legitimately binds and exits 0.

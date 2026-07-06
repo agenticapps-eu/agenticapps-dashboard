@@ -37,6 +37,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "pretest": "tsup",
     "test": "vitest run",
     "build": "tsup",
     "publish:dry": "pnpm publish --dry-run --no-git-checks --tag alpha",

@@ -1,19 +1,10 @@
-import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 import { makeIsolatedHome, runAgent } from './__shared__/spawnAgent.js'
-
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../')
-
-beforeAll(() => {
-  const r = spawnSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-  if (r.status !== 0) throw new Error('build failed')
-}, 60_000)
 
 describe('register subprocess', () => {
   it('register <path> adds project to registry, exits 0', () => {

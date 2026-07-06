@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import { createApp } from '../app.js'
 import { setActiveToken, rotateToken, ensureAuthFile, getActiveToken } from '../../lib/auth.js'
@@ -19,11 +19,6 @@ const __dirname = dirname(__filename)
 const packageRoot = resolve(__dirname, '../../..')
 const cliBundle = resolve(packageRoot, 'dist/cli.js')
 
-// Build once before all tests so subprocess tests exercise the built artifact.
-beforeAll(() => {
-  const build = spawnSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-  if (build.status !== 0) throw new Error(`pnpm build failed (status ${build.status})`)
-}, 60_000)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MANDATORY TDD CASE 1 (spec line 616)
