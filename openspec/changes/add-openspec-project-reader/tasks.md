@@ -62,12 +62,13 @@
 
 ## 5. Retire the GSD reader
 
-- [ ] Delete `findCurrentPhase()` and the `.planning/phases/` parsing in `projectOverview.ts`
-- [ ] Delete phase-artifact reading in `phaseDetail.ts`
-- [ ] Remove phase fields from the shared schemas
-- [ ] Remove `.planning/config.json` from the discovery markers in `discover.ts` / `registry.ts`
-- [ ] Confirm no daemon path reads `.planning/phases/` afterwards
-- [ ] Leave `overrideSentinelScanner` and `routes/commitment.ts` alone — they read `.planning/skill-observations/`, a different path
+- [x] Delete ~~`findCurrentPhase()`~~ `findLatestPhaseDir()` and the `.planning/phases/` parsing in `projectOverview.ts` — also `parseReviewFile`, `parseVerification`, and the phase-status heuristic. `readOverview` keeps only `tdd` / `branch` / `markers`
+- [x] Delete phase-artifact reading in `phaseDetail.ts` — the five parsers go, the three `.planning/skill-observations/` readers stay
+- [x] Remove phase fields from the shared schemas — `ProjectOverviewSchema` drops five fields and becomes `.strict()`; `phaseDetail.ts` and `security.ts` are deleted outright
+- [x] ~~Remove `.planning/config.json` from the discovery markers in `discover.ts` / `registry.ts`~~ — **done in group 4**, where the marker set was already narrowed to `openspec/` plus the workflow skill. Duplicated here in error
+- [x] **Also deleted, not on the original list: `routes/phaseProgress.ts` and `routes/security.ts`.** Both read the phase dir via `findLatestPhaseDir`, and both served the `Phase Progress Column` requirement this change REMOVES. Their SPA consumers — the five centre-column panels, `usePhaseProgress`, `useSecurity` — go with them
+- [x] ~~Confirm no daemon path reads `.planning/phases/` afterwards~~ — **restated, because as written it contradicts the task below it.** `overrideSentinelScanner.ts` does read `.planning/phases/<slug>/multi-ai-review-skipped`. The enforceable invariant is that *exactly one sanctioned reader remains*, asserted by name in `gsdReaderRetired.test.ts`, so a new one cannot appear silently
+- [x] Leave `overrideSentinelScanner` and `routes/commitment.ts` alone — ~~they read `.planning/skill-observations/`, a different path~~ **only `routes/commitment.ts` does.** `overrideSentinelScanner` reads `.planning/phases/`; it survives because it serves `fleet-coverage`'s `Review-Override Visibility`, which `retire-v1-surfaces` removes. Retiring it here would be foreign scope
 
 ## 6. Surfaces
 
