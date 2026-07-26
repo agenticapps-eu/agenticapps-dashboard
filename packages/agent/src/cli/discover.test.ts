@@ -78,14 +78,37 @@ describe('discoverProjects', () => {
     expect(matches[0]?.markers).toContain('agentic-apps-workflow/SKILL.md')
   })
 
-  it('matches .planning/config.json as a marker (D-08)', () => {
+  it('matches an openspec/ directory as a marker', () => {
+    const parent = makeTmpParent()
+    scaffold(parent, {
+      'myproject/openspec/specs': true,
+    })
+    const matches = discoverProjects(parent, { depth: 1 })
+    expect(matches).toHaveLength(1)
+    expect(matches[0]?.markers).toContain('openspec/')
+  })
+
+  // The GSD reader is retired, so offering a match on .planning/config.json
+  // would present projects whose planning state the dashboard cannot read.
+  // Existing registrations are untouched; only the --auto scan stops offering.
+  it('no longer matches .planning/config.json as a marker', () => {
     const parent = makeTmpParent()
     scaffold(parent, {
       'myproject/.planning/config.json': false,
     })
     const matches = discoverProjects(parent, { depth: 1 })
+    expect(matches).toHaveLength(0)
+  })
+
+  it('still matches a repo carrying the workflow skill but no openspec/', () => {
+    const parent = makeTmpParent()
+    scaffold(parent, {
+      'gsdonly/.claude/skills/agentic-apps-workflow/SKILL.md': false,
+      'gsdonly/.planning/config.json': false,
+    })
+    const matches = discoverProjects(parent, { depth: 1 })
     expect(matches).toHaveLength(1)
-    expect(matches[0]?.markers).toContain('.planning/config.json')
+    expect(matches[0]?.markers).toEqual(['agentic-apps-workflow/SKILL.md'])
   })
 
   it('returns empty array for non-existent parentDir', () => {
