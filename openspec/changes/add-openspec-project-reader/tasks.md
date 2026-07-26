@@ -31,21 +31,22 @@
 
 ## 3. Hybrid reader
 
-- [ ] Tree reader: open changes = non-dot dirs under `openspec/changes/` excluding `archive/`, with no artifact required
-- [ ] Test: a change dir holding only `tasks.md`, and one holding only `proposal.md`, are both listed
-- [ ] The change set is enumerated from the tree on both paths; the CLI supplies counts, never the set (TDD)
-- [ ] Test: a change the CLI does not report is still listed when the binary is available
-- [ ] Tree reader: task ratio = `- [x]` versus `- [ ]` count in each change's `tasks.md`
-- [ ] Tree reader: report task-artifact presence as its own value, distinct from a zero count (TDD)
-- [ ] Tree reader: capabilities = dirs under `openspec/specs/`, requirement count = `### Requirement:` occurrences
-- [ ] Tree reader: affected capabilities = dir names under a change's own `specs/`; empty when absent
-- [ ] Tree reader: archived changes from `openspec/changes/archive/`, sorted by zero-padded ISO `YYYY-MM-DD-` prefix
-- [ ] Test: an archive dir not matching the ISO prefix sorts after all matching ones, no chronological claim
-- [ ] CLI reader: use `openspec list --json` and `openspec list --specs --json` when the binary resolves
-- [ ] Archive, affected capabilities, and task-artifact presence always read from the tree on both paths — the CLI reports none of them
-- [ ] Test: CLI path and tree path produce identical values for the whole pinned five-field set on one conformant fixture
-- [ ] Test: a non-conformant change (task artifact the tree reader cannot locate) prefers the CLI and is not a parity failure
-- [ ] Test: absent binary degrades to the tree path with no route error
+- [x] Tree reader: open changes = non-dot dirs under `openspec/changes/` excluding `archive/`, with no artifact required
+- [x] Test: a change dir holding only `tasks.md`, and one holding only `proposal.md`, are both listed
+- [x] The change set is enumerated from the tree on both paths; the CLI supplies counts, never the set (TDD)
+- [x] Test: a change the CLI does not report is still listed when the binary is available
+- [x] Tree reader: task ratio = `- [x]` versus `- [ ]` count in each change's `tasks.md`
+- [x] Tree reader: report task-artifact presence as its own value, distinct from a zero count (TDD)
+- [x] Tree reader: capabilities = dirs under `openspec/specs/`, requirement count = `### Requirement:` occurrences
+- [x] Tree reader: affected capabilities = dir names under a change's own `specs/`; empty when absent
+- [x] Tree reader: archived changes from `openspec/changes/archive/`, sorted by zero-padded ISO `YYYY-MM-DD-` prefix
+- [x] Test: an archive dir not matching the ISO prefix sorts after all matching ones, no chronological claim
+- [x] CLI reader: use `openspec list --json` and `openspec list --specs --json` when the binary resolves
+- [x] Archive, affected capabilities, and task-artifact presence always read from the tree on both paths — the CLI reports none of them
+- [x] Test: CLI path and tree path produce identical values for the whole pinned five-field set on one conformant fixture
+- [x] Test: a non-conformant change (task artifact the tree reader cannot locate) prefers the CLI and is not a parity failure
+- [x] Test: absent binary degrades to the tree path with no route error
+- [x] Verified against this repo, not only fixtures: 12 capabilities summing to 100 requirements, 21 archived entries with zero non-ISO names, tree and CLI agreeing on all 9 open changes
 
 ## 4. Registry and discovery
 
