@@ -9,7 +9,8 @@
  */
 import React, { useEffect } from 'react'
 
-import { useRegistryList } from '../lib/registry.js'
+import { useProjectOverview, useRegistryList } from '../lib/registry.js'
+import { formatRelativeTime } from '../lib/relativeTime.js'
 
 import { PageHeader } from './ui/PageHeader.js'
 import { CapabilityPanel } from './panels/CapabilityPanel.js'
@@ -41,6 +42,7 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
    * column never flashes the migration notice at a migrated project.
    */
   const registry = useRegistryList()
+  const overview = useProjectOverview(projectId)
   const entry = registry.data?.find((p) => p.id === projectId)
   const condition = entry?.status.condition
   const needsMigration = condition === 'needs-migration'
@@ -52,9 +54,28 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
    */
   const unreachable = condition === 'unreachable' || entry?.status.reachable === false
 
+  /*
+   * `Single-Project Header Context` asks for the project name and client, the
+   * current branch and a summary of open changes; the needs-migration scenario
+   * additionally requires that branch and last-commit context survive on a
+   * project with no OpenSpec data. The view rendered the id alone, so both were
+   * ratified and unmet. Each piece is omitted rather than faked when absent.
+   */
+  const headerBits = [
+    entry?.client,
+    overview.data?.branch ? `on ${overview.data.branch}` : null,
+    entry?.status.lastCommitAt
+      ? `last commit ${formatRelativeTime(entry.status.lastCommitAt)}`
+      : null,
+  ].filter(Boolean)
+
   return (
     <div>
-      <PageHeader title={projectId} />
+      {/* Spread rather than pass `undefined`: exactOptionalPropertyTypes is on. */}
+      <PageHeader
+        title={projectId}
+        {...(headerBits.length > 0 ? { helper: headerBits.join(' · ') } : {})}
+      />
       <div
         data-testid="single-project-grid"
         className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_1.5fr_1fr]"

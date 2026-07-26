@@ -472,3 +472,58 @@ describe('ChangeProgress', () => {
     expect(screen.queryByRole('progressbar')).toBeNull()
   })
 })
+
+/*
+ * `Change Progress Column` — "Completed work SHALL be readable from the archived
+ * changes", and the archive-ordering scenario opens with "WHEN completed history
+ * is rendered". The daemon read, sorted and shipped `archived`; no surface read
+ * it, so the requirement was met at the wire and unmet at the eye, and the
+ * ordering scenario was vacuous.
+ */
+describe('ChangeProgress — completed history', () => {
+  const archived = [
+    { name: '2026-07-01-add-newest', datePrefix: '2026-07-01' },
+    { name: '2026-06-11-add-older', datePrefix: '2026-06-11' },
+    { name: 'legacy-no-prefix', datePrefix: null },
+  ]
+
+  it('CP23: archived changes are readable, newest first, behind a disclosure', () => {
+    mockQuery({
+      data: state({
+        openChanges: [
+          { name: 'moving', completedTasks: 1, totalTasks: 4, hasTaskArtifact: true, affectedCapabilities: [] },
+        ],
+        archived,
+      }),
+    })
+    render(<ChangeProgress projectId="p" />)
+
+    const toggle = screen.getByRole('button', { name: /3 completed/i })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(toggle)
+
+    const names = Array.from(document.querySelectorAll('[data-testid^="archived-"]')).map((el) =>
+      el.getAttribute('data-testid'),
+    )
+    expect(names).toEqual([
+      'archived-2026-07-01-add-newest',
+      'archived-2026-06-11-add-older',
+      'archived-legacy-no-prefix',
+    ])
+  })
+
+  it('CP24: a name carrying no date prefix makes no chronological claim', () => {
+    mockQuery({ data: state({ archived }) })
+    render(<ChangeProgress projectId="p" />)
+    fireEvent.click(screen.getByRole('button', { name: /3 completed/i }))
+
+    const row = screen.getByTestId('archived-legacy-no-prefix')
+    expect(row.textContent).toContain('no date')
+  })
+
+  it('CP25: a project with no archive renders no completed-history control', () => {
+    mockQuery({ data: state({ archived: [] }) })
+    render(<ChangeProgress projectId="p" />)
+    expect(screen.queryByRole('button', { name: /completed/i })).toBeNull()
+  })
+})

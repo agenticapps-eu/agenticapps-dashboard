@@ -55,7 +55,12 @@ export function PageHeader({
         <div>
           <h1 className="text-2xl font-semibold text-text-primary leading-tight">{title}</h1>
           {helper && (
-            <p className="mt-1 text-sm text-text-tertiary max-w-prose">{helper}</p>
+            <p
+              data-testid="project-header-context"
+              className="mt-1 text-sm text-text-tertiary max-w-prose"
+            >
+              {helper}
+            </p>
           )}
         </div>
         {actions && (

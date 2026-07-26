@@ -52,7 +52,7 @@ vi.mock('../lib/projectQueries.js', () => ({
   useOpenspec: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
 }))
 
-import { useRegistryList } from '../lib/registry.js'
+import { useRegistryList, useProjectOverview } from '../lib/registry.js'
 
 import { SingleProjectView } from './SingleProjectView.js'
 
@@ -72,7 +72,7 @@ function mockCondition(condition: string, projectId = 'acme', reachable = true) 
           condition,
           openChanges: [],
           capabilityCount: 0,
-          lastCommitAt: null,
+          lastCommitAt: '2026-07-26T00:00:00.000Z',
         },
       },
     ],
@@ -345,5 +345,42 @@ describe('SingleProjectView — an unreachable project', () => {
 
     expect(screen.getByTestId('unreachable-notice')).toBeDefined()
     expect(screen.queryByRole('heading', { level: 2, name: 'Capabilities' })).toBeNull()
+  })
+})
+
+/*
+ * The MODIFIED `Single-Project Header Context` requirement asks for name and
+ * client, the current branch, and a summary of open changes; the needs-migration
+ * scenario this change added asserts branch and last-commit context still render.
+ * The view rendered the project id and nothing else.
+ */
+describe('SingleProjectView — header context', () => {
+  afterEach(() => cleanup())
+
+  it('SV21: the header carries branch and last-commit context', () => {
+    mockCondition('migrated')
+    vi.mocked(useProjectOverview).mockReturnValue({
+      data: { branch: 'feat/openspec-project-reader', tdd: null, markers: {} },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useProjectOverview>)
+
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const header = screen.getByTestId('project-header-context')
+    expect(header.textContent).toContain('feat/openspec-project-reader')
+    expect(header.textContent).toMatch(/last commit/i)
+  })
+
+  it('SV22: a needs-migration project keeps that context — the scenario requires it', () => {
+    mockCondition('needs-migration')
+    vi.mocked(useProjectOverview).mockReturnValue({
+      data: { branch: 'main', tdd: null, markers: {} },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useProjectOverview>)
+
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByTestId('migration-notice')).toBeDefined()
+    expect(screen.getByTestId('project-header-context').textContent).toContain('main')
   })
 })

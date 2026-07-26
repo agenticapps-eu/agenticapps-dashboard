@@ -120,6 +120,7 @@ const COLLAPSE_THRESHOLD = 3
 export function ChangeProgress({ projectId }: ChangeProgressProps): React.JSX.Element {
   const query = useOpenspec(projectId)
   const [expanded, setExpanded] = useState(false)
+  const [showArchive, setShowArchive] = useState(false)
 
   if (query.error) {
     const msg = query.error.message
@@ -159,7 +160,7 @@ export function ChangeProgress({ projectId }: ChangeProgressProps): React.JSX.El
     )
   }
 
-  const { present, openChanges } = query.data
+  const { present, openChanges, archived } = query.data
 
   if (!present) {
     return (
@@ -173,18 +174,6 @@ export function ChangeProgress({ projectId }: ChangeProgressProps): React.JSX.El
     )
   }
 
-  if (openChanges.length === 0) {
-    return (
-      <PanelContainer panelId="change-progress" title={TITLE}>
-        <EmptyState
-          icon={<Inbox size={20} className="text-text-tertiary" />}
-          title="No change in flight"
-          body="Every proposed change has been archived. Open one to start the next piece of work."
-        />
-      </PanelContainer>
-    )
-  }
-
   const moving = openChanges.filter(isMoving)
   const proposed = openChanges.filter((c) => !isMoving(c))
   const collapseProposed = proposed.length > COLLAPSE_THRESHOLD
@@ -192,11 +181,21 @@ export function ChangeProgress({ projectId }: ChangeProgressProps): React.JSX.El
 
   return (
     <PanelContainer panelId="change-progress" title={TITLE}>
+      {openChanges.length === 0 ? (
+        <EmptyState
+          icon={<Inbox size={20} className="text-text-tertiary" />}
+          title="No change in flight"
+          body="Every proposed change has been archived. Open one to start the next piece of work."
+        />
+      ) : null}
+
+      {openChanges.length > 0 ? (
       <p data-testid="change-summary" className="text-sm text-text-secondary">
         {moving.length} in flight
         <span aria-hidden="true"> · </span>
         {proposed.length} proposed
       </p>
+      ) : null}
 
       {moving.length > 0 ? (
         <ul className="divide-y divide-border-subtle">
@@ -256,6 +255,54 @@ export function ChangeProgress({ projectId }: ChangeProgressProps): React.JSX.El
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {/*
+       * Completed work, per the requirement's archive clause. Folded by default:
+       * the panel's job is what needs attention now, and a project accumulates
+       * archived changes without bound. Order comes from the daemon, which sorts
+       * by the pinned zero-padded ISO prefix; a name without one carries no
+       * chronological claim and says so rather than being silently interleaved.
+       */}
+      {archived.length > 0 ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowArchive((a) => !a)}
+            aria-expanded={showArchive}
+            aria-controls="change-progress-archive"
+            className="-my-1.5 flex items-center gap-1 self-start rounded-md py-1.5 text-sm text-text-secondary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {showArchive ? (
+              <ChevronDown size={14} aria-hidden="true" />
+            ) : (
+              <ChevronRight size={14} aria-hidden="true" />
+            )}
+            {showArchive ? 'Hide' : 'Show'} {archived.length} completed
+          </button>
+
+          {showArchive ? (
+            <ul id="change-progress-archive" className="divide-y divide-border-subtle">
+              {archived.map((a) => (
+                <li
+                  key={a.name}
+                  data-testid={`archived-${a.name}`}
+                  className="flex items-baseline justify-between gap-3 py-2"
+                >
+                  <span
+                    title={a.name}
+                    className="min-w-0 truncate font-mono text-sm text-text-secondary"
+                  >
+                    {a.name}
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-text-tertiary">
+                    {a.datePrefix ?? 'no date'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       ) : null}
     </PanelContainer>
   )
