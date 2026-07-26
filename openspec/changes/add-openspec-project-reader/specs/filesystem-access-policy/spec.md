@@ -8,11 +8,19 @@ project root and MUST reject it unless the resolved real path lies under
 and paths whose realpath escapes the allow-list MUST be rejected.
 
 `<root>/.planning` remains allow-listed after the GSD phase reader is retired,
-and is load-bearing rather than residual: `.planning/skill-observations/` is read
-by the override-sentinel scanner and by the commitment route, and
-`.planning/config.json` is still read as live lifecycle configuration. Only
-`.planning/phases/` stops being read. A later change that removes this entry MUST
-relocate those readers first.
+and is load-bearing rather than residual. Two readers keep it alive, and they
+read **different subtrees**, so neither can be retired by removing the other:
+
+- `.planning/skill-observations/` — read by the commitment, observations and
+  discipline routes.
+- `.planning/phases/<slug>/multi-ai-review-skipped` — read by the
+  override-sentinel scanner, which serves `fleet-coverage`'s
+  `Review-Override Visibility`.
+
+What stops being read is the phase **artifacts** under `.planning/phases/` — the
+plans, review files and verification files the retired reader parsed. The
+directory itself is still read, for the sentinel above. A later change that
+removes this allow-list entry MUST relocate both readers first.
 
 `<root>/openspec` carries proposals, task lists, spec deltas, and multi-vendor
 review prose, and this route makes them readable to any client holding the bearer

@@ -5,6 +5,7 @@ import type { RegistryListItem } from '@agenticapps/dashboard-shared'
 
 import { useProjectOverview } from '../lib/registry.js'
 import { useLongPress } from '../lib/touchLongPress.js'
+import { triageOrder } from '../lib/openChange.js'
 
 import { SchemaDriftState } from './SchemaDriftState.js'
 
@@ -21,23 +22,12 @@ export interface ProjectCardProps {
  * "no task list" rather than 0/0 — the two are different states, and the
  * OpenSpec CLI reports zero for both, so the distinction comes from the tree.
  */
+/** The card previews at most this many changes before collapsing to a count. */
+const MAX_CARD_CHANGES = 3
+
 function taskRatio(c: { completedTasks: number; totalTasks: number; hasTaskArtifact: boolean }): string {
   if (!c.hasTaskArtifact) return 'no task list'
   return `${c.completedTasks}/${c.totalTasks}`
-}
-
-/**
- * Work in flight first, then untouched proposals, each group keeping the
- * daemon's alphabetical order. The card only has room for three changes, and
- * spending that room on whatever sorts first alphabetically buries the one
- * change that is actually moving — which is the single question this card is
- * read to answer. Mirrors `isMoving` in the Change Progress panel.
- */
-function triageOrder(
-  changes: RegistryListItem['status']['openChanges'],
-): RegistryListItem['status']['openChanges'] {
-  const moving = changes.filter((c) => c.hasTaskArtifact && c.completedTasks > 0)
-  return [...moving, ...changes.filter((c) => !(c.hasTaskArtifact && c.completedTasks > 0))]
 }
 
 /**
@@ -214,11 +204,11 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
               {item.status.openChanges.length === 1 ? '' : 's'}{' '}
               <span className="ml-2 font-mono font-normal text-text-secondary">
                 {triageOrder(item.status.openChanges)
-                  .slice(0, 3)
+                  .slice(0, MAX_CARD_CHANGES)
                   .map((c) => `${c.name} ${taskRatio(c)}`)
                   .join(' · ')}
-                {item.status.openChanges.length > 3
-                  ? ` · +${item.status.openChanges.length - 3} more`
+                {item.status.openChanges.length > MAX_CARD_CHANGES
+                  ? ` · +${item.status.openChanges.length - MAX_CARD_CHANGES} more`
                   : ''}
               </span>
             </span>

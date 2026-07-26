@@ -6,10 +6,18 @@ import { homedir } from 'node:os'
  * Top-level project directories readable through /api/projects/:id/read.
  *
  * `.planning` stays after the GSD phase reader is retired and is load-bearing,
- * not residual: `.planning/skill-observations/` is read by overrideSentinelScanner
- * and routes/commitment.ts, and `.planning/config.json` is live lifecycle config.
- * Only `.planning/phases/` stopped being read. Relocate those readers before
- * removing this entry.
+ * not residual. Two distinct readers keep it alive, and they read *different*
+ * subtrees:
+ *   - `.planning/skill-observations/` — phaseDetail.ts, reached by
+ *     routes/commitment.ts, routes/observations.ts and routes/discipline.ts.
+ *   - `.planning/phases/<slug>/multi-ai-review-skipped` — the override-sentinel
+ *     scanner, which serves `fleet-coverage`'s Review-Override Visibility.
+ * Relocate both before removing this entry.
+ *
+ * What stopped being read is the phase *artifacts* under `.planning/phases/` —
+ * the plans, reviews and verification files. The directory itself is still read,
+ * for the sentinel above. `.planning/config.json` is project-side workflow
+ * config; no daemon code path reads it.
  *
  * `docs/legacy-planning` is deliberately absent — allow-listing `docs/` to reach
  * relocated GSD history would expose unrelated content, and that history is

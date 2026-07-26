@@ -294,3 +294,39 @@ esac`,
     expect([c.completedTasks, c.totalTasks]).toEqual([2, 3])
   })
 })
+
+describe('readOpenspecProject — capability set is tree-enumerated', () => {
+  it('does not let CLI ordering diverge from tree ordering', async () => {
+    const root = makeProject()
+    const binDir = tmp()
+    const bin = makeBin(
+      binDir,
+      `case "$*" in
+  *--specs*) echo '{"specs":[{"id":"help-docs","requirementCount":1},{"id":"daemon-runtime","requirementCount":2}]}' ;;
+  *) echo '{"changes":[]}' ;;
+esac`,
+    )
+
+    const viaCli = await readOpenspecProject(root, bin)
+    const viaTree = await readOpenspecProject(root, null)
+    expect(viaCli.capabilities).toEqual(viaTree.capabilities)
+  })
+
+  it('keeps a capability the CLI declines to report', async () => {
+    const root = makeProject()
+    const binDir = tmp()
+    // The CLI reports only one of the two capabilities on disk.
+    const bin = makeBin(
+      binDir,
+      `case "$*" in
+  *--specs*) echo '{"specs":[{"id":"daemon-runtime","requirementCount":9}]}' ;;
+  *) echo '{"changes":[]}' ;;
+esac`,
+    )
+
+    const state = await readOpenspecProject(root, bin)
+    expect(state.capabilities.map((c) => c.id)).toEqual(['daemon-runtime', 'help-docs'])
+    // The reported one takes the CLI count; the unreported one keeps the tree's.
+    expect(state.capabilities.find((c) => c.id === 'daemon-runtime')?.requirementCount).toBe(9)
+  })
+})

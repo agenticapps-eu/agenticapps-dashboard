@@ -28,6 +28,7 @@ import {
   useIntegrations,
   useSentryRecent,
   useLinearIssues,
+  useOpenspec,
 } from './projectQueries.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -991,6 +992,54 @@ describe('useLinearIssues', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect((result.current.error as Error).message).toBe('not_configured')
 
+    qc.clear()
+  })
+})
+
+/*
+ * useOpenspec replaced usePhaseProgress and useSecurity, both of which carried
+ * these three cases. The cross-project one is the file's stated cache-leakage
+ * guard: two projects must never share one openspec payload.
+ */
+describe('useOpenspec', () => {
+  const BODY = { present: true, openChanges: [], capabilities: [], archived: [] }
+
+  it('Q12: queryKey is ["openspec", id]', () => {
+    const { qc, wrapper } = makeWrapper()
+    renderHook(() => useOpenspec('acme'), { wrapper })
+    expect(qc.getQueryCache().getAll().map((q) => q.queryKey)).toContainEqual(['openspec', 'acme'])
+    qc.clear()
+  })
+
+  it('Q13: fetches /api/projects/{id}/openspec', async () => {
+    mockFetch.mockResolvedValue(makeSuccessResponse(BODY))
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useOpenspec('acme'), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(String(mockFetch.mock.calls[0]?.[0])).toContain('/api/projects/acme/openspec')
+    qc.clear()
+  })
+
+  it('Q14: stays idle when id is null', () => {
+    const { qc, wrapper } = makeWrapper()
+    const { result } = renderHook(() => useOpenspec(null), { wrapper })
+    expect(result.current.fetchStatus).toBe('idle')
+    qc.clear()
+  })
+
+  it('Q15: does not leak one project openspec state into another', async () => {
+    const acme = { ...BODY, capabilities: [{ id: 'a', requirementCount: 1 }] }
+    const beta = { ...BODY, capabilities: [{ id: 'b', requirementCount: 2 }] }
+    mockFetch.mockImplementation((url: unknown) =>
+      Promise.resolve(makeSuccessResponse(String(url).includes('/acme/') ? acme : beta)),
+    )
+    const { qc, wrapper } = makeWrapper()
+    const { result: a } = renderHook(() => useOpenspec('acme'), { wrapper })
+    const { result: b } = renderHook(() => useOpenspec('beta'), { wrapper })
+    await waitFor(() => expect(a.current.isSuccess).toBe(true))
+    await waitFor(() => expect(b.current.isSuccess).toBe(true))
+    expect(qc.getQueryData(['openspec', 'acme'])).toEqual(acme)
+    expect(qc.getQueryData(['openspec', 'beta'])).toEqual(beta)
     qc.clear()
   })
 })

@@ -20,6 +20,7 @@
 import { ChevronDown, ChevronRight, FileQuestion, Inbox } from 'lucide-react'
 import React, { useState } from 'react'
 
+import { isMoving } from '../../lib/openChange.js'
 import { useOpenspec } from '../../lib/projectQueries.js'
 import { EmptyState } from '../ui/EmptyState.js'
 import { Pill } from '../ui/Pill.js'
@@ -97,16 +98,6 @@ function ChangeRow({ change }: ChangeRowProps): React.JSX.Element {
       )}
     </li>
   )
-}
-
-/**
- * A change is "in flight" once any task is done. Everything else — untouched
- * task lists and changes with no task artifact at all — is proposed work.
- * Splitting on real progress rather than on artifact presence is what lets the
- * panel answer "what needs me" instead of listing nine slugs alphabetically.
- */
-function isMoving(c: ChangeRowProps['change']): boolean {
-  return c.hasTaskArtifact && c.completedTasks > 0
 }
 
 /**

@@ -1,16 +1,9 @@
 /**
  * SingleProjectView — top-level shell for /projects/{id}.
  *
- * D-5-01: 3-column grid (left=Discipline, center=Phase Progress, right=Health).
- * Phase 4 D-4-09 staged this widening — Phase 5 plan 06 executes it.
- *
- * Panels:
- *   - Plan 04 (Phase 4) filled left + center columns.
- *   - Plan 05/06 (Phase 5) filled the right column with HEALTH-01..05 panels.
- *
- * Wave 5 (Plan 05.1-06):
- *   - V2 is the only mode. PageHeader renders unconditionally. ProjectHeader deleted.
- *   - Column gap normalized gap-4 → gap-6 (Pitfall 8 — consistent 24px rhythm).
+ * Three columns: left = Discipline, centre = Change Progress, right = Health.
+ * The centre column stacks below `xl` so the panels do not truncate to stubs on
+ * a tablet, which is a stated viewing context.
  *
  * document.title is set here (not in ProjectLayout — layout is generic; title is per-page).
  */

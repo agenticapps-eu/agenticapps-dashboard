@@ -11,6 +11,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import {
+  ProjectOverviewSchema,
+  OpenspecProjectStateSchema,
+} from '@agenticapps/dashboard-shared'
 import { RouterProvider, createRouter, createMemoryHistory } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
@@ -52,19 +56,33 @@ const REGISTRY_RESPONSE = [
   },
 ]
 
-const OVERVIEW_RESPONSE = {
-  branch: 'feature/phase-4',
-  phaseStatus: 'executing',
-  condition: 'migrated' as const,
-  openChanges: [],
-  capabilityCount: 0,
-  stage1: null,
-  stage2: null,
-  dbAudit: null,
+/*
+ * Parsed through the shared schema so this fixture cannot drift past the strict
+ * boundary it stands in for. `ProjectOverviewSchema` is `.strict()` and now
+ * carries exactly { tdd, branch, markers } — the five phase fields went with the
+ * reader, and condition/openChanges/capabilityCount belong to the registry item,
+ * not the overview.
+ */
+const OVERVIEW_RESPONSE = ProjectOverviewSchema.parse({
+  branch: 'feat/openspec-project-reader',
   tdd: { greenPairs: 5, totalTasks: 6 },
-  verification: { mustHavesTotal: 9, mustHavesEvidenced: 0 },
-  markers: { workflowSkillInstalled: true, metaObserverInstalled: true },
-}
+  markers: { gitRepo: true, planning: true, claudeSkills: true },
+})
+
+const OPENSPEC_RESPONSE = OpenspecProjectStateSchema.parse({
+  present: true,
+  openChanges: [
+    {
+      name: 'add-thing',
+      completedTasks: 2,
+      totalTasks: 3,
+      hasTaskArtifact: true,
+      affectedCapabilities: ['daemon-runtime'],
+    },
+  ],
+  capabilities: [{ id: 'daemon-runtime', requirementCount: 9 }],
+  archived: [],
+})
 
 const COMMITMENT_RESPONSE = {
   markdown: '## Workflow commitment\n- Follow TDD discipline\n- No shortcuts',
@@ -157,6 +175,9 @@ function buildMockApiFetch(overrides: Record<string, unknown> = {}) {
   return async (path: string) => {
     if (path === '/api/registry') {
       return { ok: true, data: overrides['registry'] ?? REGISTRY_RESPONSE }
+    }
+    if (path === '/api/projects/acme/openspec') {
+      return { ok: true, data: overrides['openspec'] ?? OPENSPEC_RESPONSE }
     }
     if (path === '/api/projects/acme/overview') {
       return { ok: true, data: overrides['overview'] ?? OVERVIEW_RESPONSE }
@@ -317,5 +338,28 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
 
     // acme's entry should be independent
     expect(queryClient.getQueryData(['commitment', 'acme'])).not.toBeUndefined()
+  })
+})
+
+/*
+ * The centre column had no integration coverage: without a handler for the new
+ * route the mock fell through to `{}`, `present` came back undefined, and both
+ * panels rendered their not-on-OpenSpec path while the assertions still passed.
+ */
+describe('projects/$projectId — the OpenSpec centre column', () => {
+  afterEach(() => cleanup())
+
+  it('E2E8: renders Change Progress and Capabilities from the daemon payload', async () => {
+    await renderProjectDetail()
+
+    // Both headings render during loading too, so waiting on them alone proves
+    // nothing. Wait on the payload-derived content.
+    await waitFor(() => {
+      expect(screen.getByText('2/3')).toBeDefined()
+    })
+    expect(screen.getByRole('heading', { level: 2, name: 'Change Progress' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Capabilities' })).toBeDefined()
+    expect(screen.getByTestId('capability-daemon-runtime')).toBeDefined()
+    expect(screen.getByTestId('change-add-thing')).toBeDefined()
   })
 })

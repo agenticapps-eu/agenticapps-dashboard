@@ -8,7 +8,7 @@
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, symlinkSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { realpath } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, delimiter } from 'node:path'
 
 import { describe, it, expect, afterEach } from 'vitest'
 
@@ -260,5 +260,40 @@ describe('getOpenspecBinary — resolved once, never re-walked per request', () 
       getOpenspecBinary({ PATH: dir }),
     ])
     expect([a, b, c]).toEqual([bin, bin, bin])
+  })
+})
+
+/*
+ * These two guards decide which binary the daemon executes. The pre-existing
+ * "empty or unset PATH" case never reached them: both `PATH: ''` and `{}`
+ * short-circuit at `if (!pathVar) return null`. Deleting `if (!entry) continue`
+ * broke no test, and the daemon would have executed ./openspec from its own cwd.
+ */
+describe('resolveOpenspecBinary — PATH element guards', () => {
+  it('never searches the cwd for an empty PATH element', async () => {
+    const dir = tmp()
+    const cwdDir = tmp()
+    makeBin(cwdDir, 'openspec', 'echo "{}"')
+    const prev = process.cwd()
+    process.chdir(cwdDir)
+    try {
+      // A leading delimiter is the POSIX "current directory" element.
+      expect(await resolveOpenspecBinary({ PATH: `${delimiter}${dir}` })).toBeNull()
+    } finally {
+      process.chdir(prev)
+    }
+  })
+
+  it('ignores a relative PATH element', async () => {
+    const cwdDir = tmp()
+    mkdirSync(join(cwdDir, 'bin'), { recursive: true })
+    makeBin(join(cwdDir, 'bin'), 'openspec', 'echo "{}"')
+    const prev = process.cwd()
+    process.chdir(cwdDir)
+    try {
+      expect(await resolveOpenspecBinary({ PATH: 'bin' })).toBeNull()
+    } finally {
+      process.chdir(prev)
+    }
   })
 })

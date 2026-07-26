@@ -90,6 +90,12 @@ function makeWrapper() {
 
 beforeEach(() => {
   document.title = 'initial title'
+  // mockCondition sets a persistent mockReturnValue; without this reset a case
+  // silently inherits whatever condition the previous one left behind.
+  vi.mocked(useRegistryList).mockReturnValue({
+    data: undefined,
+    isLoading: true,
+  } as unknown as ReturnType<typeof useRegistryList>)
 })
 
 afterEach(() => {
@@ -160,61 +166,6 @@ describe('SingleProjectView', () => {
     expect(headings).toContain('Capabilities')
     // Work in flight reads before the standing promise it changes.
     expect(headings.indexOf('Change Progress')).toBeLessThan(headings.indexOf('Capabilities'))
-  })
-})
-
-describe('SingleProjectView — a needs-migration project', () => {
-  afterEach(() => cleanup())
-
-  it('SV15: renders the migration notice instead of the change panels', () => {
-    mockCondition('needs-migration')
-    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
-
-    expect(screen.getByTestId('migration-notice')).toBeDefined()
-
-    /*
-     * The two OpenSpec panels have no source on a GSD-layout project, so they
-     * do not mount at all rather than mounting into a permanent empty state.
-     * Probed by their content, not by the panel title: the notice deliberately
-     * keeps the "Change Progress" heading so the column's slot identity stays
-     * stable while the body explains why it is empty.
-     */
-    expect(screen.queryByRole('heading', { level: 2, name: 'Capabilities' })).toBeNull()
-    // The column itself keeps its testid — it is the slot, not a change row.
-    const changeRows = document.querySelectorAll(
-      '[data-testid^="change-"]:not([data-testid="change-progress-column"])',
-    )
-    expect(changeRows.length).toBe(0)
-    expect(document.querySelectorAll('[data-testid^="capability-"]').length).toBe(0)
-  })
-
-  it('SV16: header context still renders — neither a blank page nor an error', () => {
-    mockCondition('needs-migration')
-    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
-
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('acme')
-    // Discipline and health columns are git- and filesystem-derived, so they
-    // keep working on a project that never migrated.
-    expect(screen.getByTestId('discipline-column')).toBeDefined()
-    expect(screen.getByTestId('health-column')).toBeDefined()
-  })
-
-  it('SV17: the notice explains the layout predates OpenSpec and does not read as an error', () => {
-    mockCondition('needs-migration')
-    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
-
-    const notice = screen.getByTestId('migration-notice')
-    expect(notice.textContent).toMatch(/OpenSpec/)
-    expect(notice.textContent).toMatch(/migrat/i)
-    expect(screen.queryByRole('alert')).toBeNull()
-  })
-
-  it('SV18: a migrated project renders the panels and no migration notice', () => {
-    mockCondition('migrated')
-    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
-
-    expect(screen.queryByTestId('migration-notice')).toBeNull()
-    expect(screen.getByRole('heading', { level: 2, name: 'Change Progress' })).toBeDefined()
   })
 
   it('SV5: health-column IS present (Phase 5 added it)', () => {
@@ -296,6 +247,62 @@ describe('SingleProjectView — a needs-migration project', () => {
     expect(healthCol.className).toContain('flex-col')
     expect(healthCol.className).toContain('gap-6')
   })
+})
+
+describe('SingleProjectView — a needs-migration project', () => {
+  afterEach(() => cleanup())
+
+  it('SV15: renders the migration notice instead of the change panels', () => {
+    mockCondition('needs-migration')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByTestId('migration-notice')).toBeDefined()
+
+    /*
+     * The two OpenSpec panels have no source on a GSD-layout project, so they
+     * do not mount at all rather than mounting into a permanent empty state.
+     * Probed by their content, not by the panel title: the notice deliberately
+     * keeps the "Change Progress" heading so the column's slot identity stays
+     * stable while the body explains why it is empty.
+     */
+    expect(screen.queryByRole('heading', { level: 2, name: 'Capabilities' })).toBeNull()
+    // The column itself keeps its testid — it is the slot, not a change row.
+    const changeRows = document.querySelectorAll(
+      '[data-testid^="change-"]:not([data-testid="change-progress-column"])',
+    )
+    expect(changeRows.length).toBe(0)
+    expect(document.querySelectorAll('[data-testid^="capability-"]').length).toBe(0)
+  })
+
+  it('SV16: header context still renders — neither a blank page nor an error', () => {
+    mockCondition('needs-migration')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('acme')
+    // Discipline and health columns are git- and filesystem-derived, so they
+    // keep working on a project that never migrated.
+    expect(screen.getByTestId('discipline-column')).toBeDefined()
+    expect(screen.getByTestId('health-column')).toBeDefined()
+  })
+
+  it('SV17: the notice explains the layout predates OpenSpec and does not read as an error', () => {
+    mockCondition('needs-migration')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const notice = screen.getByTestId('migration-notice')
+    expect(notice.textContent).toMatch(/OpenSpec/)
+    expect(notice.textContent).toMatch(/migrat/i)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('SV18: a migrated project renders the panels and no migration notice', () => {
+    mockCondition('migrated')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.queryByTestId('migration-notice')).toBeNull()
+    expect(screen.getByRole('heading', { level: 2, name: 'Change Progress' })).toBeDefined()
+  })
+
 })
 
 describe('SingleProjectView — PageHeader always renders (Wave 5 — flag removed)', () => {

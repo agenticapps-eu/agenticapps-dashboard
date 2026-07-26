@@ -198,12 +198,25 @@ export async function readOpenspecProject(
     })
   }
 
+  /*
+   * Capabilities merge the same way changes do: the tree decides which exist,
+   * the CLI supplies the count for the ones it recognises. Replacing the set
+   * wholesale contradicted the rule stated at the top of this file — a
+   * capability directory the CLI declines to report would vanish from the panel
+   * exactly when the binary is present, which is the majority case and the
+   * failure the tree-enumerates rule exists to prevent.
+   *
+   * Merging by id also fixes an ordering divergence: the tree sorts ids, the
+   * CLI returns its own order, so the Capability panel could list the same
+   * project differently depending on whether the binary was installed.
+   */
   let capabilities = tree.capabilities
-  if (specsRes.ok && specsRes.data.length > 0) {
-    capabilities = specsRes.data.map((s) => ({
-      id: s.id,
-      requirementCount: s.requirementCount,
-    }))
+  if (specsRes.ok) {
+    const countById = new Map(specsRes.data.map((s) => [s.id, s.requirementCount]))
+    capabilities = tree.capabilities.map((c) => {
+      const fromCli = countById.get(c.id)
+      return fromCli === undefined ? c : { ...c, requirementCount: fromCli }
+    })
   }
 
   return { ...tree, openChanges, capabilities }

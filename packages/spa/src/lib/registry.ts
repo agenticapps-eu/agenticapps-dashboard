@@ -306,8 +306,9 @@ export function filterAndSort(
     return a.name.localeCompare(b.name) // asc
   }
 
-  // Was cmpPhase. Sorts by how much work is open rather than by a synthesised
-  // phase number; ties fall back to name so the order stays stable.
+  // Still named cmpPhase because `'phase'` is the persisted sort-key wire value;
+  // the behaviour is now "most open work first", with name breaking ties so the
+  // order stays stable. Renaming the key would invalidate stored preferences.
   const cmpPhase = (a: RegistryListItem, b: RegistryListItem): number => {
     const u = cmpUnreachable(a, b)
     if (u !== 0) return u
