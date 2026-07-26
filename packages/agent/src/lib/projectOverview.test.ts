@@ -12,10 +12,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { ProjectOverviewSchema } from '@agenticapps/dashboard-shared'
 
 import {
-  parseReviewFile,
-  parseVerification,
   detectMarkers,
-  findLatestPhaseDir,
   parseTddPairs,
   detectBranch,
   readOverview,
@@ -27,51 +24,6 @@ const FIXTURE_ROOT = new URL(
   import.meta.url
 ).pathname
 
-describe('parseReviewFile', () => {
-  it('returns null for a missing file', () => {
-    expect(parseReviewFile('/non-existent/path/02-REVIEW.md')).toBeNull()
-  })
-
-  it('returns stage1 findings from fixture frontmatter (critical→red, warning→yellow, info→green)', () => {
-    const reviewPath = join(FIXTURE_ROOT, '.planning', 'phases', '02-foo', '02-REVIEW.md')
-    const result = parseReviewFile(reviewPath)
-    expect(result).not.toBeNull()
-    expect(result?.ran).toBe(true)
-    expect(result?.findings).toEqual({ red: 0, yellow: 2, green: 5 })
-  })
-
-  it('falls back to tag counting when no frontmatter', () => {
-    const tmp = mkdtempSync(join(tmpdir(), 'review-test-'))
-    const filePath = join(tmp, 'REVIEW.md')
-    writeFileSync(
-      filePath,
-      [
-        '# Review',
-        '<finding severity="critical">issue A</finding>',
-        '<finding severity="warning">issue B</finding>',
-        '<finding severity="warning">issue C</finding>',
-      ].join('\n')
-    )
-    const result = parseReviewFile(filePath)
-    expect(result?.findings).toEqual({ red: 1, yellow: 2, green: 0 })
-    rmSync(tmp, { recursive: true, force: true })
-  })
-})
-
-describe('parseVerification', () => {
-  it('returns null for a missing file', () => {
-    expect(parseVerification('/non-existent/path/VERIFICATION.md')).toBeNull()
-  })
-
-  it('returns evidence and mustHaves from fixture', () => {
-    const verPath = join(FIXTURE_ROOT, '.planning', 'phases', '02-foo', '02-VERIFICATION.md')
-    const result = parseVerification(verPath)
-    expect(result).not.toBeNull()
-    expect(result?.mustHaves).toBe(3) // 3 bold-bullet list items
-    expect(result?.evidence).toBe(2) // 2 occurrences of **Evidence
-  })
-})
-
 describe('detectMarkers', () => {
   it('correctly detects markers for sample-project fixture', () => {
     const markers = detectMarkers(FIXTURE_ROOT)
@@ -82,67 +34,53 @@ describe('detectMarkers', () => {
   })
 })
 
-describe('findLatestPhaseDir', () => {
-  it('returns the absolute path to the highest-numbered phase dir', () => {
-    const result = findLatestPhaseDir(FIXTURE_ROOT)
-    expect(result).not.toBeNull()
-    expect(result).toMatch(/phases\/02-foo$/)
+describe('the retired GSD phase reader', () => {
+  it('no longer exports any phase-artifact parser', async () => {
+    const mod = await import('./projectOverview.js')
+    const exported = Object.keys(mod)
+    expect(exported).not.toContain('findLatestPhaseDir')
+    expect(exported).not.toContain('parseReviewFile')
+    expect(exported).not.toContain('parseVerification')
   })
 
-  it('returns null for a directory with no phases', () => {
-    const tmp = mkdtempSync(join(tmpdir(), 'no-phases-'))
-    expect(findLatestPhaseDir(tmp)).toBeNull()
-    rmSync(tmp, { recursive: true, force: true })
+  /*
+   * The fixture carries a fully-populated `.planning/phases/02-foo/` tree —
+   * REVIEW.md, VERIFICATION.md, PLAN.md. Reading it must now yield nothing:
+   * the artifacts are on disk and the daemon is indifferent to them.
+   */
+  it('reports no phase fields even when phase artifacts are present', async () => {
+    const overview = await readOverview(FIXTURE_ROOT)
+    for (const field of [
+      'phaseStatus',
+      'stage1',
+      'stage2',
+      'dbAudit',
+      'verification',
+    ]) {
+      expect(overview).not.toHaveProperty(field)
+    }
   })
-})
 
-describe('phase status heuristic', () => {
-  let tmp: string
-
-  beforeAll(() => {
-    tmp = realpathSync(mkdtempSync(join(tmpdir(), 'phase-status-')))
-  })
-
-  afterAll(() => {
-    rmSync(tmp, { recursive: true, force: true })
-  })
-
-  it('returns Pending when no PLAN.md in phase dir', () => {
-    const root = join(tmp, 'pending')
-    const phaseDir = join(root, '.planning', 'phases', '01-test')
+  it('is unaffected by phase artifacts appearing under a project root', async () => {
+    const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'retired-phase-')))
+    const phaseDir = join(tmp, '.planning', 'phases', '99-late')
     mkdirSync(phaseDir, { recursive: true })
-    // No PLAN.md written
-    return readOverview(root).then((overview) => {
-      expect(overview.phaseStatus).toBe('Pending')
-    })
-  })
-
-  it('returns In Progress when PLAN.md exists but evidence < mustHaves', () => {
-    const root = join(tmp, 'in-progress')
-    const phaseDir = join(root, '.planning', 'phases', '01-test')
-    mkdirSync(phaseDir, { recursive: true })
-    writeFileSync(join(phaseDir, '01-PLAN.md'), '# Plan')
+    writeFileSync(join(phaseDir, '99-PLAN.md'), '# Plan')
     writeFileSync(
-      join(phaseDir, '01-VERIFICATION.md'),
-      '- **truth1**\n- **truth2**\n- **truth3**\n**Evidence:** only one'
+      join(phaseDir, '99-VERIFICATION.md'),
+      '- **truth1**\n- **truth2**\n**Evidence:** first\n**Evidence:** second',
     )
-    return readOverview(root).then((overview) => {
-      expect(overview.phaseStatus).toBe('In Progress')
-    })
-  })
-
-  it('returns Complete when evidence >= mustHaves', () => {
-    const root = join(tmp, 'complete')
-    const phaseDir = join(root, '.planning', 'phases', '01-test')
-    mkdirSync(phaseDir, { recursive: true })
-    writeFileSync(join(phaseDir, '01-PLAN.md'), '# Plan')
     writeFileSync(
-      join(phaseDir, '01-VERIFICATION.md'),
-      '- **truth1**\n- **truth2**\n**Evidence:** first\n**Evidence:** second'
+      join(phaseDir, '99-REVIEW.md'),
+      '---\ncritical: 3\nwarning: 1\ninfo: 0\n---\n# Review',
     )
-    return readOverview(root).then((overview) => {
-      expect(overview.phaseStatus).toBe('Complete')
-    })
+
+    const before = await readOverview(tmp)
+    rmSync(join(tmp, '.planning', 'phases'), { recursive: true, force: true })
+    const after = await readOverview(tmp)
+
+    expect(after).toEqual(before)
+    rmSync(tmp, { recursive: true, force: true })
   })
 })
 
@@ -152,10 +90,9 @@ describe('readOverview', () => {
     expect(() => ProjectOverviewSchema.parse(overview)).not.toThrow()
   })
 
-  it('returns stage1 findings from fixture REVIEW.md', async () => {
+  it('reports exactly the git- and marker-derived fields that survive', async () => {
     const overview = await readOverview(FIXTURE_ROOT)
-    expect(overview.stage1).not.toBeNull()
-    expect(overview.stage1?.findings).toEqual({ red: 0, yellow: 2, green: 5 })
+    expect(Object.keys(overview).sort()).toEqual(['branch', 'markers', 'tdd'])
   })
 })
 
