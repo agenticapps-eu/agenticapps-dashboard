@@ -35,17 +35,24 @@ review.
 ## 4. Harness runner — **security-gated** · AGE-469
 
 - [ ] `POST /api/v2/workflow/harness` accepting a host and a harness identifier (TDD)
-- [ ] Identifiers select from a **fixed internal command set**; no request value is interpolated into a command line
-- [ ] Refuse any script path not resolving under a known workflow repository root
-- [ ] Timeout with process termination; no partial result cached as complete
-- [ ] Existing rate limiter applied to the route
+- [ ] Identifiers select from a **fixed internal command table**; no request value reaches an argv entry, cwd, or env var
+- [ ] Root list is a fixed daemon-side constant; no request can extend it
+- [ ] Canonicalise the script path, resolve symlinks, and **re-verify at spawn time** (TOCTOU)
+- [ ] Spawn in its own process group, with a scratch cwd under the daemon's own directory
+- [ ] Bounds on CPU time, memory, and captured output; bounded concurrency (one run per host, capped overall)
+- [ ] Timeout and bound violations terminate the **whole process group**, not just the child
+- [ ] Truncate captured output and strip absolute paths before storing or returning it
 - [ ] Test: a path outside the known roots is refused and no process starts
-- [ ] Test: fixtures are built outside every registered project root; each registered project's tree is byte-identical before and after
+- [ ] Test: a symlink inside a root pointing outside it is refused on the canonical path
+- [ ] Test: an unknown host or harness identifier is refused
+- [ ] Test: a harness that spawns children and then hangs leaves **no surviving descendant**
 - [ ] Test: rendering, refreshing, and polling the surface start no process
+- [ ] Test: stored and returned output contains no home-directory path
 - [ ] Persist results with timestamp under the daemon's own directory, at the existing mode discipline
-- [ ] Invalidate the cache on tested-artefact content change, not on age
-- [ ] Test: re-vendoring discards the cached result; an unchanged artefact keeps it with a larger age
-- [ ] **Run `/cso` on this block and commit `SECURITY.md`** — this is the second execution exception in the product
+- [ ] Cache key covers **both** the tested artefact and the harness script
+- [ ] Test: re-vendoring the artefact discards the result; re-vendoring the harness alone also discards it; an unchanged pair keeps it with a larger age
+- [ ] Test: a completed non-passing run is cached; a timed-out or bounded-out run is not
+- [ ] **Run `/cso` on this block and commit `SECURITY.md`** — the daemon runs foreign code here
 
 ## 5. Workflow surface · AGE-468
 

@@ -68,9 +68,15 @@ AGE-465, AGE-466. Design basis: `docs/spec/DASHBOARD-V2-SPEC.md` §4, §5.
 - **It does not pick a pen-test tool.** The slot is deliberately empty and
   generic. Which tool satisfies it is a mapping question and never appears in the
   UI.
-- **It does not touch the security spine.** Every read is inside a registered
-  project root or through the existing scanner allow-list. No new execution
-  surface. (`add-workflow-fleet-conformance` does widen it, and says so.)
+- **It adds no execution surface.** No deriver spawns a process.
+- **It does not itself widen the filesystem allow-list — but it depends on a
+  widening made elsewhere.** The `workflow` check reads the machine-global skill
+  directories of the hosts that install skills machine-wide. Those paths lie
+  outside every registered project root, so this change is only safe under the
+  `Named Allowed Roots For Fleet Scanners` requirement as modified by
+  `add-workflow-fleet-conformance`. That dependency is named here rather than
+  asserted: a reviewer reading this change alone would otherwise have to take
+  "the spine is untouched" on trust, and it would not be true.
 
 ## Relationship to `add-openspec-project-reader`
 

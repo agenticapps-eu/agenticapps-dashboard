@@ -8,13 +8,20 @@ this change is not blocked by the adapter extraction.
 - [ ] `packages/shared/src/schemas/board.ts` mirroring the upstream data model exactly (TDD)
 - [ ] `.strict()` like every other schema — drift becomes a parse error
 - [ ] Do **not** rename any identifier; the upstream model is frozen by explicit instruction
+- [ ] Add the response envelope (per-host present/absent/unreadable + a synthetic-data flag) as a wrapper around the frozen record shapes, not as a change to them
 - [ ] Re-export from the shared barrel
 
-## 2. Endpoint, stage 1 — stub · AGE-471
+## 2. Endpoint, stage 1 — fixture data · AGE-471
 
 - [ ] `GET /api/v2/board` returning sessions and tasks from the upstream skeleton data (TDD)
+- [ ] **Mark the payload synthetic in the envelope** — the board must state it is not showing live sessions
 - [ ] Response through the existing outbound schema-validation wrapper
-- [ ] Test: the stub response validates against the shared schema
+- [ ] Confirm the route inherits bearer auth, CORS lock, and bind-mode restrictions with no separate access path
+- [ ] Reduce working directories to repo-relative or symbolic form before they leave the daemon
+- [ ] Confirm the daemon logs and persists no board payload
+- [ ] Test: the fixture response validates against the shared schema and is flagged synthetic
+- [ ] Test: an unauthenticated request is refused like any other route
+- [ ] Test: no home-directory path appears in any response field
 
 ## 3. Board surface · AGE-472
 
@@ -32,6 +39,7 @@ this change is not blocked by the adapter extraction.
 ## 4. Adapter extraction (other repo) · AGE-470
 
 - [ ] In the viewer repo: move the model, store, and three adapters plus fixtures and tests into their own package
+- [ ] **Also move `src/lib/host-style.ts` and its test** — the colour requirement mandates importing it, and it is not part of the model/store/adapters set. Verified 2026-07-26: it lives at `src/lib/host-style.ts`, outside the paths this block originally listed
 - [ ] Move the terminal frontend into its own package importing it
 - [ ] Publish/resolve the package name used by this repo's dependency
 - [ ] Test: the extracted package's tests are green; the terminal viewer starts unchanged

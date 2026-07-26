@@ -2,17 +2,25 @@
 
 ### Requirement: Read-Only On Project Filesystems
 
-No daemon route SHALL write to, create, delete, or modify any file under a
-registered project's root. Exactly two routes SHALL spawn a process, both only as
-an explicitly user-driven action per request, and neither writing under a
-registered project's root itself:
+The daemon itself SHALL NOT write to, create, delete, or modify any file under a
+registered project's root.
 
-1. `POST /api/projects/{id}/open`, which spawns `$EDITOR`.
-2. The workflow conformance harness runner, which executes a conformance script
-   resolving under a known workflow repository root, subject to the bounds in
+Process creation is separately enumerated. The daemon SHALL spawn a process only
+through one of the following, and no further spawning surface may be introduced
+without amending this requirement:
+
+1. `POST /api/projects/{id}/open`, which spawns `$EDITOR` per explicit user click.
+2. `GET /api/projects/{id}/git`, bounded by the git command allow-list below.
+3. The OpenSpec reader's use of the `openspec` binary, bounded by its own argv
+   discipline.
+4. The workflow conformance harness runner, bounded by
    `workflow-fleet-conformance`.
 
-No third spawning route may be added without amending this requirement.
+Items 1 and 4 run foreign programs the daemon does not control. For those, the
+daemon SHALL guarantee only what it can enforce at the spawn boundary — the
+program invoked, its arguments, its working directory, its resource bounds, and
+its termination. It SHALL NOT assert what the spawned program does to the
+filesystem, because it cannot.
 
 #### Scenario: A read route never mutates the project
 - **WHEN** any project-scoped read route is called
@@ -24,15 +32,15 @@ No third spawning route may be added without amending this requirement.
 - **THEN** the daemon spawns `$EDITOR` against that path and returns 200 immediately
 - **AND** the daemon itself performs no write; any subsequent change is the user's own editor action.
 
-#### Scenario: The harness exception writes nothing under a project root
+#### Scenario: The harness is spawned under a constrained working directory
 - **WHEN** a conformance harness is executed at explicit user request
-- **THEN** any fixtures it builds are created outside every registered project's root
-- **AND** the working tree of every registered project is byte-identical before and after.
+- **THEN** the daemon sets its working directory to a scratch directory under the daemon's own directory, outside every registered project root
+- **AND** the guarantee recorded is that the daemon spawned it so constrained, not that the script confined itself.
 
-#### Scenario: Only these two routes spawn
-- **WHEN** the daemon's route surface is inspected for process creation
-- **THEN** exactly the editor route and the harness runner create processes
-- **AND** every other route serves its response without spawning.
+#### Scenario: The spawn enumeration is exhaustive
+- **WHEN** the daemon's route and library surface is inspected for process creation
+- **THEN** every site is one of the four enumerated above
+- **AND** a fifth site is a violation of this requirement rather than an undocumented detail.
 
 ### Requirement: Named Allowed Roots For Fleet Scanners
 

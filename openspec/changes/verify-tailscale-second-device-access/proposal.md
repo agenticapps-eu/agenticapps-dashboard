@@ -61,8 +61,55 @@ by it. This change stays open; it does not get closed and reopened.
 - Relaxing CIDR enforcement to make the test easier. If enforcement blocks a
   legitimate device, that is a finding, not an obstacle to route around.
 
-## Open questions
+## Resolved: defects spin out
 
-> [GAP: If verification uncovers a defect, does it get fixed inside this change
-> or spun out? Recommended: spin out, so this change stays a clean evidence
-> record and the fix carries its own spec delta.]
+The open question about whether a defect found during verification is fixed here
+or spun out is **decided: spun out.** `tasks.md` already adopts it. Recorded as a
+decision so the executor does not re-litigate it, and so this change stays a
+clean evidence record.
+
+## Review findings, 2026-07-26 — recorded, not yet resolved
+
+Two reviewers (`gemini`, `opencode`) returned REQUEST-CHANGES; see `REVIEWS.md`.
+`codex` was unavailable. Carried here for the next editor. **None is fixed yet.**
+
+1. **The CIDR requirement may be in the wrong capability.**
+   `CAPABILITY-MAP.md` assigns CIDR enforcement to `daemon-runtime` and tokens,
+   CORS, and the pair flow to `auth-and-pairing`. This change's second added
+   requirement puts a daemon-runtime mechanism into `auth-and-pairing`. Either
+   move it, or restate it as a remote-access policy that references the mechanism
+   without duplicating it.
+
+2. **The correction note overstates its case.** It says neither behaviour was
+   assured anywhere before. `daemon-runtime` already carries "rejects clients
+   outside the Tailscale CIDR unless that enforcement is explicitly disabled", so
+   the second requirement partly restates existing coverage. The first
+   requirement — concurrent multi-device pairing — is genuinely new.
+
+3. **A scenario implies daemon-side state that does not exist.** `auth-and-pairing`
+   specifies that pairing state is client-side only; the daemon tracks no paired
+   devices. "A second device pairs against a daemon that already has a paired
+   device" cannot be arranged from the daemon side. Restate as observable
+   browser-side behaviour.
+
+4. **The opt-out flag has no scenario of its own.** Task 3.2 asserts that
+   disabling enforcement requires an explicit flag and is not the default, but
+   that assertion is folded into the off-tailnet rejection scenario instead of
+   having its own.
+
+5. **Address family is unspecified.** A tailnet IPv6 peer is refused, because the
+   boundary is IPv4 CGNAT. This is a spec gap rather than a defect — the code
+   matches the spec — and is addressed by the separate change
+   `decide-tailnet-ipv6-policy`. Verification should exercise it rather than
+   discover it.
+
+6. **Task block 2 is stale.** The sequence note above requires rewriting it
+   against the four v2 surfaces before the run. It still names the v1
+   three-column view and its subprocess-spawning panels. Rewrite it before
+   execution, or an executor will run it as written.
+
+7. **Inter-device transport of the bearer token is unspecified.** Multi-device
+   pairing introduces a device-to-device hop for the pair URL, which carries a
+   credential. Existing specs cover daemon-to-browser transport only. Either
+   state that the operator owns that hop as a non-goal, or specify re-sharing
+   after rotation.

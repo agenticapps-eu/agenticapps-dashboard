@@ -66,5 +66,45 @@ worth carrying.
 - Reading relocated `docs/legacy-planning/` trees. That would widen the
   allow-list into `docs/`, which holds unrelated content, for history already
   archived in `openspec/changes/archive/`. Explicitly rejected.
-- A new coverage-matrix column for OpenSpec. `workflowVersion >= 3.0.0` already
-  implies it.
+- A new coverage-matrix column for OpenSpec. ⚠ **The original justification for
+  this non-goal was false — see the review findings below.** The non-goal itself
+  stands, but for a different reason: v2 withdraws the coverage matrix entirely,
+  so there is no column to add.
+
+## Review findings, 2026-07-26 — recorded, not yet resolved
+
+Three reviewers (`gemini`, `codex`, `opencode`) returned REQUEST-CHANGES; see
+`REVIEWS.md`. The following were verified against the repo and are carried here
+so the next editor of this change does not have to rediscover them. **None is
+fixed yet.**
+
+1. **`workflowVersion >= 3.0.0` does not imply OpenSpec.** This premise appears
+   in the non-goal above and in `CAPABILITY-MAP.md` GAP-05. Counterexample,
+   measured: `claude-workflow` ships `version: 3.0.0` and has no `openspec/`
+   directory. The repo that publishes 3.0.0 refutes it. Corrected in the
+   capability map's appended errata.
+
+2. **The `openspec` binary is a new process-spawning surface, unspecified.** The
+   hybrid read strategy invokes a binary resolved from `PATH`. The security spine
+   scopes the git subprocess with a command allow-list and now enumerates every
+   spawning site; this one needs the same treatment — how the binary is located,
+   argv rather than shell, and which user-controlled values reach it.
+   `add-workflow-fleet-conformance` already lists it as spawn site 3, so the
+   enumeration is consistent; the argv discipline is still missing here.
+
+3. **Auto-discovery contradicts the install hint.** The change adds `openspec/`
+   as a discovery marker but leaves the existing auto-discovery scenario naming
+   the workflow-skill and `.planning/config.json` markers. A GSD-only repo stays
+   registrable through the old marker, then its card tells the user to install a
+   workflow that is already installed. Modify the existing requirement rather
+   than adding a parallel one.
+
+4. **Archive ordering has no pinned format.** "Ordered by their date prefix" is
+   only sortable lexicographically if the prefix is zero-padded ISO. This change
+   elsewhere argues that GSD directory names could not be ordered
+   programmatically — the replacement should not inherit the same weakness by
+   omission.
+
+5. **`.planning` stays allow-listed with no stated reason.** The GSD reader is
+   retired but the allow-list entry remains. Whatever still reads it should be
+   named, so a later cleanup does not remove something load-bearing.
