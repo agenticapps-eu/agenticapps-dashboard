@@ -160,7 +160,6 @@ Daemon CLI (after `pnpm --filter @agenticapps/dashboard-agent build`):
 - `agentic-dashboard rotate-token` — issue a new bearer token (D-13/D-14/D-15).
 - `agentic-dashboard pair` — print a fresh pair URL for this device.
 
-
 ## Workflow
 
 This project uses the AgenticApps Superpowers + GSD + gstack workflow.
