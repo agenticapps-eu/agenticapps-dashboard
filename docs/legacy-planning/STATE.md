@@ -35,6 +35,23 @@ Next: /gsd-new-milestone to define v1.3 (Phase 9 — LICENSE, CONTRIBUTING, opti
 
 Re-acknowledged and carried forward at **v1.2 milestone close on 2026-06-14** (proceed-and-acknowledge per /gsd-complete-milestone). The open-artifact audit at v1.2 close found 22 items, all carried over from already-shipped v1.0/v1.1 phases (none v1.2/Phase 8): 10 `human_needed` verifications (Phases 00/01/02/03/04/06, 05.1, 10, 11.1, 11.2), 10 UAT statuses (only Phase 01 has 2 genuinely-open scenarios), 2 debug sessions. The 2 v1.1-deferred phase-close items below were **resolved in v1.2**.
 
+> **✅ VERIFICATION BACKLOG CLOSED — 2026-07-26.** The 10 `human_needed`
+> verifications and the residual UAT statuses are **retired by explicit
+> decision**, not carried forward a third time.
+>
+> Reasoning: these phases shipped in May 2026 and have been in continuous
+> production use since. Sustained real-world use is stronger evidence than a
+> retrospective sign-off reconstructed months later; re-running the ritual would
+> have produced paperwork, not information. Recorded as *superseded by production
+> use* — **not waived, and not silently dropped**.
+>
+> This does **not** relax the gate going forward. New work still verifies before
+> it ships; this closes inherited pre-OpenSpec debt only. Full rationale:
+> `openspec/BACKLOG.md`.
+>
+> The 2 debug sessions listed below were separately resolved — their defects sit
+> in code that `openspec/changes/remove-gitnexus-integration/` deletes.
+
 Originally acknowledged at v1.1 milestone close on 2026-06-08. 23 items: 21 from the open-artifact audit + Phase 12 close gap + Phase 13 gate gap.
 
 | Category | Item | Status |
@@ -43,9 +60,9 @@ Originally acknowledged at v1.1 milestone close on 2026-06-08. 23 items: 21 from
 | phase-close | Phase 13 gate plan 13-04 (gates ritual) | ✅ resolved 2026-06-10 (artifacts present + passing; 13-VERIFICATION.md written) |
 | debug | family-scan-no-ui-feedback | unknown |
 | debug | per-row-scan-repo-not-registered | diagnosed |
-| uat | Phase 01 HUMAN-UAT (2 pending scenarios) | partial |
-| uat | Phases 03 / 05 / 07 / 13 / 05.1 / 10 / 11 / 11.1 UAT | partial/closed/resolved (0 pending) |
-| verification | Phases 00/01/02/03/04/06/05.1/10/11.1/11.2 VERIFICATION.md | human_needed |
+| uat | Phase 01 HUMAN-UAT (2 pending scenarios) | ✅ CLOSED 2026-07-26 — retired, superseded by production use |
+| uat | Phases 03 / 05 / 07 / 13 / 05.1 / 10 / 11 / 11.1 UAT | ✅ CLOSED 2026-07-26 — 0 pending; retired |
+| verification | Phases 00/01/02/03/04/06/05.1/10/11.1/11.2 VERIFICATION.md | ✅ CLOSED 2026-07-26 — retired, superseded by production use |
 | infra-gated | Tailscale second-device viewer access (D-14-04) | deferred |
 | structural-debt | /code-intelligence IMPECCABLE composite ~74 (waiver D-10.5-03.calibration-2) | waived → 14.1 polish bundle |
 

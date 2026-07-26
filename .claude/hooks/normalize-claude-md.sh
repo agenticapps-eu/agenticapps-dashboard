@@ -134,12 +134,11 @@ build_replacement() {
   fi
 
   if [ "$slug" = "workflow" ]; then
-    if [ -f ".claude/claude-md/workflow.md" ]; then
-      return 0  # collapse entirely — 0009 has the canonical copy
-    fi
-    printf '<!-- GSD:workflow source:GSD defaults /-->\n'
-    heading_for_slug workflow
-    printf '> Workflow defaults. Migration 0009 not yet applied.\n'
+    # Always collapse. As of workflow v3.0.0 the canonical workflow document is
+    # docs/WORKFLOW.md, pointed at from CLAUDE.md's own Workflow section; the
+    # GSD-era vendored .claude/claude-md/workflow.md was removed 2026-07-26.
+    # The previous fallback injected a "Migration 0009 not yet applied" stub
+    # whenever that file was absent, which would now be both false and stale.
     return 0
   fi
 
