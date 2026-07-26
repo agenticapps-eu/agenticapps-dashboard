@@ -41,7 +41,15 @@ header, the discipline column, the change-progress column, the capability panel,
 and the panel degradation contract.
 
 Withdrawn in total: **50 requirements** — 42 by capability withdrawal (40 here,
-2 upstream) and 8 more from `project-dashboard`. Capability count goes 12 → 10.
+2 upstream) and 8 more from `project-dashboard`. One of the 42 is not withdrawn
+after all: `The Dashboard Works Without Any Integration` is kept as a conditional,
+so the net figure is **49 withdrawn, 1 rewritten**.
+
+**Capability count, stated precisely.** This change alone takes the slot from
+**12 to 7**. It reaches 10 only in combination with the three capabilities added
+by `add-repo-readiness`, `add-workflow-fleet-conformance`, and `add-agent-board`.
+The earlier phrasing "12 → 10" invited a reader checking this change in isolation
+to find a number that does not follow from it.
 
 The distinction is worth keeping visible: a capability that ends and a capability
 that is cut back are different statements about the product, and only the second

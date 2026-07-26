@@ -42,9 +42,13 @@ carry a reason.
 ### Requirement: Absent Data Is Never Rendered As A Passing Or Zero Value
 
 A check that has not run SHALL be reported as `never` and MUST NOT be rendered as
-`0 %`, as an empty-but-passing state, or as a green indicator. A check that could
-not be evaluated because of an error SHALL be distinguishable from one that has
-never run.
+`0 %`, as an empty-but-passing state, or as a green indicator.
+
+A check that could not be evaluated because of an error SHALL carry a dedicated
+structured error marker on the result, distinct from its status, so that
+"evaluation failed" is distinguishable from "never ran" **without parsing prose**.
+Error text SHALL be free of absolute filesystem paths and of any credential
+material.
 
 #### Scenario: Missing coverage data is not zero percent
 - **WHEN** a repo has no coverage artifact
@@ -53,8 +57,18 @@ never run.
 
 #### Scenario: An evaluation error is not silent success
 - **WHEN** a deriver throws while evaluating a check
-- **THEN** that check reports a failed or never-run state carrying the error text
+- **THEN** that check carries the structured error marker together with an explanatory summary
 - **AND** it is never reported as `ok`.
+
+#### Scenario: An error is machine-distinguishable from never-run
+- **WHEN** one check has never run and another failed to evaluate
+- **THEN** the two are distinguishable by the presence of the error marker alone
+- **AND** neither requires reading the summary text to tell them apart.
+
+#### Scenario: Error text carries no paths or secrets
+- **WHEN** a deriver's failure produces an error message containing an absolute path or credential material
+- **THEN** the reported error text is reduced to a repo-relative or symbolic reference
+- **AND** no credential material reaches the response.
 
 ### Requirement: Two-Tier Provenance With Per-Check Precedence
 
@@ -62,6 +76,14 @@ Check results SHALL be derived from what is already on disk (tier A). Where
 `<repo>/.agenticapps/readiness.json` declares a check (tier B), the declared value
 SHALL win for that check only, leaving the other checks derived. Every result
 MUST record whether it was derived or declared.
+
+**Declared values are trusted as author input and are not validated against the
+derived value.** A repo may declare a state better than the one the daemon would
+derive, including over a derived `fail`. This is deliberate: tier B exists to
+report what the daemon cannot see, and a plausibility check against a signal the
+daemon admits is incomplete would defeat that. The provenance marker is what
+makes the claim auditable — it is the reason `source` is mandatory rather than
+optional.
 
 #### Scenario: A declared check overrides only itself
 - **WHEN** a repo declares only `pen-test` in its readiness file
@@ -72,6 +94,11 @@ MUST record whether it was derived or declared.
 - **WHEN** a repo has no `.agenticapps/readiness.json`
 - **THEN** all six checks are derived
 - **AND** no warning, error, or hint is raised about the file's absence.
+
+#### Scenario: A declared value overrides a worse derived value
+- **WHEN** a repo declares a check as `ok` where the derived value would be `fail` or `never`
+- **THEN** the declared value is reported and marked as declared
+- **AND** the daemon raises no discrepancy warning, because the declaration is the author's claim and the marker is what carries its provenance.
 
 ### Requirement: An Unusable Readiness File Is Reported, Not Silently Ignored
 
@@ -154,9 +181,22 @@ tree.
 
 The `code-review` and `security-review` checks SHALL search both the OpenSpec and
 the legacy planning layouts for their evidence artifacts, preferring an OpenSpec
-match, and SHALL count artifacts inside archived changes. A found artifact alone
-is not sufficient for `ok`: where the newest matching artifact predates the last
-commit that touched production code, the check SHALL report `stale`.
+match, and SHALL count artifacts inside archived changes. Each check SHALL match
+its own artifacts by a pattern that cannot match the other check's, so neither
+counts the other's evidence.
+
+A found artifact alone is not sufficient for `ok`: where the newest matching
+artifact predates the last commit that touched production code, the check SHALL
+report `stale`.
+
+**Both sides of that comparison SHALL be git commit timestamps.** The artifact's
+age is the commit time of the last commit that modified it — never its filesystem
+modification time. Filesystem timestamps do not survive cloning: after a fresh
+checkout every file carries the checkout time, so an mtime comparison would
+report every artifact as current and `stale` would never occur.
+
+An artifact that is present in the working tree but not committed SHALL be
+treated as current.
 
 #### Scenario: No artifact means never run
 - **WHEN** no matching review artifact exists in either layout
@@ -175,6 +215,16 @@ commit that touched production code, the check SHALL report `stale`.
 - **WHEN** the only commits since the newest artifact touched documentation, planning, or spec directories
 - **THEN** the check remains `ok`
 - **AND** the comparison uses the last commit touching production code rather than the repository head.
+
+#### Scenario: A fresh clone does not make stale evidence look current
+- **WHEN** a repo whose newest review artifact predates its last production-code commit is read from a fresh clone, so every file's filesystem timestamp is the checkout time
+- **THEN** the check still reports `stale`
+- **AND** the evaluation reads commit timestamps rather than filesystem timestamps.
+
+#### Scenario: Each review check matches only its own evidence
+- **WHEN** a repo contains evidence artifacts for both `code-review` and `security-review`
+- **THEN** each check reports against its own artifacts only
+- **AND** neither check is satisfied by the other's evidence.
 
 #### Scenario: Archived evidence counts
 - **WHEN** the only matching artifact lives inside an archived change
@@ -218,8 +268,13 @@ review checks applies.
 - **AND** it is not reported as `never`.
 
 #### Scenario: Stale coverage is stale regardless of its value
-- **WHEN** the coverage artifact predates the last production-code commit
-- **THEN** the check reports `stale` even if the percentage is above the threshold.
+- **WHEN** the coverage artifact's last commit predates the last production-code commit
+- **THEN** the check reports `stale` even if the percentage is above the threshold
+- **AND** the comparison uses commit timestamps on both sides, as specified for the review checks.
+
+#### Scenario: An uncommitted coverage artifact is current
+- **WHEN** the coverage artifact exists in the working tree but is not committed, as after a local test run
+- **THEN** it is treated as current rather than stale.
 
 ### Requirement: Readiness Endpoints Degrade Per Check And Per Repo
 
@@ -237,7 +292,7 @@ and SHALL be returned in registry order without server-side sorting.
 #### Scenario: One broken deriver does not break its repo
 - **WHEN** a single check's deriver throws for a repo
 - **THEN** that repo's other five checks are still reported
-- **AND** the failing check carries the error text.
+- **AND** the failing check carries the structured error marker specified in the status vocabulary.
 
 #### Scenario: Rescan invalidates and recomputes
 - **WHEN** the rescan action is called for a repo
@@ -252,8 +307,13 @@ and SHALL be returned in registry order without server-side sorting.
 ### Requirement: Readiness Is Presented Without An Aggregate Score
 
 No surface SHALL present a per-repo or fleet-wide readiness score, percentage, or
-tier derived by combining the six checks. Ordering SHALL be by count of `fail`,
-then count of `never`, then most recent change.
+tier derived by combining the six checks.
+
+Ordering SHALL rank by count of `fail`, then by count of `stale`, then by count
+of `never`, then by most recent change. `stale` precedes `never` because failing
+evidence that was once believed current is a more urgent signal than evidence
+that was never claimed. Ordering is a fixed comparison over counts, not a score:
+it produces no number and none is displayed.
 
 #### Scenario: No combined number is rendered
 - **WHEN** any readiness surface renders
@@ -262,7 +322,12 @@ then count of `never`, then most recent change.
 
 #### Scenario: Sorting replaces ranking
 - **WHEN** the fleet list is ordered by default
-- **THEN** repos with more `fail` results appear first, ties broken by count of `never`, then by most recent change.
+- **THEN** repos with more `fail` results appear first, ties broken by count of `stale`, then by count of `never`, then by most recent change.
+
+#### Scenario: Stale evidence outranks never-run evidence
+- **WHEN** one repo has a `stale` security review and another has the same check at `never`, with equal `fail` counts
+- **THEN** the repo with the `stale` result is ordered first
+- **AND** no numeric score is produced to express the difference.
 
 ### Requirement: State Is Encoded By Shape As Well As Colour
 

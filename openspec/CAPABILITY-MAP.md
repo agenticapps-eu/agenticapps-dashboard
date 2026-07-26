@@ -241,3 +241,79 @@ for deletion.
 Issue ids above are **pointers for a human**, per §19. Nothing synchronises in
 either direction, and neither side is required to be complete with respect to the
 other.
+
+---
+
+## Errata — appended 2026-07-26, after plan review
+
+Eight active changes were reviewed by other-vendor CLIs before any code was
+written (§18). The reviews refuted two premises recorded above. Appended, per
+§08 — the sections above are ratified and are not edited.
+
+### GAP-05's coverage-column justification is false
+
+GAP-05 resolves the coverage-column question with:
+
+> **Coverage column:** none added. `workflowVersion >= 3.0.0` already implies
+> OpenSpec, and the matrix is deliberately getting less dense.
+
+**The first clause does not hold.** Measured 2026-07-26: `claude-workflow` ships
+`version: 3.0.0` and has **no `openspec/` directory**. The repo that publishes
+version 3.0.0 is itself a counterexample. Workflow version tracks the installed
+skill; it says nothing about whether a repo has adopted the OpenSpec layout.
+
+This is consistent with GAP-05's own accepted consequence, which lists
+`claude-workflow` among the eight repos that go blank — a repo cannot be both
+"implied to have OpenSpec" and "blank for lacking it". The two halves of the
+resolution contradicted each other and it went unnoticed at ratification.
+
+**The decision survives; its reasoning is replaced.** No coverage column is
+added, because v2 withdraws the coverage matrix entirely (`retire-v1-surfaces`).
+And the falsehood strengthens rather than weakens the v2 design: the `spec`
+readiness check exists precisely *because* workflow version does not imply
+OpenSpec adoption. If it did, the column would be redundant.
+
+This is the third premise this document has had to correct — after GAP-04's
+"upstream dropped GitNexus" and GAP-05's own "the repo can no longer read its own
+row". The pattern is consistent: each was a plausible inference stated as a
+measured fact. Measure before asserting.
+
+### `filesystem-access-policy` enumerates spawning, and got it wrong twice
+
+The v2 plan listed four untouched capabilities. It is three: the harness runner
+in `add-workflow-fleet-conformance` adds a process-spawning surface.
+
+The first attempt to write that down claimed the daemon would then have exactly
+two spawning routes. Also false — the git route spawns subprocesses today, and
+the OpenSpec reader adds a third by invoking the `openspec` binary. The original
+requirement's "sole exception" clause governs **writes**, not process creation;
+rewriting it as a claim about spawning introduced a falsehood that was not in the
+ratified text.
+
+The spine now enumerates four spawning sites explicitly and guarantees, for the
+two that run foreign programs, only what is enforceable at the spawn boundary —
+which program, which arguments, which working directory, which limits, and how it
+is terminated. An earlier draft asserted that every project working tree stays
+byte-identical across a harness run; three reviewers rejected it as unenforceable
+against code the daemon does not control, and they were right.
+
+### Review coverage
+
+The eight changes active at review time each carry `REVIEWS.md` with at least
+two other-vendor reviewers. Every one returned REQUEST-CHANGES; none returned an
+approval. Findings that were fixed are in the changes themselves; those deferred
+are recorded in the relevant `proposal.md`.
+
+A ninth change, `decide-tailnet-ipv6-policy`, was **created by these reviews** and
+therefore postdates them. It has no `REVIEWS.md` yet. It records that the tailnet
+boundary is IPv4-CGNAT-only by policy rather than by omission — a reviewer read
+the CIDR middleware and found that a tailnet IPv6 peer is refused. The
+implementation matches the spec exactly; the spec was silent on address family.
+That is a spec gap, not a defect, and widening the boundary is deliberately not
+proposed without evidence of a peer that cannot connect.
+
+### Sequence note
+
+The sequence recorded above lists seven changes. `decide-tailnet-ipv6-policy` is
+the ninth and is independent of all of them: it touches only `daemon-runtime`,
+adds no behaviour, and can run at any point.

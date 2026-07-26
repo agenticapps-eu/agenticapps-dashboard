@@ -13,6 +13,15 @@
 - [ ] Remove the code-graph column from the coverage schema
 - [ ] Remove it from the barrel export; confirm both ends still typecheck
 
+Named sites — a generic "remove the column" will miss these, and each breaks
+typecheck or throws at runtime under `.strict()`:
+
+- [ ] `packages/shared/src/schemas/coverageHistory.ts` — the per-cell key is **required**; leaving it required makes every snapshot read throw
+- [ ] `packages/agent/src/lib/snapshots/snapshotWriter.ts` — the field is hardcoded and written per row
+- [ ] `packages/shared/src/schemas/coverage.ts` — the install-state schema and its row field
+- [ ] `packages/shared/src/schemas/coverage.ts` — the refresh-action enum **becomes empty** once the entry is removed; decide whether the enum or its consumer goes
+- [ ] Test: a snapshot written after this change carries no code-graph cell, **and** a pre-existing snapshot that still carries one still validates — history must remain readable across the cutover
+
 ## 3. Remove the SPA surface
 
 - [ ] Delete `InstallGitNexusButton`, `ScanPill`, and `lib/queries/gitnexusScan.ts`

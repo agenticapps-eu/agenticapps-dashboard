@@ -1,18 +1,9 @@
 ## REMOVED Requirements
 
-> v2 has no third-party integrations at all. This capability is withdrawn in
-> full rather than emptied out — the panels go, and with them the contract that
-> governed how they behave when unconfigured.
-
-### Requirement: The Dashboard Works Without Any Integration
-
-**Reason**: A guarantee about optional components, in a product that has none.
-Every remaining surface reads the local filesystem and git; there is nothing left
-that could be configured or unconfigured. The guarantee is not being relaxed —
-it is being satisfied absolutely and therefore has nothing left to constrain.
-
-**Migration**: None. If integrations return, this guarantee must return with them
-and be restated then; it is not carried forward implicitly.
+> v2 has no third-party integrations at all. Every panel is withdrawn, and with
+> them the contract governing how they behave when unconfigured. **One
+> requirement survives**, rewritten as a conditional — see the MODIFIED section
+> at the end of this delta.
 
 ### Requirement: Unconfigured Panels Explain Themselves
 
@@ -102,3 +93,27 @@ here.
 
 **Migration**: None. If integrations return, this constraint should return with
 them.
+
+## MODIFIED Requirements
+
+### Requirement: The Dashboard Works Without Any Integration
+
+Where the dashboard offers an integration with a third-party service, every
+surface that is not that integration's own SHALL render fully without it being
+configured. An unconfigured integration MUST NOT degrade, block, or error any
+other surface.
+
+v2 ships no integrations, so this requirement currently binds nothing. It is kept
+rather than withdrawn deliberately: it is the guarantee that shaped this product,
+and a future change adding an integration should inherit it as a standing
+constraint instead of having to rediscover it in an archived proposal.
+
+#### Scenario: No integration configured is the fully-supported state
+- **WHEN** the dashboard runs with no integration configured
+- **THEN** every surface renders its own data completely
+- **AND** no surface reports an error, a degraded state, or a missing prerequisite.
+
+#### Scenario: A future integration cannot become load-bearing
+- **WHEN** an integration is added and left unconfigured
+- **THEN** the surfaces that do not belong to it are unaffected
+- **AND** no other surface's data is withheld pending its configuration.

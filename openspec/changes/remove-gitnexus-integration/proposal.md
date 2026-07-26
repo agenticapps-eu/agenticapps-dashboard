@@ -61,12 +61,27 @@ wrong silently corrupts the one signal the surface exists to provide.
 > `retire-v1-surfaces` and Linear AGE-480, AGE-483. The continuity this measure
 > would establish would have nothing left to be continuous for.
 >
-> Removed as a result: task block 1 of this change, and the requirement
-> *Conformance History Survives A Column-Set Change* from the
-> `fleet-conformance` delta. That requirement would have been deployed and then
-> withdrawn again within the same milestone.
+> Removed as a result: the original task block 1 — *Conformance history first* —
+> and the requirement *Conformance History Survives A Column-Set Change*, whose
+> `fleet-conformance` delta file is deleted with it. That requirement would have
+> been deployed and then withdrawn again within the same milestone.
 >
-> Task blocks 2 through 5 are unaffected and run as written.
+> **The remaining blocks were renumbered.** What `tasks.md` now numbers 1 through
+> 5 — daemon surface, shared schema, SPA surface, vendored skill, verify — are the
+> original blocks 2 through 6, unchanged in content. Nothing in the removal of
+> GitNexus itself was descoped.
+>
+> ### The descope assumes `retire-v1-surfaces` lands
+>
+> If this change ships and `retire-v1-surfaces` is delayed or abandoned, the
+> 90-day trend carries a permanent step at the cutover with no correction. That
+> is the outcome the deleted block existed to prevent.
+>
+> This is accepted rather than mitigated, on one condition: **the step is only
+> tolerable because the chart is scheduled for withdrawal.** It is not
+> independently acceptable. If `retire-v1-surfaces` is dropped, the correct
+> response is to restore the recompute block, not to live with the step. Recorded
+> here so that decision is made deliberately rather than inherited.
 
 ## Non-goals
 

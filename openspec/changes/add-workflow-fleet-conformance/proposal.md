@@ -59,11 +59,25 @@ than left as a note in a security document — because a constraint that says
 "sole exception" while a second exception ships is worse than a constraint that
 names both.
 
-The exception is bounded on five axes, all specified as requirements: the script
-must resolve under one of the five known workflow repo roots, no value from the
-request reaches a command line, the run is never triggered by a page render, it
-times out, and it passes the existing rate limiter. If those bounds cannot be
-held, the correct outcome is to drop the harness block, not to loosen them.
+The exception is bounded, and every bound is a requirement rather than a note:
+canonical-path resolution under a fixed daemon-side root list with re-validation
+at spawn time, a fixed internal command table so no request value reaches an
+argument vector, a scratch working directory, its own process group with
+group-wide termination, CPU/memory/output bounds, bounded concurrency, and no
+execution on render. If those bounds cannot be held, the correct outcome is to
+drop the harness block, not to loosen them.
+
+**What the daemon does not promise.** An earlier draft asserted that every
+registered project's working tree stays byte-identical across a harness run.
+Three reviewers independently rejected it, correctly: the daemon does not control
+the script, so it cannot enforce what the script touches. The spine now states
+only what is enforceable at the spawn boundary — which program, which arguments,
+which working directory, which limits, and how it dies. Weaker on paper, and true.
+
+**Rate limiting.** `packages/agent/src/lib/rateLimiter.ts` exists in the daemon,
+but nothing in `openspec/specs/` specifies it. Rather than delegate a bound to a
+component the spec slot does not know about, bounded concurrency is written into
+the harness requirement directly. Specifying the general limiter is separate work.
 
 `~/.agenticapps/bin` is added as a named allowed root for the scanner. It is
 read-only and it is the path that decides what the agents actually execute, which
@@ -88,9 +102,10 @@ is why the surface exists.
 - **It does not write to any workflow repo.** The scanner reads; the harness runs
   scripts that manage their own temporary fixtures.
 
-## Open questions
+## Resolved: the cache is keyed on both the artefact and the harness
 
-> [GAP: The harness result is invalidated when the checked file's content
-> changes. That covers re-vendoring but not a change in the harness script
-> itself. Recommended: hash both the checked artefact and the harness, since
-> they are equally capable of invalidating the result.]
+An earlier draft shipped this as an open question. All three reviewers rejected
+that, and they were right — it was a known defect wearing an open question's
+clothing, and it contradicted this change's own rejection of age-only caching.
+Resolved: the cache key covers the artefact under test **and** the harness script,
+and either changing discards the result.
