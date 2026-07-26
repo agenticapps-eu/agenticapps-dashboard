@@ -10,24 +10,24 @@
 - [x] Test: an oversized file under each of the three allow-listed directories is refused, not truncated
 - [x] Test: a file exactly at the cap still reads 200 (boundary asserted both ways)
 - [x] ~~Test: the size is checked before the file is read into memory~~ — **verified by inspection, not testable in-process.** `read.ts` checks `st.size` from `fh.stat()` before `Buffer.allocUnsafe`, and re-checks after the bounded read to catch concurrent growth. Asserting the ordering would require instrumenting the allocator
-- [ ] Declare the CLI timeout and CLI output cap as named constants alongside `MAX_READ_BYTES` and `GIT_SUBPROCESS_TIMEOUT_MS` (size cap already declared)
+- [x] Declare the CLI timeout and CLI output cap as named constants alongside `MAX_READ_BYTES` and `GIT_SUBPROCESS_TIMEOUT_MS` (size cap already declared)
 - [x] ~~Test: an unparseable configured value for any bound falls back to the default~~ — **vacuous as built.** None of the three bounds is configurable; they are module constants, so there is no parse path and no way to disable one. The requirement's intent (finite, cannot be turned off) holds by construction
 
 ## 2. OpenSpec CLI invocation discipline (security — before the reader uses it)
 
-- [ ] Resolve the binary once at daemon start to an absolute path; verify it is a regular executable file (TDD)
-- [ ] Test: resolution failure at start means no spawn and no `PATH` lookup on any later request
-- [ ] Test: a directory, a broken symlink, and a non-executable file each count as resolution failure
-- [ ] Invoke via argv with no shell; argument vector drawn from a fixed table of `list --json` and `list --specs --json` (TDD)
-- [ ] Test: a project root containing a space, a quote, and a shell metacharacter reads correctly
-- [ ] Test: no code path builds an `openspec` argument vector from a project-derived string
-- [ ] Bound the invocation: wall-clock timeout, max captured output, own process group (TDD)
-- [ ] Test: a hung binary is killed by process group and the read falls back to the tree
-- [ ] Test: non-zero exit, oversized output, unparseable JSON, and unrecognised JSON shape each fall back to the tree with no route error
-- [ ] Test: a spawn failure (binary deleted or de-executabled after start) falls back to the tree with no route error
-- [ ] Shape recognition is a required-subset check that ignores unknown fields (TDD)
-- [ ] Test: JSON with extra unknown fields is recognised; JSON missing a consumed field falls back
-- [ ] Pin the verified CLI surface in a code comment: `openspec` 1.6.0, `list --json` / `list --specs --json`
+- [x] `resolveOpenspecBinary()` resolves to an absolute regular executable, or null (TDD). **Wiring it into daemon start lands with the reader in group 3** — the resolver has no consumer until then
+- [x] Test: a null binary reports `unavailable` with no spawn; resolution is a pure function called once by the caller, not per request
+- [x] Test: a directory, a broken symlink, a non-executable file, and an empty PATH each resolve to null
+- [x] Invoke via argv with no shell; argument vector drawn from a fixed table of `list --json` and `list --specs --json` (TDD)
+- [x] Test: a project root named `a b'c $HOME; rm -rf . & d` reads correctly
+- [x] Test: argv is recorded from the child and asserted equal to the fixed table; the vector is a module constant with no interpolation
+- [x] Bound the invocation: wall-clock timeout, max captured output, own process group (TDD)
+- [x] Test: a hung binary is killed by process group and falls back — `sleep 30` settles in ~300ms rather than hanging
+- [x] Test: non-zero exit, oversized output, unparseable JSON, and unrecognised JSON shape each fall back with no route error
+- [x] Test: a spawn failure (binary deleted after resolution) falls back — `reject:false` resolves with a null exit code, which is not an exit status
+- [x] Shape recognition is a required-subset check that ignores unknown fields (TDD)
+- [x] Test: JSON with extra unknown fields is recognised; JSON missing a consumed field falls back
+- [x] Pin the verified CLI surface in a code comment: `openspec` 1.6.0, `list --json` / `list --specs --json`
 
 ## 3. Hybrid reader
 
