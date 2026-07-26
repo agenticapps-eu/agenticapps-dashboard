@@ -72,6 +72,54 @@ describe('resolveAllowed', () => {
     cleanup = tmp.cleanup
     await expect(resolveAllowed(tmp.root, '.git/HEAD')).rejects.toBeInstanceOf(PathViolation)
   })
+
+  // add-openspec-project-reader task group 1 — openspec/ joins the allow-list.
+  it('returns realpath inside root/openspec for valid openspec path', async () => {
+    const tmp = makeTmpProject()
+    cleanup = tmp.cleanup
+    mkdirSync(join(tmp.root, 'openspec', 'specs', 'daemon-runtime'), { recursive: true })
+    writeFileSync(join(tmp.root, 'openspec', 'specs', 'daemon-runtime', 'spec.md'), '# spec')
+    const result = await resolveAllowed(tmp.root, 'openspec/specs/daemon-runtime/spec.md')
+    const expected = await realpath(
+      join(tmp.root, 'openspec', 'specs', 'daemon-runtime', 'spec.md'),
+    )
+    expect(result).toBe(expected)
+  })
+
+  it('rejects traversal that escapes out of openspec/', async () => {
+    const tmp = makeTmpProject()
+    cleanup = tmp.cleanup
+    mkdirSync(join(tmp.root, 'openspec'), { recursive: true })
+    await expect(resolveAllowed(tmp.root, 'openspec/../../etc/passwd')).rejects.toBeInstanceOf(
+      PathViolation,
+    )
+  })
+
+  it('rejects a symlink under openspec/ whose realpath escapes the project', async () => {
+    const tmp = makeTmpProject()
+    cleanup = tmp.cleanup
+    mkdirSync(join(tmp.root, 'openspec'), { recursive: true })
+    const outside = mkdtempSync(join(tmpdir(), 'agentic-outside-'))
+    writeFileSync(join(outside, 'secret.txt'), 'secret')
+    symlinkSync(join(outside, 'secret.txt'), join(tmp.root, 'openspec', 'escape.md'))
+    await expect(resolveAllowed(tmp.root, 'openspec/escape.md')).rejects.toSatisfy(
+      (e: unknown) =>
+        e instanceof PathViolation && /outside allowed/i.test((e as PathViolation).message),
+    )
+    rmSync(outside, { recursive: true, force: true })
+  })
+
+  // Explicitly rejected in the change's non-goals: relocated GSD history under
+  // docs/ stays unreadable, because allow-listing docs/ would expose unrelated content.
+  it('still rejects docs/legacy-planning — deliberately NOT allow-listed', async () => {
+    const tmp = makeTmpProject()
+    cleanup = tmp.cleanup
+    mkdirSync(join(tmp.root, 'docs', 'legacy-planning'), { recursive: true })
+    writeFileSync(join(tmp.root, 'docs', 'legacy-planning', 'STATE.md'), 'history')
+    await expect(
+      resolveAllowed(tmp.root, 'docs/legacy-planning/STATE.md'),
+    ).rejects.toBeInstanceOf(PathViolation)
+  })
 })
 
 describe('resolveAllowedNamed', () => {
