@@ -83,64 +83,84 @@ replace the commitment ritual, the rationalisation table, the red
 flags, or the evidence rules — they sit alongside them as the
 session-level discipline the model brings to every diff.
 
-## Repository state
+## What this product is
 
-**Phases 0 and 1 shipped.** Phase 0 stood up the pnpm workspace, the Cloudflare Pages preview deploy, and the `@agenticapps/dashboard-agent` placeholder package. Phase 1 landed the local daemon (Hono on `127.0.0.1:5193`), the registry (`~/.agenticapps/dashboard/registry.json`), bearer-token auth, the CLI surface, and the `/api/projects/{id}/read` allow-list. **Phase 2 (SPA shell + pair flow) is the next work.**
+A multi-project pipeline dashboard: a static SPA on Cloudflare Pages plus one
+local daemon that reads each registered project's files and git history. No
+project data leaves the machine.
 
-Authoritative inputs:
+**Product behaviour is specified in `openspec/specs/`, not here.** Twelve
+capabilities; read the one you are touching before you touch it:
 
-- `docs/spec/dashboard-prompt.md` — **the spec that drives all phases. Read it before doing anything substantive.**
-- `.planning/phases/01-daemon-registry-pairing/` — Phase 1 plan, decisions (D-01..D-23), threat model, verification, human-UAT.
-- `.claude/skills/agenticapps-workflow/` — the workflow skill (Superpowers + GSD + gstack contract).
+| Capability | Covers |
+|---|---|
+| [`filesystem-access-policy`](openspec/specs/filesystem-access-policy/spec.md) | Read-only on project filesystems, path allow-list, file modes. **The security spine — read this one first.** |
+| [`daemon-runtime`](openspec/specs/daemon-runtime/spec.md) | Daemon lifecycle, bind modes, health, caching, service install, CLI |
+| [`auth-and-pairing`](openspec/specs/auth-and-pairing/spec.md) | Bearer token, rotation, CORS lock, pairing flow |
+| [`project-registry`](openspec/specs/project-registry/spec.md) | Registry shape, CRUD, reachability, path drift |
+| [`project-dashboard`](openspec/specs/project-dashboard/spec.md) | Home cards and the single-project three-column view |
+| [`skills-and-linting`](openspec/specs/skills-and-linting/spec.md) | Skill inventory, AgentLinter, cross-repo drift |
+| [`fleet-coverage`](openspec/specs/fleet-coverage/spec.md) | Coverage matrix, freshness states, history and trends |
+| [`fleet-conformance`](openspec/specs/fleet-conformance/spec.md) | Conformance scoring, tiers, trend chart, path-drift panel |
+| [`code-intelligence`](openspec/specs/code-intelligence/spec.md) | Code-graph and knowledge-graph surfaces (GitNexus half **deprecated**) |
+| [`optional-integrations`](openspec/specs/optional-integrations/spec.md) | Sentry / Linear / Infisical, and the works-without-them contract |
+| [`help-docs`](openspec/specs/help-docs/spec.md) | The in-product `/help` documentation system |
+| [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, shared primitives, shell IA |
 
-When the spec disagrees with intuition, the spec wins. When the spec is silent, surface the question via `/gsd-discuss-phase` rather than guessing.
+Project-wide context and the hard constraints also live in
+[`openspec/config.yaml`](openspec/config.yaml) under `context:`.
 
-## Architecture (target — most does not exist yet)
+**When a spec disagrees with intuition, the spec wins. When the spec is silent,
+open a change (`/opsx:propose`) rather than guessing.** If a proposed change
+would violate a constraint in `filesystem-access-policy`, stop and surface the
+conflict — do not quietly relax it.
 
-Three-package pnpm workspace, two deployment targets, one local daemon:
+### Historical and reference material
 
-- `packages/shared/` — Zod schemas + TS types. **Single source of truth** for all daemon ↔ SPA wire shapes. Both ends validate against the same schema; mismatch surfaces as "schema drift" in the SPA.
-- `packages/spa/` — Vite + React 18 + TS + Tailwind + TanStack Query. Static SPA deployed to Cloudflare Pages at `dashboard.agenticapps.eu`. **Holds no user data**; only renders what the local daemon serves.
-- `packages/agent/` — Node 20+ + Hono + TS. Local daemon at `127.0.0.1:5193`, single binary `agentic-dashboard`. Reads `.planning/`, `.claude/`, and `git log` per registered project; reads `~/.claude/skills/` globally.
-
-Runtime topology: SPA in browser → bearer-token HTTP → local daemon → filesystem reads. The SPA can also point at a Tailscale hostname for remote-device access. **No cloud-side data storage.**
-
-## Hard architectural constraints
-
-These are non-negotiable and must survive every refactor. Source: spec §"Constraints I want preserved" and §"Anti-features".
-
-- **Read-only on project filesystems.** No daemon route writes to a registered project's files. Sole exception: `POST /api/projects/{id}/open` spawns `$EDITOR` (user-driven, per click).
-- **Path allow-list per project.** `/api/projects/{id}/read` only resolves under `<root>/.planning` or `<root>/.claude`. Reject `..`, absolute paths, or realpaths outside the allow-list.
-- **Daemon writes confined to `~/.agenticapps/dashboard/`.** Registry, auth, env files are mode `0600`; daemon refuses to start if permissions are looser.
-- **No native dependencies in `packages/agent/`.** Keeps `npx @agenticapps/dashboard-agent` portable. No `keytar`, no FFI. A `0600` file in `$HOME` is the auth-token store.
-- **Bearer-token auth on every route.** CORS locked to `https://dashboard.agenticapps.eu` (prod) and `http://localhost:5174` (dev).
-- **Optional integrations stay optional.** Sentry, Linear, Infisical panels show "configure to enable" empty states when env vars are unset. The dashboard must function fully without any of them — Phases 0–6 ship with zero third-party service dependencies.
-- **No Cloudflare Workers / Pages Functions in v1.** SPA is pure static.
-- **Every frontend-touching phase commits an `<N>-IMPECCABLE.md` artifact.** Generated by running the `impeccable:critique` skill against affected routes at 1440×900; records composite + per-heuristic scores + findings + persona red flags. Composite floor ≥ 80 (D-10.5-03.calibration-2, ratified 2026-06-08; per-phase structural-debt waiver clause in VERIFICATION.md for a route structurally below floor). Phase 6's CI gate retired (D-10.5-01); skill-driven phase artifact is the gate (D-10.5-02). See `.planning/phases/DASH-10.5-impeccable-skill-driven-gate/10.5-DECISIONS.md`.
-
-If a proposed change violates any of the above, stop and surface the conflict — don't quietly relax the constraint.
+- `docs/spec/dashboard-prompt.md` — the original binding hand-off spec. Still the
+  best statement of *why* the product is shaped this way; superseded as a
+  statement of *current* behaviour by `openspec/specs/`.
+- `docs/legacy-planning/` — the complete GSD-era phase history, read-only. Go
+  here to find out how something came to be, not what it does now.
+- `openspec/changes/archive/` — those same phases as archived OpenSpec changes.
+- `openspec/CAPABILITY-MAP.md` — how 21 phases were merged into 12 capabilities,
+  and the open questions recorded during that migration.
 
 ## Workflow (project-specific additions)
 
-The global `~/.claude/CLAUDE.md` already mandates the AgenticApps workflow (Superpowers + GSD + gstack with enforced hooks). On top of that, for this repo:
+The global `~/.claude/CLAUDE.md` mandates the AgenticApps workflow. The full
+lifecycle, hooks, rituals, and red-flag tables are in
+[`docs/WORKFLOW.md`](docs/WORKFLOW.md). On top of that, for this repo:
 
-- Every phase follows GSD: `/gsd-discuss-phase N` → `/gsd-plan-phase N` → `/gsd-execute-phase N` → verify. Do not skip discuss/plan even for "obvious" bootstrap work — the spec lists Phase 0 questions to surface.
+- **Planning is a spec change.** Work starts with `/opsx:propose`, not with an
+  edit. The §18 change-gate blocks code edits while a change is open until
+  `openspec validate --all` is green and `REVIEWS.md` carries ≥2 other-vendor
+  reviewers. That is the gate working, not a bug.
 - Workflow commitment ritual is mandatory at the start of any implementing session.
-- TDD applies to every panel, every daemon route, and the bootstrap config (CI workflow, pnpm config) — not just feature code.
-- Two-stage review (gstack `/review` + `superpowers:requesting-code-review`) before merging any phase. Stages do not collapse.
-- Phases 7+ (Sentry / Linear / Infisical integrations) are **explicitly held** until the corresponding upstream tooling is set up. Don't preemptively wire them in.
-
-## Phase order (from the spec)
-
-`Phase 0` repo bootstrap & Cloudflare Pages skeleton → `Phase 1` daemon + registry + pairing → `Phase 2` SPA shell + pair flow → `Phase 3` multi-project home → `Phase 4` single-project Discipline + Phase columns → `Phase 5` Skills + Health column (incl. AgentLinter) → `Phase 6` polish, `install-launchd`, impeccable critique gate, CF Access. Phases 0–6 ship a complete dashboard. Phase 7+ are additive.
+- TDD applies to every panel, every daemon route, and the bootstrap config
+  (CI workflow, pnpm config) — not just feature code.
+- Two-stage review (gstack `/review` + `superpowers:requesting-code-review`)
+  before merging. Stages do not collapse.
+- **Every frontend-touching change runs the `impeccable:critique` skill** against
+  affected routes at 1440×900 and commits the resulting artifact: composite +
+  per-heuristic scores, findings, persona red flags. Composite floor **≥ 80**
+  (ratified 2026-06-08), with a structural-debt waiver clause for a route
+  structurally below floor. This is a *process* gate, which is why it lives here
+  and not in a spec; the product outcomes it protects are in `design-system`.
+- Optional integrations are **explicitly held** unless the corresponding upstream
+  tooling is set up. Don't preemptively wire them in.
+- Run `pnpm lint` before shipping — CI enforces it and the phase gate does not.
 
 ## Common commands
 
 Workspace-wide (run from repo root):
 
 - `pnpm -r typecheck` — type-check every package.
-- `pnpm -r test` — run vitest in every package (160+ tests as of Phase 1 close).
 - `pnpm -r build` — build every package via tsup/Vite/tsc as appropriate.
+- `pnpm lint` — eslint. **CI enforces this and it blocks merge; run it before shipping.**
+
+Prefer the per-package test commands below over `pnpm -r test` — the recursive
+run is flaky in this workspace.
 
 Per-package (preferred when iterating):
 
@@ -162,6 +182,6 @@ Daemon CLI (after `pnpm --filter @agenticapps/dashboard-agent build`):
 
 ## Workflow
 
-This project uses the AgenticApps Superpowers + GSD + gstack workflow.
-Full hooks, rituals, and red-flag tables: [`.claude/claude-md/workflow.md`](.claude/claude-md/workflow.md).
+This project uses the AgenticApps OpenSpec + Superpowers workflow (v3.0.0).
+Full lifecycle, hooks, rituals, and red-flag tables: [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 Vendored — re-sync via `/update-agenticapps-workflow`.
