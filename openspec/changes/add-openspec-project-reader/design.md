@@ -31,7 +31,7 @@ approximately.
 
 ## 2. Parity is scoped, not universal
 
-**Decided: pin a six-field set, and claim parity only over conformant changes.**
+**Decided: pin a five-field set, and claim parity only over conformant changes.**
 
 The original delta said "both paths MUST produce the same values." Two reviewers
 independently rejected it, and they were right for different reasons: the field
@@ -63,9 +63,17 @@ project, unattended. A per-request `PATH` lookup would make the daemon's
 behaviour depend on mutable machine state on the request path, so resolution
 happens once and its failure is a permanent, quiet degradation to the tree.
 
-The fallback list is deliberately broad — timeout, non-zero exit, oversized
-output, unparseable JSON, unrecognised shape. Every one of them degrades to the
-tree rather than surfacing. A reader whose failure mode is "the project looks
+The bounds themselves are specified as named finite constants rather than pinned
+numbers, matching how the rest of these specs are written — one instance of a
+concrete value across twelve capabilities. What is normative is that each bound
+exists, is declared once, cannot be configured away, and falls back to its
+default when a configured value does not parse. Pinning byte counts in a
+requirement would date the spec against tuning it cannot anticipate; permitting
+an unbounded read would be the actual defect.
+
+The fallback list is deliberately broad — spawn failure, timeout, non-zero exit,
+oversized output, unparseable JSON, unrecognised shape. Every one of them
+degrades to the tree rather than surfacing. A reader whose failure mode is "the project looks
 broken" would make the dashboard less trustworthy than one that quietly reports
 slightly staler structure.
 

@@ -68,8 +68,15 @@ affects no capability; that is a legitimate in-progress state, not an error.
 it: a directory holding only a `tasks.md`, or only a `proposal.md`, is an open
 change and MUST be listed. This is deliberately permissive — a change is
 incomplete for most of its life, and a reader that hides half-written changes
-hides exactly the work in flight. On the CLI path the CLI's change set is
-authoritative.
+hides exactly the work in flight.
+
+**The change set is always enumerated from the tree**, on both read paths. The
+CLI supplies task counts for changes the tree has already found; it does not
+decide which changes exist. Were the CLI's set authoritative, a change it
+declines to list — because it is half-written, or fails a validation the reader
+does not impose — would vanish from the column exactly when the binary is
+present, which is the majority case. A change the CLI reports and the tree does
+not is ignored, since the tree is what the allow-list bounds.
 
 **Archive ordering** SHALL rely on a pinned format rather than inference:
 archived change directories are named with a zero-padded ISO `YYYY-MM-DD-`
@@ -103,6 +110,11 @@ means the change is omitted from the column.
 - **WHEN** a directory under `openspec/changes/` contains only a `tasks.md`, or only a `proposal.md`
 - **THEN** it is listed as an open change
 - **AND** it is not filtered out for being incomplete.
+
+#### Scenario: An incomplete change does not disappear when the CLI is available
+- **WHEN** the tree contains a change directory that the `openspec` CLI does not report
+- **THEN** the change is still listed, with tree-derived values
+- **AND** the CLI's change set does not narrow the set enumerated from the tree.
 
 #### Scenario: A change with no spec delta yet renders without capabilities
 - **WHEN** an open change has a `tasks.md` but no `specs/` directory

@@ -8,6 +8,9 @@
 - [ ] Confirm `.planning` stays allow-listed and leave a code comment naming why: `skill-observations/` (override-sentinel scanner, commitment route) and `config.json`
 - [ ] Enforce a maximum file size on `/read`, refusing oversized files with an explicit too-large response (TDD)
 - [ ] Test: an oversized file under each of the three allow-listed directories is refused, not truncated
+- [ ] Test: the size is checked before the file is read into memory
+- [ ] Declare the size cap, CLI timeout, and CLI output cap as named constants in one module with documented defaults
+- [ ] Test: an unparseable configured value for any bound falls back to the default, never to unbounded
 
 ## 2. OpenSpec CLI invocation discipline (security — before the reader uses it)
 
@@ -29,6 +32,8 @@
 
 - [ ] Tree reader: open changes = non-dot dirs under `openspec/changes/` excluding `archive/`, with no artifact required
 - [ ] Test: a change dir holding only `tasks.md`, and one holding only `proposal.md`, are both listed
+- [ ] The change set is enumerated from the tree on both paths; the CLI supplies counts, never the set (TDD)
+- [ ] Test: a change the CLI does not report is still listed when the binary is available
 - [ ] Tree reader: task ratio = `- [x]` versus `- [ ]` count in each change's `tasks.md`
 - [ ] Tree reader: report task-artifact presence as its own value, distinct from a zero count (TDD)
 - [ ] Tree reader: capabilities = dirs under `openspec/specs/`, requirement count = `### Requirement:` occurrences
@@ -44,6 +49,7 @@
 ## 4. Registry and discovery
 
 - [ ] Status reports the three conditions `migrated` / `needs-migration` / `no-workflow` (TDD)
+- [ ] Reachability takes precedence: an unreachable root reports `unreachable`, never `no-workflow` (TDD)
 - [ ] Test: workflow skill present + no `openspec/` reports `needs-migration`, not `no-workflow`
 - [ ] Test: a project with both `.planning/` and `openspec/` reports `migrated` and reads nothing from `.planning/phases/`
 - [ ] Status reports open-change and capability counts; remove phase number and phase status from the computed shape

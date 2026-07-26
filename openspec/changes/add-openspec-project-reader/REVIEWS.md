@@ -1,3 +1,16 @@
+# Review record
+
+> **These sections are a point-in-time snapshot, not the change's current
+> status.** Both round-2 verdicts below are `REQUEST-CHANGES`, and both were
+> answered: every finding is resolved in `proposal.md` §"Review round 2,
+> 2026-07-26 — resolved", which maps each one to the requirement or scenario that
+> closes it. Two were settled by measurement (the CLI surface against openspec
+> 1.6.0; the archive prefix against all 21 archived directories).
+>
+> Round 1's reviews are preserved in this file's git history. The verdicts are
+> left as written rather than edited to `APPROVED` — a review record that gets
+> rewritten once its findings are addressed is not evidence of anything.
+
 ## Reviewer: gemini
 _generated 2026-07-26T15:36:51Z · timeout 240s_
 

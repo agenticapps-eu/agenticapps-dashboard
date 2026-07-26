@@ -29,11 +29,20 @@ authenticated, project-scoped, read-only, realpath-checked, and size-capped
 below — are what contain that, and they are unchanged.
 
 Reads through this route SHALL be bounded by a maximum file size, and a file
-exceeding it MUST be refused with an explicit too-large response rather than
-streamed or truncated. This closes a gap that predates `openspec/` and applies
-to all three allow-listed directories equally: without it, any file a user can
-place in a registered project can be turned into unbounded daemon memory and
-response bytes.
+exceeding it MUST be refused with an explicit too-large response — a distinct
+status the SPA can render as such — rather than streamed, truncated, or returned
+as a generic error. The size MUST be checked before the file is read into memory,
+not after. This closes a gap that predates `openspec/` and applies to all three
+allow-listed directories equally: without it, any file a user can place in a
+registered project can be turned into unbounded daemon memory and response bytes.
+
+Every bound in this capability — this size limit, and the CLI timeout and output
+cap below — MUST be a single named constant with a documented default, declared
+in one place in the daemon and referenced everywhere else. Each MUST be finite:
+no bound may be disabled by configuration, and a configured value that does not
+parse falls back to the default rather than to unbounded. Concrete values are an
+implementation choice and are not fixed here, in keeping with the rest of these
+specs; that they exist, are finite, and are declared once is not.
 
 #### Scenario: Traversal outside the allow-list is rejected
 - **WHEN** a read is requested for `../../.ssh/id_rsa`, for an absolute path, or for a symlink whose realpath resolves outside `<root>/.planning`, `<root>/.claude`, and `<root>/openspec`
@@ -103,8 +112,11 @@ a registered project. Change names, capability names, file names, and every othe
 string read out of a project tree MUST NOT reach the argument vector.
 
 **Bounds and fallback.** The invocation SHALL be bounded by a wall-clock timeout
-and a maximum captured-output size, and SHALL run in its own process group so a
-timeout terminates descendants rather than orphaning them. The reader SHALL fall
+and a maximum captured-output size, both named constants per the rule above, and
+SHALL run in its own process group. On timeout the daemon SHALL signal the whole
+group rather than the direct child alone, so descendants are terminated rather
+than orphaned, and SHALL stop capturing output at the cap rather than buffering
+past it while waiting for exit. The reader SHALL fall
 back to the tree path, and report the project normally, on any of: **a spawn
 failure** (the binary resolved at start but is missing, replaced, or no longer
 executable at invocation), timeout, non-zero exit, output exceeding the cap,

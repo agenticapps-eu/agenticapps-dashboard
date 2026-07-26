@@ -19,9 +19,11 @@ the replacement format is **strictly better to read**:
 | **What the project promises** | **nothing — you would read 21 phases in order** | `specs/` — capabilities with requirement counts |
 
 The project's last-commit timestamp is **not** in that table and does not change:
-it stays git-derived, per `Per-Project Computed Status`. What OpenSpec adds is
-per-change recency, which the GSD tree could only approximate from artifact
-mtimes.
+it stays git-derived, per `Per-Project Computed Status`. The per-change
+`lastModified` row records what the format makes available, not a field this
+change renders — no requirement or task consumes it. It is listed because it is
+part of why the format is better to read, and flagged here so a later change
+adding a per-change recency display knows the value is already there for free.
 
 That last row is why this change also adds a surface the dashboard has never
 had. The GSD tree contained no representation of current truth, so the dashboard
@@ -96,7 +98,7 @@ the five carried forward.
 | 3 | Auto-discovery contradicts the install hint | `Registry CRUD Surface` MODIFIED in place rather than a parallel requirement; `.planning/config.json` dropped as a marker, existing registrations untouched |
 | 4 | A GSD-only repo is told to install a workflow it has | Status now distinguishes `migrated` / `needs-migration` / `no-workflow`; the card renders a migration hint for the middle one |
 | 5 | Mid-migration repos with both trees have no stated precedence | Scenario added: `openspec/` wins, nothing is read from `.planning/phases/` |
-| 6 | "Both paths MUST produce the same values" is unenforceable | Pinned to a six-field table, scoped to conformant change directories, CLI preferred where they diverge |
+| 6 | "Both paths MUST produce the same values" is unenforceable | Pinned to a field table, scoped to conformant change directories, CLI preferred where they diverge. Round 2 reduced the table to five fields — see finding 13 |
 | 7 | CLI cannot distinguish a missing task artifact from an empty one | Task-artifact presence is now its own reported value, not inferred from a zero count |
 | 8 | Archive ordering has no pinned format | Pinned to a zero-padded ISO `YYYY-MM-DD-` prefix; non-matching directories sort last with no chronological claim |
 | 9 | Affected-capability derivation undefined | Derived from `specs/<capability>/` directory names, always from the tree; scenario added for a change with no spec delta |

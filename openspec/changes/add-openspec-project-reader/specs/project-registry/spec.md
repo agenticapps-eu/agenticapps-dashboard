@@ -56,10 +56,23 @@ something they already have:
 | absent | present | `needs-migration` |
 | absent | absent | `no-workflow` |
 
+**Reachability takes precedence over the marker matrix.** The matrix applies only
+to a project whose root is present and readable. When the root is missing,
+inaccessible, or has not yet been scanned, status SHALL report `unreachable` and
+MUST NOT report any of the three conditions above. Without this precedence an
+unreachable project reads as both markers absent — an unmounted volume or a moved
+directory would render as `no-workflow`, telling the user to install a workflow
+into a path the daemon cannot see.
+
 #### Scenario: A project with neither marker reports no workflow
 - **WHEN** a registered project has no `openspec/` directory and no workflow skill installed
 - **THEN** its status reports the `no-workflow` condition rather than erroring
 - **AND** the home card renders an install hint instead of change data.
+
+#### Scenario: An unreachable project is not reported as missing the workflow
+- **WHEN** a registered project's root is missing or inaccessible
+- **THEN** its status reports `unreachable`
+- **AND** it does not report `no-workflow`, and the card offers no install or migration hint for a path the daemon cannot read.
 
 #### Scenario: A GSD-only project reports that it needs migration
 - **WHEN** a registered project has the workflow skill installed but no `openspec/` directory
