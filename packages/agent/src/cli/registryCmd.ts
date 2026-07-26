@@ -24,21 +24,24 @@ export async function runList(opts: { json?: boolean }): Promise<void> {
   const widths = {
     id: Math.max(2, ...validated.map((p) => p.id.length)),
     name: Math.max(4, ...validated.map((p) => p.name.length)),
-    phase: 12,
-    status: 12,
+    changes: 9,
+    status: 15,
     root: Math.max(4, ...validated.map((p) => p.root.length)),
   }
   const header =
     `${'ID'.padEnd(widths.id)}  ${'NAME'.padEnd(widths.name)}  ` +
-    `${'PHASE'.padEnd(widths.phase)}  ${'STATUS'.padEnd(widths.status)}  ROOT`
+    `${'CHANGES'.padEnd(widths.changes)}  ${'STATUS'.padEnd(widths.status)}  ROOT`
   process.stdout.write(header + '\n')
   process.stdout.write('-'.repeat(header.length) + '\n')
   for (const p of validated) {
-    const status = p.status.reachable ? 'reachable' : 'UNREACHABLE'
-    const phase = p.status.currentPhase ?? '-'
+    // The condition already distinguishes unreachable, so it is the status
+    // column outright rather than a second boolean rendered beside it.
+    const status = p.status.condition
+    const changes =
+      p.status.condition === 'migrated' ? String(p.status.openChanges.length) : '-'
     process.stdout.write(
       `${p.id.padEnd(widths.id)}  ${p.name.padEnd(widths.name)}  ` +
-        `${phase.padEnd(widths.phase)}  ${status.padEnd(widths.status)}  ${p.root}\n`,
+        `${changes.padEnd(widths.changes)}  ${status.padEnd(widths.status)}  ${p.root}\n`,
     )
   }
   process.exit(0)

@@ -10,16 +10,24 @@ export interface DiscoveredMatch {
 }
 
 /**
- * Check which D-08 markers are present in a candidate directory.
- * D-08: .claude/skills/agentic-apps-workflow/SKILL.md OR .planning/config.json
+ * Check which markers are present in a candidate directory.
+ *
+ * Exactly two: an `openspec/` directory, or the workflow skill. Per
+ * `project-registry` › Registry CRUD Surface, `.planning/config.json` is no
+ * longer a marker — the GSD reader is retired, so matching on it would offer
+ * projects whose planning state the dashboard cannot read, and whose card would
+ * then tell the user to install a workflow they already have.
+ *
+ * This narrows discovery only. Projects already in the registry stay there
+ * regardless of which marker originally matched.
  */
 function checkMarkers(child: string): string[] {
   const markers: string[] = []
+  if (existsSync(join(child, 'openspec'))) {
+    markers.push('openspec/')
+  }
   if (existsSync(join(child, '.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md'))) {
     markers.push('agentic-apps-workflow/SKILL.md')
-  }
-  if (existsSync(join(child, '.planning', 'config.json'))) {
-    markers.push('.planning/config.json')
   }
   return markers
 }

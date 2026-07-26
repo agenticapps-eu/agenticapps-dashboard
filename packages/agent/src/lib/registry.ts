@@ -34,6 +34,9 @@ import {
 import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { computeProjectCondition } from './projectCondition.js'
+import { readOpenspecProject } from './openspecReader.js'
+import { resolveOpenspecBinary } from './openspecCli.js'
 import { invalidateConformanceCache } from './conformanceCache.js'
 import { invalidateCoverageCache } from './coverageCache.js'
 import { parseOrCorrupt } from './stateCorruption.js'
@@ -510,19 +513,6 @@ export function isReachable(root: string): boolean {
   }
 }
 
-function detectCurrentPhase(root: string): string | null {
-  try {
-    const phasesDir = resolve(root, '.planning', 'phases')
-    if (!existsSync(phasesDir)) return null
-    const dirs = readdirSync(phasesDir)
-      .filter((d) => /^\d{2}-/.test(d))
-      .sort()
-    return dirs.at(-1) ?? null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Invoke git using execa with an argv array (safe from shell injection).
  * The cwd is the project root, which is user-controlled — passing it as
@@ -548,21 +538,38 @@ async function detectLastCommitAt(root: string): Promise<string | null> {
 }
 
 /**
- * Return all registry entries enriched with live reachability + phase + git status.
- * Never throws on unreachable roots — marks reachable: false instead.
+ * Return all registry entries enriched with live reachability, OpenSpec state,
+ * and git status. Never throws on unreachable roots — reports the `unreachable`
+ * condition instead.
+ *
+ * The `openspec` binary is resolved once per call rather than per project: it is
+ * the same binary for every row, and resolving per project would run a PATH
+ * search per card.
  */
 export async function listProjectsWithStatus(
   filePath: string = REGISTRY_FILE,
 ): Promise<RegistryListItem[]> {
   const reg = readRegistry(filePath)
+  const binary = await resolveOpenspecBinary()
   return Promise.all(
     reg.projects.map(async (p) => {
       const reachable = isReachable(p.root)
+      const condition = computeProjectCondition(p.root, reachable)
+      const openspec =
+        condition === 'migrated' ? await readOpenspecProject(p.root, binary) : null
       return RegistryListItemSchema.parse({
         ...p,
         status: {
           reachable,
-          currentPhase: reachable ? detectCurrentPhase(p.root) : null,
+          condition,
+          openChanges:
+            openspec?.openChanges.map((c) => ({
+              name: c.name,
+              completedTasks: c.completedTasks,
+              totalTasks: c.totalTasks,
+              hasTaskArtifact: c.hasTaskArtifact,
+            })) ?? [],
+          capabilityCount: openspec?.capabilities.length ?? 0,
           lastCommitAt: reachable ? await detectLastCommitAt(p.root) : null,
         },
       })

@@ -44,8 +44,8 @@ describe('discoverProjects', () => {
     scaffold(parent, {
       // marked via agentic-apps-workflow/SKILL.md
       'marked-via-claude/.claude/skills/agentic-apps-workflow/SKILL.md': false,
-      // marked via .planning/config.json
-      'marked-via-planning/.planning/config.json': false,
+      // marked via openspec/ — replaces the retired .planning/config.json marker
+      'marked-via-openspec/openspec/specs': true,
       // unmarked: has a SKILL.md but NOT for the agentic-apps-workflow skill
       'unmarked-1/README.md': false,
       'unmarked-2/.claude/skills/something-else/SKILL.md': false,
@@ -54,7 +54,7 @@ describe('discoverProjects', () => {
     expect(matches).toHaveLength(2)
     const names = matches.map((m) => m.name).sort()
     expect(names).toContain('marked-via-claude')
-    expect(names).toContain('marked-via-planning')
+    expect(names).toContain('marked-via-openspec')
   })
 
   it('respects depth=1 — does NOT recurse beyond direct children', () => {
@@ -121,8 +121,8 @@ describe('registerInteractive', () => {
   it('with --yes registers all matches silently and returns per-match results', async () => {
     const parent = makeTmpParent()
     scaffold(parent, {
-      'proj-a/.planning/config.json': false,
-      'proj-b/.planning/config.json': false,
+      'proj-a/openspec/specs': true,
+      'proj-b/openspec/specs': true,
     })
 
     // Set up isolated registry for this test
@@ -144,7 +144,7 @@ describe('registerInteractive', () => {
   it('with --dry-run returns matches but does NOT call addProject (registry unchanged)', async () => {
     const parent = makeTmpParent()
     scaffold(parent, {
-      'proj-a/.planning/config.json': false,
+      'proj-a/openspec/specs': true,
     })
 
     const regFile = join(parent, 'registry.json')
@@ -169,7 +169,7 @@ describe('registerInteractive', () => {
   it('returns reason=already for a match that was already registered', async () => {
     const parent = makeTmpParent()
     scaffold(parent, {
-      'proj-a/.planning/config.json': false,
+      'proj-a/openspec/specs': true,
     })
     const regFile = join(parent, 'registry.json')
     ensureRegistryFile(regFile)
