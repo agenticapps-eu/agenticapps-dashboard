@@ -9,8 +9,31 @@ OpenSpec migration (2026-07-26).
 
 ## Human verification backlog
 
-**Status:** open. Carried forward at both the v1.1 close (2026-06-08) and the
-v1.2 close (2026-06-14) under proceed-and-acknowledge.
+**Status: ✅ RETIRED 2026-07-26 by explicit decision.** All 10 `human_needed`
+verifications and the residual UAT statuses are closed, not carried forward a
+third time.
+
+**The decision and its reasoning:** the phases below shipped in May 2026 and have
+been in continuous production use since. Sustained real-world use is stronger
+evidence than a retrospective sign-off performed months later by someone
+reconstructing what the phase did. Re-running the ritual would have produced
+paperwork, not information. The gate is therefore recorded as *superseded by
+production use* for these specific phases — not waived, and not silently dropped.
+
+This does **not** relax the gate going forward. New work still verifies before it
+ships; this closes inherited debt from before the OpenSpec migration.
+
+**Still to do:** update `docs/legacy-planning/STATE.md` §"Deferred Items" to
+record the retirement, so a future audit does not re-open it. That file is
+read-only history, so the note belongs alongside it rather than edited into it —
+this entry is that record.
+
+---
+
+*Original entry, retained for provenance:*
+
+Carried forward at both the v1.1 close (2026-06-08) and the v1.2 close
+(2026-06-14) under proceed-and-acknowledge.
 
 The v1.2 open-artifact audit found 22 items, all inherited from already-shipped
 v1.0/v1.1 phases — none from v1.2 or Phase 8:
@@ -24,15 +47,6 @@ v1.0/v1.1 phases — none from v1.2 or Phase 8:
 The implementations shipped and have been in production use since. What is
 missing is the human confirmation, which is precisely the part that cannot be
 delegated to an agent.
-
-**The decision to make:** sign each phase off individually against shipped
-behaviour, or retire the backlog wholesale with one recorded decision on the
-grounds that sustained production use has superseded the gate. Either is
-defensible. A fourth carry-forward is not — at that point the acknowledgement
-means nothing.
-
-Whichever is chosen, update `docs/legacy-planning/STATE.md` §"Deferred Items"
-so a future audit does not re-open it.
 
 > This was briefly staged as an OpenSpec change during the migration and then
 > withdrawn: it has no spec delta, and `openspec validate` correctly refuses a

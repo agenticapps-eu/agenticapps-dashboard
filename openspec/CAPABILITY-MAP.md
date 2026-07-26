@@ -46,7 +46,7 @@ active change, not a spec.
 | GAP-02 | **Keep `project-dashboard` merged.** Not split. |
 | GAP-03 | **ObservabilityHealth stays in `optional-integrations`.** Confirmed as proposed. |
 | GAP-04 | **Superseded — remove GitNexus from the dashboard entirely.** First decided as "mark deprecated", then revisited when the stated premise was found false (see below). Staged as `openspec/changes/remove-gitnexus-integration/`. |
-| GAP-05 | **Stage `add-openspec-project-reader` as an active change only.** Unimplemented; no reader is rewritten in this PR. |
+| GAP-05 | **Resolved and widened 2026-07-26.** Staged as `add-openspec-project-reader` (still unimplemented), now scoped to reader **+ capability panel + retiring the GSD reader**. Sub-decisions below. |
 
 ## Open questions — resolved at ratification
 
@@ -106,15 +106,46 @@ active change, not a spec.
 > `fix-coverage-scan-open-defects` was withdrawn — its two defects are in code
 > this change deletes.]
 
-> [GAP-05: **The dashboard reads `.planning/` — which the fleet is now migrating
-> away from.** This repo's core value proposition (phase columns, discipline
-> scoring, coverage `workflowVersion` column, `register --auto`'s
-> `.planning/config.json` marker) parses a layout that OpenSpec replaces. This
-> repo's own `.planning/` just moved to `docs/legacy-planning/`, so the dashboard
-> can no longer read its own project row. This is the single largest product
-> consequence of the fleet migration. **It is out of scope for this PR** — I will
-> stage it as an active change (`add-openspec-project-reader`) rather than
-> silently rewrite the readers.]
+> [GAP-05 — **RESOLVED 2026-07-26.** The dashboard parses `.planning/`, which
+> OpenSpec replaces.
+>
+> **Correction to the original framing.** This gap first claimed the repo "can no
+> longer read its own project row". Overstated. Because `.planning/config.json`
+> deliberately stayed in place, the `planning` flag is still true and both
+> auto-discovery markers still match — the project is recognised, discoverable,
+> and rendered. The only actual degradation is `findCurrentPhase()` returning
+> null, so the **progress column goes blank**. A degradation, not a blackout.
+>
+> **Reframing.** The original framing treated this as damage control. It is
+> better understood as an upgrade: the target format is strictly easier to read.
+> GSD required a "highest-numbered phase" sort over names like `00-bootstrap`,
+> `DASH-05.1-…`, `DASH-10.5-…`, `13-…` — the migration's own archive script
+> needed a hand-maintained date table because those cannot be ordered
+> programmatically — and derived progress from artifact presence. OpenSpec gives
+> real task counts, a date-sortable archive, and, for the first time, an
+> enumerable statement of what a project *currently promises*. The GSD tree could
+> only ever show activity; OpenSpec can show state.
+>
+> **Sub-decisions:**
+> - **Scope:** reader + capability panel + retire the GSD reader (all three).
+> - **Card primary line:** open-change count with per-change task ratios. No
+>   synthesised "current phase" — it has no OpenSpec equivalent.
+> - **Read strategy:** hybrid — `openspec --json` when the binary is present,
+>   direct tree read otherwise. The archive is always read from the tree; the CLI
+>   does not expose it.
+> - **Allow-list:** add `openspec` only. Reading relocated `docs/legacy-planning/`
+>   trees was **explicitly rejected** — it would widen the allow-list into
+>   `docs/`, which holds unrelated content, for history already archived in
+>   `openspec/changes/archive/`.
+> - **Coverage column:** none added. `workflowVersion >= 3.0.0` already implies
+>   OpenSpec, and the matrix is deliberately getting less dense.
+>
+> **Accepted consequence:** retiring the GSD reader immediately (rather than
+> gating it on fleet migration) blanks 8 repos — `agenticapps-roadmap`,
+> `agents-task-viewer`, `claude-workflow`, `pi-agentic-apps-workflow`,
+> `workflow-testbed`, `factiv/cparx`, `factiv/stimmung`, `neuroflash/mcp-server`
+> — including the flagship product and the workflow repo itself. Chosen
+> knowingly over carrying dual-path readers; the remedy is to migrate them.]
 
 ## Traceability
 

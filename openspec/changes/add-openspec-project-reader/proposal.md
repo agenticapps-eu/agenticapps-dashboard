@@ -1,65 +1,70 @@
-# Read OpenSpec projects, not just GSD phase trees
+# Read OpenSpec projects, and retire the GSD reader
 
 ## Why
 
 The dashboard's core value is reading a project's planning state and rendering
 it. Every reader it has parses the GSD layout: `.planning/phases/<N>/` for phase
-progress, `.planning/config.json` as the auto-discovery marker, the phase
-artifact checklist, the phase-number-to-status mapping.
+progress, `.planning/config.json` as an auto-discovery marker, artifact presence
+as a progress proxy.
 
-The fleet is migrating that layout away. Workflow v3.0.0 (migration `0032`)
-replaces the GSD phase engine with OpenSpec: current truth lives in
-`openspec/specs/`, in-flight work in `openspec/changes/`, finished work in
-`openspec/changes/archive/`. A project that has migrated has no
-`.planning/phases/` for the dashboard to read.
+The fleet has moved. Workflow v3.0.0 replaces the phase engine with OpenSpec, and
+the replacement format is **strictly better to read**:
 
-This is not hypothetical. **This repository migrated first.** Its own planning
-history now lives at `docs/legacy-planning/`, so the dashboard cannot currently
-read its own project row — it reports itself as having no workflow installed.
-Every other repo in the fleet will land in the same state as it migrates.
+| The card needs | GSD gives | OpenSpec gives |
+|---|---|---|
+| Current work | `findCurrentPhase()` — readdir plus a "highest-numbered" sort over names like `00-bootstrap`, `DASH-05.1-…`, `DASH-10.5-…`, `13-…` | change names and status, enumerable |
+| Progress | artifact-presence heuristic (CONTEXT ✓, PLAN ✓ …) | `completedTasks / totalTasks` — a real count |
+| Last activity | a git subprocess | `lastModified`, given |
+| Completed history | phase dirs that do not sort | `changes/archive/` date-prefixed, sorts by construction |
+| **What the project promises** | **nothing — you would read 21 phases in order** | `specs/` — capabilities with requirement counts |
 
-Recorded as GAP-05 during the OpenSpec migration and deliberately staged rather
-than fixed in that PR, because it is a product change requiring a real planning
-cycle, not a mechanical migration step.
+That last row is why this change also adds a surface the dashboard has never
+had. The GSD tree contained no representation of current truth, so the dashboard
+could only ever show *activity*. It can now show *state*.
+
+The phase-sort fragility is not theoretical: the migration's own archive script
+needed a hand-maintained date table because those directory names cannot be
+ordered programmatically.
 
 ## What changes
 
-- Detect which planning front end a registered project uses, rather than
-  assuming GSD.
-- Read progress from `openspec/changes/` and `openspec/changes/archive/` for
-  OpenSpec projects, mapping it onto the existing progress projection.
-- Extend auto-discovery to recognise an `openspec/` directory as a valid marker.
-- Recognise a relocated legacy planning tree so migrated projects keep their
-  history visible rather than appearing to have none.
-- Decide what the fleet-coverage workflow-version column means once the fleet is
-  past 3.0.0.
+1. **Read the OpenSpec layout.** Hybrid strategy — use the `openspec` CLI's JSON
+   output when the binary is available, fall back to reading the tree directly
+   when it is not. The archive is read from the tree in both cases; the CLI does
+   not expose it.
+2. **Add a capability panel.** Render `specs/` as the project's current promise:
+   capabilities and their requirement counts.
+3. **Replace the phase concept on the card.** Open change count plus per-change
+   task ratios, rather than a synthesised "current phase".
+4. **Retire the GSD reader.** `.planning/phases/` parsing is removed.
+5. **Widen the allow-list by one entry** — `openspec`, alongside `.planning` and
+   `.claude`.
 
 ## Capabilities
 
-- `project-dashboard` — progress projection gains an OpenSpec source
-- `project-registry` — detection and auto-discovery gain an OpenSpec marker
+- `project-dashboard` — progress projection moves to OpenSpec; capability panel added
+- `project-registry` — detection, auto-discovery, and status move to OpenSpec
+- `filesystem-access-policy` — one new allow-listed top-level directory
+
+## Accepted consequence: 8 repos go blank
+
+Retiring the GSD reader was chosen deliberately over gating it on fleet
+migration. At the time of writing, 8 registered-or-scannable repos are GSD-only
+and will render no progress data until each migrates:
+
+`agenticapps-roadmap`, `agents-task-viewer`, `claude-workflow`,
+`pi-agentic-apps-workflow`, `workflow-testbed`, `factiv/cparx`,
+`factiv/stimmung`, `neuroflash/mcp-server`
+
+This includes the flagship product (`cparx`) and the workflow repo itself
+(`claude-workflow`). This is recorded as an accepted cost, not an oversight —
+the remedy is to migrate those repos, and dual-path readers were judged not
+worth carrying.
 
 ## Non-goals
 
-- Removing the GSD readers. Most of the fleet has not migrated yet, and
-  `docs/legacy-planning/` trees remain readable. Both must work simultaneously
-  for the whole transition.
-- Rewriting `fleet-coverage`'s column set. Whether a new column is needed is an
-  open question below, not a decision this change makes.
-
-## Open questions
-
-> [GAP: What does "current phase" mean for an OpenSpec project? There is no
-> phase number. Candidates: the count of active changes, the most recently
-> modified active change, or dropping the notion entirely and showing
-> "N changes open". This decides the home card's primary line and needs a
-> product call.]
-
-> [GAP: Should `fleet-coverage` gain an `openspec` column, or should the existing
-> `workflowVersion` column simply read 3.0.0-and-above as "OpenSpec"? A new
-> column costs matrix width on a surface that is already dense.]
-
-> [GAP: Should the daemon read a migrated project's `docs/legacy-planning/` at
-> all? The path allow-list in `filesystem-access-policy` currently permits only
-> `.planning/` and `.claude/`. Reading it would require widening that allow-list,
-> which is a security-spine change and must not be done casually.]
+- Reading relocated `docs/legacy-planning/` trees. That would widen the
+  allow-list into `docs/`, which holds unrelated content, for history already
+  archived in `openspec/changes/archive/`. Explicitly rejected.
+- A new coverage-matrix column for OpenSpec. `workflowVersion >= 3.0.0` already
+  implies it.

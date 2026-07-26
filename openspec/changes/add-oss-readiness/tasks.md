@@ -13,11 +13,11 @@
 - [ ] Add a pull-request template under `.github/`
 - [ ] Verify a clean clone can reach a green test run following only the written steps
 
-## 3. Public access decision
+## 3. Publish the source only
 
-- [ ] Resolve the open question: does the deployment go public, or only the source?
-- [ ] Record the decision and its criteria
-- [ ] If going public: apply the access-policy change and verify the deployed surface exposes no daemon endpoint
+- [ ] Confirm no secret, token, internal hostname, or personal path is committed anywhere in history
+- [ ] Flip repository visibility to public (human action)
+- [ ] Verify the deployment's access policy is UNCHANGED after the flip — source publication must not widen it
 
 ## 4. Verify
 
