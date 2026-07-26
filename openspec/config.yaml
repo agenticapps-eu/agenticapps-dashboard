@@ -1,20 +1,46 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  agenticapps-dashboard — a multi-project pipeline dashboard for the AgenticApps
+  fleet. A static SPA hosted on Cloudflare Pages talks to a single local daemon
+  over bearer-token HTTP; the daemon reads each registered project's files and
+  git history. The SPA holds no user data and nothing is stored cloud-side.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Tech stack: pnpm workspace, three packages.
+    - packages/shared — Zod schemas + TS types. The single source of truth for
+      every daemon <-> SPA wire shape. Both ends validate; a mismatch surfaces
+      in the SPA as an explicit "schema drift" state.
+    - packages/spa    — Vite + React 18 + TypeScript + Tailwind + TanStack Query.
+    - packages/agent  — Node 22+ + Hono + TypeScript. Binary `agentic-dashboard`,
+      listening on 127.0.0.1:5193.
+
+  Hard architectural constraints (non-negotiable; see
+  openspec/specs/filesystem-access-policy/spec.md):
+    - Read-only on every registered project's filesystem. Sole exception is the
+      user-driven POST /api/projects/{id}/open, which spawns $EDITOR.
+    - Per-project path allow-list: /read resolves only under <root>/.planning or
+      <root>/.claude. Reject `..`, absolute paths, and realpath escapes.
+    - Daemon writes confined to ~/.agenticapps/dashboard/, mode 0600 (0700 for
+      directory trees). The daemon refuses to start on looser permissions.
+    - No native dependencies in packages/agent — no keytar, no FFI — so the npx
+      install path stays portable.
+    - Bearer token on every route; CORS locked to the known origins.
+    - Optional integrations (Sentry, Linear, Infisical) stay strictly optional.
+      The dashboard must work fully with none of them configured.
+    - No Cloudflare Workers or Pages Functions; the SPA is pure static.
+
+  Conventions:
+    - TDD is expected for daemon routes, panels, and config alike.
+    - Conventional commits.
+    - Run vitest per package (`pnpm --filter <pkg> test`), not `pnpm -r test`.
+    - `pnpm lint` is enforced in CI — run it before shipping.
+    - Planning history from the pre-OpenSpec era is preserved read-only under
+      docs/legacy-planning/. Do not edit it; it is the evidence trail.
+
+rules:
+  proposal:
+    - State the product behaviour change, not the file diff.
+    - Name which capability under openspec/specs/ the change affects.
+  spec:
+    - Requirements use SHALL/MUST and carry at least one scenario each.
+    - Specs are current truth, post-supersession — not a changelog.
