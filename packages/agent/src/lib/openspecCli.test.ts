@@ -7,6 +7,7 @@
  */
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, symlinkSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { realpath } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { describe, it, expect, afterEach } from 'vitest'
@@ -103,7 +104,10 @@ describe('runOpenspecList — argv discipline', () => {
     const res = await runOpenspecList('changes', nasty, bin)
     expect(res.ok).toBe(true)
     const seen = (await import('node:fs')).readFileSync(join(parent, 'pwd.txt'), 'utf8')
-    expect(seen).toBe(nasty)
+    // Compare realpaths: on macOS /var is a symlink to /private/var, so $PWD in
+    // the child is the resolved form. The point of the assertion is that the
+    // whole nasty directory name arrived intact, not which alias it took.
+    expect(await realpath(seen)).toBe(await realpath(nasty))
   })
 })
 
