@@ -50,15 +50,15 @@
 
 ## 4. Registry and discovery
 
-- [ ] Status reports the three conditions `migrated` / `needs-migration` / `no-workflow` (TDD)
-- [ ] Reachability takes precedence: an unreachable root reports `unreachable`, never `no-workflow` (TDD)
-- [ ] Test: workflow skill present + no `openspec/` reports `needs-migration`, not `no-workflow`
-- [ ] Test: a project with both `.planning/` and `openspec/` reports `migrated` and reads nothing from `.planning/phases/`
-- [ ] Status reports open-change and capability counts; remove phase number and phase status from the computed shape
-- [ ] `register --auto` markers become exactly `openspec/` and the workflow-skill `SKILL.md`
-- [ ] Remove `.planning/config.json` from the discovery markers (TDD)
-- [ ] Test: a GSD-only project is not offered by `--auto`, and an already-registered one stays in the registry
-- [ ] Extend the shared registry schema; both ends validate
+- [x] Status reports the three conditions `migrated` / `needs-migration` / `no-workflow` (TDD)
+- [x] Reachability takes precedence: an unreachable root reports `unreachable`, never `no-workflow` (TDD)
+- [x] Test: workflow skill present + no `openspec/` reports `needs-migration`, not `no-workflow`
+- [x] Test: a project with both `.planning/` and `openspec/` reports `migrated` and reads nothing from `.planning/phases/`
+- [x] Status reports open-change and capability counts; remove phase number and phase status from the computed shape
+- [x] `register --auto` markers become exactly `openspec/` and the workflow-skill `SKILL.md`
+- [x] Remove `.planning/config.json` from the discovery markers (TDD)
+- [x] Test: a GSD-only project is not offered by `--auto`, and an already-registered one stays in the registry
+- [x] Extend the shared registry schema; both ends validate
 
 ## 5. Retire the GSD reader
 
@@ -71,12 +71,12 @@
 
 ## 6. Surfaces
 
-- [ ] Home card: open-change count plus per-change task ratios (the ratified card shape)
-- [ ] Home card: remove review finding counts — the field's source is deleted with the phase reader
-- [ ] Home card: render a migration hint for `needs-migration`, an install hint only for `no-workflow`
+- [x] Home card: open-change count plus per-change task ratios (the ratified card shape)
+- [x] Home card: remove review finding counts — the field's source is deleted with the phase reader
+- [x] Home card: render a migration hint for `needs-migration`, an install hint only for `no-workflow`
 - [ ] Single-project centre column: Change Progress, with affected capabilities per change
 - [ ] Single-project view for a `needs-migration` project: informational migration state, header context still renders
-- [ ] A change with no task artifact is still listed, with a no-task-list state in place of its ratio
+- [x] A change with no task artifact is still listed, with a no-task-list state in place of its ratio
 - [ ] Single-project: new Capability panel — capabilities with requirement counts
 - [ ] Empty states: no `openspec/`; `openspec/` with no specs; `openspec/` with no open changes; a change with no spec delta
 - [ ] Run the design critique on both changed routes; composite floor ≥ 80 still applies
