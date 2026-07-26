@@ -2,7 +2,20 @@ import { realpath } from 'node:fs/promises'
 import { resolve, isAbsolute, sep, basename, join } from 'node:path'
 import { homedir } from 'node:os'
 
-export const ALLOWED_SUBDIRS = ['.planning', '.claude'] as const
+/**
+ * Top-level project directories readable through /api/projects/:id/read.
+ *
+ * `.planning` stays after the GSD phase reader is retired and is load-bearing,
+ * not residual: `.planning/skill-observations/` is read by overrideSentinelScanner
+ * and routes/commitment.ts, and `.planning/config.json` is live lifecycle config.
+ * Only `.planning/phases/` stopped being read. Relocate those readers before
+ * removing this entry.
+ *
+ * `docs/legacy-planning` is deliberately absent — allow-listing `docs/` to reach
+ * relocated GSD history would expose unrelated content, and that history is
+ * archived under `openspec/changes/archive/` anyway.
+ */
+export const ALLOWED_SUBDIRS = ['.planning', '.claude', 'openspec'] as const
 
 export class PathViolation extends Error {
   constructor(message: string) {
@@ -12,12 +25,12 @@ export class PathViolation extends Error {
 }
 
 /**
- * Resolve a relative path under a project root, asserting it stays within
- * .planning/ or .claude/. Defends against:
+ * Resolve a relative path under a project root, asserting it stays within one of
+ * ALLOWED_SUBDIRS. Defends against:
  *  - Absolute paths (isAbsolute check)
  *  - Path traversal via '..' components (pre-check before realpath)
  *  - Planted symlinks escaping allowed roots (realpath follow + prefix check)
- *  - Paths outside .planning or .claude (e.g. .git/HEAD)
+ *  - Paths outside the allow-listed subdirs (e.g. .git/HEAD)
  *
  * See CONTEXT.md D-23.
  */
