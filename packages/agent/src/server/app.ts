@@ -19,6 +19,7 @@ import { commitmentRoute } from '../routes/commitment.js'
 import { disciplineRoute } from '../routes/discipline.js'
 import { observationsRoute } from '../routes/observations.js'
 import { overviewRoute } from '../routes/overview.js'
+import { openspecRoute } from '../routes/openspec.js'
 import { skillsRoute } from '../routes/skills.js'
 import { agentlinterRoute } from '../routes/agentlinter.js'
 import { observabilityRoute } from '../routes/observability.js'
@@ -179,6 +180,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/projects', readRoute)
   app.route('/api/projects', gitRoute)
   app.route('/api/projects', overviewRoute)
+  app.route('/api/projects', openspecRoute)
   app.route('/api/projects', commitmentRoute)
   app.route('/api/projects', disciplineRoute)
   app.route('/api/projects', observationsRoute)

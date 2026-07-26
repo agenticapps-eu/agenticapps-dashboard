@@ -39,6 +39,20 @@ function tmp(): string {
 }
 
 /**
+ * A conformant capability spec. The `## Requirements` section header is not
+ * decoration: the `openspec` CLI only counts requirements nested under it,
+ * while the tree reader counts `### Requirement:` headings wherever they sit.
+ * Writing the conformant shape is what makes this fixture exercise the parity
+ * the spec claims — the assertions below then hold whether or not the binary
+ * is installed on the host running the suite, instead of silently testing only
+ * whichever path this machine happens to take.
+ */
+function spec(requirements: string[]): string {
+  const body = requirements.map((r) => `### Requirement: ${r}\n\nThe system SHALL ${r}.\n`).join('\n')
+  return `# spec\n\n## Purpose\n\nFixture.\n\n## Requirements\n\n${body}`
+}
+
+/**
  * A migrated project: one change with a task list and a two-capability spec
  * delta, one change with a task list and no delta, one change with a delta and
  * no task list, plus two declared capabilities and one archived change.
@@ -48,12 +62,9 @@ function makeMigratedProject(): string {
   const os = join(root, 'openspec')
 
   mkdirSync(join(os, 'specs', 'daemon-runtime'), { recursive: true })
-  writeFileSync(
-    join(os, 'specs', 'daemon-runtime', 'spec.md'),
-    '### Requirement: A\ntext\n### Requirement: B\ntext\n',
-  )
+  writeFileSync(join(os, 'specs', 'daemon-runtime', 'spec.md'), spec(['A', 'B']))
   mkdirSync(join(os, 'specs', 'help-docs'), { recursive: true })
-  writeFileSync(join(os, 'specs', 'help-docs', 'spec.md'), '### Requirement: Only\n')
+  writeFileSync(join(os, 'specs', 'help-docs', 'spec.md'), spec(['Only']))
 
   const withDelta = join(os, 'changes', 'add-thing')
   mkdirSync(join(withDelta, 'specs', 'daemon-runtime'), { recursive: true })

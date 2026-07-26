@@ -39,6 +39,18 @@ export type {
 } from './schemas/registry.js'
 export { ProjectOverviewSchema, MarkersSchema } from './schemas/overview.js'
 export type { ProjectOverview, Markers } from './schemas/overview.js'
+export {
+  OpenspecProjectStateSchema,
+  OpenspecChangeDetailSchema,
+  OpenspecCapabilitySchema,
+  OpenspecArchivedChangeSchema,
+} from './schemas/openspec.js'
+export type {
+  OpenspecProjectState,
+  OpenspecChangeDetail,
+  OpenspecCapability,
+  OpenspecArchivedChange,
+} from './schemas/openspec.js'
 export { ReadResponseSchema } from './schemas/read.js'
 export type { ReadResponse } from './schemas/read.js'
 export { GitResponseSchema } from './schemas/git.js'
