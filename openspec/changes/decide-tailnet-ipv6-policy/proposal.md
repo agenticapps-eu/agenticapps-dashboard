@@ -24,32 +24,48 @@ Found during the OpenSpec plan review of
 
 ## What changes
 
-No behaviour change is proposed. The boundary stays IPv4 CGNAT only, and that
-becomes an **explicit, reasoned policy** with a scenario, plus a diagnosable
-rejection so the failure mode is legible.
+**The accepted address set is unchanged.** Exactly the same clients are admitted
+and refused as today.
 
-Two things become true that are not true today:
+There is one behaviour change, and it is daemon-side: refusals become
+**classified** in the daemon's own diagnostics as either *address family* or
+*outside range*. Today a single undifferentiated violation is emitted, so an
+operator debugging a second device that will not connect cannot tell an IPv6 peer
+from an off-tailnet one. That classification never leaves the daemon — not to the
+rejected client, and not to an authenticated caller either, so no one can probe
+which rule refused a request.
 
-1. The spec states that the tailnet boundary is IPv4-CGNAT-only, and why.
-2. A client refused because it arrived over IPv6 can tell that apart from a
-   client refused for being off-tailnet entirely.
+An earlier draft of this proposal claimed "no behaviour change is proposed" while
+mandating those diagnostics. Two reviewers caught the contradiction.
 
 ## Capabilities
 
 - `daemon-runtime` — the bind-mode and CIDR requirement gains an explicit
   address-family policy
 
-## Why not simply widen the range
+## Why not simply widen the range — and what that costs
 
-Widening a security boundary is not a free default. Adding
-`fd7a:115c:a1e0::/48` would double the accepted address space on the strength of
-a review finding, with no reported case of a device that could not connect. The
-existing boundary has held for every device actually paired so far.
+Widening a security boundary is not a free default, so the narrow policy stays.
+But the honest version of this argument is weaker than the first draft's, and a
+reviewer was right to press on it.
 
-Making the narrow policy explicit costs nothing and is reversible; widening
-first and discovering later that the ULA prefix is configurable per tailnet, or
-that a mapped-IPv4 path was already sufficient, is not. If a real IPv6-only
-tailnet peer appears, widening becomes a change with evidence behind it.
+**Tailscale supports disabling IPv4 per node or tailnet-wide.** An IPv6-only peer
+is therefore a *supported upstream configuration*, not an exotic edge case. This
+change consequently declares a supported Tailscale configuration **unsupported by
+this daemon**. That is a real limitation and is stated here rather than left to be
+discovered by whoever hits it.
+
+**The workaround, for anyone who does:** leave IPv4 enabled for the node running
+the dashboard client. The daemon accepts that node's CGNAT address, and no other
+setting has to change.
+
+The narrow policy is kept anyway because making it explicit is cheap and
+reversible, while widening is neither. Widening means accepting a second address
+family in the code path that decides who may reach a daemon holding filesystem
+read access to every registered project — and doing so on the strength of a
+review finding rather than a device that demonstrably cannot connect. If such a
+device appears, widening becomes a change with evidence behind it, and the
+workaround above is what carries the gap until then.
 
 ## What this change explicitly does not do
 
@@ -60,11 +76,22 @@ tailnet peer appears, widening becomes a change with evidence behind it.
 - **It does not read `X-Forwarded-For`.** The client address continues to come
   from the raw socket; the anti-spoofing property is untouched.
 - **It does not move the requirement between capabilities.** CIDR enforcement
-  belongs to `daemon-runtime`, and this change keeps it there.
+  belongs to `daemon-runtime`, and this change keeps it there — as a modification
+  of the existing bind-mode requirement rather than a parallel one, so two
+  requirements cannot drift apart over the same check.
+- **It does not log client addresses.** The diagnostics carry the classification
+  and the request correlation identifier, not the peer's IP. Making a refusal
+  diagnosable must not become a reason to start retaining addresses.
 
-## Open questions
+## Resolved: the IPv6 prefix is fixed, not per-tailnet
 
-> [GAP: Whether Tailscale's IPv6 ULA prefix is fixed fleet-wide or varies per
-> tailnet was not established — it determines whether a future widening can use
-> a constant prefix or must discover it. Not resolved here because this change
-> does not widen. Recommended: establish it before any widening, not after.]
+An earlier draft left open whether Tailscale's IPv6 prefix varies per tailnet. A
+reviewer closed it against first-party documentation: `fd7a:115c:a1e0::/48` is a
+**reserved prefix**, the same for every tailnet, not a per-tailnet value that
+would have to be discovered.
+
+That makes a future widening simpler than assumed — a constant prefix, matched
+the same way the IPv4 range is. It also corrects a figure in the first draft:
+adding a `/48` does not "double" the accepted space, it adds an address family
+vastly larger than the IPv4 range. The argument against widening does not rest on
+that figure, but the figure was wrong and is not left standing.
