@@ -25,12 +25,25 @@ export function MigrationNotice(): React.JSX.Element {
         <span aria-hidden="true">
           <GitBranchPlus size={20} className="text-text-tertiary" />
         </span>
-        <h3 className="text-lg font-semibold text-text-primary">Not yet migrated to OpenSpec</h3>
-        <p className="max-w-[52ch] text-base text-text-secondary">
+        <h3 className="text-base font-semibold text-text-primary">Not yet migrated to OpenSpec</h3>
+        <p className="max-w-[52ch] text-sm text-text-secondary">
           This project&rsquo;s planning layout predates OpenSpec, so there are no changes or
           capabilities to read. Progress data resumes once it migrates. Its history stays readable
-          on disk in the meantime.
+          on disk under <code className="font-mono text-sm">.planning/</code> in the meantime.
         </p>
+        {/*
+         * The home card offers `migrate →`; without this the detail view — the
+         * place the user went for *more* — would offer strictly less than the
+         * summary that sent them here.
+         */}
+        <a
+          href="https://github.com/agenticapps-eu/claude-workflow"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-md py-1.5 text-sm text-accent underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          How to migrate &rarr;
+        </a>
       </div>
     </PanelContainer>
   )

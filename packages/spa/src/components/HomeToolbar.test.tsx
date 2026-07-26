@@ -184,3 +184,19 @@ describe('HomeToolbar', () => {
     expect(label?.className).toContain('sr-only')
   })
 })
+
+/*
+ * Group 4 of `add-openspec-project-reader` rewrote this sort to rank by open
+ * changes (registry.ts, "Was cmpPhase") but left the label reading "Phase" —
+ * vocabulary belonging to the reader this same change retires. The label named
+ * a deleted concept while performing a different, more useful one.
+ */
+describe('HomeToolbar — the sort label survived the phase reader', () => {
+  it('HT-phase: no control names "Phase"; the open-change sort says what it does', () => {
+    render(<HomeToolbar {...defaultProps} />)
+
+    expect(screen.queryByText(/Phase/i)).toBeNull()
+    const option = screen.getByRole('option', { name: /open changes/i })
+    expect(option.getAttribute('value')).toBe('phase')
+  })
+})

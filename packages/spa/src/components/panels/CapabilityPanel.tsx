@@ -41,17 +41,16 @@ export function CapabilityPanel({ projectId }: CapabilityPanelProps): React.JSX.
         />
       )
     }
-    return (
-      <PanelContainer panelId="capabilities" title={TITLE} unreachable>
-        {null}
-      </PanelContainer>
-    )
+    // Said once, by Change Progress, immediately above — the same reasoning
+    // this panel already applies to `!present`. Two identical Retry buttons
+    // 24px apart invite the reader to wonder whether they differ.
+    return null
   }
 
   if (query.isLoading || !query.data) {
     return (
       <PanelContainer panelId="capabilities" title={TITLE}>
-        <p className="text-sm text-text-secondary">Loading...</p>
+        <p className="text-sm text-text-secondary">Loading…</p>
       </PanelContainer>
     )
   }
@@ -75,6 +74,20 @@ export function CapabilityPanel({ projectId }: CapabilityPanelProps): React.JSX.
 
   return (
     <PanelContainer panelId="capabilities" title={TITLE}>
+      {/*
+       * The unit is shown, not just announced. It previously existed only as
+       * sr-only text, which left a sighted reader with a bare "9" and no way to
+       * tell whether it counted requirements, changes or files — and gave the
+       * screen-reader user strictly better information, the inverse of the
+       * usual failure. A column header labels all twelve rows at once.
+       */}
+      <div
+        data-testid="capability-header"
+        className="flex items-baseline justify-between gap-3 border-b border-border-subtle pb-2 text-xs font-medium text-text-tertiary"
+      >
+        <span>Capability</span>
+        <span>Requirements</span>
+      </div>
       <ul className="divide-y divide-border-subtle">
         {capabilities.map((c) => (
           <li
@@ -82,10 +95,11 @@ export function CapabilityPanel({ projectId }: CapabilityPanelProps): React.JSX.
             data-testid={`capability-${c.id}`}
             className="flex items-baseline justify-between gap-3 py-2"
           >
-            <span className="min-w-0 truncate font-mono text-sm text-text-primary">{c.id}</span>
+            <span title={c.id} className="min-w-0 truncate font-mono text-sm text-text-primary">
+              {c.id}
+            </span>
             <span className="shrink-0 text-sm tabular-nums text-text-secondary">
               {c.requirementCount}
-              <span className="sr-only"> requirements</span>
             </span>
           </li>
         ))}

@@ -85,6 +85,32 @@ describe('CapabilityPanel', () => {
     expect(within(row).getByText('0')).toBeDefined()
   })
 
+  /*
+   * CA9/CA10 close the critique's P2. The unit existed only as sr-only text, so
+   * a sighted user read a bare "9" with no way to tell whether it counted
+   * requirements, changes or files — and a screen-reader user got strictly
+   * better information than they did, which is the inverse of the usual failure
+   * and a sign the unit was treated as an accessibility patch, not as content.
+   */
+  it('CA9: the requirement count carries a visible unit, not just an sr-only one', () => {
+    mockQuery({ data: state({ capabilities: [{ id: 'auth-and-pairing', requirementCount: 9 }] }) })
+    render(<CapabilityPanel projectId="p" />)
+
+    const header = screen.getByTestId('capability-header')
+    expect(header.textContent).toMatch(/requirements/i)
+
+    // And the sr-only crutch is gone now that the column is labelled.
+    expect(document.querySelector('.sr-only')).toBeNull()
+  })
+
+  it('CA10: a truncating capability id stays recoverable via its title attribute', () => {
+    mockQuery({ data: state({ capabilities: [{ id: 'filesystem-access-policy', requirementCount: 7 }] }) })
+    render(<CapabilityPanel projectId="p" />)
+
+    const name = screen.getByText('filesystem-access-policy')
+    expect(name.getAttribute('title')).toBe('filesystem-access-policy')
+  })
+
   it('CA3: an openspec tree with no capabilities says so rather than erroring', () => {
     mockQuery({ data: state({ capabilities: [] }) })
     render(<CapabilityPanel projectId="p" />)
@@ -102,7 +128,7 @@ describe('CapabilityPanel', () => {
   it('CA5: shows a loading line while the query is in flight', () => {
     mockQuery({ isLoading: true })
     render(<CapabilityPanel projectId="p" />)
-    expect(screen.getByText('Loading...')).toBeDefined()
+    expect(screen.getByText('Loading…')).toBeDefined()
   })
 
   it('CA6: schema drift renders the inline drift state', () => {
@@ -113,10 +139,19 @@ describe('CapabilityPanel', () => {
     expect(screen.getByText(/capabilities\.0\.id/)).toBeDefined()
   })
 
-  it('CA7: a non-drift error renders the panel in its unreachable state', () => {
+  it('CA7: a non-drift error renders nothing — Change Progress reports it once', () => {
     mockQuery({ error: new Error('network boom') })
-    render(<CapabilityPanel projectId="p" />)
+    const { container } = render(<CapabilityPanel projectId="p" />)
 
-    expect(screen.getByText(/Agent unreachable/i)).toBeDefined()
+    /*
+     * Both panels read the same `useOpenspec` query, so an unreachable daemon
+     * previously rendered the identical paragraph and an identical Retry button
+     * twice, 24px apart — inviting the reader to wonder whether the two buttons
+     * did different things. This is the same reasoning the panel already
+     * applies to `!present`, extended to the path where the duplication is
+     * loudest. Schema drift still renders here: InlineDrift names the offending
+     * field path, which differs per panel and is worth saying twice.
+     */
+    expect(container.firstChild).toBeNull()
   })
 })

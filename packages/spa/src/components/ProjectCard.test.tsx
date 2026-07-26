@@ -359,3 +359,62 @@ describe('ProjectCard', () => {
     expect(cardContent).not.toContain('shimmer')
   })
 })
+
+/*
+ * The card is the triage surface: it is what Donald reads twenty times a day to
+ * decide which project needs him. The detail panel already ranks work in flight
+ * above untouched proposals; the card shipped the daemon's alphabetical order,
+ * so the one change actually moving landed between two zeros.
+ */
+describe('ProjectCard — the change summary is triage-ordered and readable', () => {
+  const withChanges = (openChanges: RegistryListItem['status']['openChanges']): RegistryListItem => ({
+    id: 'p',
+    name: 'p',
+    root: '/tmp/p',
+    client: null,
+    addedAt: '2026-07-26T00:00:00.000Z',
+    tags: [],
+    status: {
+      reachable: true,
+      condition: 'migrated',
+      openChanges,
+      capabilityCount: 3,
+      lastCommitAt: '2026-07-26T00:00:00.000Z',
+    },
+  })
+
+  it('PC-order: the change in flight is summarised before untouched proposals', () => {
+    render(
+      <ProjectCard
+        item={withChanges([
+          { name: 'aaa-untouched', completedTasks: 0, totalTasks: 45, hasTaskArtifact: true },
+          { name: 'zzz-moving', completedTasks: 59, totalTasks: 71, hasTaskArtifact: true },
+        ])}
+        onContextMenu={() => {}}
+      />,
+      { wrapper },
+    )
+
+    const summary = screen.getByTestId('card-change-summary')
+    expect(summary.textContent!.indexOf('zzz-moving')).toBeLessThan(
+      summary.textContent!.indexOf('aaa-untouched'),
+    )
+  })
+
+  it('PC-space: the open-change count does not run into the first change name', () => {
+    render(
+      <ProjectCard
+        item={withChanges([
+          { name: 'add-agent-board', completedTasks: 0, totalTasks: 45, hasTaskArtifact: true },
+        ])}
+        onContextMenu={() => {}}
+      />,
+      { wrapper },
+    )
+
+    // `ml-2` is visual spacing only; with no text node between the spans, every
+    // screen reader and every copy-paste produced "1 open changeadd-agent-board".
+    const card = screen.getByRole('button', { name: /View p/ })
+    expect(card.textContent).not.toMatch(/changes?add-agent-board/)
+  })
+})

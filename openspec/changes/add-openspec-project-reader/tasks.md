@@ -75,19 +75,19 @@
 - [x] Home card: open-change count plus per-change task ratios (the ratified card shape)
 - [x] Home card: remove review finding counts — the field's source is deleted with the phase reader
 - [x] Home card: render a migration hint for `needs-migration`, an install hint only for `no-workflow`
-- [ ] Single-project centre column: Change Progress, with affected capabilities per change
-- [ ] Single-project view for a `needs-migration` project: informational migration state, header context still renders
+- [x] Single-project centre column: Change Progress, with affected capabilities per change — served by a new `GET /api/projects/:id/openspec` route; the registry list keeps its summary rather than carrying detail on every home card
+- [x] Single-project view for a `needs-migration` project: informational migration state, header context still renders. The notice keeps the panel titled "Change Progress" so the column's slot identity stays stable, and the two OpenSpec panels do not mount at all rather than mounting into permanent empty states
 - [x] A change with no task artifact is still listed, with a no-task-list state in place of its ratio
-- [ ] Single-project: new Capability panel — capabilities with requirement counts
-- [ ] Empty states: no `openspec/`; `openspec/` with no specs; `openspec/` with no open changes; a change with no spec delta
-- [ ] Run the design critique on both changed routes; composite floor ≥ 80 still applies
+- [x] Single-project: new Capability panel — capabilities with requirement counts. Renders nothing when the tree is absent: Change Progress says "Not on OpenSpec" directly above it
+- [x] Empty states: no `openspec/`; `openspec/` with no specs; `openspec/` with no open changes; a change with no spec delta
+- [x] Run the design critique on both changed routes; composite floor ≥ 80 still applies — **`IMPECCABLE.md`, composite 56 → 92**. Gate was `impeccable:critique` not `/design-shotgun` (design contract already in place), user-approved. It caught a P0 that defeated this change's own data contract: the progress track was painted at 1.05:1 and invisible, so a 0% fill rendered identically to no bar
 
 ## 7. Verify
 
 - [ ] Fixtures: OpenSpec-only, openspec-with-no-specs, openspec-with-no-changes, both-trees (mid-migration), GSD-only (expect blank), neither
-- [ ] Shared-schema package covered by tests for the new wire shape — `Schema Validation At Both Ends` already binds it, so no spec delta, but the test must exist
-- [ ] Verify this repo's own row renders correctly — it is the first migrated project
-- [ ] Spot-check one other migrated repo and one GSD-only repo to confirm the accepted blank state looks deliberate, not broken
+- [x] Shared-schema package covered by tests for the new wire shape — `schemas/openspec.test.ts`; `OpenspecChangeDetailSchema` extends the card's `OpenChangeSummarySchema` rather than redeclaring it
+- [x] Verify this repo's own row renders correctly — it is the first migrated project. 9 open changes, 12 capabilities, 21 archived all date-prefixed; matches `openspec list` exactly
+- [x] Spot-check one other migrated repo and one GSD-only repo — `fx-signal-agent` (10 changes / 12 caps / 10 archived) and `cparx` (`present:false` → the migration notice, header and neighbouring columns still rendering)
 - [ ] `openspec validate --all` green; `pnpm lint` green; per-package tests green
 - [ ] Security review of the allow-list change AND the CLI invocation discipline against `filesystem-access-policy`
 - [ ] Two-stage review

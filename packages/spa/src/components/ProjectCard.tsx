@@ -27,6 +27,20 @@ function taskRatio(c: { completedTasks: number; totalTasks: number; hasTaskArtif
 }
 
 /**
+ * Work in flight first, then untouched proposals, each group keeping the
+ * daemon's alphabetical order. The card only has room for three changes, and
+ * spending that room on whatever sorts first alphabetically buries the one
+ * change that is actually moving — which is the single question this card is
+ * read to answer. Mirrors `isMoving` in the Change Progress panel.
+ */
+function triageOrder(
+  changes: RegistryListItem['status']['openChanges'],
+): RegistryListItem['status']['openChanges'] {
+  const moving = changes.filter((c) => c.hasTaskArtifact && c.completedTasks > 0)
+  return [...moving, ...changes.filter((c) => !(c.hasTaskArtifact && c.completedTasks > 0))]
+}
+
+/**
  * Returns a human-readable relative time string.
  */
 function relativeTime(iso: string | null): string {
@@ -162,8 +176,10 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
               <span className="text-text-secondary">no workflow</span>
               {' '}
               <a
-                href="https://github.com/agenticapps/workflow"
+                href="https://github.com/agenticapps-eu/claude-workflow"
                 className="text-accent text-sm underline"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
               >
                 install workflow skill &rarr;
@@ -178,8 +194,10 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
               <span className="text-text-secondary">workflow installed, not yet on OpenSpec</span>
               {' '}
               <a
-                href="https://github.com/agenticapps/workflow"
+                href="https://github.com/agenticapps-eu/claude-workflow"
                 className="text-accent text-sm underline"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
               >
                 migrate &rarr;
@@ -188,11 +206,14 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
           ) : item.status.openChanges.length === 0 ? (
             <span className="text-text-secondary text-sm">no open changes</span>
           ) : (
-            <span className="block text-sm font-semibold text-text-primary">
+            <span
+              data-testid="card-change-summary"
+              className="block text-sm font-semibold text-text-primary"
+            >
               {item.status.openChanges.length} open change
-              {item.status.openChanges.length === 1 ? '' : 's'}
-              <span className="ml-2 font-normal text-text-secondary">
-                {item.status.openChanges
+              {item.status.openChanges.length === 1 ? '' : 's'}{' '}
+              <span className="ml-2 font-mono font-normal text-text-secondary">
+                {triageOrder(item.status.openChanges)
                   .slice(0, 3)
                   .map((c) => `${c.name} ${taskRatio(c)}`)
                   .join(' · ')}

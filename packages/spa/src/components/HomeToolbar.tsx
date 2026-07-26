@@ -120,7 +120,7 @@ export function HomeToolbar({
           <option value="recommended">Recommended</option>
           <option value="lastCommit">Last commit ↓</option>
           <option value="name">Name ↑</option>
-          <option value="phase">Phase ↓</option>
+          <option value="phase">Open changes ↓</option>
           <option value="client">Client ↑</option>
         </select>
         <ChevronDown

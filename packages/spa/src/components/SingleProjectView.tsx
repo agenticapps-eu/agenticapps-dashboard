@@ -55,7 +55,7 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
       <PageHeader title={projectId} />
       <div
         data-testid="single-project-grid"
-        className="grid grid-cols-[1fr_1.5fr_1fr] items-start gap-6"
+        className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_1.5fr_1fr]"
       >
         <section
           data-testid="discipline-column"
