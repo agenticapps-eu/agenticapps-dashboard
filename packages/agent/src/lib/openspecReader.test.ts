@@ -162,6 +162,35 @@ describe('readOpenspecTree — capabilities and archive', () => {
     const state = await readOpenspecTree(root)
     expect(state.present).toBe(true)
     expect(state.openChanges).toEqual([])
+    expect(state.capabilities).toEqual([])
+  })
+
+  /*
+   * The fourth fixture shape: a tree that has started proposing but has not
+   * declared anything yet. `present` must stay true — an empty capability list
+   * is a project that promises nothing so far, which is a different state from
+   * a project with no `openspec/` at all, and the two drive different empty
+   * states in the Capability panel (an explicit "No capabilities declared"
+   * versus rendering nothing and letting Change Progress speak).
+   */
+  it('reports an openspec/ carrying changes but no specs tree', async () => {
+    const root = tmp()
+    const change = join(root, 'openspec', 'changes', 'first-change')
+    mkdirSync(change, { recursive: true })
+    writeFileSync(join(change, 'tasks.md'), '- [ ] a\n- [x] b\n')
+
+    const state = await readOpenspecTree(root)
+    expect(state.present).toBe(true)
+    expect(state.capabilities).toEqual([])
+    expect(state.openChanges).toEqual([
+      {
+        name: 'first-change',
+        completedTasks: 1,
+        totalTasks: 2,
+        hasTaskArtifact: true,
+        affectedCapabilities: [],
+      },
+    ])
   })
 })
 

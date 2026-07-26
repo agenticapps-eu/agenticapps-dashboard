@@ -14,6 +14,8 @@ import { describe, it, expect, afterEach } from 'vitest'
 
 import {
   resolveOpenspecBinary,
+  getOpenspecBinary,
+  __resetOpenspecBinaryForTests,
   runOpenspecList,
   OPENSPEC_MAX_OUTPUT_BYTES,
 } from './openspecCli.js'
@@ -200,5 +202,63 @@ describe('runOpenspecList — bounds and fallback', () => {
         { id: 'help-docs', requirementCount: 4 },
       ])
     }
+  })
+})
+
+/*
+ * `OpenSpec CLI Invocation Discipline` requires the binary be resolved once and
+ * never re-looked-up on the request path: "no PATH lookup and no process spawn
+ * is attempted on the request path."
+ *
+ * That is not only a cost rule. A PATH walk per request means a local attacker
+ * who can write to any writable PATH directory has their binary picked up
+ * within one poll interval, with no daemon restart. Resolving once narrows the
+ * window to daemon start, where a restart is at least observable.
+ *
+ * The observable consequence of memoisation is that a binary deleted after
+ * resolution still yields the resolved path — the disappearance is then handled
+ * as a spawn failure, which the spec separately requires to fall back to the
+ * tree rather than error.
+ */
+describe('getOpenspecBinary — resolved once, never re-walked per request', () => {
+  afterEach(() => __resetOpenspecBinaryForTests())
+
+  it('does not re-walk PATH after the first resolution', async () => {
+    __resetOpenspecBinaryForTests()
+    const dir = tmp()
+    const bin = makeBin(dir, 'openspec', 'echo "{}"')
+
+    const first = await getOpenspecBinary({ PATH: dir })
+    expect(first).toBe(bin)
+
+    // Remove the binary. A per-request PATH walk would now return null; a
+    // resolve-once accessor still reports the path it resolved at start.
+    rmSync(bin, { force: true })
+    expect(await resolveOpenspecBinary({ PATH: dir })).toBeNull()
+    expect(await getOpenspecBinary({ PATH: dir })).toBe(bin)
+  })
+
+  it('caches a resolution failure too, so absence costs no repeat lookup', async () => {
+    __resetOpenspecBinaryForTests()
+    const dir = tmp()
+
+    expect(await getOpenspecBinary({ PATH: dir })).toBeNull()
+
+    // Planting a binary after the daemon resolved must NOT be picked up.
+    makeBin(dir, 'openspec', 'echo "{}"')
+    expect(await getOpenspecBinary({ PATH: dir })).toBeNull()
+  })
+
+  it('returns the same promise-resolved value to concurrent callers', async () => {
+    __resetOpenspecBinaryForTests()
+    const dir = tmp()
+    const bin = makeBin(dir, 'openspec', 'echo "{}"')
+
+    const [a, b, c] = await Promise.all([
+      getOpenspecBinary({ PATH: dir }),
+      getOpenspecBinary({ PATH: dir }),
+      getOpenspecBinary({ PATH: dir }),
+    ])
+    expect([a, b, c]).toEqual([bin, bin, bin])
   })
 })

@@ -84,10 +84,10 @@
 
 ## 7. Verify
 
-- [ ] Fixtures: OpenSpec-only, openspec-with-no-specs, openspec-with-no-changes, both-trees (mid-migration), GSD-only (expect blank), neither
+- [x] Fixtures: OpenSpec-only, openspec-with-no-specs, openspec-with-no-changes, both-trees (mid-migration), GSD-only (expect blank), neither — the condition matrix lives in `projectCondition.test.ts`, the tree shapes in `openspecReader.test.ts`; the openspec-with-no-specs shape was the one gap and is now covered
 - [x] Shared-schema package covered by tests for the new wire shape — `schemas/openspec.test.ts`; `OpenspecChangeDetailSchema` extends the card's `OpenChangeSummarySchema` rather than redeclaring it
 - [x] Verify this repo's own row renders correctly — it is the first migrated project. 9 open changes, 12 capabilities, 21 archived all date-prefixed; matches `openspec list` exactly
 - [x] Spot-check one other migrated repo and one GSD-only repo — `fx-signal-agent` (10 changes / 12 caps / 10 archived) and `cparx` (`present:false` → the migration notice, header and neighbouring columns still rendering)
-- [ ] `openspec validate --all` green; `pnpm lint` green; per-package tests green
-- [ ] Security review of the allow-list change AND the CLI invocation discipline against `filesystem-access-policy`
+- [x] `openspec validate --all` green (21/21); `pnpm lint` green (0 errors, 231 pre-existing warnings); shared 382 · agent 1237 (+1 skipped) · spa 1260; `pnpm -r typecheck` 0 errors
+- [x] Security review of the allow-list change AND the CLI invocation discipline against `filesystem-access-policy` — **`SECURITY.md`**. One HIGH, fixed: both call sites resolved the `openspec` binary by walking `PATH` **on the request path**, which the spec forbids twice; a planted binary would have been picked up within one 5s poll with no restart. Now a resolve-once accessor, RED tests first
 - [ ] Two-stage review

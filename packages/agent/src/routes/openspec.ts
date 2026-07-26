@@ -21,7 +21,7 @@ import { OpenspecProjectStateSchema } from '@agenticapps/dashboard-shared'
 
 import { readRegistry } from '../lib/registry.js'
 import { readOpenspecProject } from '../lib/openspecReader.js'
-import { resolveOpenspecBinary } from '../lib/openspecCli.js'
+import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getPhaseCache, setPhaseCache } from '../lib/phaseCache.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
@@ -42,7 +42,8 @@ openspecRoute.get('/:id/openspec', async (c) => {
   const cached = getPhaseCache(cacheKey)
   if (cached !== null) return outbound(c, parse, cached)
 
-  const binary = await resolveOpenspecBinary()
+  // Resolve-once accessor: the spec forbids a PATH lookup on the request path.
+  const binary = await getOpenspecBinary()
   const state = await readOpenspecProject(entry.root, binary)
   setPhaseCache(cacheKey, state)
   return outbound(c, parse, state)

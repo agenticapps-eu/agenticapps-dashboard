@@ -35,7 +35,7 @@ import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constan
 import { atomicWriteFile } from './atomicWrite.js'
 import { computeProjectCondition } from './projectCondition.js'
 import { readOpenspecProject } from './openspecReader.js'
-import { resolveOpenspecBinary } from './openspecCli.js'
+import { getOpenspecBinary } from './openspecCli.js'
 import { invalidateConformanceCache } from './conformanceCache.js'
 import { invalidateCoverageCache } from './coverageCache.js'
 import { parseOrCorrupt } from './stateCorruption.js'
@@ -541,15 +541,15 @@ async function detectLastCommitAt(root: string): Promise<string | null> {
  * and git status. Never throws on unreachable roots — reports the `unreachable`
  * condition instead.
  *
- * The `openspec` binary is resolved once per call rather than per project: it is
- * the same binary for every row, and resolving per project would run a PATH
- * search per card.
+ * The `openspec` binary is resolved once per daemon lifetime, not per call and
+ * not per project. `OpenSpec CLI Invocation Discipline` requires that no PATH
+ * lookup happen on the request path, and this route is polled every 5s.
  */
 export async function listProjectsWithStatus(
   filePath: string = REGISTRY_FILE,
 ): Promise<RegistryListItem[]> {
   const reg = readRegistry(filePath)
-  const binary = await resolveOpenspecBinary()
+  const binary = await getOpenspecBinary()
   return Promise.all(
     reg.projects.map(async (p) => {
       const reachable = isReachable(p.root)

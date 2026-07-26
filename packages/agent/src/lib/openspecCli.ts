@@ -111,6 +111,38 @@ export async function resolveOpenspecBinary(
 }
 
 /**
+ * The resolve-once accessor every caller on a request path must use.
+ *
+ * `OpenSpec CLI Invocation Discipline` requires the binary be resolved once and
+ * that "no PATH lookup and no process spawn is attempted on the request path".
+ * That is a security bound, not only a cost one: a PATH walk per request means a
+ * local attacker who can write to any writable PATH directory gets their binary
+ * executed within one poll interval and without a daemon restart. Resolving once
+ * narrows that window to daemon start, where a restart is at least observable.
+ *
+ * A resolution *failure* is memoised too. Re-walking on every request when the
+ * binary is absent is the same defect, and it is also the case the spec names
+ * explicitly: absence means the tree path "for the remainder of the daemon's
+ * lifetime".
+ *
+ * The promise itself is cached rather than its value, so concurrent first
+ * callers share one walk instead of racing several.
+ */
+let resolvedBinary: Promise<string | null> | undefined
+
+export function getOpenspecBinary(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<string | null> {
+  resolvedBinary ??= resolveOpenspecBinary(env)
+  return resolvedBinary
+}
+
+/** Test-only: drop the memoised resolution so each case starts clean. */
+export function __resetOpenspecBinaryForTests(): void {
+  resolvedBinary = undefined
+}
+
+/**
  * Invoke the binary for one listing, bounded, and translate every failure into
  * a fallback reason. Never throws: the caller's contract is to read the tree
  * when this does not return ok.
