@@ -53,12 +53,7 @@ function makeItem(overrides: Partial<RegistryListItem> = {}): RegistryListItem {
 
 function makeOverview(overrides: Partial<ProjectOverview> = {}): ProjectOverview {
   return {
-    phaseStatus: 'In Progress',
-    stage1: null,
-    stage2: { ran: true, findings: { red: 0, yellow: 2, green: 5 } },
-    dbAudit: null,
     tdd: null,
-    verification: null,
     branch: 'feat/home',
     markers: { gitRepo: true, planning: true, claudeSkills: true },
     ...overrides,
@@ -94,12 +89,17 @@ describe('ProjectCard', () => {
     expect(card).toHaveAttribute('aria-busy', 'true')
     // The change line no longer has a loading state: open changes arrive with
     // the registry list, not the per-project overview fetch. Only the rows that
-    // genuinely depend on the overview (Stage 2 findings, TDD) wait on it, and
+    // genuinely depend on the overview (TDD pairs, branch) wait on it, and
     // aria-busy still reports that wait.
     expect(screen.getByText(/1 open change/)).toBeInTheDocument()
   })
 
-  it('shows finding glyphs and aria-label in ready state with stage2 data', () => {
+  /*
+   * The review-finding glyph rows are gone with the GSD phase reader — their
+   * only source was phase-artifact parsing, and this change's spec delta drops
+   * the field rather than approximating it from OpenSpec's reviewer prose.
+   */
+  it('renders no review finding glyphs, whatever the overview reports', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -111,10 +111,11 @@ describe('ProjectCard', () => {
       <ProjectCard item={makeItem()} onContextMenu={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByLabelText('0 critical, 2 medium, 5 low')).toBeInTheDocument()
-    expect(screen.getByText('🔴')).toBeInTheDocument()
-    expect(screen.getByText('🟡')).toBeInTheDocument()
-    expect(screen.getByText('🟢')).toBeInTheDocument()
+    expect(screen.queryByText('🔴')).not.toBeInTheDocument()
+    expect(screen.queryByText('🟡')).not.toBeInTheDocument()
+    expect(screen.queryByText('🟢')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Stage 2/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/DB-AUDIT/)).not.toBeInTheDocument()
   })
 
   it('shows AlertTriangle and "overview unavailable · retrying" with role="status" on 5xx error', () => {
@@ -172,7 +173,7 @@ describe('ProjectCard', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: makeOverview({ phaseStatus: 'Pending' }),
+      data: makeOverview(),
       error: null,
       refetch: vi.fn(),
     })
@@ -191,7 +192,7 @@ describe('ProjectCard', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: makeOverview({ phaseStatus: 'Pending' }),
+      data: makeOverview(),
       error: null,
       refetch: vi.fn(),
     })
@@ -206,7 +207,7 @@ describe('ProjectCard', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: makeOverview({ phaseStatus: 'Pending' }),
+      data: makeOverview(),
       error: null,
       refetch: vi.fn(),
     })
@@ -232,7 +233,7 @@ describe('ProjectCard', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: makeOverview({ phaseStatus: 'Pending' }),
+      data: makeOverview(),
       error: null,
       refetch: vi.fn(),
     })

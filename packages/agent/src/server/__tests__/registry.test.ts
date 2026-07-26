@@ -263,12 +263,7 @@ describe('registry mutation routes (rename / tags / eviction)', () => {
 
     // Populate cache with a fake overview entry
     const fakeOverview: ProjectOverview = {
-      phaseStatus: 'Complete',
-      stage1: null,
-      stage2: null,
-      dbAudit: null,
       tdd: null,
-      verification: null,
       branch: 'main',
       markers: { gitRepo: true, planning: true, claudeSkills: false },
     }

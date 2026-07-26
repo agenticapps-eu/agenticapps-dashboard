@@ -42,54 +42,6 @@ function relativeTime(iso: string | null): string {
   return `${diffDays}d ago`
 }
 
-/**
- * Single glyph group: emoji + count in fixed-width inline-flex.
- */
-function GlyphGroup({
-  glyph,
-  count,
-}: {
-  glyph: string
-  count: number
-}): React.JSX.Element {
-  return (
-    <span className="inline-flex items-center gap-1 w-12">
-      <span aria-hidden="true">{glyph}</span>
-      {count}
-    </span>
-  )
-}
-
-/**
- * Finding row with colored Unicode glyphs.
- */
-function FindingRow({
-  label,
-  red,
-  yellow,
-  green,
-}: {
-  label: string
-  red: number
-  yellow: number
-  green: number
-}): React.JSX.Element {
-  const ariaLabel = `${red} critical, ${yellow} medium, ${green} low`
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="text-text-secondary font-semibold">{label}</span>
-      <span
-        aria-label={ariaLabel}
-        className="inline-flex items-center gap-2 font-mono text-text-primary"
-      >
-        <GlyphGroup glyph="🔴" count={red} />
-        <GlyphGroup glyph="🟡" count={yellow} />
-        <GlyphGroup glyph="🟢" count={green} />
-      </span>
-    </div>
-  )
-}
-
 export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JSX.Element {
   const navigate = useNavigate()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -251,15 +203,14 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
             </span>
           )}
 
-          {/* Stage 2 finding row (compact, visible when data available) */}
-          {!isLoading && !isError && overview.data?.stage2?.ran ? (
-            <FindingRow
-              label="Stage 2:"
-              red={overview.data.stage2.findings.red}
-              yellow={overview.data.stage2.findings.yellow}
-              green={overview.data.stage2.findings.green}
-            />
-          ) : null}
+          {/*
+           * The Stage 1 / Stage 2 / DB-AUDIT / Verification rows are gone with
+           * the GSD phase reader: each was parsed out of a phase directory's
+           * artifacts, and OpenSpec's REVIEWS.md carries reviewer prose with no
+           * structured severity to aggregate. Per this change's spec delta, a
+           * card field with no derivable source is dropped rather than
+           * approximated. TDD pairs and branch survive — both come from git.
+           */}
 
           {/* Expanded section — hover/focus reveals additional rows */}
           <div
@@ -267,48 +218,12 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
           >
             {!isLoading && !isError && overview.data ? (
               <div className="flex flex-col gap-2 pt-2">
-                {/* Stage 1 row (expanded only) */}
-                {overview.data.stage1?.ran ? (
-                  <FindingRow
-                    label="Stage 1:"
-                    red={overview.data.stage1.findings.red}
-                    yellow={overview.data.stage1.findings.yellow}
-                    green={overview.data.stage1.findings.green}
-                  />
-                ) : null}
-
-                {/* DB-AUDIT row (expanded only) */}
-                {overview.data.dbAudit ? (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-text-secondary font-semibold">DB-AUDIT:</span>
-                    <span className="text-text-primary">
-                      {overview.data.dbAudit.findings.critical} critical
-                      {' · '}
-                      {overview.data.dbAudit.findings.high} high
-                      {' · '}
-                      {overview.data.dbAudit.findings.medium} medium
-                      {' · '}
-                      {overview.data.dbAudit.findings.low} low
-                    </span>
-                  </div>
-                ) : null}
-
                 {/* TDD pairs row (expanded only) */}
                 {overview.data.tdd ? (
                   <div className="text-sm">
                     <span className="text-text-secondary font-semibold">TDD pairs: </span>
                     <span className="text-text-primary">
                       {overview.data.tdd.greenPairs}/{overview.data.tdd.totalTasks}
-                    </span>
-                  </div>
-                ) : null}
-
-                {/* Verification row (expanded only) */}
-                {overview.data.verification ? (
-                  <div className="text-sm">
-                    <span className="text-text-secondary font-semibold">Verification: </span>
-                    <span className="text-text-primary">
-                      {overview.data.verification.evidence}/{overview.data.verification.mustHaves}
                     </span>
                   </div>
                 ) : null}

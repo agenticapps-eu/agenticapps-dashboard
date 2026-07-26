@@ -18,20 +18,15 @@ import React, { useEffect } from 'react'
 
 import { PageHeader } from './ui/PageHeader.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
-import { ExecutionTimeline } from './panels/ExecutionTimeline.js'
 import { HookFirings } from './panels/HookFirings.js'
 import { InstalledSkills } from './panels/InstalledSkills.js'
 import { IntegrationsHealth } from './panels/IntegrationsHealth.js'
 import { LinearPanel } from './panels/LinearPanel.js'
 import { ObservabilityHealth } from './panels/ObservabilityHealth.js'
-import { PhaseProgress } from './panels/PhaseProgress.js'
 import { RationalizationFires } from './panels/RationalizationFires.js'
-import { ReviewStatus } from './panels/ReviewStatus.js'
 import { SecretsHealth } from './panels/SecretsHealth.js'
-import { SecurityStatus } from './panels/SecurityStatus.js'
 import { SentryPanel } from './panels/SentryPanel.js'
 import { SkillHealth } from './panels/SkillHealth.js'
-import { VerificationStatus } from './panels/VerificationStatus.js'
 
 export type SingleProjectViewProps = { projectId: string }
 
@@ -56,17 +51,19 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           <HookFirings projectId={projectId} />
           <RationalizationFires projectId={projectId} />
         </section>
+        {/*
+         * The centre column is empty between task groups 5 and 6 of
+         * `add-openspec-project-reader`. Group 5 retired the five phase-artifact
+         * panels that lived here — every one of them read `.planning/phases/`,
+         * which the daemon no longer serves. Group 6 fills it with Change
+         * Progress and the Capability panel, per the ADDED requirements of the
+         * same change, and runs the design critique against the result.
+         */}
         <section
-          data-testid="phase-progress-column"
-          aria-label="Phase Progress"
+          data-testid="change-progress-column"
+          aria-label="Change Progress"
           className="flex min-w-0 flex-col gap-6"
-        >
-          <PhaseProgress projectId={projectId} />
-          <ExecutionTimeline projectId={projectId} />
-          <ReviewStatus projectId={projectId} />
-          <SecurityStatus projectId={projectId} />
-          <VerificationStatus projectId={projectId} />
-        </section>
+        />
         <section
           data-testid="health-column"
           aria-label="Health"

@@ -11,7 +11,7 @@
  * SV1: PageHeader renders with projectId as title (Wave 5: unconditional)
  * SV2: renders 3-column grid with grid-cols-[1fr_1.5fr_1fr]
  * SV3: discipline-column renders CommitmentBlock + HookFirings + RationalizationFires panel regions
- * SV4: phase-progress-column renders all 5 real panel regions (Plan 06 filled these)
+ * SV4: the five retired phase panels no longer mount; the centre column awaits group 6
  * SV5: health-column IS present (Phase 5 filled it)
  * SV6: document.title updates on mount
  * SV7: gap classes are correct (gap-6 on grid, flex flex-col gap-6 on columns)
@@ -38,8 +38,6 @@ vi.mock('../lib/projectQueries.js', () => ({
   useCommitment: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useObservations: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useDiscipline: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
-  usePhaseProgress: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
-  useSecurity: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useGlobalSkills: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useLocalSkills: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useAgentLinter: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
@@ -101,24 +99,25 @@ describe('SingleProjectView', () => {
     expect(col.querySelector('[data-slot="rationalization-fires"]')).toBeNull()
   })
 
-  it('SV4: phase-progress-column mounts all 5 real panel regions (Plan 06 filled)', () => {
+  /*
+   * SV4 inverted by task group 5: the five phase-artifact panels are retired
+   * with the reader that fed them. The centre column exists but is empty until
+   * group 6 mounts Change Progress and the Capability panel in their place.
+   */
+  it('SV4: the retired phase panels no longer mount', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
-    // PanelContainer panels render <section aria-labelledby="{id}-title"> + <h2 id="{id}-title">
-    // Use heading queries to confirm each panel is mounted (heading = panel title in PanelContainer)
-    expect(screen.getByRole('heading', { level: 2, name: 'Phase Progress' })).toBeDefined()
-    expect(screen.getByRole('heading', { level: 2, name: 'Execution Timeline' })).toBeDefined()
-    expect(screen.getByRole('heading', { level: 2, name: 'Review Status' })).toBeDefined()
-    expect(screen.getByRole('heading', { level: 2, name: 'Security Status' })).toBeDefined()
-    expect(screen.getByRole('heading', { level: 2, name: 'Verification Status' })).toBeDefined()
+    for (const name of [
+      'Phase Progress',
+      'Execution Timeline',
+      'Review Status',
+      'Security Status',
+      'Verification Status',
+    ]) {
+      expect(screen.queryByRole('heading', { level: 2, name })).toBeNull()
+    }
 
-    // No old data-slot placeholder divs remain
-    const col = screen.getByTestId('phase-progress-column')
-    expect(col.querySelector('[data-slot="phase-progress"]')).toBeNull()
-    expect(col.querySelector('[data-slot="execution-timeline"]')).toBeNull()
-    expect(col.querySelector('[data-slot="review-status"]')).toBeNull()
-    expect(col.querySelector('[data-slot="security-status"]')).toBeNull()
-    expect(col.querySelector('[data-slot="verification-status"]')).toBeNull()
+    expect(screen.getByTestId('change-progress-column')).toBeDefined()
   })
 
   it('SV5: health-column IS present (Phase 5 added it)', () => {
@@ -145,10 +144,10 @@ describe('SingleProjectView', () => {
     expect(disciplineCol.className).toContain('flex-col')
     expect(disciplineCol.className).toContain('gap-6')
 
-    const phaseCol = screen.getByTestId('phase-progress-column')
-    expect(phaseCol.className).toContain('flex')
-    expect(phaseCol.className).toContain('flex-col')
-    expect(phaseCol.className).toContain('gap-6')
+    const changeCol = screen.getByTestId('change-progress-column')
+    expect(changeCol.className).toContain('flex')
+    expect(changeCol.className).toContain('flex-col')
+    expect(changeCol.className).toContain('gap-6')
   })
 
   it('SV8: health-column has correct aria-label="Health" attribute', () => {

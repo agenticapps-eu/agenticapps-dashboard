@@ -20,8 +20,6 @@ import {
   useCommitment,
   useObservations,
   useDiscipline,
-  usePhaseProgress,
-  useSecurity,
   useGlobalSkills,
   useLocalSkills,
   useAgentLinter,
@@ -100,15 +98,6 @@ function makeNotConfiguredResponse() {
 const COMMITMENT_BODY = { markdown: '## Workflow commitment\n\nI commit.', sourceFile: 'session-2026.md' }
 const OBSERVATIONS_BODY = { entries: [{ ts: '2026-05-01T10:00:00Z', skill: 'meta-observer', hook: 'PostToolUse' }], skillInstalled: true }
 const DISCIPLINE_BODY = { rationalization: { rows: [{ label: 'Workflow skill not followed', fires: 2 }], skillInstalled: true } }
-const PHASE_PROGRESS_BODY = {
-  phase: '04-single-project-view',
-  paddedPhase: '04',
-  files: [],
-  tdd: { greenPairs: 0, totalTasks: 0, timeline: [] },
-  review: { stage1: null, stage2: null },
-  verification: { mustHavesTotal: 0, mustHavesEvidenced: 0, items: [] },
-}
-const SECURITY_BODY = { cso: null, dbSentinel: null }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -259,72 +248,6 @@ describe('useDiscipline', () => {
   it('Q9: when id is null, discipline hook is idle', () => {
     const { qc, wrapper } = makeWrapper()
     const { result } = renderHook(() => useDiscipline(null), { wrapper })
-
-    expect(result.current.fetchStatus).toBe('idle')
-    qc.clear()
-  })
-})
-
-describe('usePhaseProgress', () => {
-  it('Q7: queryKey is [phase-progress, id]', () => {
-    const { qc, wrapper } = makeWrapper()
-    renderHook(() => usePhaseProgress('acme'), { wrapper })
-
-    const keys = qc.getQueryCache().getAll().map((q) => q.queryKey)
-    expect(keys).toContainEqual(['phase-progress', 'acme'])
-
-    qc.clear()
-  })
-
-  it('fetches /api/projects/acme/phase-progress and returns data on success', async () => {
-    mockFetch.mockResolvedValue(makeSuccessResponse(PHASE_PROGRESS_BODY))
-
-    const { qc, wrapper } = makeWrapper()
-    const { result } = renderHook(() => usePhaseProgress('acme'), { wrapper })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    const callUrl = mockFetch.mock.calls[0]?.[0] as string
-    expect(callUrl).toContain('/api/projects/acme/phase-progress')
-
-    qc.clear()
-  })
-
-  it('Q9: when id is null, phase-progress hook is idle', () => {
-    const { qc, wrapper } = makeWrapper()
-    const { result } = renderHook(() => usePhaseProgress(null), { wrapper })
-
-    expect(result.current.fetchStatus).toBe('idle')
-    qc.clear()
-  })
-})
-
-describe('useSecurity', () => {
-  it('Q8: queryKey is [security, id]', () => {
-    const { qc, wrapper } = makeWrapper()
-    renderHook(() => useSecurity('acme'), { wrapper })
-
-    const keys = qc.getQueryCache().getAll().map((q) => q.queryKey)
-    expect(keys).toContainEqual(['security', 'acme'])
-
-    qc.clear()
-  })
-
-  it('fetches /api/projects/acme/security and returns data on success', async () => {
-    mockFetch.mockResolvedValue(makeSuccessResponse(SECURITY_BODY))
-
-    const { qc, wrapper } = makeWrapper()
-    const { result } = renderHook(() => useSecurity('acme'), { wrapper })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    const callUrl = mockFetch.mock.calls[0]?.[0] as string
-    expect(callUrl).toContain('/api/projects/acme/security')
-
-    qc.clear()
-  })
-
-  it('Q9: when id is null, security hook is idle', () => {
-    const { qc, wrapper } = makeWrapper()
-    const { result } = renderHook(() => useSecurity(null), { wrapper })
 
     expect(result.current.fetchStatus).toBe('idle')
     qc.clear()

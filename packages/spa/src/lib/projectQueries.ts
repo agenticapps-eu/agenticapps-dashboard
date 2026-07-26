@@ -34,10 +34,6 @@ import {
   type ObservationsRecentResponse,
   DisciplineResponseSchema,
   type DisciplineResponse,
-  PhaseProgressResponseSchema,
-  type PhaseProgressResponse,
-  SecurityResponseSchema,
-  type SecurityResponse,
   GlobalSkillsResponseSchema,
   type GlobalSkillsResponse,
   LocalSkillsResponseSchema,
@@ -123,43 +119,11 @@ export function useDiscipline(id: string | null) {
   })
 }
 
-/**
- * usePhaseProgress — polls GET /api/projects/{id}/phase-progress every 5s.
- * Returns the phase checklist, TDD timeline, review status, and verification status.
+/*
+ * `usePhaseProgress` and `useSecurity` are gone with the GSD phase reader —
+ * both polled routes the daemon no longer serves, and both fed panels whose
+ * `Phase Progress Column` requirement this change REMOVES.
  */
-export function usePhaseProgress(id: string | null) {
-  return useQuery({
-    queryKey: ['phase-progress', id] as const,
-    queryFn: async (): Promise<PhaseProgressResponse> => {
-      const result = await apiFetch(`/api/projects/${id}/phase-progress`, PhaseProgressResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
-      return result.data
-    },
-    enabled: id !== null,
-    staleTime: POLL_MS,
-    refetchInterval: POLL_MS,
-    refetchIntervalInBackground: false,
-  })
-}
-
-/**
- * useSecurity — polls GET /api/projects/{id}/security every 5s.
- * Returns the CSO audit summary and DB Sentinel findings.
- */
-export function useSecurity(id: string | null) {
-  return useQuery({
-    queryKey: ['security', id] as const,
-    queryFn: async (): Promise<SecurityResponse> => {
-      const result = await apiFetch(`/api/projects/${id}/security`, SecurityResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
-      return result.data
-    },
-    enabled: id !== null,
-    staleTime: POLL_MS,
-    refetchInterval: POLL_MS,
-    refetchIntervalInBackground: false,
-  })
-}
 
 /**
  * useGlobalSkills — polls GET /api/skills/global every 60s.

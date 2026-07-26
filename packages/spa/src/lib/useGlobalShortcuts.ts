@@ -31,8 +31,6 @@ const PROJECT_QUERY_KEYS = [
   'commitment',
   'observations',
   'discipline',
-  'phase-progress',
-  'security',
   'skills',
   'agentlinter',
   'observability',

@@ -81,10 +81,9 @@ describe('GET /api/projects/:id/overview', () => {
     )
     expect(res.status).toBe(200)
     const data = (await res.json()) as {
-      phaseStatus: string
       markers: { gitRepo: boolean; planning: boolean; claudeSkills: boolean }
     }
-    expect(['Pending', 'In Progress', 'Complete']).toContain(data.phaseStatus)
+    expect(Object.keys(data).sort()).toEqual(['branch', 'markers', 'tdd'])
     expect(typeof data.markers.gitRepo).toBe('boolean')
     expect(typeof data.markers.planning).toBe('boolean')
     expect(typeof data.markers.claudeSkills).toBe('boolean')
@@ -156,14 +155,9 @@ describe('GET /api/projects/:id/overview', () => {
     // We do this by mocking readOverview to simulate graceful fallback
     const nonExistentId = projectId
 
-    // Mock readOverview to return minimal 'Pending' overview (simulating unreachable root)
+    // Mock readOverview to return the all-null overview (simulating unreachable root)
     readOverviewSpy.mockResolvedValue({
-      phaseStatus: 'Pending' as const,
-      stage1: null,
-      stage2: null,
-      dbAudit: null,
       tdd: null,
-      verification: null,
       branch: null,
       markers: { gitRepo: false, planning: false, claudeSkills: false },
     })
@@ -174,21 +168,11 @@ describe('GET /api/projects/:id/overview', () => {
     )
     expect(res.status).toBe(200)
     const data = (await res.json()) as {
-      phaseStatus: string
-      stage1: unknown
-      stage2: unknown
-      dbAudit: unknown
       tdd: unknown
-      verification: unknown
       branch: unknown
       markers: { gitRepo: boolean; planning: boolean; claudeSkills: boolean }
     }
-    expect(data.phaseStatus).toBe('Pending')
-    expect(data.stage1).toBeNull()
-    expect(data.stage2).toBeNull()
-    expect(data.dbAudit).toBeNull()
     expect(data.tdd).toBeNull()
-    expect(data.verification).toBeNull()
     expect(data.branch).toBeNull()
     expect(data.markers.gitRepo).toBe(false)
     expect(data.markers.planning).toBe(false)

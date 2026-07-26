@@ -263,18 +263,18 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
     )
   })
 
-  it('E2E2: all 8 panel headings mount (all panels rendered)', async () => {
+  /*
+   * Five of the original eight panels were phase-artifact readers, retired with
+   * the GSD reader in task group 5. The three that survive read
+   * `.planning/skill-observations/`, which is untouched.
+   */
+  it('E2E2: the surviving discipline panel headings mount', async () => {
     await renderProjectDetail()
 
     const panelTitles = [
       'Commitment',
       'Hook Firings',
       'Rationalization Fires',
-      'Phase Progress',
-      'Execution Timeline',
-      'Review Status',
-      'Security Status',
-      'Verification Status',
     ]
 
     for (const title of panelTitles) {
@@ -299,46 +299,6 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
     )
   })
 
-  it('E2E4 (ROADMAP criterion 3): ExecutionTimeline renders RED/GREEN commit pairs', async () => {
-    await renderProjectDetail()
-
-    await waitFor(
-      () => {
-        // ExecutionTimeline renders task header + commit subjects
-        expect(screen.getByText(/Task 04-01/)).toBeDefined()
-        expect(screen.getByText(/test\(04-01\): add failing tests/)).toBeDefined()
-        expect(screen.getByText(/feat\(04-01\): implement schemas/)).toBeDefined()
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('E2E5 (ROADMAP criterion 4): ReviewStatus renders all 4 severity glyphs', async () => {
-    await renderProjectDetail()
-
-    await waitFor(
-      () => {
-        // ReviewStatus renders Stage 1 with severity glyphs
-        expect(screen.getByText('Stage 1')).toBeDefined()
-        const bodyText = document.body.textContent ?? ''
-        expect(bodyText).toContain('🟡')
-        expect(bodyText).toContain('⚪')
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('E2E6 (ROADMAP criterion 5): VerificationStatus shows must-haves count vs evidence', async () => {
-    await renderProjectDetail()
-
-    await waitFor(
-      () => {
-        expect(screen.getByText('7 / 9 must-haves evidenced')).toBeDefined()
-      },
-      { timeout: 5000 },
-    )
-  })
-
   it('E2E7 (cross-project leakage guard): switching projects produces independent cache entries', async () => {
     // First render at /projects/acme
     const { queryClient } = await renderProjectDetail()
@@ -353,12 +313,9 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
 
     // beta project should NOT have an acme cache entry
     expect(queryClient.getQueryData(['commitment', 'beta'])).toBeUndefined()
-    expect(queryClient.getQueryData(['phase-progress', 'beta'])).toBeUndefined()
+    expect(queryClient.getQueryData(['discipline', 'beta'])).toBeUndefined()
 
     // acme's entry should be independent
-    const acmeCommitment = queryClient.getQueryData(['commitment', 'acme'])
-    const acmePhaseProgress = queryClient.getQueryData(['phase-progress', 'acme'])
-    expect(acmeCommitment).not.toBeUndefined()
-    expect(acmePhaseProgress).not.toBeUndefined()
+    expect(queryClient.getQueryData(['commitment', 'acme'])).not.toBeUndefined()
   })
 })
