@@ -13,7 +13,7 @@
  * both markers absent, so without this an unmounted volume or a moved directory
  * renders as no-workflow — an install hint for a path the daemon cannot see.
  */
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { ProjectCondition } from '@agenticapps/dashboard-shared'
@@ -24,8 +24,20 @@ export function hasWorkflowSkill(root: string): boolean {
 }
 
 /** An `openspec/` directory — the marker that means the project is readable. */
+function isDirectory(p: string): boolean {
+  try {
+    return statSync(p).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 export function hasOpenspec(root: string): boolean {
-  return existsSync(join(root, 'openspec'))
+  // Must be a directory. `existsSync` is true for a regular file or a socket
+  // named `openspec`, which would report the project as migrated and then find
+  // no changes and no capabilities in it — suppressing the migration notice
+  // that would have explained the emptiness.
+  return isDirectory(join(root, 'openspec'))
 }
 
 export function computeProjectCondition(root: string, reachable: boolean): ProjectCondition {

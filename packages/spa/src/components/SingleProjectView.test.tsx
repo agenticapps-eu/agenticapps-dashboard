@@ -57,7 +57,7 @@ import { useRegistryList } from '../lib/registry.js'
 import { SingleProjectView } from './SingleProjectView.js'
 
 /** Point useRegistryList at one project carrying the given condition. */
-function mockCondition(condition: string, projectId = 'acme') {
+function mockCondition(condition: string, projectId = 'acme', reachable = true) {
   vi.mocked(useRegistryList).mockReturnValue({
     data: [
       {
@@ -68,7 +68,7 @@ function mockCondition(condition: string, projectId = 'acme') {
         addedAt: '2026-07-26T00:00:00.000Z',
         tags: [],
         status: {
-          reachable: true,
+          reachable,
           condition,
           openChanges: [],
           capabilityCount: 0,
@@ -317,5 +317,33 @@ describe('SingleProjectView — PageHeader always renders (Wave 5 — flag remov
     const heading = screen.getByRole('heading', { level: 1 })
     expect(heading).toBeDefined()
     expect(heading.textContent).toBe('my-project')
+  })
+})
+
+/*
+ * `filesystem-access-policy` makes reachability win over the marker matrix
+ * because an unreadable root reads as "both markers absent". The detail view
+ * reproduced the trap one layer down: Change Progress got `present: false` and
+ * asserted "this project has no openspec/ directory" about a filesystem the
+ * daemon cannot see.
+ */
+describe('SingleProjectView — an unreachable project', () => {
+  afterEach(() => cleanup())
+
+  it('SV19: says the root is unreachable rather than claiming there is no openspec/', () => {
+    mockCondition('unreachable', 'acme', false)
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByTestId('unreachable-notice')).toBeDefined()
+    expect(screen.queryByText('Not on OpenSpec')).toBeNull()
+    expect(screen.queryByTestId('migration-notice')).toBeNull()
+  })
+
+  it('SV20: reachable:false wins even when the condition still reads migrated', () => {
+    mockCondition('migrated', 'acme', false)
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByTestId('unreachable-notice')).toBeDefined()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Capabilities' })).toBeNull()
   })
 })

@@ -46,7 +46,14 @@ interface ChangeRowProps {
 
 function ChangeRow({ change }: ChangeRowProps): React.JSX.Element {
   const { name, completedTasks, totalTasks, hasTaskArtifact, affectedCapabilities } = change
-  const pct = hasTaskArtifact && totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+  /*
+   * Counts and artifact-presence come from two different sources, so they can
+   * disagree. Unclamped, completed > total renders as a *full* bar (overflow
+   * hides the excess) with aria-valuenow above aria-valuemax — invalid ARIA that
+   * assistive tech normalises unpredictably.
+   */
+  const done = Math.min(completedTasks, totalTasks)
+  const pct = hasTaskArtifact && totalTasks > 0 ? Math.min(100, (done / totalTasks) * 100) : 0
   const complete = hasTaskArtifact && totalTasks > 0 && completedTasks === totalTasks
 
   return (
@@ -69,10 +76,10 @@ function ChangeRow({ change }: ChangeRowProps): React.JSX.Element {
         <div
           role="progressbar"
           aria-label={`${name} task progress`}
-          aria-valuenow={completedTasks}
+          aria-valuenow={done}
           aria-valuemin={0}
           aria-valuemax={totalTasks}
-          aria-valuetext={`${completedTasks} of ${totalTasks} tasks complete`}
+          aria-valuetext={`${done} of ${totalTasks} tasks complete`}
           className="h-1 w-full overflow-hidden rounded-full bg-border-subtle"
         >
           <div

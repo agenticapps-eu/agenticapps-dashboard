@@ -28,6 +28,8 @@ function isEditableSurface(el: EventTarget | null): boolean {
 }
 
 const PROJECT_QUERY_KEYS = [
+  // The centre column is the page's primary content; it must refresh first.
+  'openspec',
   'commitment',
   'observations',
   'discipline',

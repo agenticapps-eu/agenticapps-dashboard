@@ -9,7 +9,7 @@ import { writePidfile, removePidfile } from '../lib/pidfile.js'
 import { writeServerInfo, removeServerInfo } from '../lib/serverInfo.js'
 import { agentLog, agentError } from '../lib/logging.js'
 import { renderBanner, renderZeroBindWarning } from '../lib/banner.js'
-import { listProjectsWithStatus } from '../lib/registry.js'
+import { readRegistry } from '../lib/registry.js'
 import { getActiveToken } from '../lib/auth.js'
 import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
 import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
@@ -141,7 +141,15 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
   // signal-handler attach so a bad symlink fails fast at process start.
   assertSnapshotDirInDaemonHome()
 
-  const projects = await listProjectsWithStatus()
+  /*
+   * Only the count and the names are used below, and both come straight out of
+   * the registry file. `listProjectsWithStatus` would additionally stat every
+   * project and spawn two `openspec` processes per migrated one — blocking
+   * startup for up to the subprocess timeout times the slowest project, and
+   * making a single unreadable project able to fail `start` outright, with no
+   * UI left to unregister it with.
+   */
+  const projects = readRegistry().projects
   const bindUrl = `http://${opts.host}:${opts.port}`
 
   // Wire signal handlers BEFORE serve() so a Ctrl-C between the listen-callback

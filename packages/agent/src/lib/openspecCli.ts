@@ -46,8 +46,11 @@ const ChangeListSchema = z.object({
   changes: z.array(
     z.object({
       name: z.string(),
-      completedTasks: z.number(),
-      totalTasks: z.number(),
+      // Must match the wire schema's bound exactly. A looser check here lets a
+      // malformed count through shape recognition and turns it into a ZodError
+      // at the registry boundary, which is far from where it can be handled.
+      completedTasks: z.number().int().nonnegative(),
+      totalTasks: z.number().int().nonnegative(),
     }),
   ),
 })
@@ -56,7 +59,7 @@ const SpecListSchema = z.object({
   specs: z.array(
     z.object({
       id: z.string(),
-      requirementCount: z.number(),
+      requirementCount: z.number().int().nonnegative(),
     }),
   ),
 })
@@ -129,17 +132,27 @@ export async function resolveOpenspecBinary(
  * callers share one walk instead of racing several.
  */
 let resolvedBinary: Promise<string | null> | undefined
+let resolvedForPath: string | undefined
 
 export function getOpenspecBinary(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<string | null> {
-  resolvedBinary ??= resolveOpenspecBinary(env)
+  // Keyed on PATH rather than memoised unconditionally: accepting an `env`
+  // argument and then ignoring every value after the first is a loaded gun for
+  // the next caller. In the daemon PATH never changes, so this is still exactly
+  // one walk per lifetime.
+  const key = env.PATH ?? ''
+  if (resolvedBinary === undefined || resolvedForPath !== key) {
+    resolvedForPath = key
+    resolvedBinary = resolveOpenspecBinary(env)
+  }
   return resolvedBinary
 }
 
 /** Test-only: drop the memoised resolution so each case starts clean. */
 export function __resetOpenspecBinaryForTests(): void {
   resolvedBinary = undefined
+  resolvedForPath = undefined
 }
 
 /**
@@ -163,7 +176,10 @@ export async function runOpenspecList<K extends OpenspecListKind>(
 
   let stdout: string
   let timedOut = false
+  let settled = false
   let timer: NodeJS.Timeout | undefined
+  // Declared out here so the finally block can reach it after a throw.
+  let subprocessPid: number | undefined
 
   try {
     const subprocess = execa(binary, [...ARGV_BY_KIND[kind]], {
@@ -172,11 +188,19 @@ export async function runOpenspecList<K extends OpenspecListKind>(
       shell: false,
       reject: false,
       stdio: ['ignore', 'pipe', 'pipe'],
+      // Bytes, not characters: execa measures maxBuffer in UTF-16 code units
+      // unless the encoding is 'buffer', so a 2 MiB cap would have admitted
+      // several times that in memory for multi-byte output before the
+      // post-check below could reject it.
+      encoding: 'buffer',
       maxBuffer: maxOutputBytes,
       // Own process group so the timeout below can reach descendants.
       detached: true,
-      cleanup: true,
+      // `cleanup` is a documented no-op when `detached` is set (execa skips it
+      // for detached children), so it is not set here: relying on it would be a
+      // false assurance. The finally block below does the work instead.
     })
+    subprocessPid = subprocess.pid
 
     // The timeout is enforced here rather than via execa's `timeout` option.
     // execa signals the direct child only; a child that has itself forked (a
@@ -185,11 +209,17 @@ export async function runOpenspecList<K extends OpenspecListKind>(
     // forever — the exact orphaning the process-group requirement forbids.
     // Signalling -pid reaches the whole group.
     timer = setTimeout(() => {
+      // Never signal a group for a process that has already settled: the PGID
+      // may have been recycled by then, and -pid would reach whatever now owns
+      // it. The child is reaped before the promise finishes resolving, so this
+      // window is real, not theoretical.
+      if (settled) return
       timedOut = true
       killGroup(subprocess.pid)
     }, timeoutMs)
 
     const result = await subprocess
+    settled = true
 
     if (timedOut) return { ok: false, reason: 'timeout' }
     if (isOversized(result)) return { ok: false, reason: 'oversized' }
@@ -200,7 +230,16 @@ export async function runOpenspecList<K extends OpenspecListKind>(
     }
     if (result.exitCode !== 0) return { ok: false, reason: 'exit' }
 
-    stdout = result.stdout ?? ''
+    // With `encoding: 'buffer'` execa hands back a Uint8Array, which is what
+    // lets maxBuffer bound real bytes. Decode here rather than earlier so the
+    // cap is enforced on the wire size, not the decoded length.
+    const raw: unknown = result.stdout
+    stdout =
+      raw instanceof Uint8Array
+        ? Buffer.from(raw).toString('utf8')
+        : typeof raw === 'string'
+          ? raw
+          : ''
     // Guard the cap again on the captured string: maxBuffer is a best-effort
     // bound and a child can emit exactly at the boundary.
     if (Buffer.byteLength(stdout, 'utf8') > maxOutputBytes) {
@@ -219,6 +258,10 @@ export async function runOpenspecList<K extends OpenspecListKind>(
     return { ok: false, reason: 'spawn-failed' }
   } finally {
     if (timer) clearTimeout(timer)
+    // Belt and braces for every non-timeout failure path: execa signals only the
+    // direct child, so a wrapper script that forked leaves a grandchild holding
+    // stdout open. Harmless when the group is already gone.
+    if (!settled) killGroup(subprocessPid)
   }
 
   let parsed: unknown

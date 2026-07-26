@@ -15,6 +15,7 @@ import { PageHeader } from './ui/PageHeader.js'
 import { CapabilityPanel } from './panels/CapabilityPanel.js'
 import { ChangeProgress } from './panels/ChangeProgress.js'
 import { MigrationNotice } from './panels/MigrationNotice.js'
+import { UnreachableNotice } from './panels/UnreachableNotice.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
 import { HookFirings } from './panels/HookFirings.js'
 import { InstalledSkills } from './panels/InstalledSkills.js'
@@ -41,7 +42,15 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
    */
   const registry = useRegistryList()
   const entry = registry.data?.find((p) => p.id === projectId)
-  const needsMigration = entry?.status.condition === 'needs-migration'
+  const condition = entry?.status.condition
+  const needsMigration = condition === 'needs-migration'
+  /*
+   * Reachability wins over the marker matrix here for the same reason it does in
+   * the daemon: with an unmounted volume the openspec/ stat simply fails, and
+   * Change Progress would state "this project has no openspec/ directory" —
+   * a positive claim about a filesystem the daemon cannot see.
+   */
+  const unreachable = condition === 'unreachable' || entry?.status.reachable === false
 
   return (
     <div>
@@ -74,7 +83,9 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           aria-label="Change Progress"
           className="flex min-w-0 flex-col gap-6"
         >
-          {needsMigration ? (
+          {unreachable ? (
+            <UnreachableNotice root={entry?.root ?? null} />
+          ) : needsMigration ? (
             <MigrationNotice />
           ) : (
             <>

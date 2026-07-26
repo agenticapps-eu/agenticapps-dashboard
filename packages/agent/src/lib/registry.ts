@@ -553,25 +553,50 @@ export async function listProjectsWithStatus(
   return Promise.all(
     reg.projects.map(async (p) => {
       const reachable = isReachable(p.root)
+      const lastCommitAt = reachable ? await detectLastCommitAt(p.root) : null
       const condition = computeProjectCondition(p.root, reachable)
-      const openspec =
-        condition === 'migrated' ? await readOpenspecProject(p.root, binary) : null
-      return RegistryListItemSchema.parse({
-        ...p,
-        status: {
-          reachable,
-          condition,
-          openChanges:
-            openspec?.openChanges.map((c) => ({
-              name: c.name,
-              completedTasks: c.completedTasks,
-              totalTasks: c.totalTasks,
-              hasTaskArtifact: c.hasTaskArtifact,
-            })) ?? [],
-          capabilityCount: openspec?.capabilities.length ?? 0,
-          lastCommitAt: reachable ? await detectLastCommitAt(p.root) : null,
-        },
-      })
+
+      /*
+       * One project must never take down the fleet. Everything below reads a
+       * project's own filesystem or its CLI output, and a single malformed
+       * value used to throw out of this `Promise.all` — 500ing the whole list,
+       * and failing daemon boot outright, because boot awaits this before
+       * serve() and there would be no UI left to unregister the culprit with.
+       * A project that cannot be read degrades to a reachable-but-empty row.
+       */
+      let openspec: Awaited<ReturnType<typeof readOpenspecProject>> | null = null
+      if (condition === 'migrated') {
+        try {
+          openspec = await readOpenspecProject(p.root, binary)
+        } catch {
+          openspec = null
+        }
+      }
+
+      const status = {
+        reachable,
+        condition,
+        openChanges:
+          openspec?.openChanges.map((c) => ({
+            name: c.name,
+            completedTasks: c.completedTasks,
+            totalTasks: c.totalTasks,
+            hasTaskArtifact: c.hasTaskArtifact,
+          })) ?? [],
+        capabilityCount: openspec?.capabilities.length ?? 0,
+        lastCommitAt,
+      }
+
+      try {
+        return RegistryListItemSchema.parse({ ...p, status })
+      } catch {
+        // The status shape itself is bad. Report the project as reachable with
+        // no OpenSpec data rather than dropping the row or failing the request.
+        return RegistryListItemSchema.parse({
+          ...p,
+          status: { ...status, openChanges: [], capabilityCount: 0 },
+        })
+      }
     }),
   )
 }

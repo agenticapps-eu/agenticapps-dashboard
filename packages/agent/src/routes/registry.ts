@@ -1,4 +1,7 @@
 import { basename } from 'node:path'
+import { statSync } from 'node:fs'
+
+import { REGISTRY_FILE } from '../constants.js'
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
@@ -33,7 +36,7 @@ import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { logBlocked } from '../lib/registerLog.js'
 import { detectMarkers } from '../lib/projectOverview.js'
 import { evict as evictOverviewCache } from '../lib/overviewCache.js'
-import { evictPhaseCacheProject } from '../lib/phaseCache.js'
+import { evictPhaseCacheProject, getPhaseCache, setPhaseCache } from '../lib/phaseCache.js'
 import { evictAgentLinterCacheProject } from '../lib/agentLinterCache.js'
 import { evictSkillsCacheProject } from './skills.js'
 import { evictObservabilityCacheProject } from './observability.js'
@@ -67,10 +70,40 @@ function tokenFromAuthHeader(c: Context): string | null {
 
 export const registryRoute = new Hono<Env>()
 
+/*
+ * `Registry CRUD Surface` says per-project status is "computed at request time,
+ * cached briefly". It was computed at request time and not cached at all, which
+ * on a fleet of N migrated projects meant N git invocations plus 2N `openspec`
+ * spawns every 5s per open tab — with a subprocess timeout equal to the poll
+ * interval, so a slow project guarantees overlap rather than merely risking it.
+ *
+ * The cache key carries the registry file's mtime, so any mutation (register,
+ * unregister, rename, tag) invalidates it without each of those routes having to
+ * remember to. The TTL covers everything else, since a project's status changes
+ * when its own files change, not when the registry does.
+ */
+function fleetCacheKey(registryFile: string | undefined): string {
+  const path = registryFile ?? REGISTRY_FILE
+  let stamp = 'absent'
+  try {
+    stamp = String(statSync(path).mtimeMs)
+  } catch {
+    // No registry file yet — one key for the empty state.
+  }
+  return `__fleet__:${path}:${stamp}`
+}
+
 registryRoute.get('/', async (c) => {
   const registryFile = c.get('registryFile') as string | undefined
+  const parse = RegistryListResponseSchema.parse.bind(RegistryListResponseSchema)
+
+  const key = fleetCacheKey(registryFile)
+  const cached = getPhaseCache(key)
+  if (cached !== null) return outbound(c, parse, cached)
+
   const items = await listProjectsWithStatus(registryFile)
-  return outbound(c, RegistryListResponseSchema.parse.bind(RegistryListResponseSchema), items)
+  setPhaseCache(key, items)
+  return outbound(c, parse, items)
 })
 
 registryRoute.post(
