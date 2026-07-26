@@ -171,10 +171,21 @@ describe('SingleProjectView — a needs-migration project', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
 
     expect(screen.getByTestId('migration-notice')).toBeDefined()
-    // The two OpenSpec panels have no source on a GSD-layout project, so they
-    // do not mount at all rather than mounting into a permanent empty state.
-    expect(screen.queryByRole('heading', { level: 2, name: 'Change Progress' })).toBeNull()
+
+    /*
+     * The two OpenSpec panels have no source on a GSD-layout project, so they
+     * do not mount at all rather than mounting into a permanent empty state.
+     * Probed by their content, not by the panel title: the notice deliberately
+     * keeps the "Change Progress" heading so the column's slot identity stays
+     * stable while the body explains why it is empty.
+     */
     expect(screen.queryByRole('heading', { level: 2, name: 'Capabilities' })).toBeNull()
+    // The column itself keeps its testid — it is the slot, not a change row.
+    const changeRows = document.querySelectorAll(
+      '[data-testid^="change-"]:not([data-testid="change-progress-column"])',
+    )
+    expect(changeRows.length).toBe(0)
+    expect(document.querySelectorAll('[data-testid^="capability-"]').length).toBe(0)
   })
 
   it('SV16: header context still renders — neither a blank page nor an error', () => {

@@ -16,7 +16,12 @@
  */
 import React, { useEffect } from 'react'
 
+import { useRegistryList } from '../lib/registry.js'
+
 import { PageHeader } from './ui/PageHeader.js'
+import { CapabilityPanel } from './panels/CapabilityPanel.js'
+import { ChangeProgress } from './panels/ChangeProgress.js'
+import { MigrationNotice } from './panels/MigrationNotice.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
 import { HookFirings } from './panels/HookFirings.js'
 import { InstalledSkills } from './panels/InstalledSkills.js'
@@ -35,6 +40,16 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
     document.title = `${projectId} — AgenticApps Dashboard`
   }, [projectId])
 
+  /*
+   * The condition comes from the registry list, which the shell already polls —
+   * no extra request. While it is loading the condition is undefined, which
+   * falls through to the panels; each renders its own loading state, so the
+   * column never flashes the migration notice at a migrated project.
+   */
+  const registry = useRegistryList()
+  const entry = registry.data?.find((p) => p.id === projectId)
+  const needsMigration = entry?.status.condition === 'needs-migration'
+
   return (
     <div>
       <PageHeader title={projectId} />
@@ -52,18 +67,29 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           <RationalizationFires projectId={projectId} />
         </section>
         {/*
-         * The centre column is empty between task groups 5 and 6 of
-         * `add-openspec-project-reader`. Group 5 retired the five phase-artifact
-         * panels that lived here — every one of them read `.planning/phases/`,
-         * which the daemon no longer serves. Group 6 fills it with Change
-         * Progress and the Capability panel, per the ADDED requirements of the
-         * same change, and runs the design critique against the result.
+         * Group 5 retired the five phase-artifact panels that lived here, all of
+         * which read `.planning/phases/`. Group 6 fills the column with the two
+         * surfaces the same change ADDS: work in flight above, standing promise
+         * below.
+         *
+         * A `needs-migration` project gets the notice instead of the panels.
+         * Mounting them would put two permanent empty states in the column and
+         * make an explained condition look like missing data.
          */}
         <section
           data-testid="change-progress-column"
           aria-label="Change Progress"
           className="flex min-w-0 flex-col gap-6"
-        />
+        >
+          {needsMigration ? (
+            <MigrationNotice />
+          ) : (
+            <>
+              <ChangeProgress projectId={projectId} />
+              <CapabilityPanel projectId={projectId} />
+            </>
+          )}
+        </section>
         <section
           data-testid="health-column"
           aria-label="Health"

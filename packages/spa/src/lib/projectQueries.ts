@@ -50,6 +50,8 @@ import {
   type SentryRecentResponse,
   LinearIssuesResponseSchema,
   type LinearIssuesResponse,
+  OpenspecProjectStateSchema,
+  type OpenspecProjectState,
 } from '@agenticapps/dashboard-shared'
 
 import { ApiError, apiFetch } from './api.js'
@@ -124,6 +126,31 @@ export function useDiscipline(id: string | null) {
  * both polled routes the daemon no longer serves, and both fed panels whose
  * `Phase Progress Column` requirement this change REMOVES.
  */
+
+/**
+ * useOpenspec — polls GET /api/projects/{id}/openspec every 5s.
+ *
+ * Feeds both centre-column panels from one request: Change Progress reads
+ * `openChanges`, the Capability panel reads `capabilities`. They share a query
+ * key deliberately — two hooks would mean two polls of a route whose whole
+ * response both panels already receive.
+ *
+ * Per-project: id in queryKey (cross-project cache leakage).
+ */
+export function useOpenspec(id: string | null) {
+  return useQuery({
+    queryKey: ['openspec', id] as const,
+    queryFn: async (): Promise<OpenspecProjectState> => {
+      const result = await apiFetch(`/api/projects/${id}/openspec`, OpenspecProjectStateSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: id !== null,
+    staleTime: POLL_MS,
+    refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
+  })
+}
 
 /**
  * useGlobalSkills — polls GET /api/skills/global every 60s.
