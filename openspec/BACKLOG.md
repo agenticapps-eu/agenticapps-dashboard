@@ -76,3 +76,44 @@ deliberately: it is a vendored file synced from the scaffolder, so editing it he
 would create drift and be reverted on the next `/update-agenticapps-workflow`. The
 statement remains true of freshly scaffolded projects generally — just no longer
 of this one.
+
+## Impeccable floor: three numbers on disk, and a CI gate that does not exist
+
+Found 2026-07-26 while merging the Dashboard v2 plan into this slot. No spec
+delta — the composite floor is process, not product (see *Deliberate exclusions*
+in `CAPABILITY-MAP.md` and the preamble of `openspec/specs/design-system/spec.md`).
+It belongs here.
+
+**Three different floors are recorded in this repo:**
+
+| Source | Value |
+|---|---|
+| `CLAUDE.md:144` — ratified 2026-06-08 | **≥ 80** ← current truth |
+| `CAPABILITY-MAP.md` traceability note | records 87 → 80 via D-10.5-03 |
+| `README.md:57`, `README.md:107` | ≥ 87, plus "v1.1 commits to lifting the floor to ≥ 90" |
+| `docs/spec/dashboard-prompt.md:554,594,696` | ≥ 87, "calibration pending" |
+
+`README.md` is stale: it states a floor superseded in June 2026.
+`dashboard-prompt.md` is historical reference material and correctly frozen —
+it is not a defect there.
+
+**The CI gate does not exist.** `README.md:57` and `README.md:107`, and
+`docs/review-protocol.md:63`, all reference `.github/workflows/impeccable.yml`.
+The workflows directory contains only `ci.yml` and `release.yml`. This is not an
+accidental deletion: `dashboard-prompt.md:554` records that "Phase 6's CI gate
+retired in favor of the per-phase artifact". The links were never updated when it
+was retired.
+
+**Consequence for the v2 plan.** Linear AGE-476 reads "the CI gate threshold
+rises from ≥ 87 to ≥ 90". Both halves are wrong against the repo: the baseline is
+80, and there is no CI gate to raise. The intent — hold a higher bar for the
+rebuilt surfaces — is sound and unaffected.
+
+**To do, with AGE-476:**
+
+- Correct `README.md` to the ratified floor, and either remove the dead workflow
+  links or restore an actual CI gate.
+- Correct `docs/review-protocol.md:63` the same way.
+- Decide explicitly whether the raised floor is enforced in CI or stays a
+  per-change artifact gate. It is currently the latter, and the docs claim the
+  former.

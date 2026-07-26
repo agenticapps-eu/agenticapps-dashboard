@@ -153,3 +153,91 @@ Reconstructed specs are **current truth, post-supersession**. Where a later phas
 superseded an earlier decision (e.g. IMPECCABLE floor 87 → 80 via D-10.5-03; Phase 13
 removing the page-header `IndexGitNexusButton`), only the final state is recorded.
 The supersession history stays in `docs/legacy-planning/`.
+
+---
+
+## Sequence — appended 2026-07-26
+
+**Appended, not merged.** Everything above is ratified and dated; §08 says
+supersede, never delete. This section records what happened *after* that
+ratification and does not alter it.
+
+### What changed after ratification
+
+The Linear project *Dashboard v2 — Vereinfachung, Fleet-Versionen, Kanban*
+(28 issues, AGE-456…AGE-483) rebuilds the product around three questions instead
+of ten surfaces. Merged into this slot as **three new capabilities plus deltas on
+existing ones** — not as 28 requirements and not as 28 changes.
+
+| New capability | Guarantees | Merged from |
+|---|---|---|
+| `repo-readiness` | Six checks per repo, one status vocabulary, tier-A/tier-B precedence, the honesty rule, the fleet and detail surfaces | AGE-456, 457, 458, 459, 460, 461, 462, 464, 465, 466 |
+| `workflow-fleet-conformance` | Core↔host version comparison, per-skill drift, byte identity, bounded on-demand harness | AGE-467, 468, 469 |
+| `agent-board` | Normalised sessions and tasks across three hosts, read-only, shared adapters | AGE-470, 471, 472 |
+
+**Names deliberately not reused.** The new test-coverage check is *not* a
+capability called `fleet-coverage`, and the version comparison is *not*
+`fleet-conformance`. Both names belong to withdrawn concepts. In v2 `coverage`
+means test coverage, not tooling coverage; and conformance means version
+agreement, not a weighted score. One word carrying two concepts in one slot is
+the most reliable way to misread it later.
+
+**Capability count 12 → 10.** Five withdrawn, three added.
+
+### Order of application
+
+Seven changes are open. The order is not arbitrary.
+
+| # | Change | Depends on | Note |
+|---|---|---|---|
+| 1 | `add-openspec-project-reader` | — | Foundation. Supplies the reader the `spec` check consumes. The only real dependency in the plan. |
+| 2 | `remove-gitnexus-integration` | — | Descoped: task block 1 and the history requirement removed. Runs parallel to 3 — different files. |
+| 3 | `add-repo-readiness` | 1 | Only its `spec` check needs 1; the rest could start earlier. |
+| 4 | `add-workflow-fleet-conformance` | — | Independent. Can run early. Carries the `filesystem-access-policy` delta. |
+| 5 | `add-agent-board` | — | Independent. Stage 1 runs against a stub, so the adapter extraction does not block it. |
+| 6 | `retire-v1-surfaces` | 2, 3, 4, 5 | At the cutover. Written now, applied last. |
+| 7 | `verify-tailscale-second-device-access`, `add-oss-readiness` | 6 | After the cutover. |
+
+**Why 6 is last.** A withdrawal is only true once the replacement stands. Applied
+early, the slot would state for that interval that the product can do neither the
+old thing nor the new one. It is nonetheless *written* now, with the v2 changes,
+because a change that adds a surface without saying which requirements it
+supersedes is how a slot ends up carrying two contradictory truths — and
+`openspec validate` checks structure, not consistency.
+
+**Why 7 waits.** Both work against surfaces v2 replaces. The Tailscale run would
+verify panels scheduled for deletion; open-sourcing would publish files scheduled
+for deletion.
+
+### Corrections recorded during the merge
+
+- **GAP-04's descope.** `remove-gitnexus-integration` devoted its largest task
+  block to keeping the 90-day conformance trend continuous across the column
+  removal. **The analysis was right and stays in that change's proposal**; the
+  measure is dropped only because `retire-v1-surfaces` withdraws the chart, so
+  the recomputation has no consumer. Recorded so the descope reads as a decision.
+- **`filesystem-access-policy` is not untouched.** The v2 plan listed four
+  untouched capabilities. It is three. `add-workflow-fleet-conformance` adds a
+  second process-spawning exception — the conformance harness — and a machine-wide
+  allowed root. The security spine says "sole exception" today; shipping a second
+  one without amending it would be worse than naming both. Bounded on five axes,
+  all specified as requirements.
+- **The withdrawal is 50 requirements, not 42.** The 42 figure counts only
+  capability withdrawals. `project-dashboard` survives while losing eight more.
+- **The Impeccable floor stays out of the slot.** The *Deliberate exclusions*
+  section above, and `design-system`'s own preamble, both place the critique
+  ritual and its composite floor in process rather than product. Raising it
+  (AGE-476) is therefore a `CLAUDE.md` change, not a spec delta. Only the
+  outcomes it protects — density, tabular figures, non-colour-dependence — become
+  requirements. AGE-476 also computes from a superseded baseline; see
+  `openspec/BACKLOG.md`.
+- **The capability panel changes address, it does not vanish.**
+  `add-openspec-project-reader` adds it to the single-project view; v2 turns it
+  into the `spec` check's evidence display. Recorded so its removal from
+  `project-dashboard` is not later read as an oversight.
+
+### Linear coupling
+
+Issue ids above are **pointers for a human**, per §19. Nothing synchronises in
+either direction, and neither side is required to be complete with respect to the
+other.
