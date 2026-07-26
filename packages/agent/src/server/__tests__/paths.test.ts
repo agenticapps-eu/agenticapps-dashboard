@@ -235,22 +235,25 @@ describe('path-allow-list-enforces-size-cap', () => {
     projectCleanup()
   })
 
-  it('refuses an oversized file with 413 file_too_large rather than truncating', async () => {
-    mkdirSync(join(projRoot, 'openspec'), { recursive: true })
-    writeFileSync(
-      join(projRoot, 'openspec', 'huge.md'),
-      Buffer.alloc(MAX_READ_BYTES + 1, 0x61),
-    )
-    const app = createApp({ registryFile })
-    const token = getActiveToken()
-    const res = await app.request(
-      `http://127.0.0.1:5193/api/projects/${projectId}/read?path=openspec/huge.md`,
-      { headers: authHeaders(token) },
-    )
-    expect(res.status).toBe(413)
-    const body = (await res.json()) as { error: string }
-    expect(body.error).toBe('file_too_large')
-  })
+  // The cap is applied after resolveAllowed, so it is path-independent by
+  // construction — but the requirement says all three allow-listed directories,
+  // so all three are asserted rather than argued.
+  it.each(['.planning', '.claude', 'openspec'])(
+    'refuses an oversized file under %s with 413 file_too_large rather than truncating',
+    async (dir) => {
+      mkdirSync(join(projRoot, dir), { recursive: true })
+      writeFileSync(join(projRoot, dir, 'huge.md'), Buffer.alloc(MAX_READ_BYTES + 1, 0x61))
+      const app = createApp({ registryFile })
+      const token = getActiveToken()
+      const res = await app.request(
+        `http://127.0.0.1:5193/api/projects/${projectId}/read?path=${dir}/huge.md`,
+        { headers: authHeaders(token) },
+      )
+      expect(res.status).toBe(413)
+      const body = (await res.json()) as { error: string }
+      expect(body.error).toBe('file_too_large')
+    },
+  )
 
   it('allows a file exactly at the cap', async () => {
     mkdirSync(join(projRoot, 'openspec'), { recursive: true })

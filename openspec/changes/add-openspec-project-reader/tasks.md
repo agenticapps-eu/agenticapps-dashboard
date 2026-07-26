@@ -2,15 +2,16 @@
 
 ## 1. Allow-list (do first — everything else reads through it)
 
-- [ ] Add `openspec` to `ALLOWED_SUBDIRS` in `packages/agent/src/lib/paths.ts` (TDD)
-- [ ] Test: a read under `<root>/openspec/` resolves; `..` escape and symlink escape still rejected
-- [ ] Confirm `docs/legacy-planning` remains OUT of the allow-list — explicitly rejected, do not add
-- [ ] Confirm `.planning` stays allow-listed and leave a code comment naming why: `skill-observations/` (override-sentinel scanner, commitment route) and `config.json`
-- [ ] Enforce a maximum file size on `/read`, refusing oversized files with an explicit too-large response (TDD)
-- [ ] Test: an oversized file under each of the three allow-listed directories is refused, not truncated
-- [ ] Test: the size is checked before the file is read into memory
-- [ ] Declare the size cap, CLI timeout, and CLI output cap as named constants in one module with documented defaults
-- [ ] Test: an unparseable configured value for any bound falls back to the default, never to unbounded
+- [x] Add `openspec` to `ALLOWED_SUBDIRS` in `packages/agent/src/lib/paths.ts` (TDD)
+- [x] Test: a read under `<root>/openspec/` resolves; `..` escape and symlink escape still rejected
+- [x] Confirm `docs/legacy-planning` remains OUT of the allow-list — explicitly rejected, do not add
+- [x] Confirm `.planning` stays allow-listed and leave a code comment naming why: `skill-observations/` (override-sentinel scanner, commitment route) and `config.json`
+- [x] ~~Enforce a maximum file size on `/read`~~ — **already implemented.** `MAX_READ_BYTES` (5 MiB) has capped the route since it was written, returning 413 `file_too_large`. The spec was silent, the code was not; the change documents it rather than adding a second cap
+- [x] Test: an oversized file under each of the three allow-listed directories is refused, not truncated
+- [x] Test: a file exactly at the cap still reads 200 (boundary asserted both ways)
+- [x] ~~Test: the size is checked before the file is read into memory~~ — **verified by inspection, not testable in-process.** `read.ts` checks `st.size` from `fh.stat()` before `Buffer.allocUnsafe`, and re-checks after the bounded read to catch concurrent growth. Asserting the ordering would require instrumenting the allocator
+- [ ] Declare the CLI timeout and CLI output cap as named constants alongside `MAX_READ_BYTES` and `GIT_SUBPROCESS_TIMEOUT_MS` (size cap already declared)
+- [x] ~~Test: an unparseable configured value for any bound falls back to the default~~ — **vacuous as built.** None of the three bounds is configurable; they are module constants, so there is no parse path and no way to disable one. The requirement's intent (finite, cannot be turned off) holds by construction
 
 ## 2. OpenSpec CLI invocation discipline (security — before the reader uses it)
 
