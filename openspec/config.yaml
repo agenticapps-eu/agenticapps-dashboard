@@ -41,6 +41,6 @@ rules:
   proposal:
     - State the product behaviour change, not the file diff.
     - Name which capability under openspec/specs/ the change affects.
-  spec:
+  specs:
     - Requirements use SHALL/MUST and carry at least one scenario each.
     - Specs are current truth, post-supersession — not a changelog.
