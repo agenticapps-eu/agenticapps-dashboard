@@ -36,7 +36,12 @@ import { consume as rlConsume, tokenHashOf } from '../lib/rateLimiter.js'
 import { logBlocked } from '../lib/registerLog.js'
 import { detectMarkers } from '../lib/projectOverview.js'
 import { evict as evictOverviewCache } from '../lib/overviewCache.js'
-import { evictPhaseCacheProject, getPhaseCache, setPhaseCache } from '../lib/phaseCache.js'
+import {
+  evictPhaseCacheProject,
+  evictPhaseCachePrefix,
+  getPhaseCache,
+  setPhaseCache,
+} from '../lib/phaseCache.js'
 import { evictAgentLinterCacheProject } from '../lib/agentLinterCache.js'
 import { evictSkillsCacheProject } from './skills.js'
 import { evictObservabilityCacheProject } from './observability.js'
@@ -101,6 +106,10 @@ registryRoute.get('/', async (c) => {
   const cached = getPhaseCache(key)
   if (cached !== null) return outbound(c, parse, cached)
 
+  // Drop superseded snapshots first: the key carries the registry mtime, so a
+  // mutation mints a new one and the old entry would otherwise never be read
+  // again, and therefore never lazily expired.
+  evictPhaseCachePrefix('__fleet__:')
   const items = await listProjectsWithStatus(registryFile)
   setPhaseCache(key, items)
   return outbound(c, parse, items)

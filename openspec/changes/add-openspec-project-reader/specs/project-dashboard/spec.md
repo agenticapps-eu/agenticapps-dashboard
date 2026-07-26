@@ -176,12 +176,26 @@ false. The two paths MUST agree on exactly:
 Task-artifact presence is deliberately **not** in this table: it has one source
 on both paths, so agreement is structural rather than an invariant to test.
 
-Parity is claimed over a **conformant change directory**: one whose task list is
-a top-level `tasks.md` and whose spec deltas are `specs/<capability>/spec.md`.
-OpenSpec permits task artifacts the tree reader does not locate; for a
-non-conformant change the two paths MAY differ, and the daemon SHALL prefer the
-CLI's value when the CLI path is available. Stating the scope is what makes the
-MUST enforceable — an invariant that cannot fail is not an invariant.
+Parity is claimed over a **conformant project**, and conformance has two parts
+because the two paths disagree in two different places:
+
+- A **conformant change directory** is one whose task list is a top-level
+  `tasks.md` and whose spec deltas are `specs/<capability>/spec.md`. OpenSpec
+  permits task artifacts the tree reader does not locate; for a non-conformant
+  change the two paths MAY differ.
+- A **conformant capability spec** is one whose requirements are nested under a
+  `## Requirements` section heading. The CLI counts only requirements under that
+  heading; the tree reader counts `### Requirement:` headings wherever they sit.
+  A spec file that omits the section heading therefore reports a different
+  `requirementCount` on the two paths — measured against `openspec` 1.6.0 on
+  2026-07-26: the CLI reports 0 where the tree reports 2. `openspec validate`
+  rejects such a file, so this is a malformed-input case rather than a supported
+  one, but the parity MUST above cannot hold for it and does not claim to.
+
+Where the two paths differ within these bounds the daemon SHALL prefer the CLI's
+value. Stating the scope is what makes the MUST enforceable — an invariant that
+cannot fail is not an invariant, and one whose stated scope does not match where
+it actually holds is worse, because it reads as tested when it is not.
 
 #### Scenario: The CLI path and the tree path agree on the pinned field set
 - **WHEN** the same conformant project is read once with the CLI available and once without

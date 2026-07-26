@@ -10,6 +10,7 @@ import { writeServerInfo, removeServerInfo } from '../lib/serverInfo.js'
 import { agentLog, agentError } from '../lib/logging.js'
 import { renderBanner, renderZeroBindWarning } from '../lib/banner.js'
 import { readRegistry } from '../lib/registry.js'
+import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getActiveToken } from '../lib/auth.js'
 import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
 import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
@@ -149,6 +150,15 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
    * making a single unreadable project able to fail `start` outright, with no
    * UI left to unregister it with.
    */
+  /*
+   * `OpenSpec CLI Invocation Discipline`: resolved once at daemon start, not per
+   * request. Memoising on first use gave the same one-walk-per-lifetime property
+   * but left the start-to-first-poll window open, which is the window the clause
+   * closes. Warmed here, and deliberately not awaited into a failure: a
+   * resolution failure means the tree path, which is a supported mode.
+   */
+  void getOpenspecBinary()
+
   const projects = readRegistry().projects
   const bindUrl = `http://${opts.host}:${opts.port}`
 

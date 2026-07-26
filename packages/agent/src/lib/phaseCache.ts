@@ -51,6 +51,17 @@ export function setPhaseCache(key: string, value: unknown, now: number = Date.no
  * Called from the registry unregister handler so a re-registered project
  * with the same id but a different root cannot serve stale Phase 4 panels.
  */
+/**
+ * Drop every entry under a prefix. Used for the fleet key, whose mtime-stamped
+ * name changes on each registry mutation: without this the superseded snapshot
+ * is never read again and so is never lazily expired.
+ */
+export function evictPhaseCachePrefix(prefix: string): void {
+  for (const key of store.keys()) {
+    if (key.startsWith(prefix)) store.delete(key)
+  }
+}
+
 export function evictPhaseCacheProject(projectId: string): void {
   const prefix = `${projectId}:`
   for (const key of store.keys()) {

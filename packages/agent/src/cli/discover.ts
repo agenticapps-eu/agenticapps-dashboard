@@ -1,3 +1,5 @@
+import { hasOpenspec } from '../lib/projectCondition.js'
+
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, basename } from 'node:path'
 
@@ -23,7 +25,7 @@ export interface DiscoveredMatch {
  */
 function checkMarkers(child: string): string[] {
   const markers: string[] = []
-  if (existsSync(join(child, 'openspec'))) {
+  if (hasOpenspec(child)) {
     markers.push('openspec/')
   }
   if (existsSync(join(child, '.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md'))) {
