@@ -26,10 +26,13 @@ import { render, screen, cleanup, within } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-// Mock registry
+// Mock registry. useRegistryList is a vi.fn rather than a fixed arrow because
+// group 6 drives the centre column off the project's `condition` — a
+// needs-migration project renders the migration notice in place of the
+// Change Progress and Capability panels.
 vi.mock('../lib/registry.js', () => ({
-  useRegistryList: () => ({ data: undefined, isLoading: true }),
-  useProjectOverview: () => ({ data: undefined, isLoading: true }),
+  useRegistryList: vi.fn(() => ({ data: undefined, isLoading: true })),
+  useProjectOverview: vi.fn(() => ({ data: undefined, isLoading: true })),
 }))
 
 // Mock projectQueries so all panels render their loading state
@@ -46,9 +49,36 @@ vi.mock('../lib/projectQueries.js', () => ({
   useIntegrations: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useSentryRecent: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
   useLinearIssues: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
+  useOpenspec: vi.fn(() => ({ data: undefined, error: null, isLoading: true, refetch: vi.fn() })),
 }))
 
+import { useRegistryList } from '../lib/registry.js'
+
 import { SingleProjectView } from './SingleProjectView.js'
+
+/** Point useRegistryList at one project carrying the given condition. */
+function mockCondition(condition: string, projectId = 'acme') {
+  vi.mocked(useRegistryList).mockReturnValue({
+    data: [
+      {
+        id: projectId,
+        name: projectId,
+        root: `/tmp/${projectId}`,
+        client: null,
+        addedAt: '2026-07-26T00:00:00.000Z',
+        tags: [],
+        status: {
+          reachable: true,
+          condition,
+          openChanges: [],
+          capabilityCount: 0,
+          lastCommitAt: null,
+        },
+      },
+    ],
+    isLoading: false,
+  } as unknown as ReturnType<typeof useRegistryList>)
+}
 
 function makeWrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -101,8 +131,8 @@ describe('SingleProjectView', () => {
 
   /*
    * SV4 inverted by task group 5: the five phase-artifact panels are retired
-   * with the reader that fed them. The centre column exists but is empty until
-   * group 6 mounts Change Progress and the Capability panel in their place.
+   * with the reader that fed them. Group 6 mounts Change Progress and the
+   * Capability panel in the column they vacated.
    */
   it('SV4: the retired phase panels no longer mount', () => {
     render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
@@ -118,6 +148,62 @@ describe('SingleProjectView', () => {
     }
 
     expect(screen.getByTestId('change-progress-column')).toBeDefined()
+  })
+
+  it('SV14: the centre column mounts Change Progress above Capabilities', () => {
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const col = screen.getByTestId('change-progress-column')
+    const headings = Array.from(col.querySelectorAll('h2')).map((h) => h.textContent)
+
+    expect(headings).toContain('Change Progress')
+    expect(headings).toContain('Capabilities')
+    // Work in flight reads before the standing promise it changes.
+    expect(headings.indexOf('Change Progress')).toBeLessThan(headings.indexOf('Capabilities'))
+  })
+})
+
+describe('SingleProjectView — a needs-migration project', () => {
+  afterEach(() => cleanup())
+
+  it('SV15: renders the migration notice instead of the change panels', () => {
+    mockCondition('needs-migration')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByTestId('migration-notice')).toBeDefined()
+    // The two OpenSpec panels have no source on a GSD-layout project, so they
+    // do not mount at all rather than mounting into a permanent empty state.
+    expect(screen.queryByRole('heading', { level: 2, name: 'Change Progress' })).toBeNull()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Capabilities' })).toBeNull()
+  })
+
+  it('SV16: header context still renders — neither a blank page nor an error', () => {
+    mockCondition('needs-migration')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('acme')
+    // Discipline and health columns are git- and filesystem-derived, so they
+    // keep working on a project that never migrated.
+    expect(screen.getByTestId('discipline-column')).toBeDefined()
+    expect(screen.getByTestId('health-column')).toBeDefined()
+  })
+
+  it('SV17: the notice explains the layout predates OpenSpec and does not read as an error', () => {
+    mockCondition('needs-migration')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    const notice = screen.getByTestId('migration-notice')
+    expect(notice.textContent).toMatch(/OpenSpec/)
+    expect(notice.textContent).toMatch(/migrat/i)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('SV18: a migrated project renders the panels and no migration notice', () => {
+    mockCondition('migrated')
+    render(<SingleProjectView projectId="acme" />, { wrapper: makeWrapper() })
+
+    expect(screen.queryByTestId('migration-notice')).toBeNull()
+    expect(screen.getByRole('heading', { level: 2, name: 'Change Progress' })).toBeDefined()
   })
 
   it('SV5: health-column IS present (Phase 5 added it)', () => {
