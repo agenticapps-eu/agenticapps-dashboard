@@ -28,6 +28,20 @@ OSS-01..03) and `docs/legacy-planning/milestones/v1.2-REQUIREMENTS.md`
 
 - `open-source-readiness` (new)
 
+## Sequence: this change waits for the v2 cutover
+
+Scheduled after Dashboard v2. Linear: AGE-482, and the *Sequence* section of
+`openspec/CAPABILITY-MAP.md`.
+
+Publishing today would publish 145 SPA source files, most of which
+`retire-v1-surfaces` deletes within the same milestone. Anyone finding the repo
+in the weeks after would read a codebase that is largely about to disappear, and
+the contributor guidance would describe a structure that no longer exists by the
+time they finished reading it.
+
+Nothing about this change becomes harder by waiting, and the licence question is
+unaffected by what the code looks like.
+
 ## Non-goals
 
 - Flipping repo visibility to public. That is a GitHub setting and a human

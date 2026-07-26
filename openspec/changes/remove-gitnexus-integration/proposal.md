@@ -26,7 +26,6 @@ wasted work.
   ~2,578 LOC tests across 18 files).
 - Remove the code-graph column from the coverage matrix, its shared schema, and
   the SPA surfaces that render it.
-- Recompute conformance history so the trend stays comparable across the change.
 - Remove the vendored `.claude/skills/gitnexus/` from this repo.
 
 ## Capabilities
@@ -34,7 +33,6 @@ wasted work.
 - `code-intelligence` — the code-graph half is removed; the knowledge-graph
   viewer half is untouched
 - `fleet-coverage` — the matrix loses one column
-- `fleet-conformance` — scoring denominator changes; history must stay comparable
 
 ## The history problem, and why it gets its own requirement
 
@@ -49,6 +47,26 @@ Daily snapshots store every per-column state inline, so historical days can be
 re-scored over the reduced column set. History stays continuous. That is
 specified below rather than left as an implementation note, because getting it
 wrong silently corrupts the one signal the surface exists to provide.
+
+> ### Descoped 2026-07-26 — the analysis stands, the measure is dropped
+>
+> **This section is kept deliberately.** Deleting it would turn a decision into
+> what looks like an overlooked task, and the reasoning above is still correct:
+> an uncorrected cutover would have written a change in *measurement* into the
+> chart as a change in *fleet health*, permanently, and would have done so as a
+> fake improvement if the removed column was mostly non-green.
+>
+> What changed is not the analysis but its consumer. Dashboard v2 withdraws the
+> conformance page, the 90-day chart, and the snapshot history in full — see
+> `retire-v1-surfaces` and Linear AGE-480, AGE-483. The continuity this measure
+> would establish would have nothing left to be continuous for.
+>
+> Removed as a result: task block 1 of this change, and the requirement
+> *Conformance History Survives A Column-Set Change* from the
+> `fleet-conformance` delta. That requirement would have been deployed and then
+> withdrawn again within the same milestone.
+>
+> Task blocks 2 through 5 are unaffected and run as written.
 
 ## Non-goals
 

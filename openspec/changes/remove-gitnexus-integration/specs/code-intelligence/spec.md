@@ -7,10 +7,11 @@ The workflow scaffold no longer provisions the indexer, so a fleet-wide column
 tracking its index freshness no longer reflects anything the fleet maintains.
 
 **Migration**: The column is removed from the coverage matrix, the shared
-coverage schema, and the conformance scoring input set. Conformance history is
-recomputed over the reduced column set so the trend stays comparable — see the
-`fleet-conformance` delta in this change. No user action is required; repos lose
-a column, not data.
+coverage schema, and the conformance scoring input set. Historical conformance
+scores are left as recorded and the 90-day trend will show a step at the cutover
+— accepted, because `retire-v1-surfaces` withdraws the conformance page, the
+chart, and the snapshot history in full. See the descope note in this change's
+proposal. No user action is required; repos lose a column, not data.
 
 ### Requirement: Scoped Code-Graph Scan Actions
 
