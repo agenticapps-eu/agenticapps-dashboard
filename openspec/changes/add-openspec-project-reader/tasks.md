@@ -5,47 +5,80 @@
 - [ ] Add `openspec` to `ALLOWED_SUBDIRS` in `packages/agent/src/lib/paths.ts` (TDD)
 - [ ] Test: a read under `<root>/openspec/` resolves; `..` escape and symlink escape still rejected
 - [ ] Confirm `docs/legacy-planning` remains OUT of the allow-list — explicitly rejected, do not add
+- [ ] Confirm `.planning` stays allow-listed and leave a code comment naming why: `skill-observations/` (override-sentinel scanner, commitment route) and `config.json`
+- [ ] Enforce a maximum file size on `/read`, refusing oversized files with an explicit too-large response (TDD)
+- [ ] Test: an oversized file under each of the three allow-listed directories is refused, not truncated
 
-## 2. Hybrid reader
+## 2. OpenSpec CLI invocation discipline (security — before the reader uses it)
 
-- [ ] Tree reader: open changes = dirs under `openspec/changes/` excluding `archive/`
+- [ ] Resolve the binary once at daemon start to an absolute path; verify it is a regular executable file (TDD)
+- [ ] Test: resolution failure at start means no spawn and no `PATH` lookup on any later request
+- [ ] Test: a directory, a broken symlink, and a non-executable file each count as resolution failure
+- [ ] Invoke via argv with no shell; argument vector drawn from a fixed table of `list --json` and `list --specs --json` (TDD)
+- [ ] Test: a project root containing a space, a quote, and a shell metacharacter reads correctly
+- [ ] Test: no code path builds an `openspec` argument vector from a project-derived string
+- [ ] Bound the invocation: wall-clock timeout, max captured output, own process group (TDD)
+- [ ] Test: a hung binary is killed by process group and the read falls back to the tree
+- [ ] Test: non-zero exit, oversized output, unparseable JSON, and unrecognised JSON shape each fall back to the tree with no route error
+- [ ] Test: a spawn failure (binary deleted or de-executabled after start) falls back to the tree with no route error
+- [ ] Shape recognition is a required-subset check that ignores unknown fields (TDD)
+- [ ] Test: JSON with extra unknown fields is recognised; JSON missing a consumed field falls back
+- [ ] Pin the verified CLI surface in a code comment: `openspec` 1.6.0, `list --json` / `list --specs --json`
+
+## 3. Hybrid reader
+
+- [ ] Tree reader: open changes = non-dot dirs under `openspec/changes/` excluding `archive/`, with no artifact required
+- [ ] Test: a change dir holding only `tasks.md`, and one holding only `proposal.md`, are both listed
 - [ ] Tree reader: task ratio = `- [x]` versus `- [ ]` count in each change's `tasks.md`
+- [ ] Tree reader: report task-artifact presence as its own value, distinct from a zero count (TDD)
 - [ ] Tree reader: capabilities = dirs under `openspec/specs/`, requirement count = `### Requirement:` occurrences
-- [ ] Tree reader: archived changes from `openspec/changes/archive/`, ordered by date prefix
+- [ ] Tree reader: affected capabilities = dir names under a change's own `specs/`; empty when absent
+- [ ] Tree reader: archived changes from `openspec/changes/archive/`, sorted by zero-padded ISO `YYYY-MM-DD-` prefix
+- [ ] Test: an archive dir not matching the ISO prefix sorts after all matching ones, no chronological claim
 - [ ] CLI reader: use `openspec list --json` and `openspec list --specs --json` when the binary resolves
-- [ ] Archive always read from the tree — the CLI does not expose it
-- [ ] Test: CLI path and tree path produce identical values for the same fixture project
+- [ ] Archive, affected capabilities, and task-artifact presence always read from the tree on both paths — the CLI reports none of them
+- [ ] Test: CLI path and tree path produce identical values for the whole pinned five-field set on one conformant fixture
+- [ ] Test: a non-conformant change (task artifact the tree reader cannot locate) prefers the CLI and is not a parity failure
 - [ ] Test: absent binary degrades to the tree path with no route error
 
-## 3. Registry and discovery
+## 4. Registry and discovery
 
-- [ ] Status reports `openspec/` presence, open-change count, capability count (TDD)
-- [ ] Remove phase number and phase status from the computed status shape
-- [ ] `register --auto` accepts an `openspec/` marker
+- [ ] Status reports the three conditions `migrated` / `needs-migration` / `no-workflow` (TDD)
+- [ ] Test: workflow skill present + no `openspec/` reports `needs-migration`, not `no-workflow`
+- [ ] Test: a project with both `.planning/` and `openspec/` reports `migrated` and reads nothing from `.planning/phases/`
+- [ ] Status reports open-change and capability counts; remove phase number and phase status from the computed shape
+- [ ] `register --auto` markers become exactly `openspec/` and the workflow-skill `SKILL.md`
+- [ ] Remove `.planning/config.json` from the discovery markers (TDD)
+- [ ] Test: a GSD-only project is not offered by `--auto`, and an already-registered one stays in the registry
 - [ ] Extend the shared registry schema; both ends validate
 
-## 4. Retire the GSD reader
+## 5. Retire the GSD reader
 
 - [ ] Delete `findCurrentPhase()` and the `.planning/phases/` parsing in `projectOverview.ts`
 - [ ] Delete phase-artifact reading in `phaseDetail.ts`
 - [ ] Remove phase fields from the shared schemas
-- [ ] Remove `.planning/config.json` from the discovery markers
+- [ ] Remove `.planning/config.json` from the discovery markers in `discover.ts` / `registry.ts`
 - [ ] Confirm no daemon path reads `.planning/phases/` afterwards
-- [ ] Leave `overrideSentinelScanner` alone unless it breaks — it reads a different `.planning` path for coverage
+- [ ] Leave `overrideSentinelScanner` and `routes/commitment.ts` alone — they read `.planning/skill-observations/`, a different path
 
-## 5. Surfaces
+## 6. Surfaces
 
 - [ ] Home card: open-change count plus per-change task ratios (the ratified card shape)
-- [ ] Single-project centre column: Change Progress
+- [ ] Home card: remove review finding counts — the field's source is deleted with the phase reader
+- [ ] Home card: render a migration hint for `needs-migration`, an install hint only for `no-workflow`
+- [ ] Single-project centre column: Change Progress, with affected capabilities per change
+- [ ] Single-project view for a `needs-migration` project: informational migration state, header context still renders
+- [ ] A change with no task artifact is still listed, with a no-task-list state in place of its ratio
 - [ ] Single-project: new Capability panel — capabilities with requirement counts
-- [ ] Empty states for "no openspec/" and "openspec/ but no specs yet"
+- [ ] Empty states: no `openspec/`; `openspec/` with no specs; `openspec/` with no open changes; a change with no spec delta
 - [ ] Run the design critique on both changed routes; composite floor ≥ 80 still applies
 
-## 6. Verify
+## 7. Verify
 
-- [ ] Fixtures: OpenSpec-only, openspec-with-no-specs, GSD-only (expect blank), neither
+- [ ] Fixtures: OpenSpec-only, openspec-with-no-specs, openspec-with-no-changes, both-trees (mid-migration), GSD-only (expect blank), neither
+- [ ] Shared-schema package covered by tests for the new wire shape — `Schema Validation At Both Ends` already binds it, so no spec delta, but the test must exist
 - [ ] Verify this repo's own row renders correctly — it is the first migrated project
 - [ ] Spot-check one other migrated repo and one GSD-only repo to confirm the accepted blank state looks deliberate, not broken
 - [ ] `openspec validate --all` green; `pnpm lint` green; per-package tests green
-- [ ] Security review of the allow-list change against `filesystem-access-policy`
+- [ ] Security review of the allow-list change AND the CLI invocation discipline against `filesystem-access-policy`
 - [ ] Two-stage review
