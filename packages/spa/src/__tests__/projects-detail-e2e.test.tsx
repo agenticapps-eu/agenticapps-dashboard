@@ -48,14 +48,16 @@ const REGISTRY_RESPONSE = [
     tags: [],
     addedAt: '2026-05-06T00:00:00Z',
     // Wave 5: AppShellV2 Sidebar reads status.reachable + status.currentPhase for all registered projects.
-    status: { reachable: true, currentPhase: '04-single-project-view', lastCommitAt: '2026-05-06T00:00:00Z' },
+    status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 0, lastCommitAt: '2026-05-06T00:00:00Z' },
   },
 ]
 
 const OVERVIEW_RESPONSE = {
   branch: 'feature/phase-4',
   phaseStatus: 'executing',
-  currentPhase: '04-single-project-view',
+  condition: 'migrated' as const,
+  openChanges: [],
+  capabilityCount: 0,
   stage1: null,
   stage2: null,
   dbAudit: null,

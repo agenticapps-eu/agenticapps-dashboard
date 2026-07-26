@@ -71,7 +71,7 @@ const makeProject = (id: string, name: string): RegistryListItem => ({
   client: null,
   addedAt: '2026-01-01T00:00:00.000Z',
   tags: [],
-  status: { reachable: true, currentPhase: null, lastCommitAt: null },
+  status: { reachable: true, condition: 'no-workflow' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null },
 })
 
 beforeEach(() => {

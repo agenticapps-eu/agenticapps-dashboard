@@ -17,13 +17,13 @@ export interface ProjectCardProps {
 }
 
 /**
- * Extracts leading digits from a phase dir name.
- * e.g. "03-multi-project-home" => "03"
+ * Render one open change's progress. A change with no task artifact reads as
+ * "no task list" rather than 0/0 — the two are different states, and the
+ * OpenSpec CLI reports zero for both, so the distinction comes from the tree.
  */
-function extractPhaseNum(phase: string | null): string {
-  if (!phase) return '—'
-  const match = /^(\d+)/.exec(phase)
-  return match ? (match[1] ?? phase) : phase
+function taskRatio(c: { completedTasks: number; totalTasks: number; hasTaskArtifact: boolean }): string {
+  if (!c.hasTaskArtifact) return 'no task list'
+  return `${c.completedTasks}/${c.totalTasks}`
 }
 
 /**
@@ -205,9 +205,9 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
       {/* Phase + data lines (non-unreachable, non-drift) */}
       {!unreachable && !isDrift ? (
         <>
-          {item.status.currentPhase === null ? (
+          {item.status.condition === 'no-workflow' ? (
             <span className="block max-w-[60ch] text-sm">
-              <span className="text-text-secondary">no .planning/</span>
+              <span className="text-text-secondary">no workflow</span>
               {' '}
               <a
                 href="https://github.com/agenticapps/workflow"
@@ -217,13 +217,39 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
                 install workflow skill &rarr;
               </a>
             </span>
-          ) : isLoading ? (
-            <span className="text-text-secondary text-sm">—</span>
-          ) : isError ? null : overview.data ? (
-            <span className="text-sm font-semibold text-text-primary">
-              Phase {extractPhaseNum(item.status.currentPhase)} · {overview.data.phaseStatus}
+          ) : item.status.condition === 'needs-migration' ? (
+            /*
+             * The workflow is already installed — telling this user to install
+             * it is the contradiction the review caught. They need to migrate.
+             */
+            <span className="block max-w-[60ch] text-sm">
+              <span className="text-text-secondary">workflow installed, not yet on OpenSpec</span>
+              {' '}
+              <a
+                href="https://github.com/agenticapps/workflow"
+                className="text-accent text-sm underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                migrate &rarr;
+              </a>
             </span>
-          ) : null}
+          ) : item.status.openChanges.length === 0 ? (
+            <span className="text-text-secondary text-sm">no open changes</span>
+          ) : (
+            <span className="block text-sm font-semibold text-text-primary">
+              {item.status.openChanges.length} open change
+              {item.status.openChanges.length === 1 ? '' : 's'}
+              <span className="ml-2 font-normal text-text-secondary">
+                {item.status.openChanges
+                  .slice(0, 3)
+                  .map((c) => `${c.name} ${taskRatio(c)}`)
+                  .join(' · ')}
+                {item.status.openChanges.length > 3
+                  ? ` · +${item.status.openChanges.length - 3} more`
+                  : ''}
+              </span>
+            </span>
+          )}
 
           {/* Stage 2 finding row (compact, visible when data available) */}
           {!isLoading && !isError && overview.data?.stage2?.ran ? (

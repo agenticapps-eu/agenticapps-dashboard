@@ -108,7 +108,16 @@ export function useRegisterConfirm() {
         if (old.some((p) => p.id === newEntry.id)) return old
         const optimistic: RegistryListItem = {
           ...newEntry,
-          status: { reachable: true, currentPhase: null, lastCommitAt: null },
+          // Optimistic row for a just-registered project: the daemon has not
+          // computed its condition yet, and 'no-workflow' would flash an install
+          // hint at someone who may have just registered a migrated repo.
+          status: {
+            reachable: true,
+            condition: 'migrated',
+            openChanges: [],
+            capabilityCount: 0,
+            lastCommitAt: null,
+          },
         }
         return [...old, optimistic]
       })
@@ -250,14 +259,14 @@ export function filterAndSort(
       const matchesChip = item.tags.some((t) => selectedChips.has(t))
       if (!matchesChip) return false
     }
-    // D-39: search — case-insensitive substring on name + client + tags + currentPhase
+    // D-39: search — case-insensitive substring on name + client + tags + open change names
     if (searchText) {
       const needle = searchText.toLowerCase()
       const haystack = [
         item.name,
         item.client ?? '',
         item.tags.join(' '),
-        item.status.currentPhase ?? '',
+        item.status.openChanges.map((c) => c.name).join(' '),
       ]
         .join(' ')
         .toLowerCase()
@@ -297,12 +306,14 @@ export function filterAndSort(
     return a.name.localeCompare(b.name) // asc
   }
 
+  // Was cmpPhase. Sorts by how much work is open rather than by a synthesised
+  // phase number; ties fall back to name so the order stays stable.
   const cmpPhase = (a: RegistryListItem, b: RegistryListItem): number => {
     const u = cmpUnreachable(a, b)
     if (u !== 0) return u
-    const pa = a.status.currentPhase ?? ''
-    const pb = b.status.currentPhase ?? ''
-    return pb.localeCompare(pa) // desc
+    const d = b.status.openChanges.length - a.status.openChanges.length // desc
+    if (d !== 0) return d
+    return a.name.localeCompare(b.name)
   }
 
   const cmpClient = (a: RegistryListItem, b: RegistryListItem): number => {

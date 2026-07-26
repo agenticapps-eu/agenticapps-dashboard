@@ -14,7 +14,6 @@ import {
   readFileSync,
   realpathSync,
   statSync,
-  readdirSync,
   unlinkSync,
   writeSync,
 } from 'node:fs'

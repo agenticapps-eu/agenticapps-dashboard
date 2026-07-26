@@ -38,7 +38,13 @@ function makeItem(overrides: Partial<RegistryListItem> = {}): RegistryListItem {
     tags: ['active'],
     status: {
       reachable: true,
-      currentPhase: '03-multi-project-home',
+      condition: 'migrated' as const,
+      // A migrated project with work in flight is the representative default;
+      // the empty case has its own test.
+      openChanges: [
+        { name: 'add-reader', completedTasks: 2, totalTasks: 5, hasTaskArtifact: true },
+      ],
+      capabilityCount: 12,
       lastCommitAt: new Date(Date.now() - 14 * 60 * 1000).toISOString(), // 14m ago
     },
     ...overrides,
@@ -72,7 +78,7 @@ beforeEach(() => {
 })
 
 describe('ProjectCard', () => {
-  it('shows — placeholders and aria-busy while loading', () => {
+  it('sets aria-busy while the overview loads, without blanking change data', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: true,
       isError: false,
@@ -86,8 +92,11 @@ describe('ProjectCard', () => {
     )
     const card = screen.getByRole('button', { name: 'View My Project' })
     expect(card).toHaveAttribute('aria-busy', 'true')
-    // Should show em-dash placeholder
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+    // The change line no longer has a loading state: open changes arrive with
+    // the registry list, not the per-project overview fetch. Only the rows that
+    // genuinely depend on the overview (Stage 2 findings, TDD) wait on it, and
+    // aria-busy still reports that wait.
+    expect(screen.getByText(/1 open change/)).toBeInTheDocument()
   })
 
   it('shows finding glyphs and aria-label in ready state with stage2 data', () => {
@@ -148,7 +157,7 @@ describe('ProjectCard', () => {
       error: null,
       refetch: vi.fn(),
     })
-    const item = makeItem({ status: { reachable: false, currentPhase: null, lastCommitAt: null } })
+    const item = makeItem({ status: { reachable: false, condition: 'unreachable' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null } })
     render(
       <ProjectCard item={item} onContextMenu={vi.fn()} />,
       { wrapper },
@@ -159,7 +168,7 @@ describe('ProjectCard', () => {
     expect(screen.getByText('Unregister?')).toBeInTheDocument()
   })
 
-  it('renders "no .planning/" text and install link when currentPhase is null', () => {
+  it('renders "no workflow" text and install link for the no-workflow condition', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -167,13 +176,69 @@ describe('ProjectCard', () => {
       error: null,
       refetch: vi.fn(),
     })
-    const item = makeItem({ status: { reachable: true, currentPhase: null, lastCommitAt: null } })
+    const item = makeItem({ status: { reachable: true, condition: 'no-workflow' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null } })
     render(
       <ProjectCard item={item} onContextMenu={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByText('no .planning/')).toBeInTheDocument()
+    expect(screen.getByText('no workflow')).toBeInTheDocument()
     expect(screen.getByText('install workflow skill →')).toBeInTheDocument()
+  })
+
+  // The contradiction a reviewer caught: a GSD-only repo has the workflow
+  // installed, so an install hint is wrong. It needs a migration hint.
+  it('renders a migration hint, not an install hint, for needs-migration', () => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeOverview({ phaseStatus: 'Pending' }),
+      error: null,
+      refetch: vi.fn(),
+    })
+    const item = makeItem({ status: { reachable: true, condition: 'needs-migration' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null } })
+    render(<ProjectCard item={item} onContextMenu={vi.fn()} />, { wrapper })
+    expect(screen.getByText('workflow installed, not yet on OpenSpec')).toBeInTheDocument()
+    expect(screen.getByText('migrate →')).toBeInTheDocument()
+    expect(screen.queryByText('install workflow skill →')).not.toBeInTheDocument()
+  })
+
+  it('renders open changes with task ratios, and no task list where absent', () => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeOverview({ phaseStatus: 'Pending' }),
+      error: null,
+      refetch: vi.fn(),
+    })
+    const item = makeItem({
+      status: {
+        reachable: true,
+        condition: 'migrated' as const,
+        openChanges: [
+          { name: 'add-reader', completedTasks: 23, totalTasks: 69, hasTaskArtifact: true },
+          { name: 'no-tasks', completedTasks: 0, totalTasks: 0, hasTaskArtifact: false },
+        ],
+        capabilityCount: 12,
+        lastCommitAt: null,
+      },
+    })
+    render(<ProjectCard item={item} onContextMenu={vi.fn()} />, { wrapper })
+    expect(screen.getByText(/2 open changes/)).toBeInTheDocument()
+    expect(screen.getByText(/add-reader 23\/69/)).toBeInTheDocument()
+    expect(screen.getByText(/no-tasks no task list/)).toBeInTheDocument()
+  })
+
+  it('says so when a migrated project has no open changes', () => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeOverview({ phaseStatus: 'Pending' }),
+      error: null,
+      refetch: vi.fn(),
+    })
+    const item = makeItem({ status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 3, lastCommitAt: null } })
+    render(<ProjectCard item={item} onContextMenu={vi.fn()} />, { wrapper })
+    expect(screen.getByText('no open changes')).toBeInTheDocument()
   })
 
   it('card click calls navigate to /projects/<id>', () => {

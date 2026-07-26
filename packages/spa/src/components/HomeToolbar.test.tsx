@@ -55,7 +55,7 @@ describe('HomeToolbar', () => {
         client: null,
         addedAt: new Date().toISOString(),
         tags: ['wip'],
-        status: { reachable: true, currentPhase: null, lastCommitAt: null },
+        status: { reachable: true, condition: 'no-workflow' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null },
       },
       {
         id: '2',
@@ -64,7 +64,7 @@ describe('HomeToolbar', () => {
         client: null,
         addedAt: new Date().toISOString(),
         tags: ['wip'],
-        status: { reachable: true, currentPhase: null, lastCommitAt: null },
+        status: { reachable: true, condition: 'no-workflow' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null },
       },
     ]
     render(<HomeToolbar {...defaultProps} items={items} />)
