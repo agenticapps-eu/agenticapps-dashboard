@@ -45,7 +45,7 @@ active change, not a spec.
 | GAP-01 | **Keep `code-intelligence` as one capability.** Not split. |
 | GAP-02 | **Keep `project-dashboard` merged.** Not split. |
 | GAP-03 | **ObservabilityHealth stays in `optional-integrations`.** Confirmed as proposed. |
-| GAP-04 | **Mark GitNexus deprecated in the spec.** Requirements are recorded as current truth and the capability section carries an explicit deprecation notice. No removal change staged. |
+| GAP-04 | **Superseded — remove GitNexus from the dashboard entirely.** First decided as "mark deprecated", then revisited when the stated premise was found false (see below). Staged as `openspec/changes/remove-gitnexus-integration/`. |
 | GAP-05 | **Stage `add-openspec-project-reader` as an active change only.** Unimplemented; no reader is rewritten in this PR. |
 
 ## Open questions — resolved at ratification
@@ -73,15 +73,38 @@ active change, not a spec.
 > also a *health panel*, which fits `skills-and-linting`. I placed it in
 > `optional-integrations`. Confirm or move.]
 
-> [GAP-04: **GitNexus product code outlives the GitNexus workflow tooling.**
-> Migration 0032 removed GitNexus as *workflow* tooling from this repo, but
-> `packages/agent/src/lib/gitnexusScan.ts`, `scanners/gitNexusScanner.ts`,
-> `packages/shared/src/schemas/gitnexusScan.ts` and
-> `packages/spa/.../InstallGitNexusButton.tsx` are a *shipped product feature*
-> (Phase 13, v1.1). I have deliberately left them untouched. Reconstructing a
-> `code-intelligence` spec means writing GitNexus behavior down as current truth —
-> correct today, but it is now a feature whose upstream the fleet has dropped.
-> **Needs a product decision:** keep, deprecate, or open a change to remove.]
+> [GAP-04 — **RESOLVED 2026-07-26: remove GitNexus from the dashboard entirely.**
+>
+> **Correction to the original framing.** This gap was first written on the claim
+> that GitNexus was "a feature whose upstream the fleet has dropped". That claim
+> was false. Migration `0032` removed GitNexus from the AgenticApps *workflow
+> scaffold* only — the reindex hook, install scripts, and CLAUDE.md block. The
+> tool itself is still installed (v1.6.4), still registered as an MCP server in
+> `~/.claude.json`, and its index registry is live. "Removed from the workflow"
+> is not "removed from the fleet", and the first round of this decision was taken
+> on that conflation.
+>
+> On the corrected facts the feature is 1,541 LOC of working product code (plus
+> 2,578 LOC of tests) against a tool still in daily use. Removal is therefore a
+> deliberate product choice — the dashboard should not carry a fleet-wide surface
+> for a tool the workflow no longer provisions — and **not** a mechanical
+> consequence of the migration.
+>
+> **Scope:** dashboard product code and tests, the code-graph coverage column,
+> and this repo's vendored `.claude/skills/gitnexus/`. Explicitly **out of
+> scope:** the machine-level MCP registration and the tool itself, which stay
+> available outside the dashboard.
+>
+> **Knock-on, decided:** conformance is an equal-weight score over the tracked
+> columns, so dropping one changes every score and would put a step in the 90-day
+> trend — a fake improvement if the removed column was mostly non-green. Daily
+> snapshots store per-column states inline, so history is **recomputed** over the
+> reduced column set rather than left discontinuous. Specified as a requirement,
+> not an implementation note.
+>
+> Staged as `openspec/changes/remove-gitnexus-integration/`.
+> `fix-coverage-scan-open-defects` was withdrawn — its two defects are in code
+> this change deletes.]
 
 > [GAP-05: **The dashboard reads `.planning/` — which the fleet is now migrating
 > away from.** This repo's core value proposition (phase columns, discipline

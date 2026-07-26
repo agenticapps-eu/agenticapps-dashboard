@@ -13,16 +13,19 @@ a daemon-hosted viewer for the analysis that has a real UI. The user-facing
 capability is "see and refresh code intelligence for a repo"; the two tools are
 implementation behind it.
 
-> **⚠ DEPRECATED — GitNexus integration.** The GitNexus half of this capability
-> (`Scoped Code-Graph Scan Actions` and the code-graph coverage column) is
-> **deprecated as of the OpenSpec migration, 2026-07-26**. GitNexus was removed
-> as AgenticApps workflow tooling by migration `0032`, so the fleet no longer
-> installs the indexer this integration drives. The requirements below are
-> recorded as **current truth** — the feature ships today in v1.1 and still works
-> where the binary is present — but **no new work should extend it**. Removal is
-> a product decision that has not been made; see `openspec/CAPABILITY-MAP.md`
-> GAP-04. The knowledge-graph viewer half of this capability is **not**
-> deprecated.
+> **⚠ SCHEDULED FOR REMOVAL — GitNexus integration.** The GitNexus half of this
+> capability (`Scoped Code-Graph Scan Actions` and the code-graph coverage
+> column) is being **removed from the dashboard entirely** — decided 2026-07-26,
+> GAP-04. Until that removal ships, the requirements below remain **current
+> truth**: the feature works and is in use. Do not extend it; see the active
+> change `openspec/changes/remove-gitnexus-integration/`.
+>
+> Note that removal is a *product* decision, not a consequence of migration
+> `0032`. That migration removed GitNexus from the AgenticApps workflow scaffold
+> only; the tool itself remains installed and registered as an MCP server, and
+> stays available outside the dashboard.
+>
+> The knowledge-graph viewer half of this capability is **not** affected.
 
 ## Requirements
 
@@ -44,7 +47,7 @@ measured against the age of the last index.
 
 ### Requirement: Scoped Code-Graph Scan Actions
 
-> Deprecated — recorded as current truth; do not extend.
+> Scheduled for removal (GAP-04) — recorded as current truth; do not extend.
 
 The daemon SHALL offer scan actions scoped to a single family or a single repo,
 spawning the indexer as a subprocess and returning a job identifier the SPA polls
