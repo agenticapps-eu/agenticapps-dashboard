@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -19,7 +20,7 @@ import {
   WORKFLOW_MACHINE_ROOTS,
   scanWorkflowHostArtifacts,
   scanWorkflowMachineRoot,
-} from './workflowArtifactScanner.declare.js'
+} from './workflowArtifactScanner.js'
 
 let tmpDir: string
 
@@ -233,7 +234,16 @@ describe('scanWorkflowMachineRoot', () => {
   it('uses five separate symbolic machine roots', () => {
     expect(WORKFLOW_MACHINE_ROOTS).toEqual([
       { id: 'agenticapps-bin', kind: 'artifacts' },
-      { id: 'claude-skills', kind: 'skills', hostId: 'claude-workflow' },
+      {
+        id: 'claude-skills',
+        kind: 'skills',
+        hostId: 'claude-workflow',
+        skillTargetNames: {
+          'agentic-apps-workflow': ['skill'],
+          'setup-agenticapps-workflow': ['setup'],
+          'update-agenticapps-workflow': ['update'],
+        },
+      },
       { id: 'codex-skills', kind: 'skills', hostId: 'codex-workflow' },
       { id: 'opencode-skills', kind: 'skills', hostId: 'opencode-workflow' },
       {
@@ -254,6 +264,12 @@ describe('scanWorkflowMachineRoot', () => {
     mkdirSync(join(tmpDir, 'codex-skills', 'agentic-apps-workflow'), {
       recursive: true,
     })
+    mkdirSync(join(tmpDir, 'claude-target', 'skill'), { recursive: true })
+    mkdirSync(join(tmpDir, 'claude-skills'))
+    symlinkSync(
+      join(tmpDir, 'claude-target', 'skill'),
+      join(tmpDir, 'claude-skills', 'agentic-apps-workflow'),
+    )
 
     const binaries = scanWorkflowMachineRoot(
       'agenticapps-bin',
@@ -281,6 +297,18 @@ describe('scanWorkflowMachineRoot', () => {
         artifactState: 'missing',
       },
     ])
+    expect(
+      scanWorkflowMachineRoot(
+        'claude-skills',
+        join(tmpDir, 'claude-skills'),
+        makeResolver(tmpDir),
+        { expectedSkillIds: ['agentic-apps-workflow'] },
+      ),
+    ).toEqual({
+      rootId: 'claude-skills',
+      state: 'present',
+      entries: [{ id: 'agentic-apps-workflow', state: 'present' }],
+    })
     expect(
       scanWorkflowMachineRoot(
         'codex-skills',
