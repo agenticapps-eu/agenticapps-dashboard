@@ -3,11 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  WORKFLOW_QUERY_KEY,
-  useRunWorkflowHarness,
-  useWorkflow,
-} from './workflowQueries.js'
+import { WORKFLOW_QUERY_KEY, useRunWorkflowHarness, useWorkflow } from './workflowQueries.js'
 
 vi.mock('./pairing.js', () => ({
   getPairing: () => ({

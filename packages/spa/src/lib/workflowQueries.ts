@@ -36,15 +36,11 @@ export function useRunWorkflowHarness(): UseMutationResult<
 > {
   return useMutation({
     mutationFn: async (request) => {
-      const result = await apiFetch(
-        '/api/v2/workflow/harness',
-        WorkflowHarnessResultSchema,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(request),
-        },
-      )
+      const result = await apiFetch('/api/v2/workflow/harness', WorkflowHarnessResultSchema, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      })
       if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
       return result.data
     },

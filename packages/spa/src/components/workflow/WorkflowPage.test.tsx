@@ -7,10 +7,8 @@ vi.mock('../../lib/workflowQueries.js', () => ({
   useRunWorkflowHarness: vi.fn(),
 }))
 
-import {
-  useRunWorkflowHarness,
-  useWorkflow,
-} from '../../lib/workflowQueries.js'
+import { useRunWorkflowHarness, useWorkflow } from '../../lib/workflowQueries.js'
+
 import { WorkflowPage } from './WorkflowPage.js'
 
 const mockUseWorkflow = vi.mocked(useWorkflow)
@@ -19,9 +17,7 @@ const mockUseRunWorkflowHarness = vi.mocked(useRunWorkflowHarness)
 type WorkflowHost = WorkflowResponse['hosts'][number]
 type WorkflowArtifact = WorkflowHost['artifacts'][number]
 
-function artifact(
-  artifactId: WorkflowArtifact['artifactId'],
-): WorkflowArtifact {
+function artifact(artifactId: WorkflowArtifact['artifactId']): WorkflowArtifact {
   const script = artifactId === 'change-gate' || artifactId === 'reviewer-cli'
   return {
     artifactId,
@@ -31,20 +27,13 @@ function artifact(
     marker: {
       state: script ? 'valid' : 'not-applicable',
       version:
-        artifactId === 'change-gate'
-          ? '1.2.2'
-          : artifactId === 'reviewer-cli'
-            ? '1.0.0'
-            : null,
+        artifactId === 'change-gate' ? '1.2.2' : artifactId === 'reviewer-cli' ? '1.0.0' : null,
     },
     provenance: { state: 'absent', commit: null },
   }
 }
 
-function host(
-  hostId: WorkflowHost['hostId'],
-  laggardVersion: string | null,
-): WorkflowHost {
+function host(hostId: WorkflowHost['hostId'], laggardVersion: string | null): WorkflowHost {
   const primary = {
     id: 'agentic-apps-workflow',
     name: 'agentic-apps-workflow',
@@ -145,9 +134,7 @@ describe('WorkflowPage', () => {
   it('renders the three instrument blocks and fixed five-repository scope', () => {
     render(<WorkflowPage />)
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Workflow fleet' }),
-    ).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Workflow fleet' })).toBeTruthy()
     expect(screen.getByText('Spec conformance')).toBeTruthy()
     expect(screen.getByText('Shared artefacts')).toBeTruthy()
     expect(screen.getByText('Harness results')).toBeTruthy()
@@ -167,9 +154,7 @@ describe('WorkflowPage', () => {
 
     expect(screen.getAllByText('0.4.0–1.0.0').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Offered 0032').length).toBeGreaterThan(0)
-    expect(
-      screen.getAllByText(/1 laggard/).some((node) => node.closest('details')),
-    ).toBe(true)
+    expect(screen.getAllByText(/1 laggard/).some((node) => node.closest('details'))).toBe(true)
     expect(screen.getAllByText('observability · 0.4.0').length).toBeGreaterThan(0)
   })
 
@@ -268,9 +253,7 @@ describe('WorkflowPage', () => {
 
 describe('WorkflowPage source guards', () => {
   it('does not parse score-shaped harness output or render raw paths', async () => {
-    const source = await import('./WorkflowPage.tsx?raw').then(
-      (module) => module.default,
-    )
+    const source = await import('./WorkflowPage.tsx?raw').then((module) => module.default)
 
     expect(source).not.toMatch(/n\/28|n\/12/)
     expect(source).not.toContain(`dangerously${'Set'}InnerHTML`)
