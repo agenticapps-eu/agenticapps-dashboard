@@ -24,7 +24,7 @@ import {
   type WorkflowHarnessHostId,
   type WorkflowHarnessId,
   type WorkflowHarnessRequest,
-} from './workflowHarness.declare.js'
+} from './workflowHarness.js'
 
 const CORE = 'agenticapps-workflow-core'
 const HOSTS: WorkflowHarnessHostId[] = [
@@ -167,6 +167,11 @@ describe('workflow harness fixed command and path discipline', () => {
   })
 
   it('refuses a fixed repository that resolves outside the source-family root', async () => {
+    seed()
+    rmSync(join(sourceFamilyRoot, 'codex-workflow'), {
+      recursive: true,
+      force: true,
+    })
     const outside = join(root, 'outside-repo')
     mkdirSync(outside, { recursive: true })
     symlinkSync(outside, join(sourceFamilyRoot, 'codex-workflow'))
@@ -215,6 +220,36 @@ describe('workflow harness fixed command and path discipline', () => {
         beforeSpawn: () => {
           rmSync(harnessPath)
           symlinkSync(outside, harnessPath)
+        },
+      }),
+    )
+
+    expect(result).toMatchObject({
+      state: 'refused',
+      reason: 'path-not-allowed',
+    })
+  })
+
+  it('refuses a same-path content swap between preflight and spawn', async () => {
+    seed()
+    const harnessPath = join(
+      sourceFamilyRoot,
+      'codex-workflow',
+      PATHS['change-gate'].harness,
+    )
+    const coreHarnessPath = join(
+      sourceFamilyRoot,
+      CORE,
+      PATHS['change-gate'].harness,
+    )
+
+    const result = await runWorkflowHarness(
+      request(),
+      options({
+        beforeSpawn: () => {
+          const replacement = script('printf replaced')
+          write(harnessPath, replacement, 0o755)
+          write(coreHarnessPath, replacement, 0o755)
         },
       }),
     )
@@ -366,11 +401,15 @@ describe('workflow harness timeout and concurrency', () => {
       request(),
       options({ limits: { timeoutMs: 150, sampleIntervalMs: 10 } }),
     )
+    const pidPath = join(
+      sourceFamilyRoot,
+      'codex-workflow',
+      'bin',
+      'child.pid',
+    )
+    expect(existsSync(pidPath), JSON.stringify(result)).toBe(true)
     const pid = Number(
-      readFileSync(
-        join(sourceFamilyRoot, 'codex-workflow', 'bin', 'child.pid'),
-        'utf8',
-      ),
+      readFileSync(pidPath, 'utf8'),
     )
 
     expect(result).toMatchObject({
