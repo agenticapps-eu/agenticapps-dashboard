@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  WorkflowResponseSchema,
-  type WorkflowResponse,
-} from './workflow.js'
-import {
   WorkflowHarnessRequestSchema,
   WorkflowHarnessResultSchema,
+  WorkflowResponseSchema,
   type WorkflowHarnessResult,
-} from './workflow.declare.js'
+  type WorkflowResponse,
+} from './workflow.js'
 
 function missingHost(
   hostId: WorkflowResponse['hosts'][number]['hostId'],

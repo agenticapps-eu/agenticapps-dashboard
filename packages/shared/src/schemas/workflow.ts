@@ -8,6 +8,13 @@ const SemverSchema = z
   )
 const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
 const CommitSchema = z.string().regex(/^[0-9a-fA-F]{40}$/)
+const WorkflowHostIdSchema = z.enum([
+  'claude-workflow',
+  'codex-workflow',
+  'opencode-workflow',
+  'pi-agentic-apps-workflow',
+])
+const WorkflowHarnessIdSchema = z.enum(['change-gate', 'reviewer-cli'])
 
 const WorkflowSkillSchema = z
   .object({
@@ -147,3 +154,65 @@ export const WorkflowResponseSchema = z
   .strict()
 
 export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>
+
+export const WorkflowHarnessRequestSchema = z
+  .object({
+    hostId: WorkflowHostIdSchema,
+    harnessId: WorkflowHarnessIdSchema,
+  })
+  .strict()
+
+const HarnessResultBaseSchema = z.object({
+  schemaVersion: z.literal(1),
+  hostId: WorkflowHostIdSchema,
+  harnessId: WorkflowHarnessIdSchema,
+  output: z.string().max(1024 * 1024),
+  cached: z.boolean(),
+})
+
+const CompletedHarnessResultSchema = HarnessResultBaseSchema.extend({
+  state: z.literal('completed'),
+  passed: z.boolean(),
+  completedAtIso: z.string().datetime(),
+  ageMs: z.number().int().nonnegative(),
+  cached: z.boolean(),
+}).strict()
+
+function incompleteHarnessResultSchema<
+  S extends 'refused' | 'busy' | 'timeout' | 'bounded-out',
+  R extends readonly [string, ...string[]],
+>(state: S, reasons: R) {
+  return HarnessResultBaseSchema.extend({
+    state: z.literal(state),
+    passed: z.null(),
+    completedAtIso: z.null(),
+    ageMs: z.null(),
+    cached: z.literal(false),
+    reason: z.enum(reasons),
+  }).strict()
+}
+
+export const WorkflowHarnessResultSchema = z.discriminatedUnion('state', [
+  CompletedHarnessResultSchema,
+  incompleteHarnessResultSchema('refused', [
+    'unknown-selection',
+    'repo-unavailable',
+    'path-not-allowed',
+    'harness-missing',
+    'harness-not-executable',
+    'harness-divergent',
+    'spawn-failed',
+  ]),
+  incompleteHarnessResultSchema('busy', ['host-busy', 'capacity-busy']),
+  incompleteHarnessResultSchema('timeout', ['time-limit']),
+  incompleteHarnessResultSchema('bounded-out', [
+    'memory-limit',
+    'output-limit',
+    'scratch-limit',
+  ]),
+])
+
+export type WorkflowHarnessRequest = z.infer<
+  typeof WorkflowHarnessRequestSchema
+>
+export type WorkflowHarnessResult = z.infer<typeof WorkflowHarnessResultSchema>
