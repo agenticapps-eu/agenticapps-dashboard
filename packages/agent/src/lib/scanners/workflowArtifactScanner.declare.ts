@@ -55,6 +55,7 @@ export interface WorkflowMachineRootDefinition {
   id: WorkflowMachineRootId
   kind: 'artifacts' | 'skills'
   hostId?: WorkflowHostId
+  skillTargetNames?: Readonly<Record<string, readonly string[]>>
 }
 
 export declare const WORKFLOW_MACHINE_ROOTS: readonly WorkflowMachineRootDefinition[]
