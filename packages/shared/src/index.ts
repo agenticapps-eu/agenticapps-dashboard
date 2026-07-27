@@ -220,5 +220,8 @@ export type {
   RegistryFixPathRequest,
 } from './schemas/conformance.js'
 
+export { WorkflowResponseSchema } from './schemas/workflow.js'
+export type { WorkflowResponse } from './schemas/workflow.js'
+
 export { buildUnderstandCommand } from './clipboard.js'
 export type { UnderstandCommand } from './clipboard.js'

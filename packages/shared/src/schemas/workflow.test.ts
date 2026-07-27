@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   WorkflowResponseSchema,
   type WorkflowResponse,
-} from './workflow.declare.js'
+} from './workflow.js'
 
 function missingHost(
   hostId: WorkflowResponse['hosts'][number]['hostId'],
