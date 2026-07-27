@@ -82,4 +82,39 @@ describe('scanWorkflowFleet', () => {
     expect(serialized).not.toContain('agenticapps-dashboard')
     expect(result.hosts).toHaveLength(4)
   })
+
+  it('keeps an available host readable when the core reference is unavailable', async () => {
+    write(
+      'codex-workflow/skills/agentic-apps-workflow/SKILL.md',
+      '---\nname: agentic-apps-workflow\nimplements_spec: 0.9.0\n---\n',
+    )
+    write('codex-workflow/migrations/0032.md', '# Migration 0032\n')
+    write(
+      'codex-workflow/bin/openspec-change-gate.sh',
+      '#!/bin/sh\n# artifact-version: 1.2.2\n',
+    )
+
+    const result = await scanWorkflowFleet({
+      sourceFamilyRoot: tmpDir,
+      machineRoots: {
+        'agenticapps-bin': join(tmpDir, 'missing-bin'),
+        'claude-skills': join(tmpDir, 'missing-claude'),
+        'codex-skills': join(tmpDir, 'missing-codex'),
+        'opencode-skills': join(tmpDir, 'missing-opencode'),
+        'pi-skills': join(tmpDir, 'missing-pi'),
+      },
+    })
+    const codex = result.hosts[1]
+
+    expect(result.core.state).toBe('missing')
+    expect(codex).toMatchObject({
+      hostId: 'codex-workflow',
+      state: 'available',
+      primary: { version: '0.9.0' },
+      coreState: 'unavailable',
+      migration: { kind: 'offered', highest: '0032' },
+    })
+    expect(codex.artifacts).toHaveLength(4)
+    expect(codex.artifacts.every(({ state }) => state === 'unavailable')).toBe(true)
+  })
 })

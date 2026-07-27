@@ -275,4 +275,13 @@ describe('boot.ts scheduler wiring', () => {
     )
     expect(appSrc).toMatch(/app\.route\('\/api', coverageHistoryRoute\)/)
   })
+
+  it('registers active workflow harness process groups for shutdown disposal', async () => {
+    const { readFileSync } = await import('node:fs')
+    const bootSource = readFileSync(new URL('./boot.ts', import.meta.url), 'utf8')
+
+    expect(bootSource).toContain(
+      'registerDisposer(() => disposeWorkflowHarnessRuns())',
+    )
+  })
 })

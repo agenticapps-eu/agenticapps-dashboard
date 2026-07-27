@@ -4,14 +4,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/workflowQueries.js', () => ({
   useWorkflow: vi.fn(),
+  useWorkflowHarnessResults: vi.fn(),
   useRunWorkflowHarness: vi.fn(),
 }))
 
-import { useRunWorkflowHarness, useWorkflow } from '../../lib/workflowQueries.js'
+import {
+  useRunWorkflowHarness,
+  useWorkflow,
+  useWorkflowHarnessResults,
+} from '../../lib/workflowQueries.js'
 
 import { WorkflowPage } from './WorkflowPage.js'
 
 const mockUseWorkflow = vi.mocked(useWorkflow)
+const mockUseWorkflowHarnessResults = vi.mocked(useWorkflowHarnessResults)
 const mockUseRunWorkflowHarness = vi.mocked(useRunWorkflowHarness)
 
 type WorkflowHost = WorkflowResponse['hosts'][number]
@@ -116,6 +122,7 @@ const mutateAsync = vi.fn()
 beforeEach(() => {
   mutateAsync.mockReset()
   mockUseWorkflow.mockReset()
+  mockUseWorkflowHarnessResults.mockReset()
   mockUseRunWorkflowHarness.mockReset()
   mockUseWorkflow.mockReturnValue({
     isPending: false,
@@ -128,6 +135,12 @@ beforeEach(() => {
     isPending: false,
     mutateAsync,
   } as unknown as ReturnType<typeof useRunWorkflowHarness>)
+  mockUseWorkflowHarnessResults.mockReturnValue({
+    isPending: false,
+    isError: false,
+    error: null,
+    data: [],
+  } as unknown as ReturnType<typeof useWorkflowHarnessResults>)
 })
 
 describe('WorkflowPage', () => {
@@ -168,6 +181,53 @@ describe('WorkflowPage', () => {
     expect(screen.getByText('Machine-wide tools')).toBeTruthy()
     expect(screen.getByText('change-gate · 1.2.2')).toBeTruthy()
     expect(screen.getByText('reviewer-cli · 1.0.0')).toBeTruthy()
+  })
+
+  it('shows unknown host skills instead of calling the host aligned', () => {
+    const fixture = data()
+    fixture.hosts[2].unknowns = [
+      {
+        id: 'agentic-apps-workflow',
+        name: 'agentic-apps-workflow',
+        state: 'unknown',
+        version: null,
+        reason: 'implements-spec-missing',
+      },
+    ]
+    fixture.hosts[2].internallyConsistent = false
+    fixture.hosts[2].divergent = true
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: fixture,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+
+    expect(screen.getByText('1 unknown')).toBeTruthy()
+    expect(screen.getByText('agentic-apps-workflow · implements spec missing')).toBeTruthy()
+  })
+
+  it('shows machine byte identity and missing global skills', () => {
+    const fixture = data()
+    fixture.machineRoots[0].entries[0]!.artifact!.state = 'divergent'
+    fixture.machineRoots[1].entries = [
+      { id: 'observability', state: 'missing' },
+    ]
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: fixture,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+
+    expect(screen.getByText('change-gate · 1.2.2 · Divergent')).toBeTruthy()
+    expect(screen.getByText('observability · Missing')).toBeTruthy()
   })
 
   it('keeps both measured findings visible without a filter or interaction', () => {
@@ -215,6 +275,51 @@ describe('WorkflowPage', () => {
     expect(await screen.findByText('Failed · 1m ago')).toBeTruthy()
     expect(screen.getByText('one assertion failed')).toBeTruthy()
     expect(screen.queryByText(/\/28|\/12/)).toBeNull()
+  })
+
+  it('hydrates cached results and preserves them when a later attempt is busy', async () => {
+    mockUseWorkflowHarnessResults.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: [
+        {
+          schemaVersion: 1,
+          hostId: 'codex-workflow',
+          harnessId: 'change-gate',
+          state: 'completed',
+          passed: true,
+          completedAtIso: '2026-07-27T20:00:00.000Z',
+          ageMs: 120_000,
+          output: 'cached pass',
+          cached: true,
+        },
+      ],
+    } as unknown as ReturnType<typeof useWorkflowHarnessResults>)
+    mutateAsync.mockResolvedValue({
+      schemaVersion: 1,
+      hostId: 'codex-workflow',
+      harnessId: 'change-gate',
+      state: 'busy',
+      passed: null,
+      completedAtIso: null,
+      ageMs: null,
+      output: '',
+      cached: false,
+      reason: 'host-busy',
+    })
+    render(<WorkflowPage />)
+
+    expect(screen.getByText('Passed · 2m ago')).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Run change gate for codex-workflow',
+      }),
+    )
+
+    expect(await screen.findByText('Busy')).toBeTruthy()
+    expect(screen.getByText('Passed · 2m ago')).toBeTruthy()
+    expect(screen.getByText('cached pass')).toBeTruthy()
   })
 
   it('renders generic loading, schema-drift, and transport error states', () => {

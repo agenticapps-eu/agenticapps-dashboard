@@ -3,7 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { WORKFLOW_QUERY_KEY, useRunWorkflowHarness, useWorkflow } from './workflowQueries.js'
+import {
+  WORKFLOW_QUERY_KEY,
+  useRunWorkflowHarness,
+  useWorkflow,
+  useWorkflowHarnessResults,
+} from './workflowQueries.js'
 
 vi.mock('./pairing.js', () => ({
   getPairing: () => ({
@@ -115,6 +120,20 @@ describe('workflow queries', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.error?.message).toMatch(/^schema_drift:/)
+  })
+
+  it('reads cached harness results without a mutation', async () => {
+    mockFetch.mockReturnValue(jsonResponse([{ ...harnessResult, cached: true }]))
+
+    const { result } = renderHook(() => useWorkflowHarnessResults(), {
+      wrapper,
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/api/v2/workflow/harness')
+    expect(init?.method).toBeUndefined()
+    expect(result.current.data?.[0]?.cached).toBe(true)
   })
 
   it('posts only the fixed host and harness selection after mutation', async () => {

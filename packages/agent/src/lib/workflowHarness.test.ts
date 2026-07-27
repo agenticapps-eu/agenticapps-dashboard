@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  disposeWorkflowHarnessRuns,
   readWorkflowHarnessResult,
   resetWorkflowHarnessStateForTests,
   runWorkflowHarness,
@@ -384,6 +385,36 @@ describe('workflow harness private state and redaction', () => {
 })
 
 describe('workflow harness timeout and concurrency', () => {
+  it('terminates an active process group when the daemon disposer runs', async () => {
+    seed(
+      'codex-workflow',
+      'change-gate',
+      script(
+        'printf "%s" "$$" > "$(dirname "$1")/harness.pid"\n' +
+          'sleep 30',
+      ),
+    )
+    const running = runWorkflowHarness(
+      request(),
+      options({ limits: { timeoutMs: 2_000, sampleIntervalMs: 10 } }),
+    )
+    const pidPath = join(
+      sourceFamilyRoot,
+      'codex-workflow',
+      'bin',
+      'harness.pid',
+    )
+    for (let attempt = 0; attempt < 40 && !existsSync(pidPath); attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+    const pid = Number(readFileSync(pidPath, 'utf8'))
+
+    disposeWorkflowHarnessRuns()
+    await running
+
+    expect(await waitForGone(pid)).toBe(true)
+  }, 5_000)
+
   it('kills the whole process group so a hanging descendant does not survive', async () => {
     seed(
       'codex-workflow',

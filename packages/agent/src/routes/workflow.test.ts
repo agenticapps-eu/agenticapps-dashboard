@@ -11,13 +11,17 @@ vi.mock('../lib/workflowScan.js', () => ({
   scanWorkflowFleet: vi.fn(),
 }))
 vi.mock('../lib/workflowHarness.js', () => ({
+  readWorkflowHarnessResult: vi.fn(),
   runWorkflowHarness: vi.fn(),
 }))
 
 import { PROD_ORIGIN } from '../constants.js'
 import { ensureAuthFile, setActiveToken } from '../lib/auth.js'
 import { makeTmpHome } from '../lib/__fixtures__/tmpHome.js'
-import { runWorkflowHarness } from '../lib/workflowHarness.js'
+import {
+  readWorkflowHarnessResult,
+  runWorkflowHarness,
+} from '../lib/workflowHarness.js'
 import { scanWorkflowFleet } from '../lib/workflowScan.js'
 import { createApp } from '../server/app.js'
 
@@ -95,6 +99,7 @@ describe('GET /api/v2/workflow', () => {
     token = ensureAuthFile(authFile).token
     setActiveToken(token)
     vi.mocked(scanWorkflowFleet).mockResolvedValue(responseFixture())
+    vi.mocked(readWorkflowHarnessResult).mockResolvedValue(null)
     vi.mocked(runWorkflowHarness).mockResolvedValue(harnessResultFixture())
   })
 
@@ -137,6 +142,51 @@ describe('GET /api/v2/workflow', () => {
       error: 'schema_drift',
     })
   })
+
+  it('reads current cached harness results without starting a process', async () => {
+    vi.mocked(readWorkflowHarnessResult).mockImplementation(async (request) =>
+      request.hostId === 'codex-workflow' &&
+      request.harnessId === 'change-gate'
+        ? harnessResultFixture()
+        : null,
+    )
+
+    const response = await createApp({ authFile }).request(
+      'http://127.0.0.1:5193/api/v2/workflow/harness',
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
+    const body = await response.json()
+    cleanup()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual([harnessResultFixture()])
+    expect(readWorkflowHarnessResult).toHaveBeenCalledTimes(8)
+    expect(runWorkflowHarness).not.toHaveBeenCalled()
+  })
+
+  it('uses only the daemon-configured source-family relocation', async () => {
+    process.env.AGENTICAPPS_WORKFLOW_SOURCE_ROOT = '/srv/workflow-family'
+    try {
+      const app = createApp({ authFile })
+      await app.request('http://127.0.0.1:5193/api/v2/workflow', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      await app.request('http://127.0.0.1:5193/api/v2/workflow/harness', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      expect(scanWorkflowFleet).toHaveBeenCalledWith({
+        sourceFamilyRoot: '/srv/workflow-family',
+      })
+      expect(readWorkflowHarnessResult).toHaveBeenCalledWith(
+        expect.any(Object),
+        { sourceFamilyRoot: '/srv/workflow-family' },
+      )
+    } finally {
+      delete process.env.AGENTICAPPS_WORKFLOW_SOURCE_ROOT
+      cleanup()
+    }
+  })
 })
 
 describe('POST /api/v2/workflow/harness', () => {
@@ -152,6 +202,7 @@ describe('POST /api/v2/workflow/harness', () => {
     token = ensureAuthFile(authFile).token
     setActiveToken(token)
     vi.mocked(scanWorkflowFleet).mockResolvedValue(responseFixture())
+    vi.mocked(readWorkflowHarnessResult).mockResolvedValue(null)
     vi.mocked(runWorkflowHarness).mockResolvedValue(harnessResultFixture())
   })
 
@@ -290,5 +341,37 @@ describe('POST /api/v2/workflow/harness', () => {
       ok: false,
       error: 'schema_drift',
     })
+  })
+
+  it('runs against the daemon-configured source family', async () => {
+    process.env.AGENTICAPPS_WORKFLOW_SOURCE_ROOT = '/srv/workflow-family'
+    try {
+      const response = await createApp({ authFile }).request(
+        'http://127.0.0.1:5193/api/v2/workflow/harness',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            hostId: 'codex-workflow',
+            harnessId: 'change-gate',
+          }),
+        },
+      )
+
+      expect(response.status).toBe(200)
+      expect(runWorkflowHarness).toHaveBeenCalledWith(
+        {
+          hostId: 'codex-workflow',
+          harnessId: 'change-gate',
+        },
+        { sourceFamilyRoot: '/srv/workflow-family' },
+      )
+    } finally {
+      delete process.env.AGENTICAPPS_WORKFLOW_SOURCE_ROOT
+      cleanup()
+    }
   })
 })
