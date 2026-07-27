@@ -82,5 +82,8 @@ export declare function readWorkflowHarnessResult(
   options?: WorkflowHarnessRunOptions,
 ): Promise<WorkflowHarnessResult | null>
 
+/** Terminate every active harness process group during daemon shutdown. */
+export declare function disposeWorkflowHarnessRuns(): void
+
 /** Clear in-memory concurrency state between isolated tests. */
 export declare function resetWorkflowHarnessStateForTests(): void
