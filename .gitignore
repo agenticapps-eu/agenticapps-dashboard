@@ -6,6 +6,7 @@
 .planning/skill-observations/
 .gstack/
 session-handoff.md
+.codex/session-handoff.md
 node_modules
 dist
 .turbo

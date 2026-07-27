@@ -1,0 +1,162 @@
+{
+  "$schema": "https://github.com/agenticapps-eu/codex-workflow/blob/main/templates/config-hooks.schema.json",
+  "implements_spec": "1.0.0",
+  "host": "codex",
+  "front_end": "openspec",
+  "openspec": {
+    "package": "@fission-ai/openspec",
+    "cli_version": "1.6.0",
+    "init": "openspec init --tools codex --profile core",
+    "profile": "core",
+    "slot": "openspec/",
+    "command_surface": ".codex/skills/openspec-*",
+    "note": "The installed CLI is authoritative over prose (spec §16). On codex the OPSX core profile materialises as six project-local skills, not /opsx:* slash commands."
+  },
+  "lifecycle": {
+    "propose": {
+      "entry": "$openspec-propose",
+      "artifacts": ["proposal.md", "design.md", "spec delta", "tasks.md"],
+      "conditional_gates": {
+        "brainstorm_ui": {
+          "skill": "superpowers:brainstorming",
+          "mode": "ui",
+          "fires_when": "the change has a UI surface and design.md lacks a Design alternatives section"
+        },
+        "brainstorm_architecture": {
+          "skill": "superpowers:brainstorming",
+          "mode": "architecture",
+          "fires_when": "the change adds a service/model/integration/data shape and design.md lacks an Architecture alternatives section"
+        },
+        "design_shotgun": {
+          "skill": "codex-design-shotgun",
+          "fires_when": "UI change with no design contract for the surface yet",
+          "min_variants": 3
+        },
+        "design_critique": {
+          "skill": "codex-design-critique",
+          "fires_when": "UI change with an existing design contract, OR as the filter step in design-shotgun",
+          "quality_bar": 90
+        }
+      }
+    },
+    "validate": {
+      "structural": {
+        "command": "openspec validate --all",
+        "collapses": "the 0.x spec-review gate (§17)"
+      },
+      "multi_ai_review": {
+        "skill": "codex-openspec-change-review",
+        "evidence_artifact": "openspec/changes/<slug>/REVIEWS.md",
+        "reviewer_marker": "^##[[:space:]]+Reviewer:",
+        "min_reviewers": 2,
+        "vendors": ["claude", "gemini", "opencode"],
+        "excluded_vendor": "codex — the implementing host never reviews its own change",
+        "wrapper": "~/.agenticapps/bin/reviewer-cli.sh",
+        "collapses": "the 0.x plan-review gate (§17) — kept as the change-gate predicate, not as a standalone gate"
+      },
+      "change_gate": {
+        "script": "~/.agenticapps/bin/openspec-change-gate.sh",
+        "spec": "§18",
+        "predicate": "openspec validate --all is GREEN AND every active change carries REVIEWS.md with >= 2 reviewers",
+        "exit_codes": { "0": "allow", "2": "block" },
+        "surfaces": [
+          ".codex/hooks.json PreToolUse (apply_patch) -> hook-wrapper-openspec-gate.sh",
+          ".git/hooks/pre-commit",
+          ".github/workflows/openspec-gate.yml"
+        ],
+        "exempt": "writes under openspec/** — the agent must be able to author the change while gated",
+        "fail_open": "on parse error only; never on policy",
+        "escape_hatches": ["GSD_SKIP_REVIEWS=1"]
+      }
+    },
+    "execute": {
+      "entry": "$openspec-apply-change",
+      "retained_gates": {
+        "tdd": {
+          "skill": "superpowers:test-driven-development",
+          "fires_when": "task carries tdd=\"true\" marker",
+          "commit_pair": ["test(RED):", "feat(GREEN):"]
+        },
+        "verification": {
+          "skill": "superpowers:verification-before-completion",
+          "fires_when": "always — before any task transitions to complete",
+          "permitted_evidence_shapes": [
+            "test_output",
+            "grep_result",
+            "curl_response",
+            "screenshot_path",
+            "file_existence",
+            "diff_snippet"
+          ]
+        },
+        "code_review": {
+          "skill": "superpowers:requesting-code-review",
+          "fires_when": "always — after the tasks are implemented, in independent agent context",
+          "mechanism": "codex exec child process",
+          "reviewer_model_env_var": "REVIEWER_MODEL",
+          "note": "openspec validate is a spec check, not a code review, and never discharges this (§17)"
+        },
+        "security": {
+          "skill": "codex-cso",
+          "fires_when": "the change touches auth, storage, request handling, secrets, or an LLM trust boundary",
+          "always_on": true
+        }
+      },
+      "conditional_gates": {
+        "database_security": {
+          "skill": "codex-database-sentinel-audit",
+          "mode": "in-change",
+          "fires_when": "the change touches SQL, schema, RLS, definer functions, or storage policy",
+          "blocking_severity": ["Critical", "High"]
+        },
+        "qa": {
+          "skill": "codex-qa",
+          "mode": "phase-qa",
+          "fires_when": "the change ships user-visible behavior AND a dev server is reachable on a local port"
+        },
+        "ui_preview": {
+          "skill": "codex-qa",
+          "mode": "preview",
+          "fires_when": "a task modifies a frontend component, route, or visual surface"
+        },
+        "impeccable_audit": {
+          "skill": "codex-impeccable-audit",
+          "fires_when": "the change alters a shipping visual surface",
+          "blocking_severity": ["Red"],
+          "retention": "ADR-0021 measured trial (MEASUREMENT.md) — retained under measurement, not conviction"
+        }
+      },
+      "lint_gates": {
+        "ts_declare_first": {
+          "skill": "codex-ts-declare-first",
+          "fires_when": "the change adds a new TypeScript module's API surface",
+          "binding": "CI lint / tdd-strengthener — demoted from a standalone gate at 1.0.0 (§17)"
+        }
+      }
+    },
+    "archive": {
+      "fold": "$openspec-sync-specs",
+      "entry": "$openspec-archive-change",
+      "done_ness": "the spec delta is folded into openspec/specs/<capability>/spec.md AND openspec validate --all is green (§16)",
+      "produces_no_commit": true,
+      "knowledge_capture_trigger": true
+    },
+    "ship": {
+      "branch_close": {
+        "skill": "superpowers:finishing-a-development-branch",
+        "fires_when": "the change is archived and the branch is ready to merge",
+        "note": "archive != ship (§17) — this is the separate git act"
+      },
+      "db_pre_launch_audit": {
+        "skill": "codex-database-sentinel-audit",
+        "mode": "pre-launch",
+        "fires_when": "before first production launch, after a major DB migration",
+        "scope": "full-surface",
+        "blocking_severity": ["Critical", "High"]
+      },
+      "linear": {
+        "coupling": "loose — a change SHOULD reference its Linear issue ID in proposal.md or the ship commit; no sync is built or required (§19)"
+      }
+    }
+  }
+}
