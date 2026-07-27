@@ -10,9 +10,8 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { userInfo } from 'node:os'
+import { homedir, tmpdir, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
-import { tmpdir } from 'node:os'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -536,6 +535,43 @@ describe('workflow harness content-keyed cache', () => {
       'codex-workflow--change-gate.json',
     )
     expect(existsSync(resultPath)).toBe(false)
+    expect(await readWorkflowHarnessResult(request(), options())).toBeNull()
+  })
+
+  it('refuses a cache result file replaced by a symlink', async () => {
+    seed()
+    await runWorkflowHarness(request(), options())
+    const resultPath = join(
+      stateRoot,
+      'workflow-harness',
+      'results',
+      'codex-workflow--change-gate.json',
+    )
+    const outside = join(root, 'outside-cache.json')
+    write(outside, readFileSync(resultPath, 'utf8'), 0o600)
+    rmSync(resultPath)
+    symlinkSync(outside, resultPath)
+
+    expect(await readWorkflowHarnessResult(request(), options())).toBeNull()
+  })
+
+  it('refuses a cached result whose symbolic identity does not match its fixed key', async () => {
+    seed()
+    await runWorkflowHarness(request(), options())
+    const resultPath = join(
+      stateRoot,
+      'workflow-harness',
+      'results',
+      'codex-workflow--change-gate.json',
+    )
+    const cached = JSON.parse(readFileSync(resultPath, 'utf8')) as {
+      fingerprint: string
+      result: Record<string, unknown>
+    }
+    cached.result.hostId = 'claude-workflow'
+    cached.result.output = homedir()
+    write(resultPath, `${JSON.stringify(cached)}\n`, 0o600)
+
     expect(await readWorkflowHarnessResult(request(), options())).toBeNull()
   })
 })
