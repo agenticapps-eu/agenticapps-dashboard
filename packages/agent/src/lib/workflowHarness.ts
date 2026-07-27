@@ -14,7 +14,7 @@ import {
   statSync,
 } from 'node:fs'
 import { homedir, userInfo } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { dirname, join, sep } from 'node:path'
 
 import { atomicWriteFile } from './atomicWrite.js'
 import type {
