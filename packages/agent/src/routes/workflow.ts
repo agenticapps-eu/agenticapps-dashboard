@@ -4,21 +4,56 @@ import {
   WorkflowHarnessRequestSchema,
   WorkflowHarnessResultSchema,
   WorkflowResponseSchema,
+  type WorkflowHarnessRequest,
 } from '@agenticapps/dashboard-shared'
 
 import { DEV_ORIGIN, PROD_ORIGIN } from '../constants.js'
-import { runWorkflowHarness } from '../lib/workflowHarness.js'
+import {
+  readWorkflowHarnessResult,
+  runWorkflowHarness,
+} from '../lib/workflowHarness.js'
 import { scanWorkflowFleet } from '../lib/workflowScan.js'
 import type { Env } from '../server/app.js'
 import { outbound } from '../server/middleware/errors.js'
 
 export const workflowRoute = new Hono<Env>()
+const WorkflowHarnessResultsSchema = WorkflowHarnessResultSchema.array()
+
+const HARNESS_REQUESTS: readonly WorkflowHarnessRequest[] = [
+  'claude-workflow',
+  'codex-workflow',
+  'opencode-workflow',
+  'pi-agentic-apps-workflow',
+].flatMap((hostId) =>
+  ['change-gate', 'reviewer-cli'].map((harnessId) =>
+    WorkflowHarnessRequestSchema.parse({ hostId, harnessId }),
+  ),
+)
+
+function workflowOptions(): { sourceFamilyRoot?: string } {
+  const sourceFamilyRoot = process.env.AGENTICAPPS_WORKFLOW_SOURCE_ROOT
+  return sourceFamilyRoot ? { sourceFamilyRoot } : {}
+}
 
 workflowRoute.get('/workflow', async (c) => {
-  const response = await scanWorkflowFleet()
+  const response = await scanWorkflowFleet(workflowOptions())
   return outbound(
     c,
     WorkflowResponseSchema.parse.bind(WorkflowResponseSchema),
+    response,
+  )
+})
+
+workflowRoute.get('/workflow/harness', async (c) => {
+  const settled = await Promise.all(
+    HARNESS_REQUESTS.map((request) =>
+      readWorkflowHarnessResult(request, workflowOptions()),
+    ),
+  )
+  const response = settled.filter((result) => result !== null)
+  return outbound(
+    c,
+    WorkflowHarnessResultsSchema.parse.bind(WorkflowHarnessResultsSchema),
     response,
   )
 })
@@ -49,7 +84,10 @@ workflowRoute.post(
     }
   }),
   async (c) => {
-    const response = await runWorkflowHarness(c.req.valid('json'))
+    const response = await runWorkflowHarness(
+      c.req.valid('json'),
+      workflowOptions(),
+    )
     return outbound(
       c,
       WorkflowHarnessResultSchema.parse.bind(WorkflowHarnessResultSchema),

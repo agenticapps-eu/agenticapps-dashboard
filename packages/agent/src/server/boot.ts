@@ -15,6 +15,7 @@ import { getActiveToken } from '../lib/auth.js'
 import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
 import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
 import { disposeAllInflightScans } from '../lib/gitnexusScan.js'
+import { disposeWorkflowHarnessRuns } from '../lib/workflowHarness.js'
 import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
 import type { Env } from './app.js'
@@ -222,6 +223,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
       // analyze` processes holding ~/.gitnexus/registry.json locks. Idempotent
       // via Set.clear() so happy-path + kill-timer branches are both safe.
       registerDisposer(() => disposeAllInflightScans())
+      registerDisposer(() => disposeWorkflowHarnessRuns())
     },
   )
 

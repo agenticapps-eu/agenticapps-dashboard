@@ -179,8 +179,8 @@ describe('WorkflowPage', () => {
     expect(screen.getAllByText('Identical').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Absent').length).toBe(4)
     expect(screen.getByText('Machine-wide tools')).toBeTruthy()
-    expect(screen.getByText('change-gate · 1.2.2')).toBeTruthy()
-    expect(screen.getByText('reviewer-cli · 1.0.0')).toBeTruthy()
+    expect(screen.getByText('change-gate · 1.2.2 · Identical')).toBeTruthy()
+    expect(screen.getByText('reviewer-cli · 1.0.0 · Identical')).toBeTruthy()
   })
 
   it('shows unknown host skills instead of calling the host aligned', () => {

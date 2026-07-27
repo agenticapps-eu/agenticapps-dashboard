@@ -97,9 +97,18 @@ export const WORKFLOW_HARNESS_LIMITS: Readonly<WorkflowHarnessLimits> =
   })
 
 const activeHosts = new Set<WorkflowHarnessHostId>()
+const activeProcessGroups = new Set<number>()
 let activeRuns = 0
 
+export function disposeWorkflowHarnessRuns(): void {
+  for (const pid of activeProcessGroups) {
+    killProcessGroup(pid)
+  }
+  activeProcessGroups.clear()
+}
+
 export function resetWorkflowHarnessStateForTests(): void {
+  disposeWorkflowHarnessRuns()
   activeHosts.clear()
   activeRuns = 0
 }
@@ -597,6 +606,8 @@ async function executePrepared(
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   )
+  const processGroupPid = child.pid
+  if (processGroupPid) activeProcessGroups.add(processGroupPid)
 
   const setBound = (reason: WorkflowHarnessResultReason): void => {
     if (settled || boundReason) return
@@ -643,6 +654,7 @@ async function executePrepared(
   const exitCode = await new Promise<number | null>((resolveExit) => {
     child.once('close', (code) => {
       settled = true
+      if (processGroupPid) activeProcessGroups.delete(processGroupPid)
       resolveExit(code)
     })
   })

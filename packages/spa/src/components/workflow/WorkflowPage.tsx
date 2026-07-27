@@ -6,7 +6,11 @@ import type {
   WorkflowResponse,
 } from '@agenticapps/dashboard-shared'
 
-import { useRunWorkflowHarness, useWorkflow } from '../../lib/workflowQueries.js'
+import {
+  useRunWorkflowHarness,
+  useWorkflow,
+  useWorkflowHarnessResults,
+} from '../../lib/workflowQueries.js'
 import { SchemaDriftState } from '../SchemaDriftState.js'
 import { Card } from '../ui/Card.js'
 import { CardHeader } from '../ui/CardHeader.js'
@@ -79,6 +83,10 @@ function stateTextClass(
 
 function capitalized(value: string): string {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+}
+
+function reasonLabel(value: string): string {
+  return value.replaceAll('-', ' ')
 }
 
 function artifactFor(
@@ -190,7 +198,25 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                   <span className="tabular-nums text-text-primary">
                     {host.minimum && host.maximum ? `${host.minimum}–${host.maximum}` : 'Unknown'}
                   </span>
-                  {host.laggards.length > 0 ? (
+                  {host.state === 'missing' ? (
+                    <span className="ml-2 text-xs text-status-error">
+                      Missing repository
+                    </span>
+                  ) : host.unknowns.length > 0 ? (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                        {host.unknowns.length} unknown
+                      </summary>
+                      <ul className="mt-2 space-y-1 text-xs text-text-tertiary">
+                        {host.unknowns.map((skill) => (
+                          <li key={skill.id}>
+                            {skill.name} ·{' '}
+                            {reasonLabel(skill.reason ?? 'unknown')}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : host.laggards.length > 0 ? (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                         {host.laggards.length} {host.laggards.length === 1 ? 'laggard' : 'laggards'}
@@ -203,8 +229,14 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                         ))}
                       </ul>
                     </details>
+                  ) : host.internallyConsistent ? (
+                    <span className="ml-2 text-xs text-status-success">
+                      Aligned
+                    </span>
                   ) : (
-                    <span className="ml-2 text-xs text-status-success">Aligned</span>
+                    <span className="ml-2 text-xs text-status-warning">
+                      Drift detected
+                    </span>
                   )}
                 </td>
                 <td className="px-3 py-4 tabular-nums text-text-secondary">
@@ -304,7 +336,8 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
                         {entry.id}
                         {entry.artifact?.marker.version
                           ? ` · ${entry.artifact.marker.version}`
-                          : ` · ${capitalized(entry.state)}`}
+                          : ''}
+                        {` · ${capitalized(entry.artifact?.state ?? entry.state)}`}
                       </span>
                     ))}
                   </div>
@@ -322,9 +355,23 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
           .map((root) => (
             <span
               key={root.rootId}
-              className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-secondary"
+              className="flex flex-wrap items-center gap-2 rounded-md border border-border-subtle px-3 py-2 text-xs text-text-secondary"
             >
-              {ROOT_LABELS[root.rootId]} · {capitalized(root.state)}
+              <span>
+                {ROOT_LABELS[root.rootId]} · {capitalized(root.state)}
+              </span>
+              {root.entries.map((entry) => (
+                <span
+                  key={entry.id}
+                  className={
+                    entry.state === 'missing'
+                      ? 'text-status-error'
+                      : 'text-status-success'
+                  }
+                >
+                  {entry.id} · {capitalized(entry.state)}
+                </span>
+              ))}
             </span>
           ))}
       </div>
@@ -335,6 +382,7 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
 interface HarnessResultsProps {
   hosts: WorkflowResponse['hosts']
   results: Readonly<Record<string, WorkflowHarnessResult | undefined>>
+  attempts: Readonly<Record<string, WorkflowHarnessResult | undefined>>
   errors: Readonly<Record<string, boolean | undefined>>
   runningKey: string | null
   onRun: (request: WorkflowHarnessRequest) => void
@@ -343,6 +391,7 @@ interface HarnessResultsProps {
 function HarnessResults({
   hosts,
   results,
+  attempts,
   errors,
   runningKey,
   onRun,
@@ -363,6 +412,7 @@ function HarnessResults({
               {HARNESS_ROWS.map((harness) => {
                 const key = `${host.hostId}:${harness.id}`
                 const result = results[key]
+                const attempt = attempts[key]
                 const running = runningKey === key
                 return (
                   <div key={harness.id} className="rounded-md bg-app-bg p-3">
@@ -379,6 +429,13 @@ function HarnessResults({
                           </p>
                         ) : (
                           <p className="mt-1 text-xs text-text-tertiary">No current result</p>
+                        )}
+                        {attempt && (
+                          <p
+                            className={`mt-1 text-xs font-semibold ${resultClass(attempt)}`}
+                          >
+                            {resultLabel(attempt)}
+                          </p>
                         )}
                       </div>
                       <button
@@ -415,8 +472,10 @@ function HarnessResults({
 
 export function WorkflowPage(): ReactElement {
   const workflow = useWorkflow()
+  const cachedHarnessResults = useWorkflowHarnessResults()
   const harness = useRunWorkflowHarness()
   const [results, setResults] = useState<Record<string, WorkflowHarnessResult | undefined>>({})
+  const [attempts, setAttempts] = useState<Record<string, WorkflowHarnessResult | undefined>>({})
   const [errors, setErrors] = useState<Record<string, boolean | undefined>>({})
   const [runningKey, setRunningKey] = useState<string | null>(null)
 
@@ -427,7 +486,12 @@ export function WorkflowPage(): ReactElement {
     void harness
       .mutateAsync(request)
       .then((result) => {
-        setResults((current) => ({ ...current, [key]: result }))
+        if (result.state === 'completed') {
+          setResults((current) => ({ ...current, [key]: result }))
+          setAttempts((current) => ({ ...current, [key]: undefined }))
+        } else {
+          setAttempts((current) => ({ ...current, [key]: result }))
+        }
       })
       .catch(() => {
         setErrors((current) => ({ ...current, [key]: true }))
@@ -455,13 +519,20 @@ export function WorkflowPage(): ReactElement {
   } else if (workflow.isError || !workflow.data) {
     content = <ErrorState onRetry={() => void workflow.refetch()} />
   } else {
+    const hydratedResults = Object.fromEntries(
+      (cachedHarnessResults.data ?? []).map((result) => [
+        `${result.hostId}:${result.harnessId}`,
+        result,
+      ]),
+    )
     content = (
       <>
         <SpecConformance data={workflow.data} />
         <SharedArtifacts data={workflow.data} />
         <HarnessResults
           hosts={workflow.data.hosts}
-          results={results}
+          results={{ ...hydratedResults, ...results }}
+          attempts={attempts}
           errors={errors}
           runningKey={runningKey}
           onRun={runHarness}
