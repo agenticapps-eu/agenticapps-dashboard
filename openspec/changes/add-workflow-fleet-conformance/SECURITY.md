@@ -1,6 +1,6 @@
 # Security audit — workflow harness runner
 
-Auditor: codex-cso v0.1.0  
+Auditor: codex-cso v0.1.0
 Scope: authenticated workflow-harness route, fixed command selection, process
 execution, private scratch/result storage, cache reads, and diagnostic output
 
@@ -10,7 +10,7 @@ execution, private scratch/result storage, cache reads, and diagnostic output
 |---|---|---|---|---|---|---|---|
 | `POST /api/v2/workflow/harness` | Applicable | Applicable | Applicable | Applicable | Applicable | Applicable | Global timing-safe bearer authentication runs before the route; cookie credentials are not accepted; a present origin must match the fixed production/development allow-list before body parsing; the strict request schema accepts only fixed host/harness identifiers. |
 | Fixed command selection | N/A | Applicable | N/A | Applicable | Applicable | Applicable | Request values select a daemon-side table only. Program, argv, cwd, and environment come from fixed code. Repository, harness, tested artifact, and reference paths are canonicalised beneath the fixed source-family root. |
-| Harness process group | N/A | Applicable | Applicable | Applicable | Applicable | Applicable | The child is spawned without a shell in a detached process group, with a fixed environment and fresh private cwd. Wall time, sampled process-group memory, combined output, scratch disk, per-host concurrency, and global concurrency are bounded; timeout/bound violations kill the group. |
+| Harness process tree | N/A | Applicable | Applicable | Applicable | Applicable | Applicable | The child is spawned without a shell in a detached process group, with a fixed environment and fresh private cwd. Wall time, sampled descendant-tree memory, combined output, scratch disk, per-host concurrency, and global concurrency are bounded; timeout/bound violations and daemon shutdown kill the tracked descendant tree and its process groups. |
 | Result cache and scratch tree | N/A | Applicable | Applicable | Applicable | Applicable | Applicable | Directories are mode `0700`; results are atomically written and re-chmodded to `0600`; scratch children are removed on every exit. Boot rejects an escaping `workflow-harness` tree. Cache reads reject symlinks, non-regular/loose/oversized files, canonical escapes, fingerprint drift, and symbolic identity mismatch. |
 | Captured diagnostic output | N/A | Applicable | N/A | Applicable | Applicable | N/A | Capture stops at 1 MiB. Absolute paths, home/user names, bearer/token/secret values, common provider credentials, and JWT-shaped values are redacted before return and persistence, and cached output is redacted again on read. Exit status alone determines pass/fail. |
 

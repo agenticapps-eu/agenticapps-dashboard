@@ -116,10 +116,11 @@ function resultLabel(result: WorkflowHarnessResult): string {
   if (result.state === 'completed') {
     return `${result.passed ? 'Passed' : 'Failed'} · ${formatAge(result.ageMs)}`
   }
-  if (result.state === 'busy') return 'Busy'
-  if (result.state === 'refused') return 'Refused'
-  if (result.state === 'timeout') return 'Timed out'
-  return 'Bound exceeded'
+  const detail = result.reason ? ` · ${reasonLabel(result.reason)}` : ''
+  if (result.state === 'busy') return `Busy${detail}`
+  if (result.state === 'refused') return `Refused${detail}`
+  if (result.state === 'timeout') return `Timed out${detail}`
+  return `Bound exceeded${detail}`
 }
 
 function resultClass(result: WorkflowHarnessResult): string {
@@ -413,6 +414,7 @@ function HarnessResults({
                 const key = `${host.hostId}:${harness.id}`
                 const result = results[key]
                 const attempt = attempts[key]
+                const diagnosticOutput = attempt?.output || result?.output
                 const running = runningKey === key
                 return (
                   <div key={harness.id} className="rounded-md bg-app-bg p-3">
@@ -454,9 +456,9 @@ function HarnessResults({
                         {running ? 'Running…' : harness.buttonLabel}
                       </button>
                     </div>
-                    {result?.output && (
+                    {diagnosticOutput && (
                       <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap rounded-md border border-border-subtle bg-card-bg p-3 text-xs text-text-secondary">
-                        {result.output}
+                        {diagnosticOutput}
                       </pre>
                     )}
                   </div>

@@ -317,7 +317,7 @@ describe('WorkflowPage', () => {
       }),
     )
 
-    expect(await screen.findByText('Busy')).toBeTruthy()
+    expect(await screen.findByText('Busy · host busy')).toBeTruthy()
     expect(screen.getByText('Passed · 2m ago')).toBeTruthy()
     expect(screen.getByText('cached pass')).toBeTruthy()
   })

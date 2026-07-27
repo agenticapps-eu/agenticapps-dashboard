@@ -1,6 +1,7 @@
 import {
   useMutation,
   useQuery,
+  useQueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query'
@@ -57,6 +58,8 @@ export function useRunWorkflowHarness(): UseMutationResult<
   Error,
   WorkflowHarnessRequest
 > {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: async (request) => {
       const result = await apiFetch('/api/v2/workflow/harness', WorkflowHarnessResultSchema, {
@@ -66,6 +69,20 @@ export function useRunWorkflowHarness(): UseMutationResult<
       })
       if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
       return result.data
+    },
+    onSuccess: (result) => {
+      if (result.state !== 'completed') return
+      queryClient.setQueryData<WorkflowHarnessResult[]>(
+        WORKFLOW_HARNESS_RESULTS_QUERY_KEY,
+        (current = []) => [
+          result,
+          ...current.filter(
+            (cached) =>
+              cached.hostId !== result.hostId ||
+              cached.harnessId !== result.harnessId,
+          ),
+        ],
+      )
     },
   })
 }

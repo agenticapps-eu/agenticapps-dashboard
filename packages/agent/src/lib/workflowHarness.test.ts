@@ -400,21 +400,21 @@ describe('workflow harness timeout and concurrency', () => {
           `const {writeFileSync}=require("node:fs");` +
           `const child=spawn("sleep",["30"],{detached:true,stdio:"ignore"});` +
           `writeFileSync(process.argv[1],String(child.pid));` +
-          `child.unref();setTimeout(()=>{},500)' "${escapedPidPath}"\n` +
+          `child.unref();setTimeout(()=>{},1500)' "${escapedPidPath}"\n` +
           'sleep 30',
       ),
     )
 
     const result = await runWorkflowHarness(
       request(),
-      options({ limits: { timeoutMs: 350, sampleIntervalMs: 10 } }),
+      options({ limits: { timeoutMs: 1_000, sampleIntervalMs: 10 } }),
     )
-    const pid = Number(readFileSync(escapedPidPath, 'utf8'))
 
     expect(result).toMatchObject({
       state: 'timeout',
       reason: 'time-limit',
     })
+    const pid = Number(readFileSync(escapedPidPath, 'utf8'))
     expect(await waitForGone(pid)).toBe(true)
   }, 5_000)
 
