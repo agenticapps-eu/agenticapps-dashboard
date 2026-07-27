@@ -539,3 +539,16 @@ describe('workflow harness content-keyed cache', () => {
     expect(await readWorkflowHarnessResult(request(), options())).toBeNull()
   })
 })
+
+describe('workflow harness architectural constraint', () => {
+  it('names both user-driven process exceptions in OpenSpec config', () => {
+    const config = readFileSync(
+      new URL('../../../../openspec/config.yaml', import.meta.url),
+      'utf8',
+    )
+
+    expect(config).not.toContain('Sole exception')
+    expect(config).toContain('POST /api/projects/{id}/open')
+    expect(config).toContain('POST /api/v2/workflow/harness')
+  })
+})
