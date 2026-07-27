@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { basename, join, sep } from 'node:path'
 import { PathViolation } from '../coverageResolver.js'
 import type { PathResolver } from '../coverageResolver.js'
-import { readCoreSpecVersion } from './coreSpecVersionScanner.declare.js'
+import { readCoreSpecVersion } from './coreSpecVersionScanner.js'
 
 let tmpDir: string
 
