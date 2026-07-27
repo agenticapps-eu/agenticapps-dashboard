@@ -110,7 +110,14 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
             <MigrationNotice />
           ) : (
             <>
-              <ChangeProgress projectId={projectId} />
+              {/*
+               * Keyed by project because the route does not remount on a param
+               * change — React Router reuses the element. Without it the panel's
+               * fold state survives the switch, and the next project opens with
+               * its queue already unfolded for no reason the reader can see.
+               * CapabilityPanel holds no state, so it needs no key.
+               */}
+              <ChangeProgress key={projectId} projectId={projectId} />
               <CapabilityPanel projectId={projectId} />
             </>
           )}
