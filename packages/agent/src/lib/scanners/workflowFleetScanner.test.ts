@@ -8,7 +8,7 @@ import {
   WORKFLOW_FLEET,
   requireWorkflowRepoId,
   scanWorkflowHostSkills,
-} from './workflowFleetScanner.declare.js'
+} from './workflowFleetScanner.js'
 
 let tmpDir: string
 
