@@ -308,4 +308,13 @@ describe('Sidebar', () => {
     // Import statement contains Network.
     expect(source).toMatch(/Network[\s\S]*?from ['"]lucide-react['"]/)
   })
+
+  it('S22: WORKSPACE contains a Workflow peer linked to /workflow', () => {
+    render(<Sidebar />)
+    const workflowLink = screen.getByRole('link', { name: /^Workflow$/i })
+
+    expect(workflowLink.getAttribute('href')).toBe('/workflow')
+    expect(workflowLink.className).toContain('px-3')
+    expect(workflowLink.className).toContain('py-2')
+  })
 })
