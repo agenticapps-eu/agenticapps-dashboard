@@ -223,8 +223,16 @@ export type {
   RegistryFixPathRequest,
 } from './schemas/conformance.js'
 
-export { WorkflowResponseSchema } from './schemas/workflow.js'
-export type { WorkflowResponse } from './schemas/workflow.js'
+export {
+  WorkflowResponseSchema,
+  WorkflowHarnessRequestSchema,
+  WorkflowHarnessResultSchema,
+} from './schemas/workflow.js'
+export type {
+  WorkflowResponse,
+  WorkflowHarnessRequest,
+  WorkflowHarnessResult,
+} from './schemas/workflow.js'
 
 // Phase 13 — gitnexus scoped scan actions (D-13-01..11)
 export {
