@@ -22,7 +22,7 @@
  * SV12: PageHeader always renders (no env stub needed — Wave 5 removed the flag)
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { render, screen, cleanup, within, fireEvent } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -53,6 +53,7 @@ vi.mock('../lib/projectQueries.js', () => ({
 }))
 
 import { useRegistryList, useProjectOverview } from '../lib/registry.js'
+import { useOpenspec } from '../lib/projectQueries.js'
 
 import { SingleProjectView } from './SingleProjectView.js'
 
@@ -382,5 +383,44 @@ describe('SingleProjectView — header context', () => {
 
     expect(screen.getByTestId('migration-notice')).toBeDefined()
     expect(screen.getByTestId('project-header-context').textContent).toContain('main')
+  })
+
+  /*
+   * SV23: the route does not remount on a param change — React Router reuses the
+   * element — so any panel holding local state carries it from one project to
+   * the next. Here that means the reader lands on a project whose queue is
+   * already unfolded, reading as a property of that project when it is a
+   * leftover from the one before.
+   */
+  it('SV23: switching projects folds the proposed queue back up', () => {
+    mockCondition('migrated')
+    vi.mocked(useOpenspec).mockReturnValue({
+      data: {
+        present: true,
+        openChanges: [1, 2, 3, 4].map((n) => ({
+          name: `proposed-${n}`,
+          completedTasks: 0,
+          totalTasks: 10,
+          hasTaskArtifact: true,
+          affectedCapabilities: [],
+        })),
+        capabilities: [],
+        archived: [],
+      },
+      error: null,
+      isLoading: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useOpenspec>)
+
+    const { rerender } = render(<SingleProjectView projectId="alpha" />, {
+      wrapper: makeWrapper(),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Show 4 proposed/ }))
+    expect(screen.getByRole('button', { name: /Hide 4 proposed/ })).toBeDefined()
+
+    rerender(<SingleProjectView projectId="beta" />)
+
+    expect(screen.getByRole('button', { name: /Show 4 proposed/ })).toBeDefined()
   })
 })

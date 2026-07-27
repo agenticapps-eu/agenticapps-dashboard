@@ -367,6 +367,23 @@ describe('ProjectCard', () => {
  * so the one change actually moving landed between two zeros.
  */
 describe('ProjectCard — the change summary is triage-ordered and readable', () => {
+  /*
+   * These cases assert ordering, not overview state, but the card reads
+   * `overview.isError` on every render. The top-level hook is clearAllMocks,
+   * which drops recorded calls and keeps implementations — so without this the
+   * block passes only on the return value the previous describe happened to
+   * leave behind, and throws the moment it runs on its own.
+   */
+  beforeEach(() => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: undefined,
+      error: null,
+      refetch: vi.fn(),
+    })
+  })
+
   const withChanges = (openChanges: RegistryListItem['status']['openChanges']): RegistryListItem => ({
     id: 'p',
     name: 'p',

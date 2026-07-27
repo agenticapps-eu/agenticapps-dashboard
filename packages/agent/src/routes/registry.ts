@@ -87,15 +87,22 @@ export const registryRoute = new Hono<Env>()
  * remember to. The TTL covers everything else, since a project's status changes
  * when its own files change, not when the registry does.
  */
+/**
+ * Everything cached for one registry file, and nothing cached for any other —
+ * the unit the mtime sweep below is allowed to discard.
+ */
+function fleetCachePrefix(registryFile: string | undefined): string {
+  return `__fleet__:${registryFile ?? REGISTRY_FILE}:`
+}
+
 function fleetCacheKey(registryFile: string | undefined): string {
-  const path = registryFile ?? REGISTRY_FILE
   let stamp = 'absent'
   try {
-    stamp = String(statSync(path).mtimeMs)
+    stamp = String(statSync(registryFile ?? REGISTRY_FILE).mtimeMs)
   } catch {
     // No registry file yet — one key for the empty state.
   }
-  return `__fleet__:${path}:${stamp}`
+  return `${fleetCachePrefix(registryFile)}${stamp}`
 }
 
 registryRoute.get('/', async (c) => {
@@ -108,8 +115,10 @@ registryRoute.get('/', async (c) => {
 
   // Drop superseded snapshots first: the key carries the registry mtime, so a
   // mutation mints a new one and the old entry would otherwise never be read
-  // again, and therefore never lazily expired.
-  evictPhaseCachePrefix('__fleet__:')
+  // again, and therefore never lazily expired. Scoped to this registry file —
+  // a sweep of every fleet key would discard snapshots this read has no claim
+  // over, and they are still valid.
+  evictPhaseCachePrefix(fleetCachePrefix(registryFile))
   const items = await listProjectsWithStatus(registryFile)
   setPhaseCache(key, items)
   return outbound(c, parse, items)
