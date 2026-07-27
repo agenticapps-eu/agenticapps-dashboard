@@ -364,12 +364,33 @@ function cachePath(
   )
 }
 
-function readCache(path: string): CacheEntry | null {
+function readCache(
+  path: string,
+  resultsRoot: string,
+  request: WorkflowHarnessRequest,
+  maximumOutputBytes: number,
+): CacheEntry | null {
   try {
+    const fileStat = lstatSync(path)
+    if (
+      !fileStat.isFile() ||
+      fileStat.isSymbolicLink() ||
+      (fileStat.mode & 0o777) !== 0o600 ||
+      fileStat.size > maximumOutputBytes + 64 * 1024
+    ) {
+      return null
+    }
+    const canonical = realpathSync(path)
+    if (!isInside(canonical, resultsRoot)) return null
+
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as CacheEntry
+    const selected = safeRequest(request)
     if (
       typeof parsed?.fingerprint !== 'string' ||
       parsed?.result?.state !== 'completed' ||
+      parsed.result.schemaVersion !== 1 ||
+      parsed.result.hostId !== selected.hostId ||
+      parsed.result.harnessId !== selected.harnessId ||
       typeof parsed.result.completedAtIso !== 'string' ||
       typeof parsed.result.passed !== 'boolean' ||
       typeof parsed.result.output !== 'string'
@@ -743,7 +764,13 @@ export async function readWorkflowHarnessResult(
   if (isPreparationFailure(prepared)) return null
   const resultsRoot = existingResultsRoot(options)
   if (!resultsRoot) return null
-  const cached = readCache(cachePath(resultsRoot, request))
+  const limits = effectiveLimits(options)
+  const cached = readCache(
+    cachePath(resultsRoot, request),
+    resultsRoot,
+    request,
+    limits.outputBytes,
+  )
   if (!cached || cached.fingerprint !== prepared.fingerprint) return null
 
   const completedAt = Date.parse(cached.result.completedAtIso!)
@@ -751,6 +778,20 @@ export async function readWorkflowHarnessResult(
   const now = (options.now ?? (() => new Date()))().getTime()
   return {
     ...cached.result,
+    output: redactOutput(
+      cached.result.output,
+      [
+        sourceFamilyRoot(options),
+        daemonStateRoot(options),
+        prepared.hostRoot,
+        prepared.coreRoot,
+        prepared.harnessPath,
+        prepared.artifactPath,
+        prepared.referencePath,
+        homedir(),
+      ],
+      limits.outputBytes,
+    ),
     ageMs: Math.max(0, now - completedAt),
     cached: true,
   }
