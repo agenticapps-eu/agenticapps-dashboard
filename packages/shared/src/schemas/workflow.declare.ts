@@ -82,3 +82,48 @@ export interface WorkflowResponse {
 }
 
 export declare const WorkflowResponseSchema: ZodType<WorkflowResponse>
+
+export type WorkflowHarnessId = 'change-gate' | 'reviewer-cli'
+
+export interface WorkflowHarnessRequest {
+  hostId: WorkflowHostId
+  harnessId: WorkflowHarnessId
+}
+
+export type WorkflowHarnessResultState =
+  | 'completed'
+  | 'refused'
+  | 'busy'
+  | 'timeout'
+  | 'bounded-out'
+
+export type WorkflowHarnessResultReason =
+  | 'unknown-selection'
+  | 'repo-unavailable'
+  | 'path-not-allowed'
+  | 'harness-missing'
+  | 'harness-not-executable'
+  | 'harness-divergent'
+  | 'spawn-failed'
+  | 'host-busy'
+  | 'capacity-busy'
+  | 'time-limit'
+  | 'memory-limit'
+  | 'output-limit'
+  | 'scratch-limit'
+
+export interface WorkflowHarnessResult {
+  schemaVersion: 1
+  hostId: WorkflowHostId
+  harnessId: WorkflowHarnessId
+  state: WorkflowHarnessResultState
+  passed: boolean | null
+  completedAtIso: string | null
+  ageMs: number | null
+  output: string
+  cached: boolean
+  reason?: WorkflowHarnessResultReason
+}
+
+export declare const WorkflowHarnessRequestSchema: ZodType<WorkflowHarnessRequest>
+export declare const WorkflowHarnessResultSchema: ZodType<WorkflowHarnessResult>
