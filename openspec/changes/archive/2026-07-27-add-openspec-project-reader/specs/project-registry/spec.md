@@ -64,7 +64,7 @@ unreachable project reads as both markers absent — an unmounted volume or a mo
 directory would render as `no-workflow`, telling the user to install a workflow
 into a path the daemon cannot see.
 
-#### Scenario: A project with neither marker reports no workflow
+#### Scenario: Status reflects a project with no workflow installed
 - **WHEN** a registered project has no `openspec/` directory and no workflow skill installed
 - **THEN** its status reports the `no-workflow` condition rather than erroring
 - **AND** the home card renders an install hint instead of change data.

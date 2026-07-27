@@ -4,12 +4,7 @@ import type { ProjectOverview } from '@agenticapps/dashboard-shared'
 import { getCached, setCached, evict, _resetForTests } from './overviewCache.js'
 
 const sampleOverview: ProjectOverview = {
-  phaseStatus: 'In Progress',
-  stage1: null,
-  stage2: null,
-  dbAudit: null,
   tdd: null,
-  verification: null,
   branch: 'main',
   markers: { gitRepo: true, planning: true, claudeSkills: false },
 }

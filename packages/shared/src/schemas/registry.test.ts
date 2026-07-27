@@ -34,13 +34,70 @@ describe('RegistryFileSchema', () => {
 })
 
 describe('RegistryListItemSchema', () => {
-  it('extends entry with status block', () => {
-    const item = { id: 'a', name: 'a', root: '/x', client: null, addedAt: '2026-05-03T10:00:00.000Z', tags: [], status: { reachable: true, currentPhase: '01', lastCommitAt: '2026-05-03T10:00:00.000Z' } }
+  const base = {
+    id: 'a',
+    name: 'a',
+    root: '/x',
+    client: null,
+    addedAt: '2026-05-03T10:00:00.000Z',
+    tags: [],
+  }
+
+  it('extends entry with an OpenSpec status block', () => {
+    const item = {
+      ...base,
+      status: {
+        reachable: true,
+        condition: 'migrated',
+        openChanges: [
+          { name: 'add-thing', completedTasks: 2, totalTasks: 3, hasTaskArtifact: true },
+        ],
+        capabilityCount: 12,
+        lastCommitAt: '2026-05-03T10:00:00.000Z',
+      },
+    }
     expect(() => RegistryListItemSchema.parse(item)).not.toThrow()
   })
-  it('allows null currentPhase and lastCommitAt for unreachable', () => {
-    const item = { id: 'a', name: 'a', root: '/x', client: null, addedAt: '2026-05-03T10:00:00.000Z', tags: [], status: { reachable: false, currentPhase: null, lastCommitAt: null } }
+
+  it('accepts the unreachable condition with no counts', () => {
+    const item = {
+      ...base,
+      status: {
+        reachable: false,
+        condition: 'unreachable',
+        openChanges: [],
+        capabilityCount: 0,
+        lastCommitAt: null,
+      },
+    }
     expect(() => RegistryListItemSchema.parse(item)).not.toThrow()
+  })
+
+  it('accepts needs-migration and no-workflow', () => {
+    for (const condition of ['needs-migration', 'no-workflow']) {
+      const item = {
+        ...base,
+        status: { reachable: true, condition, openChanges: [], capabilityCount: 0, lastCommitAt: null },
+      }
+      expect(() => RegistryListItemSchema.parse(item)).not.toThrow()
+    }
+  })
+
+  it('rejects a condition outside the four', () => {
+    const item = {
+      ...base,
+      status: { reachable: true, condition: 'in-progress', openChanges: [], capabilityCount: 0, lastCommitAt: null },
+    }
+    expect(() => RegistryListItemSchema.parse(item)).toThrow()
+  })
+
+  // The phase concept is retired with the GSD reader; the wire must not carry it.
+  it('no longer accepts a currentPhase field in place of condition', () => {
+    const item = {
+      ...base,
+      status: { reachable: true, currentPhase: '01', lastCommitAt: null },
+    }
+    expect(() => RegistryListItemSchema.parse(item)).toThrow()
   })
 })
 

@@ -56,7 +56,7 @@ const ITEM_A: RegistryListItem = {
   client: null,
   addedAt: '2026-01-01T00:00:00.000Z',
   tags: ['active'],
-  status: { reachable: true, currentPhase: '03-home', lastCommitAt: '2026-05-04T10:00:00.000Z' },
+  status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 0, lastCommitAt: '2026-05-04T10:00:00.000Z' },
 }
 
 /** B — client, reachable, later commit */
@@ -67,7 +67,7 @@ const ITEM_B: RegistryListItem = {
   client: 'acme',
   addedAt: '2026-01-02T00:00:00.000Z',
   tags: ['client'],
-  status: { reachable: true, currentPhase: '02-spa', lastCommitAt: '2026-05-04T11:00:00.000Z' },
+  status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 0, lastCommitAt: '2026-05-04T11:00:00.000Z' },
 }
 
 /** C — internal, UNREACHABLE, latest commit (but sorted last due to unreachable) */
@@ -78,7 +78,7 @@ const ITEM_C: RegistryListItem = {
   client: null,
   addedAt: '2026-01-03T00:00:00.000Z',
   tags: ['internal'],
-  status: { reachable: false, currentPhase: null, lastCommitAt: '2026-05-04T12:00:00.000Z' },
+  status: { reachable: false, condition: 'unreachable' as const, openChanges: [], capabilityCount: 0, lastCommitAt: '2026-05-04T12:00:00.000Z' },
 }
 
 const ALL_ITEMS = [ITEM_A, ITEM_B, ITEM_C]

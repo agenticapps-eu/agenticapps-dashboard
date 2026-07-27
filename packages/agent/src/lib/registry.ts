@@ -14,7 +14,6 @@ import {
   readFileSync,
   realpathSync,
   statSync,
-  readdirSync,
   unlinkSync,
   writeSync,
 } from 'node:fs'
@@ -34,6 +33,9 @@ import {
 import { CONFIG_DIR, GIT_SUBPROCESS_TIMEOUT_MS, REGISTRY_FILE } from '../constants.js'
 
 import { atomicWriteFile } from './atomicWrite.js'
+import { computeProjectCondition } from './projectCondition.js'
+import { readOpenspecProject } from './openspecReader.js'
+import { getOpenspecBinary } from './openspecCli.js'
 import { invalidateConformanceCache } from './conformanceCache.js'
 import { invalidateCoverageCache } from './coverageCache.js'
 import { parseOrCorrupt } from './stateCorruption.js'
@@ -510,19 +512,6 @@ export function isReachable(root: string): boolean {
   }
 }
 
-function detectCurrentPhase(root: string): string | null {
-  try {
-    const phasesDir = resolve(root, '.planning', 'phases')
-    if (!existsSync(phasesDir)) return null
-    const dirs = readdirSync(phasesDir)
-      .filter((d) => /^\d{2}-/.test(d))
-      .sort()
-    return dirs.at(-1) ?? null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Invoke git using execa with an argv array (safe from shell injection).
  * The cwd is the project root, which is user-controlled — passing it as
@@ -548,24 +537,66 @@ async function detectLastCommitAt(root: string): Promise<string | null> {
 }
 
 /**
- * Return all registry entries enriched with live reachability + phase + git status.
- * Never throws on unreachable roots — marks reachable: false instead.
+ * Return all registry entries enriched with live reachability, OpenSpec state,
+ * and git status. Never throws on unreachable roots — reports the `unreachable`
+ * condition instead.
+ *
+ * The `openspec` binary is resolved once per daemon lifetime, not per call and
+ * not per project. `OpenSpec CLI Invocation Discipline` requires that no PATH
+ * lookup happen on the request path, and this route is polled every 5s.
  */
 export async function listProjectsWithStatus(
   filePath: string = REGISTRY_FILE,
 ): Promise<RegistryListItem[]> {
   const reg = readRegistry(filePath)
+  const binary = await getOpenspecBinary()
   return Promise.all(
     reg.projects.map(async (p) => {
       const reachable = isReachable(p.root)
-      return RegistryListItemSchema.parse({
-        ...p,
-        status: {
-          reachable,
-          currentPhase: reachable ? detectCurrentPhase(p.root) : null,
-          lastCommitAt: reachable ? await detectLastCommitAt(p.root) : null,
-        },
-      })
+      const lastCommitAt = reachable ? await detectLastCommitAt(p.root) : null
+      const condition = computeProjectCondition(p.root, reachable)
+
+      /*
+       * One project must never take down the fleet. Everything below reads a
+       * project's own filesystem or its CLI output, and a single malformed
+       * value used to throw out of this `Promise.all` — 500ing the whole list,
+       * and failing daemon boot outright, because boot awaits this before
+       * serve() and there would be no UI left to unregister the culprit with.
+       * A project that cannot be read degrades to a reachable-but-empty row.
+       */
+      let openspec: Awaited<ReturnType<typeof readOpenspecProject>> | null = null
+      if (condition === 'migrated') {
+        try {
+          openspec = await readOpenspecProject(p.root, binary)
+        } catch {
+          openspec = null
+        }
+      }
+
+      const status = {
+        reachable,
+        condition,
+        openChanges:
+          openspec?.openChanges.map((c) => ({
+            name: c.name,
+            completedTasks: c.completedTasks,
+            totalTasks: c.totalTasks,
+            hasTaskArtifact: c.hasTaskArtifact,
+          })) ?? [],
+        capabilityCount: openspec?.capabilities.length ?? 0,
+        lastCommitAt,
+      }
+
+      try {
+        return RegistryListItemSchema.parse({ ...p, status })
+      } catch {
+        // The status shape itself is bad. Report the project as reachable with
+        // no OpenSpec data rather than dropping the row or failing the request.
+        return RegistryListItemSchema.parse({
+          ...p,
+          status: { ...status, openChanges: [], capabilityCount: 0 },
+        })
+      }
     }),
   )
 }

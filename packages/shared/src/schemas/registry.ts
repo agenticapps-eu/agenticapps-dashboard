@@ -16,12 +16,42 @@ export const RegistryFileSchema = z.object({
 })
 export type RegistryFile = z.infer<typeof RegistryFileSchema>
 
+/** One open OpenSpec change, as the home card renders it. */
+export const OpenChangeSummarySchema = z.object({
+  name: z.string().min(1),
+  completedTasks: z.number().int().nonnegative(),
+  totalTasks: z.number().int().nonnegative(),
+  /**
+   * False when the change has no task artifact at all. Distinct from 0 of 0:
+   * the OpenSpec CLI reports zero for absent and empty alike, so presence is a
+   * value in its own right rather than something inferred from a count.
+   */
+  hasTaskArtifact: z.boolean(),
+})
+export type OpenChangeSummary = z.infer<typeof OpenChangeSummarySchema>
+
+/**
+ * Reachability takes precedence over the marker matrix. An unreachable root
+ * reads as both markers absent, so without `unreachable` winning first an
+ * unmounted volume renders as `no-workflow` — telling the user to install a
+ * workflow into a path the daemon cannot see.
+ */
+export const ProjectConditionSchema = z.enum([
+  'unreachable',
+  'migrated',
+  'needs-migration',
+  'no-workflow',
+])
+export type ProjectCondition = z.infer<typeof ProjectConditionSchema>
+
 export const RegistryListItemSchema = RegistryEntrySchema.extend({
   status: z.object({
     reachable: z.boolean(),
-    currentPhase: z.string().nullable(),
+    condition: ProjectConditionSchema,
+    openChanges: z.array(OpenChangeSummarySchema),
+    capabilityCount: z.number().int().nonnegative(),
     lastCommitAt: z.string().datetime().nullable(),
-  }),
+  }).strict(),
 })
 export type RegistryListItem = z.infer<typeof RegistryListItemSchema>
 

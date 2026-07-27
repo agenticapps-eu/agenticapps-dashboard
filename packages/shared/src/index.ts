@@ -6,6 +6,8 @@ export {
   RegistryEntrySchema,
   RegistryFileSchema,
   RegistryListItemSchema,
+  OpenChangeSummarySchema,
+  ProjectConditionSchema,
   RegistryListResponseSchema,
   RegisterResponseSchema,
   StatusResponseSchema,
@@ -20,6 +22,8 @@ export type {
   RegistryEntry,
   RegistryFile,
   RegistryListItem,
+  OpenChangeSummary,
+  ProjectCondition,
   RegistryListResponse,
   RegisterResponse,
   StatusResponse,
@@ -33,18 +37,20 @@ export type {
   RenameRequest,
   TagsRequest,
 } from './schemas/registry.js'
+export { ProjectOverviewSchema, MarkersSchema } from './schemas/overview.js'
+export type { ProjectOverview, Markers } from './schemas/overview.js'
 export {
-  ProjectOverviewSchema,
-  FindingCountsSchema,
-  DbAuditFindingsSchema,
-  MarkersSchema,
-} from './schemas/overview.js'
+  OpenspecProjectStateSchema,
+  OpenspecChangeDetailSchema,
+  OpenspecCapabilitySchema,
+  OpenspecArchivedChangeSchema,
+} from './schemas/openspec.js'
 export type {
-  ProjectOverview,
-  FindingCounts,
-  DbAuditFindings,
-  Markers,
-} from './schemas/overview.js'
+  OpenspecProjectState,
+  OpenspecChangeDetail,
+  OpenspecCapability,
+  OpenspecArchivedChange,
+} from './schemas/openspec.js'
 export { ReadResponseSchema } from './schemas/read.js'
 export type { ReadResponse } from './schemas/read.js'
 export { GitResponseSchema } from './schemas/git.js'
@@ -77,32 +83,14 @@ export type {
   RationalizationRow,
   DisciplineResponse,
 } from './schemas/discipline.js'
-export {
-  PhaseFileStatusSchema,
-  ExecutionTimelineEntrySchema,
-  ReviewFindingCountsSchema,
-  ReviewStatusPayloadSchema,
-  VerificationStatusPayloadSchema,
-  PhaseProgressResponseSchema,
-} from './schemas/phaseDetail.js'
-export type {
-  PhaseFileStatus,
-  ExecutionTimelineEntry,
-  ReviewFindingCounts,
-  ReviewStatusPayload,
-  VerificationStatusPayload,
-  PhaseProgressResponse,
-} from './schemas/phaseDetail.js'
-export {
-  CsoSummarySchema,
-  DbSentinelSummarySchema,
-  SecurityResponseSchema,
-} from './schemas/security.js'
-export type {
-  CsoSummary,
-  DbSentinelSummary,
-  SecurityResponse,
-} from './schemas/security.js'
+/*
+ * `phaseDetail` and `security` schemas are gone with the GSD phase reader. Both
+ * described the centre column's phase-artifact payloads — the checklist, the
+ * TDD timeline, two-stage review findings, the /cso + database-sentinel
+ * summaries, and verification detail — and every one of them was parsed out of
+ * `.planning/phases/<N>/`. The `Phase Progress Column` requirement they served
+ * is REMOVED by this change; `Change Progress Column` replaces it.
+ */
 export {
   AgentLinterSeveritySchema,
   AgentLinterDiagnosticSchema,

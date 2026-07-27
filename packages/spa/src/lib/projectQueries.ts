@@ -34,10 +34,6 @@ import {
   type ObservationsRecentResponse,
   DisciplineResponseSchema,
   type DisciplineResponse,
-  PhaseProgressResponseSchema,
-  type PhaseProgressResponse,
-  SecurityResponseSchema,
-  type SecurityResponse,
   GlobalSkillsResponseSchema,
   type GlobalSkillsResponse,
   LocalSkillsResponseSchema,
@@ -54,6 +50,8 @@ import {
   type SentryRecentResponse,
   LinearIssuesResponseSchema,
   type LinearIssuesResponse,
+  OpenspecProjectStateSchema,
+  type OpenspecProjectState,
 } from '@agenticapps/dashboard-shared'
 
 import { ApiError, apiFetch } from './api.js'
@@ -123,34 +121,27 @@ export function useDiscipline(id: string | null) {
   })
 }
 
-/**
- * usePhaseProgress — polls GET /api/projects/{id}/phase-progress every 5s.
- * Returns the phase checklist, TDD timeline, review status, and verification status.
+/*
+ * `usePhaseProgress` and `useSecurity` are gone with the GSD phase reader —
+ * both polled routes the daemon no longer serves, and both fed panels whose
+ * `Phase Progress Column` requirement this change REMOVES.
  */
-export function usePhaseProgress(id: string | null) {
-  return useQuery({
-    queryKey: ['phase-progress', id] as const,
-    queryFn: async (): Promise<PhaseProgressResponse> => {
-      const result = await apiFetch(`/api/projects/${id}/phase-progress`, PhaseProgressResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
-      return result.data
-    },
-    enabled: id !== null,
-    staleTime: POLL_MS,
-    refetchInterval: POLL_MS,
-    refetchIntervalInBackground: false,
-  })
-}
 
 /**
- * useSecurity — polls GET /api/projects/{id}/security every 5s.
- * Returns the CSO audit summary and DB Sentinel findings.
+ * useOpenspec — polls GET /api/projects/{id}/openspec every 5s.
+ *
+ * Feeds both centre-column panels from one request: Change Progress reads
+ * `openChanges`, the Capability panel reads `capabilities`. They share a query
+ * key deliberately — two hooks would mean two polls of a route whose whole
+ * response both panels already receive.
+ *
+ * Per-project: id in queryKey (cross-project cache leakage).
  */
-export function useSecurity(id: string | null) {
+export function useOpenspec(id: string | null) {
   return useQuery({
-    queryKey: ['security', id] as const,
-    queryFn: async (): Promise<SecurityResponse> => {
-      const result = await apiFetch(`/api/projects/${id}/security`, SecurityResponseSchema)
+    queryKey: ['openspec', id] as const,
+    queryFn: async (): Promise<OpenspecProjectState> => {
+      const result = await apiFetch(`/api/projects/${id}/openspec`, OpenspecProjectStateSchema)
       if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
       return result.data
     },

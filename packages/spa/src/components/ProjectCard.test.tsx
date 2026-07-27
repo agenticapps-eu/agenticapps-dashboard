@@ -38,7 +38,13 @@ function makeItem(overrides: Partial<RegistryListItem> = {}): RegistryListItem {
     tags: ['active'],
     status: {
       reachable: true,
-      currentPhase: '03-multi-project-home',
+      condition: 'migrated' as const,
+      // A migrated project with work in flight is the representative default;
+      // the empty case has its own test.
+      openChanges: [
+        { name: 'add-reader', completedTasks: 2, totalTasks: 5, hasTaskArtifact: true },
+      ],
+      capabilityCount: 12,
       lastCommitAt: new Date(Date.now() - 14 * 60 * 1000).toISOString(), // 14m ago
     },
     ...overrides,
@@ -47,12 +53,7 @@ function makeItem(overrides: Partial<RegistryListItem> = {}): RegistryListItem {
 
 function makeOverview(overrides: Partial<ProjectOverview> = {}): ProjectOverview {
   return {
-    phaseStatus: 'In Progress',
-    stage1: null,
-    stage2: { ran: true, findings: { red: 0, yellow: 2, green: 5 } },
-    dbAudit: null,
     tdd: null,
-    verification: null,
     branch: 'feat/home',
     markers: { gitRepo: true, planning: true, claudeSkills: true },
     ...overrides,
@@ -72,7 +73,7 @@ beforeEach(() => {
 })
 
 describe('ProjectCard', () => {
-  it('shows — placeholders and aria-busy while loading', () => {
+  it('sets aria-busy while the overview loads, without blanking change data', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: true,
       isError: false,
@@ -86,11 +87,19 @@ describe('ProjectCard', () => {
     )
     const card = screen.getByRole('button', { name: 'View My Project' })
     expect(card).toHaveAttribute('aria-busy', 'true')
-    // Should show em-dash placeholder
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+    // The change line no longer has a loading state: open changes arrive with
+    // the registry list, not the per-project overview fetch. Only the rows that
+    // genuinely depend on the overview (TDD pairs, branch) wait on it, and
+    // aria-busy still reports that wait.
+    expect(screen.getByText(/1 open change/)).toBeInTheDocument()
   })
 
-  it('shows finding glyphs and aria-label in ready state with stage2 data', () => {
+  /*
+   * The review-finding glyph rows are gone with the GSD phase reader — their
+   * only source was phase-artifact parsing, and this change's spec delta drops
+   * the field rather than approximating it from OpenSpec's reviewer prose.
+   */
+  it('renders no review finding glyphs, whatever the overview reports', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -102,10 +111,11 @@ describe('ProjectCard', () => {
       <ProjectCard item={makeItem()} onContextMenu={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByLabelText('0 critical, 2 medium, 5 low')).toBeInTheDocument()
-    expect(screen.getByText('🔴')).toBeInTheDocument()
-    expect(screen.getByText('🟡')).toBeInTheDocument()
-    expect(screen.getByText('🟢')).toBeInTheDocument()
+    expect(screen.queryByText('🔴')).not.toBeInTheDocument()
+    expect(screen.queryByText('🟡')).not.toBeInTheDocument()
+    expect(screen.queryByText('🟢')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Stage 2/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/DB-AUDIT/)).not.toBeInTheDocument()
   })
 
   it('shows AlertTriangle and "overview unavailable · retrying" with role="status" on 5xx error', () => {
@@ -148,7 +158,7 @@ describe('ProjectCard', () => {
       error: null,
       refetch: vi.fn(),
     })
-    const item = makeItem({ status: { reachable: false, currentPhase: null, lastCommitAt: null } })
+    const item = makeItem({ status: { reachable: false, condition: 'unreachable' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null } })
     render(
       <ProjectCard item={item} onContextMenu={vi.fn()} />,
       { wrapper },
@@ -159,21 +169,77 @@ describe('ProjectCard', () => {
     expect(screen.getByText('Unregister?')).toBeInTheDocument()
   })
 
-  it('renders "no .planning/" text and install link when currentPhase is null', () => {
+  it('renders "no workflow" text and install link for the no-workflow condition', () => {
     mockUseProjectOverview.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: makeOverview({ phaseStatus: 'Pending' }),
+      data: makeOverview(),
       error: null,
       refetch: vi.fn(),
     })
-    const item = makeItem({ status: { reachable: true, currentPhase: null, lastCommitAt: null } })
+    const item = makeItem({ status: { reachable: true, condition: 'no-workflow' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null } })
     render(
       <ProjectCard item={item} onContextMenu={vi.fn()} />,
       { wrapper },
     )
-    expect(screen.getByText('no .planning/')).toBeInTheDocument()
+    expect(screen.getByText('no workflow')).toBeInTheDocument()
     expect(screen.getByText('install workflow skill →')).toBeInTheDocument()
+  })
+
+  // The contradiction a reviewer caught: a GSD-only repo has the workflow
+  // installed, so an install hint is wrong. It needs a migration hint.
+  it('renders a migration hint, not an install hint, for needs-migration', () => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeOverview(),
+      error: null,
+      refetch: vi.fn(),
+    })
+    const item = makeItem({ status: { reachable: true, condition: 'needs-migration' as const, openChanges: [], capabilityCount: 0, lastCommitAt: null } })
+    render(<ProjectCard item={item} onContextMenu={vi.fn()} />, { wrapper })
+    expect(screen.getByText('workflow installed, not yet on OpenSpec')).toBeInTheDocument()
+    expect(screen.getByText('migrate →')).toBeInTheDocument()
+    expect(screen.queryByText('install workflow skill →')).not.toBeInTheDocument()
+  })
+
+  it('renders open changes with task ratios, and no task list where absent', () => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeOverview(),
+      error: null,
+      refetch: vi.fn(),
+    })
+    const item = makeItem({
+      status: {
+        reachable: true,
+        condition: 'migrated' as const,
+        openChanges: [
+          { name: 'add-reader', completedTasks: 23, totalTasks: 69, hasTaskArtifact: true },
+          { name: 'no-tasks', completedTasks: 0, totalTasks: 0, hasTaskArtifact: false },
+        ],
+        capabilityCount: 12,
+        lastCommitAt: null,
+      },
+    })
+    render(<ProjectCard item={item} onContextMenu={vi.fn()} />, { wrapper })
+    expect(screen.getByText(/2 open changes/)).toBeInTheDocument()
+    expect(screen.getByText(/add-reader 23\/69/)).toBeInTheDocument()
+    expect(screen.getByText(/no-tasks no task list/)).toBeInTheDocument()
+  })
+
+  it('says so when a migrated project has no open changes', () => {
+    mockUseProjectOverview.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: makeOverview(),
+      error: null,
+      refetch: vi.fn(),
+    })
+    const item = makeItem({ status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 3, lastCommitAt: null } })
+    render(<ProjectCard item={item} onContextMenu={vi.fn()} />, { wrapper })
+    expect(screen.getByText('no open changes')).toBeInTheDocument()
   })
 
   it('card click calls navigate to /projects/<id>', () => {
@@ -291,5 +357,64 @@ describe('ProjectCard', () => {
     expect(cardContent).not.toContain('animate-pulse')
     expect(cardContent).not.toContain('animate-bounce')
     expect(cardContent).not.toContain('shimmer')
+  })
+})
+
+/*
+ * The card is the triage surface: it is what Donald reads twenty times a day to
+ * decide which project needs him. The detail panel already ranks work in flight
+ * above untouched proposals; the card shipped the daemon's alphabetical order,
+ * so the one change actually moving landed between two zeros.
+ */
+describe('ProjectCard — the change summary is triage-ordered and readable', () => {
+  const withChanges = (openChanges: RegistryListItem['status']['openChanges']): RegistryListItem => ({
+    id: 'p',
+    name: 'p',
+    root: '/tmp/p',
+    client: null,
+    addedAt: '2026-07-26T00:00:00.000Z',
+    tags: [],
+    status: {
+      reachable: true,
+      condition: 'migrated',
+      openChanges,
+      capabilityCount: 3,
+      lastCommitAt: '2026-07-26T00:00:00.000Z',
+    },
+  })
+
+  it('PC-order: the change in flight is summarised before untouched proposals', () => {
+    render(
+      <ProjectCard
+        item={withChanges([
+          { name: 'aaa-untouched', completedTasks: 0, totalTasks: 45, hasTaskArtifact: true },
+          { name: 'zzz-moving', completedTasks: 59, totalTasks: 71, hasTaskArtifact: true },
+        ])}
+        onContextMenu={() => {}}
+      />,
+      { wrapper },
+    )
+
+    const summary = screen.getByTestId('card-change-summary')
+    expect(summary.textContent!.indexOf('zzz-moving')).toBeLessThan(
+      summary.textContent!.indexOf('aaa-untouched'),
+    )
+  })
+
+  it('PC-space: the open-change count does not run into the first change name', () => {
+    render(
+      <ProjectCard
+        item={withChanges([
+          { name: 'add-agent-board', completedTasks: 0, totalTasks: 45, hasTaskArtifact: true },
+        ])}
+        onContextMenu={() => {}}
+      />,
+      { wrapper },
+    )
+
+    // `ml-2` is visual spacing only; with no text node between the spans, every
+    // screen reader and every copy-paste produced "1 open changeadd-agent-board".
+    const card = screen.getByRole('button', { name: /View p/ })
+    expect(card.textContent).not.toMatch(/changes?add-agent-board/)
   })
 })

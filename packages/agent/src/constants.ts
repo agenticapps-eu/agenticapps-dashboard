@@ -23,6 +23,12 @@ export const MAX_READ_BYTES = 5 * 1024 * 1024 // 5 MiB cap on /api/projects/:id/
 export const GIT_ALLOWED_CMDS = ['log', 'status', 'diff-stat', 'branch'] as const
 export type GitAllowedCmd = (typeof GIT_ALLOWED_CMDS)[number]
 
+// filesystem-access-policy — spawn site 3, the OpenSpec reader's `openspec` binary.
+// Both bounds are module constants on purpose: neither is configurable, so
+// neither can be widened or disabled at runtime.
+export const OPENSPEC_SUBPROCESS_TIMEOUT_MS = 5_000
+export const OPENSPEC_MAX_OUTPUT_BYTES = 2 * 1024 * 1024 // 2 MiB of CLI JSON
+
 // D-14-02/D-14-03 — Understand viewer token secret storage (0600).
 export const VIEWER_TOKEN_FILE = join(CONFIG_DIR, 'viewer-token.json')
 

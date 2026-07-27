@@ -1,37 +1,32 @@
 /**
  * SingleProjectView — top-level shell for /projects/{id}.
  *
- * D-5-01: 3-column grid (left=Discipline, center=Phase Progress, right=Health).
- * Phase 4 D-4-09 staged this widening — Phase 5 plan 06 executes it.
- *
- * Panels:
- *   - Plan 04 (Phase 4) filled left + center columns.
- *   - Plan 05/06 (Phase 5) filled the right column with HEALTH-01..05 panels.
- *
- * Wave 5 (Plan 05.1-06):
- *   - V2 is the only mode. PageHeader renders unconditionally. ProjectHeader deleted.
- *   - Column gap normalized gap-4 → gap-6 (Pitfall 8 — consistent 24px rhythm).
+ * Three columns: left = Discipline, centre = Change Progress, right = Health.
+ * The centre column stacks below `xl` so the panels do not truncate to stubs on
+ * a tablet, which is a stated viewing context.
  *
  * document.title is set here (not in ProjectLayout — layout is generic; title is per-page).
  */
 import React, { useEffect } from 'react'
 
+import { useProjectOverview, useRegistryList } from '../lib/registry.js'
+import { formatRelativeTime } from '../lib/relativeTime.js'
+
 import { PageHeader } from './ui/PageHeader.js'
+import { CapabilityPanel } from './panels/CapabilityPanel.js'
+import { ChangeProgress } from './panels/ChangeProgress.js'
+import { MigrationNotice } from './panels/MigrationNotice.js'
+import { UnreachableNotice } from './panels/UnreachableNotice.js'
 import { CommitmentBlock } from './panels/CommitmentBlock.js'
-import { ExecutionTimeline } from './panels/ExecutionTimeline.js'
 import { HookFirings } from './panels/HookFirings.js'
 import { InstalledSkills } from './panels/InstalledSkills.js'
 import { IntegrationsHealth } from './panels/IntegrationsHealth.js'
 import { LinearPanel } from './panels/LinearPanel.js'
 import { ObservabilityHealth } from './panels/ObservabilityHealth.js'
-import { PhaseProgress } from './panels/PhaseProgress.js'
 import { RationalizationFires } from './panels/RationalizationFires.js'
-import { ReviewStatus } from './panels/ReviewStatus.js'
 import { SecretsHealth } from './panels/SecretsHealth.js'
-import { SecurityStatus } from './panels/SecurityStatus.js'
 import { SentryPanel } from './panels/SentryPanel.js'
 import { SkillHealth } from './panels/SkillHealth.js'
-import { VerificationStatus } from './panels/VerificationStatus.js'
 
 export type SingleProjectViewProps = { projectId: string }
 
@@ -40,12 +35,50 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
     document.title = `${projectId} — AgenticApps Dashboard`
   }, [projectId])
 
+  /*
+   * The condition comes from the registry list, which the shell already polls —
+   * no extra request. While it is loading the condition is undefined, which
+   * falls through to the panels; each renders its own loading state, so the
+   * column never flashes the migration notice at a migrated project.
+   */
+  const registry = useRegistryList()
+  const overview = useProjectOverview(projectId)
+  const entry = registry.data?.find((p) => p.id === projectId)
+  const condition = entry?.status.condition
+  const needsMigration = condition === 'needs-migration'
+  /*
+   * Reachability wins over the marker matrix here for the same reason it does in
+   * the daemon: with an unmounted volume the openspec/ stat simply fails, and
+   * Change Progress would state "this project has no openspec/ directory" —
+   * a positive claim about a filesystem the daemon cannot see.
+   */
+  const unreachable = condition === 'unreachable' || entry?.status.reachable === false
+
+  /*
+   * `Single-Project Header Context` asks for the project name and client, the
+   * current branch and a summary of open changes; the needs-migration scenario
+   * additionally requires that branch and last-commit context survive on a
+   * project with no OpenSpec data. The view rendered the id alone, so both were
+   * ratified and unmet. Each piece is omitted rather than faked when absent.
+   */
+  const headerBits = [
+    entry?.client,
+    overview.data?.branch ? `on ${overview.data.branch}` : null,
+    entry?.status.lastCommitAt
+      ? `last commit ${formatRelativeTime(entry.status.lastCommitAt)}`
+      : null,
+  ].filter(Boolean)
+
   return (
     <div>
-      <PageHeader title={projectId} />
+      {/* Spread rather than pass `undefined`: exactOptionalPropertyTypes is on. */}
+      <PageHeader
+        title={projectId}
+        {...(headerBits.length > 0 ? { helper: headerBits.join(' · ') } : {})}
+      />
       <div
         data-testid="single-project-grid"
-        className="grid grid-cols-[1fr_1.5fr_1fr] items-start gap-6"
+        className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_1.5fr_1fr]"
       >
         <section
           data-testid="discipline-column"
@@ -56,16 +89,31 @@ export function SingleProjectView({ projectId }: SingleProjectViewProps): React.
           <HookFirings projectId={projectId} />
           <RationalizationFires projectId={projectId} />
         </section>
+        {/*
+         * Group 5 retired the five phase-artifact panels that lived here, all of
+         * which read `.planning/phases/`. Group 6 fills the column with the two
+         * surfaces the same change ADDS: work in flight above, standing promise
+         * below.
+         *
+         * A `needs-migration` project gets the notice instead of the panels.
+         * Mounting them would put two permanent empty states in the column and
+         * make an explained condition look like missing data.
+         */}
         <section
-          data-testid="phase-progress-column"
-          aria-label="Phase Progress"
+          data-testid="change-progress-column"
+          aria-label="Change Progress"
           className="flex min-w-0 flex-col gap-6"
         >
-          <PhaseProgress projectId={projectId} />
-          <ExecutionTimeline projectId={projectId} />
-          <ReviewStatus projectId={projectId} />
-          <SecurityStatus projectId={projectId} />
-          <VerificationStatus projectId={projectId} />
+          {unreachable ? (
+            <UnreachableNotice root={entry?.root ?? null} />
+          ) : needsMigration ? (
+            <MigrationNotice />
+          ) : (
+            <>
+              <ChangeProgress projectId={projectId} />
+              <CapabilityPanel projectId={projectId} />
+            </>
+          )}
         </section>
         <section
           data-testid="health-column"

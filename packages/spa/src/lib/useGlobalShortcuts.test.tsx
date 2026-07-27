@@ -174,10 +174,15 @@ describe('useGlobalShortcuts', () => {
     renderHarness()
     fireKey('r')
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['discipline'] })
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['phase-progress'] })
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['security'] })
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['agentlinter'] })
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['observability'] })
+    // The centre column is the page's primary content. When phase-progress and
+    // security were retired, nothing replaced them in this list, so R refreshed
+    // eight peripheral panels and skipped the two the user came for.
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['openspec'] })
+    // Retired with the GSD phase reader — the daemon serves neither route.
+    expect(mockInvalidateQueries).not.toHaveBeenCalledWith({ queryKey: ['phase-progress'] })
+    expect(mockInvalidateQueries).not.toHaveBeenCalledWith({ queryKey: ['security'] })
   })
 
   it('GS10: fire "/" on "/"; focuses element with aria-label="Search projects"', () => {

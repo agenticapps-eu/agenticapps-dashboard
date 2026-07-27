@@ -49,9 +49,11 @@ export function TopBar(): React.JSX.Element {
   const registry = useRegistryList()
   const project = isProjectRoute ? registry.data?.find((p) => p.id === projectId) : undefined
   const tags = project?.tags ?? []
-  // currentPhase may be "Phase 5" — StatusPill shows label="Phase" value="5"
-  const currentPhase = project?.status.currentPhase ?? null
-  const phaseNumber = currentPhase ? currentPhase.replace(/^Phase\s*/i, '') : null
+  // Open-change count replaces the synthesised phase number. A migrated project
+  // with no change in flight shows nothing rather than "0" — the pill is a
+  // signal that work is open, not a counter that is usually zero.
+  const openChangeCount =
+    project?.status.condition === 'migrated' ? project.status.openChanges.length : 0
 
   return (
     <header
@@ -68,8 +70,8 @@ export function TopBar(): React.JSX.Element {
             ))}
           </div>
         )}
-        {isProjectRoute && phaseNumber && (
-          <StatusPill label="Phase" value={phaseNumber} />
+        {isProjectRoute && openChangeCount > 0 && (
+          <StatusPill label="Changes" value={String(openChangeCount)} />
         )}
       </div>
 

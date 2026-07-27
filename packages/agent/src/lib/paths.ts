@@ -2,7 +2,28 @@ import { realpath } from 'node:fs/promises'
 import { resolve, isAbsolute, sep, basename, join } from 'node:path'
 import { homedir } from 'node:os'
 
-export const ALLOWED_SUBDIRS = ['.planning', '.claude'] as const
+/**
+ * Top-level project directories readable through /api/projects/:id/read.
+ *
+ * `.planning` stays after the GSD phase reader is retired and is load-bearing,
+ * not residual. Two distinct readers keep it alive, and they read *different*
+ * subtrees:
+ *   - `.planning/skill-observations/` — phaseDetail.ts, reached by
+ *     routes/commitment.ts, routes/observations.ts and routes/discipline.ts.
+ *   - `.planning/phases/<slug>/multi-ai-review-skipped` — the override-sentinel
+ *     scanner, which serves `fleet-coverage`'s Review-Override Visibility.
+ * Relocate both before removing this entry.
+ *
+ * What stopped being read is the phase *artifacts* under `.planning/phases/` —
+ * the plans, reviews and verification files. The directory itself is still read,
+ * for the sentinel above. `.planning/config.json` is project-side workflow
+ * config; no daemon code path reads it.
+ *
+ * `docs/legacy-planning` is deliberately absent — allow-listing `docs/` to reach
+ * relocated GSD history would expose unrelated content, and that history is
+ * archived under `openspec/changes/archive/` anyway.
+ */
+export const ALLOWED_SUBDIRS = ['.planning', '.claude', 'openspec'] as const
 
 export class PathViolation extends Error {
   constructor(message: string) {
@@ -12,12 +33,12 @@ export class PathViolation extends Error {
 }
 
 /**
- * Resolve a relative path under a project root, asserting it stays within
- * .planning/ or .claude/. Defends against:
+ * Resolve a relative path under a project root, asserting it stays within one of
+ * ALLOWED_SUBDIRS. Defends against:
  *  - Absolute paths (isAbsolute check)
  *  - Path traversal via '..' components (pre-check before realpath)
  *  - Planted symlinks escaping allowed roots (realpath follow + prefix check)
- *  - Paths outside .planning or .claude (e.g. .git/HEAD)
+ *  - Paths outside the allow-listed subdirs (e.g. .git/HEAD)
  *
  * See CONTEXT.md D-23.
  */

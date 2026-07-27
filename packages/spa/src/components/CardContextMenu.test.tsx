@@ -32,8 +32,7 @@ function makeItem(overrides: Partial<RegistryListItem> = {}): RegistryListItem {
     addedAt: new Date().toISOString(),
     tags: ['active'],
     status: {
-      reachable: true,
-      currentPhase: '03-home',
+      reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 0,
       lastCommitAt: null,
     },
     ...overrides,

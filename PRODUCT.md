@@ -49,7 +49,7 @@ A single place to see, from any device, what every AgenticApps project's pipelin
 - **No native dependencies in the daemon** — keeps `npx` install portable.
 - **No third-party JS beyond Vite + React + TS + Tailwind + TanStack Query + Zod + lucide-react** in the SPA.
 - **No cloud-side data storage** — daemon never uploads project files.
-- **Impeccable composite floor ≥ 87** (D-6-09.v1, provisional per D-10.5-03). Every frontend-touching phase commits a `<N>-IMPECCABLE.md` artifact from this critique.
+- **Impeccable composite floor ≥ 80** (ratified 2026-06-08; supersedes the provisional ≥ 87 of D-6-09.v1, recalibrated by D-10.5-03). Every frontend-touching change commits an IMPECCABLE artifact from this critique.
 - **Phase boundary discipline** — Phases 0–6 ship a complete dashboard; Phase 7+ are additive integrations (Sentry, Linear, Infisical). Phases 10–11 add cross-family observability (Coverage matrix + Coverage trends + Skill drift).
 
 ## Surfaces in focus this session

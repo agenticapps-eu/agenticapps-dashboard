@@ -5,6 +5,7 @@ import type { RegistryListItem } from '@agenticapps/dashboard-shared'
 
 import { useProjectOverview } from '../lib/registry.js'
 import { useLongPress } from '../lib/touchLongPress.js'
+import { triageOrder } from '../lib/openChange.js'
 
 import { SchemaDriftState } from './SchemaDriftState.js'
 
@@ -17,13 +18,16 @@ export interface ProjectCardProps {
 }
 
 /**
- * Extracts leading digits from a phase dir name.
- * e.g. "03-multi-project-home" => "03"
+ * Render one open change's progress. A change with no task artifact reads as
+ * "no task list" rather than 0/0 — the two are different states, and the
+ * OpenSpec CLI reports zero for both, so the distinction comes from the tree.
  */
-function extractPhaseNum(phase: string | null): string {
-  if (!phase) return '—'
-  const match = /^(\d+)/.exec(phase)
-  return match ? (match[1] ?? phase) : phase
+/** The card previews at most this many changes before collapsing to a count. */
+const MAX_CARD_CHANGES = 3
+
+function taskRatio(c: { completedTasks: number; totalTasks: number; hasTaskArtifact: boolean }): string {
+  if (!c.hasTaskArtifact) return 'no task list'
+  return `${c.completedTasks}/${c.totalTasks}`
 }
 
 /**
@@ -40,54 +44,6 @@ function relativeTime(iso: string | null): string {
   if (diffHours < 24) return `${diffHours}h ago`
   const diffDays = Math.floor(diffHours / 24)
   return `${diffDays}d ago`
-}
-
-/**
- * Single glyph group: emoji + count in fixed-width inline-flex.
- */
-function GlyphGroup({
-  glyph,
-  count,
-}: {
-  glyph: string
-  count: number
-}): React.JSX.Element {
-  return (
-    <span className="inline-flex items-center gap-1 w-12">
-      <span aria-hidden="true">{glyph}</span>
-      {count}
-    </span>
-  )
-}
-
-/**
- * Finding row with colored Unicode glyphs.
- */
-function FindingRow({
-  label,
-  red,
-  yellow,
-  green,
-}: {
-  label: string
-  red: number
-  yellow: number
-  green: number
-}): React.JSX.Element {
-  const ariaLabel = `${red} critical, ${yellow} medium, ${green} low`
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="text-text-secondary font-semibold">{label}</span>
-      <span
-        aria-label={ariaLabel}
-        className="inline-flex items-center gap-2 font-mono text-text-primary"
-      >
-        <GlyphGroup glyph="🔴" count={red} />
-        <GlyphGroup glyph="🟡" count={yellow} />
-        <GlyphGroup glyph="🟢" count={green} />
-      </span>
-    </div>
-  )
 }
 
 export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JSX.Element {
@@ -205,35 +161,67 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
       {/* Phase + data lines (non-unreachable, non-drift) */}
       {!unreachable && !isDrift ? (
         <>
-          {item.status.currentPhase === null ? (
+          {item.status.condition === 'no-workflow' ? (
             <span className="block max-w-[60ch] text-sm">
-              <span className="text-text-secondary">no .planning/</span>
+              <span className="text-text-secondary">no workflow</span>
               {' '}
               <a
-                href="https://github.com/agenticapps/workflow"
+                href="https://github.com/agenticapps-eu/claude-workflow"
                 className="text-accent text-sm underline"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
               >
                 install workflow skill &rarr;
               </a>
             </span>
-          ) : isLoading ? (
-            <span className="text-text-secondary text-sm">—</span>
-          ) : isError ? null : overview.data ? (
-            <span className="text-sm font-semibold text-text-primary">
-              Phase {extractPhaseNum(item.status.currentPhase)} · {overview.data.phaseStatus}
+          ) : item.status.condition === 'needs-migration' ? (
+            /*
+             * The workflow is already installed — telling this user to install
+             * it is the contradiction the review caught. They need to migrate.
+             */
+            <span className="block max-w-[60ch] text-sm">
+              <span className="text-text-secondary">workflow installed, not yet on OpenSpec</span>
+              {' '}
+              <a
+                href="https://github.com/agenticapps-eu/claude-workflow"
+                className="text-accent text-sm underline"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                migrate &rarr;
+              </a>
             </span>
-          ) : null}
+          ) : item.status.openChanges.length === 0 ? (
+            <span className="text-text-secondary text-sm">no open changes</span>
+          ) : (
+            <span
+              data-testid="card-change-summary"
+              className="block text-sm font-semibold text-text-primary"
+            >
+              {item.status.openChanges.length} open change
+              {item.status.openChanges.length === 1 ? '' : 's'}{' '}
+              <span className="ml-2 font-mono font-normal text-text-secondary">
+                {triageOrder(item.status.openChanges)
+                  .slice(0, MAX_CARD_CHANGES)
+                  .map((c) => `${c.name} ${taskRatio(c)}`)
+                  .join(' · ')}
+                {item.status.openChanges.length > MAX_CARD_CHANGES
+                  ? ` · +${item.status.openChanges.length - MAX_CARD_CHANGES} more`
+                  : ''}
+              </span>
+            </span>
+          )}
 
-          {/* Stage 2 finding row (compact, visible when data available) */}
-          {!isLoading && !isError && overview.data?.stage2?.ran ? (
-            <FindingRow
-              label="Stage 2:"
-              red={overview.data.stage2.findings.red}
-              yellow={overview.data.stage2.findings.yellow}
-              green={overview.data.stage2.findings.green}
-            />
-          ) : null}
+          {/*
+           * The Stage 1 / Stage 2 / DB-AUDIT / Verification rows are gone with
+           * the GSD phase reader: each was parsed out of a phase directory's
+           * artifacts, and OpenSpec's REVIEWS.md carries reviewer prose with no
+           * structured severity to aggregate. Per this change's spec delta, a
+           * card field with no derivable source is dropped rather than
+           * approximated. TDD pairs and branch survive — both come from git.
+           */}
 
           {/* Expanded section — hover/focus reveals additional rows */}
           <div
@@ -241,48 +229,12 @@ export function ProjectCard({ item, onContextMenu }: ProjectCardProps): React.JS
           >
             {!isLoading && !isError && overview.data ? (
               <div className="flex flex-col gap-2 pt-2">
-                {/* Stage 1 row (expanded only) */}
-                {overview.data.stage1?.ran ? (
-                  <FindingRow
-                    label="Stage 1:"
-                    red={overview.data.stage1.findings.red}
-                    yellow={overview.data.stage1.findings.yellow}
-                    green={overview.data.stage1.findings.green}
-                  />
-                ) : null}
-
-                {/* DB-AUDIT row (expanded only) */}
-                {overview.data.dbAudit ? (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-text-secondary font-semibold">DB-AUDIT:</span>
-                    <span className="text-text-primary">
-                      {overview.data.dbAudit.findings.critical} critical
-                      {' · '}
-                      {overview.data.dbAudit.findings.high} high
-                      {' · '}
-                      {overview.data.dbAudit.findings.medium} medium
-                      {' · '}
-                      {overview.data.dbAudit.findings.low} low
-                    </span>
-                  </div>
-                ) : null}
-
                 {/* TDD pairs row (expanded only) */}
                 {overview.data.tdd ? (
                   <div className="text-sm">
                     <span className="text-text-secondary font-semibold">TDD pairs: </span>
                     <span className="text-text-primary">
                       {overview.data.tdd.greenPairs}/{overview.data.tdd.totalTasks}
-                    </span>
-                  </div>
-                ) : null}
-
-                {/* Verification row (expanded only) */}
-                {overview.data.verification ? (
-                  <div className="text-sm">
-                    <span className="text-text-secondary font-semibold">Verification: </span>
-                    <span className="text-text-primary">
-                      {overview.data.verification.evidence}/{overview.data.verification.mustHaves}
                     </span>
                   </div>
                 ) : null}

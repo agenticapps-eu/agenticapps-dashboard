@@ -13,7 +13,7 @@ function makeItem(id: string, name: string, tags: string[] = []): RegistryListIt
     client: null,
     addedAt: '2026-05-01T10:00:00.000Z',
     tags,
-    status: { reachable: true, currentPhase: '03-home', lastCommitAt: '2026-05-04T10:00:00.000Z' },
+    status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 0, lastCommitAt: '2026-05-04T10:00:00.000Z' },
   }
 }
 

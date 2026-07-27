@@ -44,8 +44,8 @@ describe('discoverProjects', () => {
     scaffold(parent, {
       // marked via agentic-apps-workflow/SKILL.md
       'marked-via-claude/.claude/skills/agentic-apps-workflow/SKILL.md': false,
-      // marked via .planning/config.json
-      'marked-via-planning/.planning/config.json': false,
+      // marked via openspec/ — replaces the retired .planning/config.json marker
+      'marked-via-openspec/openspec/specs': true,
       // unmarked: has a SKILL.md but NOT for the agentic-apps-workflow skill
       'unmarked-1/README.md': false,
       'unmarked-2/.claude/skills/something-else/SKILL.md': false,
@@ -54,7 +54,7 @@ describe('discoverProjects', () => {
     expect(matches).toHaveLength(2)
     const names = matches.map((m) => m.name).sort()
     expect(names).toContain('marked-via-claude')
-    expect(names).toContain('marked-via-planning')
+    expect(names).toContain('marked-via-openspec')
   })
 
   it('respects depth=1 — does NOT recurse beyond direct children', () => {
@@ -78,14 +78,37 @@ describe('discoverProjects', () => {
     expect(matches[0]?.markers).toContain('agentic-apps-workflow/SKILL.md')
   })
 
-  it('matches .planning/config.json as a marker (D-08)', () => {
+  it('matches an openspec/ directory as a marker', () => {
+    const parent = makeTmpParent()
+    scaffold(parent, {
+      'myproject/openspec/specs': true,
+    })
+    const matches = discoverProjects(parent, { depth: 1 })
+    expect(matches).toHaveLength(1)
+    expect(matches[0]?.markers).toContain('openspec/')
+  })
+
+  // The GSD reader is retired, so offering a match on .planning/config.json
+  // would present projects whose planning state the dashboard cannot read.
+  // Existing registrations are untouched; only the --auto scan stops offering.
+  it('no longer matches .planning/config.json as a marker', () => {
     const parent = makeTmpParent()
     scaffold(parent, {
       'myproject/.planning/config.json': false,
     })
     const matches = discoverProjects(parent, { depth: 1 })
+    expect(matches).toHaveLength(0)
+  })
+
+  it('still matches a repo carrying the workflow skill but no openspec/', () => {
+    const parent = makeTmpParent()
+    scaffold(parent, {
+      'gsdonly/.claude/skills/agentic-apps-workflow/SKILL.md': false,
+      'gsdonly/.planning/config.json': false,
+    })
+    const matches = discoverProjects(parent, { depth: 1 })
     expect(matches).toHaveLength(1)
-    expect(matches[0]?.markers).toContain('.planning/config.json')
+    expect(matches[0]?.markers).toEqual(['agentic-apps-workflow/SKILL.md'])
   })
 
   it('returns empty array for non-existent parentDir', () => {
@@ -98,8 +121,8 @@ describe('registerInteractive', () => {
   it('with --yes registers all matches silently and returns per-match results', async () => {
     const parent = makeTmpParent()
     scaffold(parent, {
-      'proj-a/.planning/config.json': false,
-      'proj-b/.planning/config.json': false,
+      'proj-a/openspec/specs': true,
+      'proj-b/openspec/specs': true,
     })
 
     // Set up isolated registry for this test
@@ -121,7 +144,7 @@ describe('registerInteractive', () => {
   it('with --dry-run returns matches but does NOT call addProject (registry unchanged)', async () => {
     const parent = makeTmpParent()
     scaffold(parent, {
-      'proj-a/.planning/config.json': false,
+      'proj-a/openspec/specs': true,
     })
 
     const regFile = join(parent, 'registry.json')
@@ -146,7 +169,7 @@ describe('registerInteractive', () => {
   it('returns reason=already for a match that was already registered', async () => {
     const parent = makeTmpParent()
     scaffold(parent, {
-      'proj-a/.planning/config.json': false,
+      'proj-a/openspec/specs': true,
     })
     const regFile = join(parent, 'registry.json')
     ensureRegistryFile(regFile)

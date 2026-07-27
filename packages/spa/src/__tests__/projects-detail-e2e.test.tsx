@@ -11,6 +11,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import {
+  ProjectOverviewSchema,
+  OpenspecProjectStateSchema,
+} from '@agenticapps/dashboard-shared'
 import { RouterProvider, createRouter, createMemoryHistory } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
@@ -48,21 +52,37 @@ const REGISTRY_RESPONSE = [
     tags: [],
     addedAt: '2026-05-06T00:00:00Z',
     // Wave 5: AppShellV2 Sidebar reads status.reachable + status.currentPhase for all registered projects.
-    status: { reachable: true, currentPhase: '04-single-project-view', lastCommitAt: '2026-05-06T00:00:00Z' },
+    status: { reachable: true, condition: 'migrated' as const, openChanges: [], capabilityCount: 0, lastCommitAt: '2026-05-06T00:00:00Z' },
   },
 ]
 
-const OVERVIEW_RESPONSE = {
-  branch: 'feature/phase-4',
-  phaseStatus: 'executing',
-  currentPhase: '04-single-project-view',
-  stage1: null,
-  stage2: null,
-  dbAudit: null,
+/*
+ * Parsed through the shared schema so this fixture cannot drift past the strict
+ * boundary it stands in for. `ProjectOverviewSchema` is `.strict()` and now
+ * carries exactly { tdd, branch, markers } — the five phase fields went with the
+ * reader, and condition/openChanges/capabilityCount belong to the registry item,
+ * not the overview.
+ */
+const OVERVIEW_RESPONSE = ProjectOverviewSchema.parse({
+  branch: 'feat/openspec-project-reader',
   tdd: { greenPairs: 5, totalTasks: 6 },
-  verification: { mustHavesTotal: 9, mustHavesEvidenced: 0 },
-  markers: { workflowSkillInstalled: true, metaObserverInstalled: true },
-}
+  markers: { gitRepo: true, planning: true, claudeSkills: true },
+})
+
+const OPENSPEC_RESPONSE = OpenspecProjectStateSchema.parse({
+  present: true,
+  openChanges: [
+    {
+      name: 'add-thing',
+      completedTasks: 2,
+      totalTasks: 3,
+      hasTaskArtifact: true,
+      affectedCapabilities: ['daemon-runtime'],
+    },
+  ],
+  capabilities: [{ id: 'daemon-runtime', requirementCount: 9 }],
+  archived: [],
+})
 
 const COMMITMENT_RESPONSE = {
   markdown: '## Workflow commitment\n- Follow TDD discipline\n- No shortcuts',
@@ -155,6 +175,9 @@ function buildMockApiFetch(overrides: Record<string, unknown> = {}) {
   return async (path: string) => {
     if (path === '/api/registry') {
       return { ok: true, data: overrides['registry'] ?? REGISTRY_RESPONSE }
+    }
+    if (path === '/api/projects/acme/openspec') {
+      return { ok: true, data: overrides['openspec'] ?? OPENSPEC_RESPONSE }
     }
     if (path === '/api/projects/acme/overview') {
       return { ok: true, data: overrides['overview'] ?? OVERVIEW_RESPONSE }
@@ -261,18 +284,18 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
     )
   })
 
-  it('E2E2: all 8 panel headings mount (all panels rendered)', async () => {
+  /*
+   * Five of the original eight panels were phase-artifact readers, retired with
+   * the GSD reader in task group 5. The three that survive read
+   * `.planning/skill-observations/`, which is untouched.
+   */
+  it('E2E2: the surviving discipline panel headings mount', async () => {
     await renderProjectDetail()
 
     const panelTitles = [
       'Commitment',
       'Hook Firings',
       'Rationalization Fires',
-      'Phase Progress',
-      'Execution Timeline',
-      'Review Status',
-      'Security Status',
-      'Verification Status',
     ]
 
     for (const title of panelTitles) {
@@ -297,46 +320,6 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
     )
   })
 
-  it('E2E4 (ROADMAP criterion 3): ExecutionTimeline renders RED/GREEN commit pairs', async () => {
-    await renderProjectDetail()
-
-    await waitFor(
-      () => {
-        // ExecutionTimeline renders task header + commit subjects
-        expect(screen.getByText(/Task 04-01/)).toBeDefined()
-        expect(screen.getByText(/test\(04-01\): add failing tests/)).toBeDefined()
-        expect(screen.getByText(/feat\(04-01\): implement schemas/)).toBeDefined()
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('E2E5 (ROADMAP criterion 4): ReviewStatus renders all 4 severity glyphs', async () => {
-    await renderProjectDetail()
-
-    await waitFor(
-      () => {
-        // ReviewStatus renders Stage 1 with severity glyphs
-        expect(screen.getByText('Stage 1')).toBeDefined()
-        const bodyText = document.body.textContent ?? ''
-        expect(bodyText).toContain('🟡')
-        expect(bodyText).toContain('⚪')
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('E2E6 (ROADMAP criterion 5): VerificationStatus shows must-haves count vs evidence', async () => {
-    await renderProjectDetail()
-
-    await waitFor(
-      () => {
-        expect(screen.getByText('7 / 9 must-haves evidenced')).toBeDefined()
-      },
-      { timeout: 5000 },
-    )
-  })
-
   it('E2E7 (cross-project leakage guard): switching projects produces independent cache entries', async () => {
     // First render at /projects/acme
     const { queryClient } = await renderProjectDetail()
@@ -351,12 +334,32 @@ describe('Phase 4 e2e: /projects/:id detail route', () => {
 
     // beta project should NOT have an acme cache entry
     expect(queryClient.getQueryData(['commitment', 'beta'])).toBeUndefined()
-    expect(queryClient.getQueryData(['phase-progress', 'beta'])).toBeUndefined()
+    expect(queryClient.getQueryData(['discipline', 'beta'])).toBeUndefined()
 
     // acme's entry should be independent
-    const acmeCommitment = queryClient.getQueryData(['commitment', 'acme'])
-    const acmePhaseProgress = queryClient.getQueryData(['phase-progress', 'acme'])
-    expect(acmeCommitment).not.toBeUndefined()
-    expect(acmePhaseProgress).not.toBeUndefined()
+    expect(queryClient.getQueryData(['commitment', 'acme'])).not.toBeUndefined()
+  })
+})
+
+/*
+ * The centre column had no integration coverage: without a handler for the new
+ * route the mock fell through to `{}`, `present` came back undefined, and both
+ * panels rendered their not-on-OpenSpec path while the assertions still passed.
+ */
+describe('projects/$projectId — the OpenSpec centre column', () => {
+  afterEach(() => cleanup())
+
+  it('E2E8: renders Change Progress and Capabilities from the daemon payload', async () => {
+    await renderProjectDetail()
+
+    // Both headings render during loading too, so waiting on them alone proves
+    // nothing. Wait on the payload-derived content.
+    await waitFor(() => {
+      expect(screen.getByText('2/3')).toBeDefined()
+    })
+    expect(screen.getByRole('heading', { level: 2, name: 'Change Progress' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Capabilities' })).toBeDefined()
+    expect(screen.getByTestId('capability-daemon-runtime')).toBeDefined()
+    expect(screen.getByTestId('change-add-thing')).toBeDefined()
   })
 })

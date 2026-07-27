@@ -49,14 +49,25 @@ import { TopBar } from './TopBar.js'
 
 const mockUseRegistryList = vi.mocked(useRegistryList)
 
-const makeProject = (id: string, tags: string[], currentPhase: string | null): RegistryListItem => ({
+const makeProject = (id: string, tags: string[], openChangeCount = 0): RegistryListItem => ({
   id,
   name: id,
   root: `/projects/${id}`,
   client: null,
   addedAt: '2026-01-01T00:00:00.000Z',
   tags,
-  status: { reachable: true, currentPhase, lastCommitAt: null },
+  status: {
+    reachable: true,
+    condition: 'migrated' as const,
+    openChanges: Array.from({ length: openChangeCount }, (_, i) => ({
+      name: `change-${i}`,
+      completedTasks: 0,
+      totalTasks: 3,
+      hasTaskArtifact: true,
+    })),
+    capabilityCount: 0,
+    lastCommitAt: null,
+  },
 })
 
 beforeEach(() => {
@@ -124,7 +135,7 @@ describe('TopBar', () => {
       { id: '/projects/$projectId', fullPath: '/projects/$projectId', params: { projectId: 'proj-1' } },
     ])
     mockUseRegistryList.mockReturnValue({
-      data: [makeProject('proj-1', ['enterprise', 'beta'], 'Phase 5')],
+      data: [makeProject('proj-1', ['enterprise', 'beta'], 5)],
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useRegistryList>)
@@ -133,14 +144,14 @@ describe('TopBar', () => {
 
     expect(screen.getByText('enterprise')).toBeDefined()
     expect(screen.getByText('beta')).toBeDefined()
-    // StatusPill renders "Phase" label and "Phase 5" value
-    expect(screen.getByText('Phase')).toBeDefined()
+    // StatusPill renders the "Changes" label and the open-change count
+    expect(screen.getByText('Changes')).toBeDefined()
     expect(screen.getByText('5')).toBeDefined()
   })
 
   it('TB7: on "/" route, NO project tags or StatusPill rendered', () => {
     mockUseRegistryList.mockReturnValue({
-      data: [makeProject('proj-1', ['enterprise', 'beta'], 'Phase 5')],
+      data: [makeProject('proj-1', ['enterprise', 'beta'], 5)],
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useRegistryList>)
@@ -208,7 +219,7 @@ describe('D-6.1-04 aria-live status region', () => {
       { id: '/projects/$projectId', fullPath: '/projects/$projectId', params: { projectId: 'proj-1' } },
     ])
     mockUseRegistryList.mockReturnValue({
-      data: [makeProject('proj-1', [], 'Phase 5')],
+      data: [makeProject('proj-1', [], 5)],
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useRegistryList>)
@@ -216,7 +227,7 @@ describe('D-6.1-04 aria-live status region', () => {
     render(<TopBar />)
     const liveRegion = screen.getByRole('status')
     // The phase StatusPill should be inside the live region.
-    expect(liveRegion.textContent).toMatch(/Phase/)
+    expect(liveRegion.textContent).toMatch(/Changes/)
   })
 
   it('aria-live is polite (NOT assertive)', () => {

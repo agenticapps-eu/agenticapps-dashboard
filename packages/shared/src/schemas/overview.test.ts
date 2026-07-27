@@ -3,12 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { ProjectOverviewSchema } from './overview.js'
 
 const minimalValid = {
-  phaseStatus: 'Pending' as const,
-  stage1: null,
-  stage2: null,
-  dbAudit: null,
   tdd: null,
-  verification: null,
   branch: null,
   markers: { gitRepo: false, planning: false, claudeSkills: false },
 }
@@ -18,32 +13,42 @@ describe('ProjectOverviewSchema', () => {
     expect(() => ProjectOverviewSchema.parse(minimalValid)).not.toThrow()
   })
 
-  it('accepts rich valid overview with populated sub-objects', () => {
+  it('accepts a populated overview', () => {
     const richValid = {
-      phaseStatus: 'In Progress',
-      stage1: { ran: true, findings: { red: 0, yellow: 2, green: 5 } },
-      stage2: null,
-      dbAudit: { findings: { critical: 0, high: 1, medium: 0, low: 0 } },
       tdd: { greenPairs: 4, totalTasks: 5 },
-      verification: { evidence: 3, mustHaves: 4 },
       branch: 'main',
       markers: { gitRepo: true, planning: true, claudeSkills: false },
     }
     expect(() => ProjectOverviewSchema.parse(richValid)).not.toThrow()
   })
 
-  it('rejects invalid phaseStatus "Done"', () => {
-    expect(() =>
-      ProjectOverviewSchema.parse({ ...minimalValid, phaseStatus: 'Done' })
-    ).toThrow()
-  })
-
-  it('rejects negative finding counts', () => {
+  it('rejects negative TDD counts', () => {
     expect(() =>
       ProjectOverviewSchema.parse({
         ...minimalValid,
-        stage1: { ran: true, findings: { red: -1, yellow: 0, green: 0 } },
-      })
+        tdd: { greenPairs: -1, totalTasks: 0 },
+      }),
     ).toThrow()
+  })
+
+  /*
+   * The GSD phase reader is retired. Every field below was sourced from
+   * `.planning/phases/<N>/` artifacts, which the daemon no longer reads. The
+   * schema is strict so a stale producer is a parse failure rather than a
+   * silently-dropped key — the same defence the registry schema took.
+   */
+  it.each(['phaseStatus', 'stage1', 'stage2', 'dbAudit', 'verification'])(
+    'rejects the retired phase field %s',
+    (field) => {
+      expect(() =>
+        ProjectOverviewSchema.parse({ ...minimalValid, [field]: null }),
+      ).toThrow()
+    },
+  )
+
+  it('no longer exports the phase finding-count schemas', async () => {
+    const mod = await import('./overview.js')
+    expect(Object.keys(mod)).not.toContain('FindingCountsSchema')
+    expect(Object.keys(mod)).not.toContain('DbAuditFindingsSchema')
   })
 })
