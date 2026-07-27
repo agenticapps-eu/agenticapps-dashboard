@@ -72,6 +72,7 @@ export const WORKFLOW_FLEET: readonly WorkflowFleetEntry[] = [
     role: 'host',
     directoryName: 'claude-workflow',
     artifacts: HOST_ARTIFACTS,
+    provenanceManifest: 'tools/core-vendor.manifest',
     skillSource: {
       kind: 'explicit',
       skills: CLAUDE_SKILLS,
@@ -82,6 +83,7 @@ export const WORKFLOW_FLEET: readonly WorkflowFleetEntry[] = [
     role: 'host',
     directoryName: 'codex-workflow',
     artifacts: HOST_ARTIFACTS,
+    provenanceManifest: 'tools/core-vendor.manifest',
     skillSource: directorySkills('agentic-apps-workflow'),
   },
   {
@@ -89,6 +91,7 @@ export const WORKFLOW_FLEET: readonly WorkflowFleetEntry[] = [
     role: 'host',
     directoryName: 'opencode-workflow',
     artifacts: HOST_ARTIFACTS,
+    provenanceManifest: 'tools/core-vendor.manifest',
     skillSource: directorySkills('agentic-apps-workflow'),
   },
   {
@@ -96,6 +99,7 @@ export const WORKFLOW_FLEET: readonly WorkflowFleetEntry[] = [
     role: 'host',
     directoryName: 'pi-agentic-apps-workflow',
     artifacts: HOST_ARTIFACTS,
+    provenanceManifest: 'tools/core-vendor.manifest',
     skillSource: directorySkills('agentic-apps-workflow'),
   },
 ]

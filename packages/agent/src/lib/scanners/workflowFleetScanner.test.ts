@@ -82,6 +82,7 @@ describe('WORKFLOW_FLEET', () => {
         'change-gate-harness': 'tools/change-gate-conformance.sh',
         'reviewer-cli-harness': 'tools/reviewer-cli-conformance.sh',
       })
+      expect(host.provenanceManifest).toBe('tools/core-vendor.manifest')
     }
   })
 
