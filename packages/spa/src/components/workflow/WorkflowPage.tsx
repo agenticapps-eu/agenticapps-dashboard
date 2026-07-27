@@ -1,19 +1,12 @@
 import { useState, type ReactElement } from 'react'
-import {
-  Boxes,
-  FlaskConical,
-  GitCompareArrows,
-} from 'lucide-react'
+import { Boxes, FlaskConical, GitCompareArrows } from 'lucide-react'
 import type {
   WorkflowHarnessRequest,
   WorkflowHarnessResult,
   WorkflowResponse,
 } from '@agenticapps/dashboard-shared'
 
-import {
-  useRunWorkflowHarness,
-  useWorkflow,
-} from '../../lib/workflowQueries.js'
+import { useRunWorkflowHarness, useWorkflow } from '../../lib/workflowQueries.js'
 import { SchemaDriftState } from '../SchemaDriftState.js'
 import { Card } from '../ui/Card.js'
 import { CardHeader } from '../ui/CardHeader.js'
@@ -50,10 +43,7 @@ const HARNESS_ROWS: ReadonlyArray<{
   },
 ]
 
-const ROOT_LABELS: Record<
-  WorkflowResponse['machineRoots'][number]['rootId'],
-  string
-> = {
+const ROOT_LABELS: Record<WorkflowResponse['machineRoots'][number]['rootId'], string> = {
   'agenticapps-bin': 'Machine-wide tools',
   'claude-skills': 'Claude skills',
   'codex-skills': 'Codex skills',
@@ -100,8 +90,9 @@ function artifactFor(
 
 function provenanceState(
   host: WorkflowHost,
-): WorkflowArtifact['provenance']['state'] {
+): WorkflowArtifact['provenance']['state'] | 'unavailable' {
   const states = host.artifacts.map(({ provenance }) => provenance.state)
+  if (states.length === 0) return 'unavailable'
   if (states.includes('invalid')) return 'invalid'
   if (states.includes('absent')) return 'absent'
   return 'valid'
@@ -130,15 +121,9 @@ function resultClass(result: WorkflowHarnessResult): string {
 
 function LoadingState(): ReactElement {
   return (
-    <div
-      aria-label="Loading workflow fleet"
-      className="grid gap-6"
-    >
+    <div aria-label="Loading workflow fleet" className="grid gap-6">
       {[1, 2, 3].map((item) => (
-        <div
-          key={item}
-          className="h-40 animate-pulse rounded-card bg-card-bg shadow-card"
-        />
+        <div key={item} className="h-40 animate-pulse rounded-card bg-card-bg shadow-card" />
       ))}
     </div>
   )
@@ -146,13 +131,8 @@ function LoadingState(): ReactElement {
 
 function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
   return (
-    <section
-      role="status"
-      className="rounded-card bg-card-bg p-6 shadow-card"
-    >
-      <h2 className="text-lg font-semibold text-text-primary">
-        Could not load workflow data.
-      </h2>
+    <section role="status" className="rounded-card bg-card-bg p-6 shadow-card">
+      <h2 className="text-lg font-semibold text-text-primary">Could not load workflow data.</h2>
       <p className="mt-2 text-sm text-text-tertiary">
         Check that the dashboard agent is available, then try again.
       </p>
@@ -186,9 +166,7 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
         <table className="min-w-[760px] w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-tertiary">
-              <th className="sticky left-0 bg-card-bg py-3 pr-5 font-medium">
-                Host
-              </th>
+              <th className="sticky left-0 bg-card-bg py-3 pr-5 font-medium">Host</th>
               <th className="px-3 py-3 font-medium">Primary skill</th>
               <th className="px-3 py-3 font-medium">Skill range</th>
               <th className="px-3 py-3 font-medium">Migration position</th>
@@ -196,10 +174,7 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
           </thead>
           <tbody>
             {data.hosts.map((host) => (
-              <tr
-                key={host.hostId}
-                className="border-b border-border-subtle last:border-b-0"
-              >
+              <tr key={host.hostId} className="border-b border-border-subtle last:border-b-0">
                 <th className="sticky left-0 bg-card-bg py-4 pr-5 font-mono text-xs font-semibold text-text-primary">
                   {host.hostId}
                 </th>
@@ -207,23 +182,18 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                   <span className="tabular-nums text-text-primary">
                     {host.primary?.version ?? 'Unknown'}
                   </span>
-                  <span
-                    className={`ml-2 text-xs font-medium ${stateTextClass(host.coreState)}`}
-                  >
+                  <span className={`ml-2 text-xs font-medium ${stateTextClass(host.coreState)}`}>
                     {capitalized(host.coreState)}
                   </span>
                 </td>
                 <td className="px-3 py-4">
                   <span className="tabular-nums text-text-primary">
-                    {host.minimum && host.maximum
-                      ? `${host.minimum}–${host.maximum}`
-                      : 'Unknown'}
+                    {host.minimum && host.maximum ? `${host.minimum}–${host.maximum}` : 'Unknown'}
                   </span>
                   {host.laggards.length > 0 ? (
                     <details className="mt-2">
                       <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                        {host.laggards.length}{' '}
-                        {host.laggards.length === 1 ? 'laggard' : 'laggards'}
+                        {host.laggards.length} {host.laggards.length === 1 ? 'laggard' : 'laggards'}
                       </summary>
                       <ul className="mt-2 space-y-1 text-xs text-text-tertiary">
                         {host.laggards.map((laggard) => (
@@ -234,15 +204,11 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                       </ul>
                     </details>
                   ) : (
-                    <span className="ml-2 text-xs text-status-success">
-                      Aligned
-                    </span>
+                    <span className="ml-2 text-xs text-status-success">Aligned</span>
                   )}
                 </td>
                 <td className="px-3 py-4 tabular-nums text-text-secondary">
-                  {host.migration.highest
-                    ? `Offered ${host.migration.highest}`
-                    : 'None offered'}
+                  {host.migration.highest ? `Offered ${host.migration.highest}` : 'None offered'}
                 </td>
               </tr>
             ))}
@@ -254,9 +220,7 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
 }
 
 function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
-  const machineTools = data.machineRoots.find(
-    ({ rootId }) => rootId === 'agenticapps-bin',
-  )
+  const machineTools = data.machineRoots.find(({ rootId }) => rootId === 'agenticapps-bin')
 
   return (
     <Card ariaLabelledBy="workflow-artifacts-heading">
@@ -275,14 +239,9 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
         <table className="min-w-[900px] w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-tertiary">
-              <th className="sticky left-0 bg-card-bg py-3 pr-5 font-medium">
-                Artefact
-              </th>
+              <th className="sticky left-0 bg-card-bg py-3 pr-5 font-medium">Artefact</th>
               {data.hosts.map((host) => (
-                <th
-                  key={host.hostId}
-                  className="px-3 py-3 font-mono text-[11px] font-medium"
-                >
+                <th key={host.hostId} className="px-3 py-3 font-mono text-[11px] font-medium">
                   {host.hostId}
                 </th>
               ))}
@@ -290,10 +249,7 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
           </thead>
           <tbody>
             {ARTIFACT_ROWS.map((row) => (
-              <tr
-                key={row.id}
-                className="border-b border-border-subtle"
-              >
+              <tr key={row.id} className="border-b border-border-subtle">
                 <th className="sticky left-0 bg-card-bg py-4 pr-5 font-medium text-text-primary">
                   {row.label}
                 </th>
@@ -308,9 +264,7 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
                               {artifact.marker.version}
                             </span>
                           )}
-                          <span
-                            className={`text-xs font-medium ${stateTextClass(artifact.state)}`}
-                          >
+                          <span className={`text-xs font-medium ${stateTextClass(artifact.state)}`}>
                             {capitalized(artifact.state)}
                           </span>
                         </div>
@@ -403,28 +357,18 @@ function HarnessResults({
       />
       <div className="grid gap-4 xl:grid-cols-2">
         {hosts.map((host) => (
-          <article
-            key={host.hostId}
-            className="rounded-lg border border-border-subtle p-4"
-          >
-            <h3 className="font-mono text-xs font-semibold text-text-primary">
-              {host.hostId}
-            </h3>
+          <article key={host.hostId} className="rounded-lg border border-border-subtle p-4">
+            <h3 className="font-mono text-xs font-semibold text-text-primary">{host.hostId}</h3>
             <div className="mt-3 grid gap-3">
               {HARNESS_ROWS.map((harness) => {
                 const key = `${host.hostId}:${harness.id}`
                 const result = results[key]
                 const running = runningKey === key
                 return (
-                  <div
-                    key={harness.id}
-                    className="rounded-md bg-app-bg p-3"
-                  >
+                  <div key={harness.id} className="rounded-md bg-app-bg p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-text-primary">
-                          {harness.label}
-                        </p>
+                        <p className="text-sm font-medium text-text-primary">{harness.label}</p>
                         {result ? (
                           <p className={`mt-1 text-xs font-semibold ${resultClass(result)}`}>
                             {resultLabel(result)}
@@ -434,9 +378,7 @@ function HarnessResults({
                             Request failed
                           </p>
                         ) : (
-                          <p className="mt-1 text-xs text-text-tertiary">
-                            No current result
-                          </p>
+                          <p className="mt-1 text-xs text-text-tertiary">No current result</p>
                         )}
                       </div>
                       <button
@@ -474,9 +416,7 @@ function HarnessResults({
 export function WorkflowPage(): ReactElement {
   const workflow = useWorkflow()
   const harness = useRunWorkflowHarness()
-  const [results, setResults] = useState<
-    Record<string, WorkflowHarnessResult | undefined>
-  >({})
+  const [results, setResults] = useState<Record<string, WorkflowHarnessResult | undefined>>({})
   const [errors, setErrors] = useState<Record<string, boolean | undefined>>({})
   const [runningKey, setRunningKey] = useState<string | null>(null)
 
