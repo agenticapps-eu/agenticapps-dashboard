@@ -16,8 +16,10 @@ context: |
 
   Hard architectural constraints (non-negotiable; see
   openspec/specs/filesystem-access-policy/spec.md):
-    - Read-only on every registered project's filesystem. Sole exception is the
-      user-driven POST /api/projects/{id}/open, which spawns $EDITOR.
+    - Read-only on every registered project's filesystem. The user-driven
+      foreign-process exceptions are POST /api/projects/{id}/open, which spawns
+      $EDITOR, and POST /api/v2/workflow/harness, which runs only a fixed,
+      bounded conformance command selected by symbolic identifiers.
     - Per-project path allow-list: /read resolves only under <root>/.planning or
       <root>/.claude. Reject `..`, absolute paths, and realpath escapes.
     - Daemon writes confined to ~/.agenticapps/dashboard/, mode 0600 (0700 for

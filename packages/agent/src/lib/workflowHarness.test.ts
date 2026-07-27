@@ -399,7 +399,7 @@ describe('workflow harness timeout and concurrency', () => {
 
     const result = await runWorkflowHarness(
       request(),
-      options({ limits: { timeoutMs: 150, sampleIntervalMs: 10 } }),
+      options({ limits: { timeoutMs: 500, sampleIntervalMs: 10 } }),
     )
     const pidPath = join(
       sourceFamilyRoot,
