@@ -145,6 +145,28 @@ describe('scanWorkflowHostSkills', () => {
     expect(result.divergent).toBe(false)
   })
 
+  it('ignores non-directory and hidden entries in a directory skill root', () => {
+    writeSkill(
+      'skills/agentic-apps-workflow/SKILL.md',
+      'agentic-apps-workflow',
+      ['implements_spec: 1.0.0'],
+    )
+    writeFileSync(join(tmpDir, 'skills', 'README.md'), '# Skills\n')
+    writeFileSync(join(tmpDir, 'skills', '.DS_Store'), 'metadata')
+
+    const result = scanWorkflowHostSkills(
+      'codex-workflow',
+      tmpDir,
+      '1.0.0',
+      makeResolver(tmpDir),
+    )
+
+    expect(result.skills.map(({ id }) => id)).toEqual([
+      'agentic-apps-workflow',
+    ])
+    expect(result.internallyConsistent).toBe(true)
+  })
+
   it('keeps an explained older pin divergent from core', () => {
     writeSkill(
       'skills/agentic-apps-workflow/SKILL.md',

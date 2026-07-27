@@ -385,6 +385,39 @@ describe('workflow harness private state and redaction', () => {
 })
 
 describe('workflow harness timeout and concurrency', () => {
+  it('kills a descendant that starts a separate process group', async () => {
+    const escapedPidPath = join(
+      sourceFamilyRoot,
+      'codex-workflow',
+      'bin',
+      'escaped.pid',
+    )
+    seed(
+      'codex-workflow',
+      'change-gate',
+      script(
+        `node -e 'const {spawn}=require("node:child_process");` +
+          `const {writeFileSync}=require("node:fs");` +
+          `const child=spawn("sleep",["30"],{detached:true,stdio:"ignore"});` +
+          `writeFileSync(process.argv[1],String(child.pid));` +
+          `child.unref();setTimeout(()=>{},500)' "${escapedPidPath}"\n` +
+          'sleep 30',
+      ),
+    )
+
+    const result = await runWorkflowHarness(
+      request(),
+      options({ limits: { timeoutMs: 350, sampleIntervalMs: 10 } }),
+    )
+    const pid = Number(readFileSync(escapedPidPath, 'utf8'))
+
+    expect(result).toMatchObject({
+      state: 'timeout',
+      reason: 'time-limit',
+    })
+    expect(await waitForGone(pid)).toBe(true)
+  }, 5_000)
+
   it('terminates an active process group when the daemon disposer runs', async () => {
     seed(
       'codex-workflow',
