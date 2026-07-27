@@ -210,6 +210,24 @@ describe('boot.ts assertSnapshotDirInDaemonHome (T-11-02-03)', () => {
     expect(() => assertSnapshotDirInDaemonHome()).toThrow(/escapes daemon home/)
   })
 
+  it('throws when workflow-harness realpaths outside daemon home', () => {
+    const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-harness-home-'))
+    const daemonHome = join(homeDir, '.agenticapps', 'dashboard')
+    mkdirSync(daemonHome, { recursive: true, mode: 0o700 })
+
+    const outside = mkdtempSync(join(tmpdir(), 'agentic-harness-escape-'))
+    symlinkSync(outside, join(daemonHome, 'workflow-harness'))
+
+    cleanups.push(() => rmSync(homeDir, { recursive: true, force: true }))
+    cleanups.push(() => rmSync(outside, { recursive: true, force: true }))
+
+    process.env.HOME = homeDir
+
+    expect(() => assertSnapshotDirInDaemonHome()).toThrow(
+      /workflow-harness dir escapes daemon home/,
+    )
+  })
+
   it('Test 2: happy path — normal directory under daemon home passes', () => {
     const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-home-ok-'))
     const daemonHome = join(homeDir, '.agenticapps', 'dashboard')
