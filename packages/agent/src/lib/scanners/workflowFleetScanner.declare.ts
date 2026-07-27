@@ -19,6 +19,7 @@ export interface WorkflowSkillPath {
   id: string
   relativePath: string
   primary?: true
+  machineInstalled?: false
 }
 
 export type WorkflowSkillSource =
