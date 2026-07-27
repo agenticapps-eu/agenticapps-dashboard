@@ -1,9 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -57,7 +52,9 @@ describe('scanWorkflowFleet', () => {
       state: 'available',
       specVersion: '1.0.0',
     })
-    expect(result.hosts.map(({ hostId, state }) => ({ hostId, state }))).toEqual([
+    expect(
+      result.hosts.map(({ hostId, state }) => ({ hostId, state })),
+    ).toEqual([
       { hostId: 'claude-workflow', state: 'missing' },
       { hostId: 'codex-workflow', state: 'available' },
       { hostId: 'opencode-workflow', state: 'missing' },
@@ -88,7 +85,7 @@ describe('scanWorkflowFleet', () => {
       'codex-workflow/skills/agentic-apps-workflow/SKILL.md',
       '---\nname: agentic-apps-workflow\nimplements_spec: 0.9.0\n---\n',
     )
-    write('codex-workflow/migrations/0032.md', '# Migration 0032\n')
+    write('codex-workflow/migrations/0032-example.md', '# Migration 0032\n')
     write(
       'codex-workflow/bin/openspec-change-gate.sh',
       '#!/bin/sh\n# artifact-version: 1.2.2\n',
@@ -115,6 +112,8 @@ describe('scanWorkflowFleet', () => {
       migration: { kind: 'offered', highest: '0032' },
     })
     expect(codex.artifacts).toHaveLength(4)
-    expect(codex.artifacts.every(({ state }) => state === 'unavailable')).toBe(true)
+    expect(codex.artifacts.every(({ state }) => state === 'unavailable')).toBe(
+      true,
+    )
   })
 })

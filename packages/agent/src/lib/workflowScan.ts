@@ -115,7 +115,7 @@ export async function scanWorkflowFleet(
   const settled = await Promise.allSettled(
     hostEntries.map(async (entry) => {
       const hostRoot = resolveRepo(sourceFamilyRoot, entry, resolve)
-      if (!hostRoot || !coreRoot) return missingHost(entry.id)
+      if (!hostRoot) return missingHost(entry.id)
 
       const skills = scanWorkflowHostSkills(
         entry.id,
@@ -126,7 +126,7 @@ export async function scanWorkflowFleet(
       const artifacts = scanWorkflowHostArtifacts(
         entry.id,
         hostRoot,
-        coreRoot,
+        coreRoot ?? undefined,
         resolve,
       )
       return {

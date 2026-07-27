@@ -259,7 +259,7 @@ function compareArtifact(
 export function scanWorkflowHostArtifacts(
   hostId: WorkflowHostId,
   hostRepoRoot: string,
-  coreRepoRoot: string,
+  coreRepoRoot: string | undefined,
   resolve: PathResolver,
 ): WorkflowHostArtifactSummary {
   const hostEntry = WORKFLOW_FLEET.find(({ id }) => id === hostId)

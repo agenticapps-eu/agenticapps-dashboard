@@ -123,7 +123,9 @@ describe('workflow queries', () => {
   })
 
   it('reads cached harness results without a mutation', async () => {
-    mockFetch.mockReturnValue(jsonResponse([{ ...harnessResult, cached: true }]))
+    mockFetch.mockReturnValue(
+      jsonResponse([{ ...harnessResult, cached: true }]),
+    )
 
     const { result } = renderHook(() => useWorkflowHarnessResults(), {
       wrapper,

@@ -15,12 +15,35 @@ import {
 import { apiFetch } from './api.js'
 
 export const WORKFLOW_QUERY_KEY = ['workflow'] as const
+const WORKFLOW_HARNESS_RESULTS_QUERY_KEY = [
+  'workflow',
+  'harness-results',
+] as const
 
 export function useWorkflow(): UseQueryResult<WorkflowResponse, Error> {
   return useQuery({
     queryKey: WORKFLOW_QUERY_KEY,
     queryFn: async () => {
       const result = await apiFetch('/api/v2/workflow', WorkflowResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useWorkflowHarnessResults(): UseQueryResult<
+  WorkflowHarnessResult[],
+  Error
+> {
+  return useQuery({
+    queryKey: WORKFLOW_HARNESS_RESULTS_QUERY_KEY,
+    queryFn: async () => {
+      const result = await apiFetch(
+        '/api/v2/workflow/harness',
+        WorkflowHarnessResultSchema.array(),
+      )
       if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
       return result.data
     },

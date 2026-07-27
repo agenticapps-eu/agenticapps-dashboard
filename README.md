@@ -58,6 +58,8 @@ Multi-device access: bind the agent to your Tailscale hostname (`agentic-dashboa
 
 8. **Does this work on Windows?** Not in v1.0. macOS (LaunchAgent) and Linux (systemd) only. The Windows install path is deferred to v2 or beyond.
 
+9. **Can the workflow repositories live somewhere else?** Yes. Set `AGENTICAPPS_WORKFLOW_SOURCE_ROOT` before starting the daemon to relocate the fixed five-repository workflow family. The value changes only the parent directory; repository names and harness paths remain fixed by the daemon.
+
 ## Troubleshooting
 
 ![Single-project view](docs/img/project.png)

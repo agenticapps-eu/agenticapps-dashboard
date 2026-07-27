@@ -145,8 +145,7 @@ describe('GET /api/v2/workflow', () => {
 
   it('reads current cached harness results without starting a process', async () => {
     vi.mocked(readWorkflowHarnessResult).mockImplementation(async (request) =>
-      request.hostId === 'codex-workflow' &&
-      request.harnessId === 'change-gate'
+      request.hostId === 'codex-workflow' && request.harnessId === 'change-gate'
         ? harnessResultFixture()
         : null,
     )
@@ -180,7 +179,9 @@ describe('GET /api/v2/workflow', () => {
       })
       expect(readWorkflowHarnessResult).toHaveBeenCalledWith(
         expect.any(Object),
-        { sourceFamilyRoot: '/srv/workflow-family' },
+        {
+          sourceFamilyRoot: '/srv/workflow-family',
+        },
       )
     } finally {
       delete process.env.AGENTICAPPS_WORKFLOW_SOURCE_ROOT
@@ -279,13 +280,18 @@ describe('POST /api/v2/workflow/harness', () => {
     cleanup()
 
     expect(response.status).toBe(200)
-    expect(response.headers.get('access-control-allow-origin')).toBe(PROD_ORIGIN)
+    expect(response.headers.get('access-control-allow-origin')).toBe(
+      PROD_ORIGIN,
+    )
     expect(() => WorkflowHarnessResultSchema.parse(body)).not.toThrow()
     expect(runWorkflowHarness).toHaveBeenCalledTimes(1)
-    expect(runWorkflowHarness).toHaveBeenCalledWith({
-      hostId: 'codex-workflow',
-      harnessId: 'change-gate',
-    })
+    expect(runWorkflowHarness).toHaveBeenCalledWith(
+      {
+        hostId: 'codex-workflow',
+        harnessId: 'change-gate',
+      },
+      {},
+    )
   })
 
   it.each([

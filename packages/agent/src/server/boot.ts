@@ -14,6 +14,7 @@ import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getActiveToken } from '../lib/auth.js'
 import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
 import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
+import { disposeWorkflowHarnessRuns } from '../lib/workflowHarness.js'
 import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
 import type { Env } from './app.js'
@@ -216,6 +217,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
       // gracefulShutdown drains it on every shutdown branch.
       registerDisposer(startSnapshotScheduler())
 
+      registerDisposer(() => disposeWorkflowHarnessRuns())
     },
   )
 
