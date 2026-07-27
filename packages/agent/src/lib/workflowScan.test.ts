@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WorkflowResponseSchema } from '@agenticapps/dashboard-shared'
 
-import { scanWorkflowFleet } from './workflowScan.declare.js'
+import { scanWorkflowFleet } from './workflowScan.js'
 
 let tmpDir: string
 

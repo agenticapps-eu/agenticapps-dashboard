@@ -49,6 +49,7 @@ const CLAUDE_SKILLS: readonly WorkflowSkillPath[] = [
   {
     id: 'agentic-apps-workflow-snapshot',
     relativePath: 'setup/snapshot/agentic-apps-workflow-SKILL.md',
+    machineInstalled: false,
   },
 ]
 
