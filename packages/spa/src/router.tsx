@@ -151,6 +151,11 @@ const codeIntelligenceRoute = createRoute({
   path: '/code-intelligence',
 }).lazy(() => import('./routes/code-intelligence.lazy.js').then((m) => m.Route))
 
+const workflowRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/workflow',
+}).lazy(() => import('./routes/workflow.lazy.js').then((m) => m.Route))
+
 /**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
@@ -196,6 +201,7 @@ const routeTree = rootRoute.addChildren([
     observabilitySkillDriftRoute, // Phase 11 D-11-08 — /observability/skill-drift under _appshell
     conformanceRoute, // Phase 12 D-12-01 — /observability/conformance under _appshell
     codeIntelligenceRoute, // Phase 14 D-14-06 — /code-intelligence under _appshell
+    workflowRoute,
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

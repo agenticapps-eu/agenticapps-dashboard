@@ -18,7 +18,7 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, Layers, TrendingUp, Network } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban, Layers, TrendingUp, Network, Workflow } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
@@ -65,6 +65,11 @@ export function Sidebar(): React.JSX.Element {
               statusDot={p.status.reachable ? 'green' : 'gray'}
             />
           ))}
+          <SidebarItem
+            to="/workflow"
+            icon={<Workflow size={16} aria-hidden="true" />}
+            label="Workflow"
+          />
         </SidebarSection>
 
         {/* Observability section — Phase 10 D-10-08 introduced Coverage; Phase 11 D-11-08
