@@ -245,42 +245,65 @@ describe('scanWorkflowMachineRoot', () => {
   })
 
   it('states absence plainly and reports machine-wide entries separately', () => {
+    writeAllArtifacts('agenticapps-workflow-core')
     mkdirSync(join(tmpDir, 'agenticapps-bin'))
-    write('agenticapps-bin/openspec-change-gate.sh', '# gate\n')
+    write(
+      'agenticapps-bin/openspec-change-gate.sh',
+      ARTIFACT_BYTES['change-gate'],
+    )
     mkdirSync(join(tmpDir, 'codex-skills', 'agentic-apps-workflow'), {
       recursive: true,
     })
 
+    const binaries = scanWorkflowMachineRoot(
+      'agenticapps-bin',
+      join(tmpDir, 'agenticapps-bin'),
+      makeResolver(tmpDir),
+      { coreRepoRoot: join(tmpDir, 'agenticapps-workflow-core') },
+    )
+    expect(binaries.rootId).toBe('agenticapps-bin')
+    expect(binaries.state).toBe('present')
     expect(
-      scanWorkflowMachineRoot(
-        'agenticapps-bin',
-        join(tmpDir, 'agenticapps-bin'),
-        makeResolver(tmpDir),
-      ),
-    ).toEqual({
-      rootId: 'agenticapps-bin',
-      state: 'present',
-      entries: [
-        { id: 'openspec-change-gate.sh', state: 'present' },
-        { id: 'reviewer-cli.sh', state: 'missing' },
-      ],
-    })
+      binaries.entries.map(({ id, state, artifact }) => ({
+        id,
+        state,
+        artifactState: artifact?.state,
+      })),
+    ).toEqual([
+      {
+        id: 'change-gate',
+        state: 'present',
+        artifactState: 'identical',
+      },
+      {
+        id: 'reviewer-cli',
+        state: 'missing',
+        artifactState: 'missing',
+      },
+    ])
     expect(
       scanWorkflowMachineRoot(
         'codex-skills',
         join(tmpDir, 'codex-skills'),
         makeResolver(tmpDir),
+        {
+          expectedSkillIds: ['agentic-apps-workflow', 'codex-qa'],
+        },
       ),
     ).toEqual({
       rootId: 'codex-skills',
       state: 'present',
-      entries: [{ id: 'agentic-apps-workflow', state: 'present' }],
+      entries: [
+        { id: 'agentic-apps-workflow', state: 'present' },
+        { id: 'codex-qa', state: 'missing' },
+      ],
     })
     expect(
       scanWorkflowMachineRoot(
         'pi-skills',
         join(tmpDir, 'missing-pi-skills'),
         makeResolver(tmpDir),
+        { expectedSkillIds: ['agentic-apps-workflow'] },
       ),
     ).toEqual({
       rootId: 'pi-skills',
