@@ -62,12 +62,18 @@ export declare const WORKFLOW_MACHINE_ROOTS: readonly WorkflowMachineRootDefinit
 export interface WorkflowMachineEntry {
   id: string
   state: 'present' | 'missing'
+  artifact?: WorkflowArtifactResult
 }
 
 export interface WorkflowMachineRootResult {
   rootId: WorkflowMachineRootId
   state: 'present' | 'absent'
   entries: WorkflowMachineEntry[]
+}
+
+export interface WorkflowMachineRootOptions {
+  coreRepoRoot?: string
+  expectedSkillIds?: readonly string[]
 }
 
 export declare function scanWorkflowHostArtifacts(
@@ -81,4 +87,5 @@ export declare function scanWorkflowMachineRoot(
   rootId: WorkflowMachineRootId,
   rootPath: string,
   resolve: PathResolver,
+  options?: WorkflowMachineRootOptions,
 ): WorkflowMachineRootResult
