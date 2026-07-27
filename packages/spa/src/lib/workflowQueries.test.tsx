@@ -31,6 +31,12 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
 
+function wrapperFor(client: QueryClient) {
+  return function SharedWrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  }
+}
+
 function jsonResponse(body: unknown) {
   return Promise.resolve({
     ok: true,
@@ -156,5 +162,41 @@ describe('workflow queries', () => {
       hostId: 'codex-workflow',
       harnessId: 'change-gate',
     })
+  })
+
+  it('keeps a completed POST result in the cached query across a remount', async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    const sharedWrapper = wrapperFor(client)
+    mockFetch
+      .mockReturnValueOnce(jsonResponse([]))
+      .mockReturnValueOnce(jsonResponse(harnessResult))
+
+    const first = renderHook(
+      () => ({
+        cached: useWorkflowHarnessResults(),
+        run: useRunWorkflowHarness(),
+      }),
+      { wrapper: sharedWrapper },
+    )
+    await waitFor(() => expect(first.result.current.cached.isSuccess).toBe(true))
+    await act(async () => {
+      await first.result.current.run.mutateAsync({
+        hostId: 'codex-workflow',
+        harnessId: 'change-gate',
+      })
+    })
+    first.unmount()
+
+    const remounted = renderHook(() => useWorkflowHarnessResults(), {
+      wrapper: sharedWrapper,
+    })
+
+    expect(remounted.result.current.data).toEqual([harnessResult])
+    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 })

@@ -322,6 +322,31 @@ describe('WorkflowPage', () => {
     expect(screen.getByText('cached pass')).toBeTruthy()
   })
 
+  it('shows an incomplete attempt reason and diagnostic output', async () => {
+    mutateAsync.mockResolvedValue({
+      schemaVersion: 1,
+      hostId: 'codex-workflow',
+      harnessId: 'change-gate',
+      state: 'refused',
+      passed: null,
+      completedAtIso: null,
+      ageMs: null,
+      output: 'host harness differs from core',
+      cached: false,
+      reason: 'harness-divergent',
+    })
+    render(<WorkflowPage />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Run change gate for codex-workflow',
+      }),
+    )
+
+    expect(await screen.findByText('Refused · harness divergent')).toBeTruthy()
+    expect(screen.getByText('host harness differs from core')).toBeTruthy()
+  })
+
   it('renders generic loading, schema-drift, and transport error states', () => {
     mockUseWorkflow.mockReturnValue({
       isPending: true,
