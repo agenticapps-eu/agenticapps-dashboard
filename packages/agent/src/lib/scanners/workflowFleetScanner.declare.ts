@@ -37,6 +37,7 @@ export interface WorkflowFleetEntry {
   role: 'core' | 'host'
   directoryName: WorkflowRepoId
   artifacts: Readonly<Record<WorkflowArtifactId, string>>
+  provenanceManifest?: string
   skillSource?: WorkflowSkillSource
 }
 
