@@ -1,7 +1,7 @@
 # `/workflow` pre-implementation design critique
 
-Viewport: 1440 × 900  
-Reference: `docs/spec/DASHBOARD-V2-SPEC.md` §6  
+Viewport: 1440 × 900
+Reference: `docs/spec/DASHBOARD-V2-SPEC.md` §6
 Quality bar: 90 / 100
 
 ## Score

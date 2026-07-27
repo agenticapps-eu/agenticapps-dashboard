@@ -266,7 +266,14 @@ function readDirectorySkills(
 
   let entryNames: string[]
   try {
-    entryNames = readdirSync(skillRoot).sort()
+    entryNames = readdirSync(skillRoot, { withFileTypes: true })
+      .filter(
+        (entry) =>
+          (entry.isDirectory() || entry.isSymbolicLink()) &&
+          /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(entry.name),
+      )
+      .map(({ name }) => name)
+      .sort()
   } catch {
     return [missingSkill(primaryId)]
   }

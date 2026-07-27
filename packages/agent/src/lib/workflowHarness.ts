@@ -62,6 +62,17 @@ interface PreparationFailure {
   reason: WorkflowHarnessResultReason
 }
 
+interface ProcessSnapshotEntry {
+  pid: number
+  ppid: number
+  rssBytes: number
+}
+
+interface TrackedProcessTree {
+  rootPid: number
+  descendants: Set<number>
+}
+
 const CORE_REPO = 'agenticapps-workflow-core'
 const RUNNER_CONTRACT_VERSION = '1'
 const MAX_CONCURRENT_RUNS = 2
@@ -97,14 +108,14 @@ export const WORKFLOW_HARNESS_LIMITS: Readonly<WorkflowHarnessLimits> =
   })
 
 const activeHosts = new Set<WorkflowHarnessHostId>()
-const activeProcessGroups = new Set<number>()
+const activeProcessTrees = new Map<number, TrackedProcessTree>()
 let activeRuns = 0
 
 export function disposeWorkflowHarnessRuns(): void {
-  for (const pid of activeProcessGroups) {
-    killProcessGroup(pid)
+  for (const processTree of activeProcessTrees.values()) {
+    killTrackedProcessTree(processTree)
   }
-  activeProcessGroups.clear()
+  activeProcessTrees.clear()
 }
 
 export function resetWorkflowHarnessStateForTests(): void {
@@ -436,49 +447,54 @@ function directoryBytes(path: string): number {
   return total
 }
 
-function linuxProcessGroupRssBytes(processGroupId: number): number {
-  let totalPages = 0
-  for (const name of readdirSync('/proc')) {
-    if (!/^\d+$/.test(name)) continue
-    try {
-      const raw = readFileSync(join('/proc', name, 'stat'), 'utf8')
-      const afterName = raw.slice(raw.lastIndexOf(')') + 2).split(/\s+/)
-      if (Number(afterName[2]) === processGroupId) {
-        totalPages += Number(afterName[21]) || 0
-      }
-    } catch {
-      // Process exited between readdir and read.
-    }
-  }
-  return totalPages * 4096
-}
-
-function darwinProcessGroupRssBytes(processGroupId: number): number {
-  const output = execFileSync('/bin/ps', ['-axo', 'pgid=,rss='], {
+function processSnapshot(): ProcessSnapshotEntry[] {
+  const output = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,rss='], {
     encoding: 'utf8',
     maxBuffer: 4 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'ignore'],
   })
-  let totalKiB = 0
-  for (const line of output.split('\n')) {
-    const [pgid, rss] = line.trim().split(/\s+/)
-    if (Number(pgid) === processGroupId) totalKiB += Number(rss) || 0
-  }
-  return totalKiB * 1024
+  return output
+    .split('\n')
+    .map((line) => line.trim().split(/\s+/).map(Number))
+    .filter(
+      (values): values is [number, number, number] =>
+        values.length === 3 && values.every(Number.isFinite),
+    )
+    .map(([pid, ppid, rssKiB]) => ({
+      pid,
+      ppid,
+      rssBytes: rssKiB * 1024,
+    }))
 }
 
-function processGroupRssBytes(processGroupId: number): number {
+function refreshProcessTree(
+  processTree: TrackedProcessTree,
+): ProcessSnapshotEntry[] {
+  const snapshot = processSnapshot()
+  const tracked = new Set([processTree.rootPid, ...processTree.descendants])
+  let foundDescendant = true
+  while (foundDescendant) {
+    foundDescendant = false
+    for (const entry of snapshot) {
+      if (!tracked.has(entry.pid) && tracked.has(entry.ppid)) {
+        tracked.add(entry.pid)
+        processTree.descendants.add(entry.pid)
+        foundDescendant = true
+      }
+    }
+  }
+  return snapshot.filter(({ pid }) => tracked.has(pid))
+}
+
+function processTreeRssBytes(processTree: TrackedProcessTree): number {
   try {
-    if (process.platform === 'linux') {
-      return linuxProcessGroupRssBytes(processGroupId)
-    }
-    if (process.platform === 'darwin') {
-      return darwinProcessGroupRssBytes(processGroupId)
-    }
+    return refreshProcessTree(processTree).reduce(
+      (total, { rssBytes }) => total + rssBytes,
+      0,
+    )
   } catch {
     return Number.POSITIVE_INFINITY
   }
-  return Number.POSITIVE_INFINITY
 }
 
 function killProcessGroup(pid: number | undefined): void {
@@ -488,6 +504,28 @@ function killProcessGroup(pid: number | undefined): void {
   } catch {
     // The process group may already be gone.
   }
+}
+
+function killProcess(pid: number): void {
+  try {
+    process.kill(pid, 'SIGKILL')
+  } catch {
+    // The process may already be gone.
+  }
+}
+
+function killTrackedProcessTree(processTree: TrackedProcessTree): void {
+  try {
+    refreshProcessTree(processTree)
+  } catch {
+    // Retain and terminate descendants observed by earlier samples.
+  }
+  for (const pid of [...processTree.descendants].reverse()) {
+    killProcessGroup(pid)
+    killProcess(pid)
+  }
+  killProcessGroup(processTree.rootPid)
+  killProcess(processTree.rootPid)
 }
 
 function appendBounded(
@@ -607,12 +645,16 @@ async function executePrepared(
     },
   )
   const processGroupPid = child.pid
-  if (processGroupPid) activeProcessGroups.add(processGroupPid)
+  const processTree = processGroupPid
+    ? { rootPid: processGroupPid, descendants: new Set<number>() }
+    : null
+  if (processTree) activeProcessTrees.set(processTree.rootPid, processTree)
 
   const setBound = (reason: WorkflowHarnessResultReason): void => {
     if (settled || boundReason) return
     boundReason = reason
-    killProcessGroup(child.pid)
+    if (processTree) killTrackedProcessTree(processTree)
+    else killProcessGroup(child.pid)
   }
   const capture = (chunk: Buffer | string): void => {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
@@ -638,8 +680,8 @@ async function executePrepared(
   })
 
   const sample = (): void => {
-    if (settled || boundReason || !child.pid) return
-    if (processGroupRssBytes(child.pid) > limits.memoryBytes) {
+    if (settled || boundReason || !processTree) return
+    if (processTreeRssBytes(processTree) > limits.memoryBytes) {
       setBound('memory-limit')
       return
     }
@@ -654,7 +696,10 @@ async function executePrepared(
   const exitCode = await new Promise<number | null>((resolveExit) => {
     child.once('close', (code) => {
       settled = true
-      if (processGroupPid) activeProcessGroups.delete(processGroupPid)
+      if (processTree) {
+        killTrackedProcessTree(processTree)
+        activeProcessTrees.delete(processTree.rootPid)
+      }
       resolveExit(code)
     })
   })
@@ -666,7 +711,10 @@ async function executePrepared(
   if (!boundReason && directoryBytes(scratchRoot) > limits.scratchBytes) {
     boundReason = 'scratch-limit'
   }
-  if (boundReason) killProcessGroup(child.pid)
+  if (boundReason) {
+    if (processTree) killTrackedProcessTree(processTree)
+    else killProcessGroup(child.pid)
+  }
 
   const rawOutput = Buffer.concat(chunks).toString('utf8')
   const output = redactOutput(
