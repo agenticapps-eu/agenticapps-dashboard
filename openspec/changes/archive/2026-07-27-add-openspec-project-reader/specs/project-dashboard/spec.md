@@ -18,7 +18,7 @@ a change that first specifies where severity comes from.
 - **THEN** each project renders a card with its open-change count, each open change's completed-over-total task ratio, and last-commit time
 - **AND** clicking a card opens that project's detail view.
 
-#### Scenario: A project with no workflow shows an install hint
+#### Scenario: A project without the workflow shows an install hint
 - **WHEN** a registered project reports the `no-workflow` condition
 - **THEN** its card states that plainly and offers an install hint
 - **AND** does not render an error or a crash state.
