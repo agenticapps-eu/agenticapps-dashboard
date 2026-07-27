@@ -80,7 +80,7 @@ export interface WorkflowMachineRootOptions {
 export declare function scanWorkflowHostArtifacts(
   hostId: WorkflowHostId,
   hostRepoRoot: string,
-  coreRepoRoot: string,
+  coreRepoRoot: string | undefined,
   resolve: PathResolver,
 ): WorkflowHostArtifactSummary
 
