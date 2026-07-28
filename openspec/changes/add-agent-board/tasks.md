@@ -20,22 +20,22 @@ this change is not blocked by the adapter extraction.
 
 ## 2. Endpoint, stage 1 — fixture data · AGE-471
 
-- [ ] `GET /api/v2/board` returning sessions and tasks from a four-host upstream skeleton fixture (TDD)
-- [ ] **Mark the payload synthetic in the envelope** — the board must state it is not showing live sessions
-- [ ] Response through the existing outbound schema-validation wrapper
-- [ ] Confirm the route inherits bearer auth, CORS lock, and bind-mode restrictions with no separate access path
-- [ ] Reduce working directories to repo-relative or symbolic form before they leave the daemon
-- [ ] Use the existing project registry id for `repo:<id>` path references; introduce no second root-id namespace
-- [ ] Test: the daemon logs and persists no board payload
-- [ ] Enforce the specified session/task ordering, referentially coherent 200/2,000 caps, and Unicode-code-point field bounds; populate omission counts across validation, referential, and cap exclusions and compute the window count from the pre-cap readable inventory
-- [ ] Test: sessions order by active, `updatedAt` descending, `createdAt` descending, id ascending and tasks order by status, maximum present task timestamp descending, id ascending
-- [ ] Test: exactly 200 sessions and 2,000 tasks are retained, while the 201st/2,001st records are omitted and counted without referential breakage
-- [ ] Test: the fixture response validates against the shared schema and is flagged synthetic
-- [ ] Test: a session without required `updatedAt` is excluded, its dependent tasks are excluded, the host is unreadable, and both omission counts increase
+- [x] `GET /api/v2/board` returning sessions and tasks from a four-host upstream skeleton fixture (TDD) — evidence: `81a31bb`, `37f07fa`, `5155a97`
+- [x] **Mark the payload synthetic in the envelope** — the board must state it is not showing live sessions — evidence: `createSyntheticBoardFixture` and route contract test
+- [x] Response through the existing outbound schema-validation wrapper — evidence: `packages/agent/src/routes/board.ts`
+- [x] Confirm the route inherits bearer auth, CORS lock, and bind-mode restrictions with no separate access path — evidence: board route auth, CORS, and tailscale-mode tests
+- [x] Reduce working directories to repo-relative or symbolic form before they leave the daemon — evidence: `buildBoardSnapshot` path-minimisation test
+- [x] Use the existing project registry id for `repo:<id>` path references; introduce no second root-id namespace — evidence: registry-backed `repo:dashboard/packages/spa` assertion
+- [x] Test: the daemon logs and persists no board payload — evidence: route filesystem/logging negative test
+- [x] Enforce the specified session/task ordering, referentially coherent 200/2,000 caps, and Unicode-code-point field bounds; populate omission counts across validation, referential, and cap exclusions and compute the window count from the pre-cap readable inventory — evidence: `packages/agent/src/lib/boardSnapshot.test.ts`
+- [x] Test: sessions order by active, `updatedAt` descending, `createdAt` descending, id ascending and tasks order by status, maximum present task timestamp descending, id ascending — evidence: deterministic-order contract test
+- [x] Test: exactly 200 sessions and 2,000 tasks are retained, while the 201st/2,001st records are omitted and counted without referential breakage — evidence: cap-boundary contract test
+- [x] Test: the fixture response validates against the shared schema and is flagged synthetic — evidence: four-host fixture contract test
+- [x] Test: a session without required `updatedAt` is excluded, its dependent tasks are excluded, the host is unreadable, and both omission counts increase — evidence: invalid-session degradation contract test
 - [ ] Test: a dedicated four-host `state: absent` synthetic fixture renders the explained empty state and names `claude`, `codex`, `opencode`, and `pi`
-- [ ] Test: an unauthenticated request is refused like any other route
-- [ ] Test: no home-directory path appears in any response field
-- [ ] Test: outbound schema drift returns the existing `500 schema_drift` response and no board records
+- [x] Test: an unauthenticated request is refused like any other route — evidence: board route auth test
+- [x] Test: no home-directory path appears in any response field — evidence: path-minimisation contract test
+- [x] Test: outbound schema drift returns the existing `500 schema_drift` response and no board records — evidence: board route schema-drift test
 
 ## 3. Board surface · AGE-472
 
