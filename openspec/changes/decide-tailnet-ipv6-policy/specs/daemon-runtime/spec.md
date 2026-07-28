@@ -51,14 +51,15 @@ of further refusals of that class rather than discarding them. The admission
 decision itself SHALL NOT depend on the rate limit: every refused request is
 still refused, and every admitted request is still admitted.
 
+#### Scenario: Tailscale bind detects the interface or fails gracefully
+- **WHEN** `--bind tailscale` is used and Tailscale is not installed
+- **THEN** the daemon fails gracefully with a clear message rather than crashing
+- **AND** when Tailscale is present with a CGNAT IPv4 address it binds that address and emits a pair URL using the Tailscale hostname.
+
 #### Scenario: Tailscale bind setup failures are distinct
 - **WHEN** `--bind tailscale` is used and Tailscale is missing or unavailable, or the running daemon node has no CGNAT IPv4 address
 - **THEN** the daemon fails gracefully and distinguishes an unavailable installation from an IPv4-unavailable node
-
-#### Scenario: Tailscale bind detects the interface
-- **WHEN** `--bind tailscale` is used and a CGNAT IPv4 address is available
-- **THEN** the daemon binds that address
-- **AND** it emits a pair URL using the Tailscale hostname.
+- **AND** the CGNAT requirement is not applied when the operator has explicitly disabled enforcement.
 
 #### Scenario: Binding all interfaces warns and enforces CIDR
 - **WHEN** the daemon binds `0.0.0.0`
