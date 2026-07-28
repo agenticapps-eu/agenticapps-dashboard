@@ -14,7 +14,6 @@ import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getActiveToken } from '../lib/auth.js'
 import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
 import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
-import { disposeAllInflightScans } from '../lib/gitnexusScan.js'
 import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
 import type { Env } from './app.js'
@@ -213,11 +212,6 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
       // gracefulShutdown drains it on every shutdown branch.
       registerDisposer(startSnapshotScheduler())
 
-      // D-13-EXT-13 (Codex WARNING #5) — Cancel in-flight gitnexus subprocesses
-      // on shutdown so a daemon SIGTERM does not leave orphaned `gitnexus
-      // analyze` processes holding ~/.gitnexus/registry.json locks. Idempotent
-      // via Set.clear() so happy-path + kill-timer branches are both safe.
-      registerDisposer(() => disposeAllInflightScans())
     },
   )
 

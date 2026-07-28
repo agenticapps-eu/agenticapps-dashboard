@@ -22,7 +22,7 @@
  */
 import React from 'react'
 import { ExternalLink } from 'lucide-react'
-import type { CoverageRow } from '@agenticapps/dashboard-shared'
+import type { CompatibleCoverageRow } from '@agenticapps/dashboard-shared'
 
 import { PageHeader } from '../../ui/PageHeader.js'
 import { EmptyState } from '../../ui/EmptyState.js'
@@ -50,7 +50,7 @@ function formatAnalyzedDate(iso: string | undefined): string | undefined {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface AnalyzedRowProps {
-  row: CoverageRow
+  row: CompatibleCoverageRow
   agentUrl: string | undefined
   viewerInstalled: boolean
 }

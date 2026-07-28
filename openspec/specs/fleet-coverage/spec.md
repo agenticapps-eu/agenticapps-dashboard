@@ -7,11 +7,11 @@ question: **across every repo I own, where is the tooling actually installed and
 is it current?**
 
 The coverage matrix scans every git repo one level deep under the known family
-roots and reports, per repo, the state of each tracked tooling column — is
-`CLAUDE.md` present, is the code graph indexed and fresh, is the knowledge wiki
-compiled recently, is the workflow skill at the current version. Each cell
-carries one of four freshness states, and the daemon writes a daily snapshot so
-the matrix has a memory: a cell that just improved or regressed says so.
+roots and reports, per repo, whether `CLAUDE.md` is present, whether the workflow
+skill is current, and whether Understand Anything analysis is current. Current
+cells carry one of three freshness states. The daemon snapshots the two
+historically comparable workflow fields daily so a cell that just improved or
+regressed says so.
 
 Coverage reads far outside any registered project root, which is why it goes
 through dedicated daemon-side scanners with their own allowed roots rather than
@@ -21,31 +21,70 @@ the project read route (see `filesystem-access-policy`).
 
 ### Requirement: Fleet Coverage Matrix
 
-The daemon SHALL expose a coverage matrix with one entry per git repo found one
-level deep under the known family roots. Each entry SHALL carry its family, repo
-name, a state for each tracked tooling column, an override count, and a freshness
-state per column.
+The daemon SHALL expose coverage response schema version 2 with one entry per
+git repo found one level deep under the known family roots. Each entry SHALL
+carry its family, repo name, override count, `claudeMd` freshness,
+`workflowVersion` freshness, and the knowledge-graph analysis status defined by
+`code-intelligence`.
 
 #### Scenario: Every family repo appears exactly once
 - **WHEN** the coverage scan runs across the family roots
 - **THEN** each git repo one level deep produces exactly one matrix entry
-- **AND** each entry reports its family and per-column freshness.
+- **AND** each entry reports all three specified state-bearing columns.
 
-### Requirement: Four-State Column Freshness
+### Requirement: Three-State Column Freshness
 
-Every coverage cell SHALL report exactly one of four states: `fresh`, `stale`,
-`missing`, or `not-applicable`. Staleness thresholds are per column, and a column
-that is binary present-or-absent MUST NOT report `stale`.
+Every coverage cell SHALL report exactly one of three states: `fresh`, `stale`,
+or `missing`. Staleness thresholds are per column, and a binary
+present-or-absent column MUST NOT report `stale`.
 
 #### Scenario: A binary column never reports stale
 - **WHEN** the `CLAUDE.md` column is evaluated
 - **THEN** it reports `fresh` when present and `missing` when absent
 - **AND** it never reports `stale`.
 
-#### Scenario: An uninstalled tool reports not-applicable, not missing
-- **WHEN** a tool is not installed on the machine at all
-- **THEN** every repo's cell for that column reports `not-applicable`
-- **AND** the surface shows a neutral state with an install hint rather than a fleet of red cells.
+#### Scenario: A missing maintained artifact is not neutral
+- **WHEN** a tracked artifact or workflow installation is absent
+- **THEN** its cell reports `missing`
+- **AND** the matrix does not render a tool-not-installed hint
+- **AND** this does not remove the SPA-constructed re-analysis command for a missing knowledge graph.
+
+### Requirement: Coverage Wire Version Skew Is Explicit
+
+The SPA SHALL accept versions 1 and 2 of both the live coverage response and the
+coverage-history response. Both deployed version-1 responses are discriminated
+by literal `schemaVersion: 1`. A version-1 live response requires the retained
+row cells `claudeMd` and `workflowVersion` using the four-state vocabulary and
+permits the optional `understand` cell used by later version-1 daemons. A
+version-1 history response requires retained cells `claudeMd` and
+`workflowVersion` using that same vocabulary.
+
+The SPA SHALL validate the version-1 discriminator, envelope identity, and
+retained cells before normalising. It SHALL tolerate and discard legacy
+`gitNexus`, `wiki`, and GitNexus install-state data without validating their
+internal shapes, preserve `understand` when present, and map `not-applicable` in
+any retained cell to `missing`. When a version-1 row has no `understand` cell,
+the SPA SHALL present `Unavailable from this daemon` without creating a
+coverage cell and SHALL exclude that presentation from freshness aggregates and
+filters. The daemon SHALL emit version 2 for both responses. A pre-version-2
+SPA receiving either version-2 response SHALL reach the existing explicit
+schema-drift recovery state rather than render partial data.
+
+#### Scenario: Current SPA reads an older daemon
+- **WHEN** the current SPA receives valid version-1 live coverage and history responses
+- **THEN** it validates the literal version and retained cells while tolerating and discarding legacy integration data
+- **AND** preserves a supplied knowledge-graph cell or presents an absent one as unavailable without inventing a state
+- **AND** maps any retained `not-applicable` value to `missing`.
+
+#### Scenario: Current SPA reads the current daemon
+- **WHEN** the SPA receives version-2 live coverage and history responses
+- **THEN** it validates each strict version-2 shape
+- **AND** displays the current matrix and history without compatibility placeholders.
+
+#### Scenario: A stale SPA does not render version-2 data partially
+- **WHEN** a pre-version-2 SPA receives a version-2 coverage or history response
+- **THEN** its strict validation reaches the product's explicit schema-drift recovery state
+- **AND** reloading the current static build restores the surface.
 
 ### Requirement: Workflow Version Comparison
 
@@ -78,14 +117,22 @@ expansion. Aggregates MUST reflect the filtered view.
 
 ### Requirement: Filtering And Search
 
-The coverage surface SHALL provide multi-select status filter chips defaulting to
-all, and a free-text repo-name search, with filter state persisted to URL query
-parameters. Default sort is family-alphabetical then repo-alphabetical.
+The coverage surface SHALL provide multi-select status filter chips for
+`fresh`, `stale`, and `missing`, defaulting to all, and a free-text repo-name
+search, with filter state persisted to URL query parameters. Unrecognised status
+values from an older shared URL SHALL be discarded. If every supplied status is
+unrecognised, filtering SHALL degrade to the default all-selected view. Default
+sort is family-alphabetical then repo-alphabetical.
 
 #### Scenario: A filtered coverage view is shareable
 - **WHEN** a user filters to missing rows and searches a name fragment
 - **THEN** the URL captures both
 - **AND** opening that URL reproduces the same view.
+
+#### Scenario: A stale status value degrades safely
+- **WHEN** a shared URL contains `status=not-applicable` together with recognised status values
+- **THEN** the unrecognised value is discarded and the recognised selection is applied
+- **AND** when every supplied status is unrecognised the surface uses the default all-selected view.
 
 ### Requirement: Review-Override Visibility
 
@@ -101,9 +148,16 @@ to and the date it was recorded. The chip MUST be absent when the count is zero.
 ### Requirement: Daily Coverage History Snapshots
 
 The daemon SHALL write one NDJSON snapshot per day recording each repo's
-per-column freshness, into a private directory under its own state directory. A
-pruner SHALL drop snapshots older than the retention window, validating filenames
-before deleting anything. Snapshots MUST NOT be backfilled for missed days.
+`claudeMd` and `workflowVersion` freshness into a private directory under its
+own state directory. A pruner SHALL drop snapshots older than the retention
+window, validating filenames before deleting anything. Snapshots MUST NOT be
+backfilled for missed days.
+
+Readers MUST accept records containing additional legacy `gitNexus` and `wiki`
+fields and ignore those fields. A legacy `not-applicable` value in
+`claudeMd` or `workflowVersion` SHALL normalise to `missing` for drift and score
+computation. Readers MUST NOT rewrite or delete an otherwise valid historical
+record because it contains legacy fields or values.
 
 #### Scenario: The pruner only deletes what it recognises
 - **WHEN** the retention pruner runs over the snapshot directory
@@ -120,12 +174,20 @@ before deleting anything. Snapshots MUST NOT be backfilled for missed days.
 - **THEN** the error is logged and swallowed
 - **AND** the scheduler re-arms so the next day's snapshot is still attempted.
 
+#### Scenario: Legacy records remain readable
+- **WHEN** the retained window contains a snapshot with legacy fields or `not-applicable` in a retained cell
+- **THEN** the reader ignores the removed fields and maps the retained legacy value to `missing`
+- **AND** the historical record is neither rejected, rewritten, nor deleted.
+
 ### Requirement: Per-Cell Drift Indicator
 
-The daemon SHALL compute, for a given repo and column, the most recent state
-transition within the history window and report its direction and how many days
-ago it occurred. The surface SHALL render an inline improvement or regression
-indicator on the cell, with an accessible label.
+The daemon SHALL compute, for a given repo and each of `claudeMd` and
+`workflowVersion`, the most recent state transition within the history window
+and report its direction and how many days ago it occurred. The history response
+schema version SHALL be `2` and its cell object SHALL contain exactly
+`claudeMd` and `workflowVersion`. The surface SHALL render an inline improvement
+or regression indicator on each cell for which a transition is computed, with
+an accessible label.
 
 #### Scenario: A recent regression is visible on the cell
 - **WHEN** a cell's state worsened three days ago within the window
@@ -136,36 +198,31 @@ indicator on the cell, with an accessible label.
 - **WHEN** a cell has held the same state across the whole window
 - **THEN** no drift indicator is rendered.
 
-### Requirement: Scoped Refresh Actions
-
-The coverage surface SHALL offer scoped refresh actions constrained to an
-explicit action enum. The daemon MUST reject any action outside that enum at
-schema-parse time. Actions that are merely clipboard hints MUST be constructed
-SPA-side and MUST NOT round-trip through the daemon.
-
-#### Scenario: An unrecognised action is rejected at parse
-- **WHEN** a refresh request names an action outside the permitted enum
-- **THEN** the daemon rejects it with a 400 at schema validation
-- **AND** no subprocess is spawned.
-
-#### Scenario: A successful refresh updates the row in place
-- **WHEN** a scoped scan action completes successfully
-- **THEN** the daemon returns the updated row
-- **AND** the coverage cache is invalidated so the cell reflects the new state without a manual reload.
+#### Scenario: Version 2 has the reduced strict shape
+- **WHEN** the coverage-history endpoint returns a current response
+- **THEN** its `schemaVersion` is `2`
+- **AND** its cells contain exactly `claudeMd` and `workflowVersion`.
 
 ### Requirement: Responsive Coverage Layout
 
 The coverage surface SHALL render a card-per-repo layout at the smallest
-viewport, preserving each column's state and keeping interactive controls at an
-accessible touch-target size. Larger viewports keep the table layout with
-consistent column widths across family sections.
+viewport, preserving all three matrix states and keeping interactive controls
+at an accessible touch-target size. Larger viewports keep the table layout with
+consistent column widths across family sections. Row actions SHALL be limited
+to the review-override affordance, the daemon-served Understand Anything viewer,
+and its SPA-constructed copy-command affordance.
 
 #### Scenario: Small viewports switch to cards
 - **WHEN** the coverage page renders at the smallest breakpoint
-- **THEN** each repo renders as a card carrying its name, override chip, four column states, and its actions
-- **AND** action controls remain at an accessible touch-target size.
+- **THEN** each repo renders as a card carrying its name, override chip, three matrix states, and applicable Understand Anything actions
+- **AND** every interactive control keeps an accessible touch target.
 
 #### Scenario: Column widths agree across family sections
 - **WHEN** the table layout renders multiple family sections
 - **THEN** corresponding columns are the same width in every section
 - **AND** that width comes from a single shared source of truth rather than per-section values.
+
+#### Scenario: Desktop rows expose only the current actions
+- **WHEN** the coverage table renders
+- **THEN** row actions consist only of review-override and applicable Understand Anything affordances
+- **AND** those actions keep their existing behavior.

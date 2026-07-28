@@ -30,10 +30,8 @@ export interface SnapshotRecord {
   ts: string
   family: string
   repo: string
-  /** Coverage cell states — one per Phase 10 column. Values are 4-state enum strings. */
+  /** Current conformance cell states. */
   claudeMd: string
-  gitNexus: string
-  wiki: string
   workflowVersion: string
 }
 
@@ -81,8 +79,6 @@ export async function writeDailySnapshot(opts: WriteOptions = {}): Promise<Write
     family: row.family,
     repo: row.repo,
     claudeMd: row.claudeMd.state,
-    gitNexus: row.gitNexus.state,
-    wiki: row.wiki.state,
     workflowVersion: row.workflowVersion.state,
   }))
 

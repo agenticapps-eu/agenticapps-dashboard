@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "generatedAtIso": "2026-07-28T00:00:00.000Z",
+  "gitNexusInstallState": "installed-with-registry",
+  "workflowHeadVersion": "3.0.0",
+  "rows": [
+    {
+      "family": "agenticapps",
+      "repo": "fixture-repo",
+      "claudeMd": {
+        "kind": "basic",
+        "state": "fresh",
+        "label": "via CLAUDE.md"
+      },
+      "gitNexus": {
+        "kind": "basic",
+        "state": "missing"
+      },
+      "wiki": {
+        "kind": "basic",
+        "state": "stale",
+        "label": "20d ago",
+        "daysSince": 20
+      },
+      "workflowVersion": {
+        "kind": "workflow",
+        "state": "fresh",
+        "installedVersion": "3.0.0",
+        "headVersion": "3.0.0",
+        "detail": "equal"
+      },
+      "overrideCount": 0,
+      "overrides": [],
+      "inRegistry": true,
+      "understand": {
+        "kind": "basic",
+        "state": "missing",
+        "viewerToken": "fixture-viewer-token"
+      }
+    }
+  ]
+}

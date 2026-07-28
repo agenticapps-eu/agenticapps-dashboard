@@ -2,8 +2,8 @@
  * coverageHistoryCache.ts — 1h Map-keyed memo for GET /api/coverage/history responses.
  *
  * PD-11-02: cache key is `repoId` ONLY (no per-column discriminator). The
- * bulk-per-repo response carries all four columns in one payload, so per-column
- * partitioning would just split a single coherent response across four cache
+ * bulk-per-repo response carries both retained scored columns in one payload, so
+ * per-column partitioning would split a single coherent response across cache
  * entries for no benefit.
  *
  * 1h TTL aligns with the daily-tick cadence — drift values can't change between

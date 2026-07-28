@@ -166,7 +166,6 @@ export async function resolveAllowedNamed(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const COVERAGE_ROOTS = {
-  gitnexus: (): string => join(homedir(), '.gitnexus'),
   agenticapps: (): string => join(homedir(), 'Sourcecode', 'agenticapps'),
   factiv: (): string => join(homedir(), 'Sourcecode', 'factiv'),
   neuroflash: (): string => join(homedir(), 'Sourcecode', 'neuroflash'),

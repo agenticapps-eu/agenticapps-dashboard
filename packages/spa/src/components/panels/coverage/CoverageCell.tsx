@@ -9,8 +9,6 @@
  *   fresh          → bg-status-success/10  text-status-success
  *   stale          → bg-status-warning/10  text-status-warning
  *   missing        → bg-status-error/10    text-status-error
- *   not-applicable → bg-text-tertiary/10   text-text-tertiary
- *   unknown        → bg-status-warning/10  text-status-warning  (treat as stale)
  *
  * Constraints (D-5.1-10):
  * - NO cn()/clsx/CVA — inline className strings only
@@ -18,7 +16,7 @@
  * - NO shadcn aliases (no bg-background, text-foreground, etc.)
  */
 import React from 'react'
-import { Check, AlertTriangle, X, Circle, HelpCircle } from 'lucide-react'
+import { Check, AlertTriangle, X, HelpCircle } from 'lucide-react'
 import type {
   CoverageColumnState,
   CoverageCellDrift,
@@ -30,7 +28,7 @@ import { CoverageDriftBadge } from './CoverageDriftBadge.js'
 type CoverageWorkflowColumn = Extract<CoverageColumnState, { kind: 'workflow' }>
 
 export interface CoverageCellProps {
-  column: 'claudeMd' | 'gitNexus' | 'wiki' | 'workflowVersion'
+  column: 'claudeMd' | 'workflowVersion'
   state: CoverageColumnState
   repoName: string // for ARIA labels
   /**
@@ -60,15 +58,6 @@ const STATE_TOKEN_MAP = {
     bg: 'bg-status-error/10',
     text: 'text-status-error',
   },
-  'not-applicable': {
-    bg: 'bg-text-tertiary/10',
-    text: 'text-text-tertiary',
-  },
-  // unknown treated as stale per UI-SPEC §4
-  unknown: {
-    bg: 'bg-status-warning/10',
-    text: 'text-status-warning',
-  },
 } as const
 
 function StateIcon({
@@ -86,9 +75,8 @@ function StateIcon({
       return <AlertTriangle {...iconProps} />
     case 'missing':
       return <X {...iconProps} />
-    case 'not-applicable':
     default:
-      return <Circle {...iconProps} />
+      return <X {...iconProps} />
   }
 }
 
@@ -134,7 +122,7 @@ export function CoverageCell({
     )
   }
 
-  const tokens = STATE_TOKEN_MAP[state.state] ?? STATE_TOKEN_MAP['stale']
+  const tokens = STATE_TOKEN_MAP[state.state]
 
   // CODEX HIGH-4: workflow column gets sub-state text; basic column uses .label
   const subtext =

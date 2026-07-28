@@ -42,7 +42,6 @@ vi.mock('./paths.js', async () => {
   return {
     ...actual,
     COVERAGE_ROOTS: {
-      gitnexus: () => '/tmp/no-such-gitnexus-fixture',
       agenticapps: () => '/tmp/no-such-agenticapps-fixture',
       factiv: () => '/tmp/no-such-factiv-fixture',
       neuroflash: () => '/tmp/no-such-neuroflash-fixture',

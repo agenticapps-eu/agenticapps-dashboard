@@ -1,9 +1,9 @@
 /**
- * coverageScan.ts — Orchestrator that fans out 5 scanners across all discovered repos.
+ * coverageScan.ts — Orchestrator that fans out retained scanners across discovered repos.
  *
- * CODEX HIGH-1: Internal type InternalCoverageRow carries absPath for daemon-internal
- *   refresh routing. stripInternal() removes absPath before the public CoverageResponse
- *   is returned. The SPA never sees filesystem paths.
+ * CODEX HIGH-1: InternalCoverageRow carries absPath only during scan composition.
+ *   stripInternal() removes it from the public CoverageResponse, so the SPA never
+ *   receives filesystem paths.
  *
  * CODEX HIGH-3: A single PathResolver is constructed once per scan and passed to every
  *   scanner call. No scanner receives filesystem paths without resolver mediation.
@@ -13,7 +13,7 @@
  *   The full row is still included in the response.
  *
  * COV-03 / CODEX LOW-19: Promise.all at the repo level parallelises work across all repos.
- *   45 repos × 6 syscalls each ≈ 270 stats — well within the 1s cold-load target.
+ *   The bounded filesystem reads remain within the 1s cold-load target.
  *
  * T-10-03-06: 30s memo cache absorbs repeat reads after the cold scan.
  */
@@ -25,8 +25,6 @@ import type { CoverageResponse, CoverageRow } from '@agenticapps/dashboard-share
 import { discoverRepos } from './repoDiscovery.js'
 import { readRegistry } from './registry.js'
 import { scanClaudeMd } from './scanners/claudeMdScanner.js'
-import { scanGitNexusGlobal, rateGitNexusRepo } from './scanners/gitNexusScanner.js'
-import { scanWikiForFamily } from './scanners/wikiScanner.js'
 import {
   readWorkflowHeadVersion,
   scanWorkflowVersionForRepo,
@@ -39,8 +37,8 @@ import { makeCoverageResolver, type PathResolver } from './coverageResolver.js'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
- * CODEX HIGH-1: daemon-internal type. absPath is used for cache-key / refresh-routing.
- * NEVER emitted in the public CoverageResponse (stripped by stripInternal).
+ * CODEX HIGH-1: daemon-internal type used while composing scan results.
+ * absPath is NEVER emitted in the public response (stripped by stripInternal).
  */
 export interface InternalCoverageRow extends CoverageRow {
   absPath: string
@@ -53,7 +51,6 @@ export interface InternalCoverageRow extends CoverageRow {
  */
 export interface ScanCoverageOptions {
   sourcecodeRootOverride?: string // tests pass tmpdir
-  gitnexusHomeOverride?: string   // tests pass tmpdir
   migrationsDirOverride?: string  // tests pass tmpdir
   /** D-13-EXT-07 / Gap 1: tests pass a tmpdir-resident registry.json so the
    *  scanner can intersect filesystem-discovered repos with registered repos
@@ -70,18 +67,14 @@ export interface ScanCoverageOptions {
 // ── Internal scan ─────────────────────────────────────────────────────────────
 
 /**
- * Full scan — returns both the public CoverageResponse and the daemon-internal rows
- * (with absPath) for use by the refresh route (Plan 04).
- *
- * Internal-only export. Plan 04 uses internalRows to look up absPath when handling
- * POST /api/coverage/refresh.
+ * Full scan — returns the public CoverageResponse and its daemon-internal rows
+ * with absPath kept in a separate, explicitly non-wire shape.
  */
 export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Promise<{
   response: CoverageResponse
   internalRows: InternalCoverageRow[]
 }> {
   const sourcecodeRoot = opts.sourcecodeRootOverride ?? join(homedir(), 'Sourcecode')
-  const gitnexusHome = opts.gitnexusHomeOverride
   const migrationsDir = opts.migrationsDirOverride
 
   // Step 1: Discover repos (synchronous — readdir-based)
@@ -90,15 +83,10 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
   // Step 2: CODEX HIGH-3 — construct the resolver ONCE; pass to every scanner.
   // Only pass defined override values to satisfy exactOptionalPropertyTypes.
   const resolverOpts: Parameters<typeof makeCoverageResolver>[0] = { sourcecodeRoot }
-  if (gitnexusHome !== undefined) resolverOpts.gitnexusHome = gitnexusHome
   if (migrationsDir !== undefined) resolverOpts.migrationsDir = migrationsDir
   const resolve: PathResolver = makeCoverageResolver(resolverOpts)
 
-  // Step 3: One-shot singleton reads (gitnexus global state + workflow head version)
-  // scanGitNexusGlobal signature: (homeOverride: string | undefined, resolve: PathResolver)
-  const gnGlobal = scanGitNexusGlobal(gitnexusHome, resolve)
-
-  // readWorkflowHeadVersion signature: (migrationsDirOverride?: string)
+  // Step 3: One-shot workflow-head read.
   const workflowHead = readWorkflowHeadVersion(migrationsDir)
 
   // D-13-EXT-07 Gap-1 closure: precompute registered repoIds once per scan.
@@ -122,8 +110,6 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
         repo.absPath,
         repo.family,
         repo.name,
-        sourcecodeRoot,
-        gnGlobal,
         workflowHead,
         resolve,
         registeredRepoIds,
@@ -140,9 +126,8 @@ export async function scanCoverageInternal(opts: ScanCoverageOptions = {}): Prom
 
   // Step 6: CODEX HIGH-1 strip — public response carries CoverageRow (no absPath).
   const response: CoverageResponse = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAtIso: new Date().toISOString(),
-    gitNexusInstallState: gnGlobal.installState, // 10.6: 3-state replaces boolean
     workflowHeadVersion: workflowHead,
     rows: internalRows.map(stripInternal),
   }
@@ -172,15 +157,11 @@ async function buildRow(
   repoAbsPath: string,
   family: 'agenticapps' | 'factiv' | 'neuroflash',
   repoName: string,
-  sourcecodeRoot: string,
-  gnGlobal: ReturnType<typeof scanGitNexusGlobal>,
   workflowHead: string | null,
   resolve: PathResolver,
   registeredRepoIds: ReadonlySet<string>,
   viewerTokenFile?: string,
 ): Promise<InternalCoverageRow> {
-  const familyRoot = join(sourcecodeRoot, family)
-
   // AGREED-2: Promise.allSettled isolates scanner failures — one failure does not
   // poison the whole row. Failures yield degraded columns.
   //
@@ -188,10 +169,8 @@ async function buildRow(
   // a sync throw escape the array literal before allSettled gets a chance to
   // catch it. Wrap in an async IIFE so the throw resolves to a rejected promise
   // that allSettled handles.
-  const [cmS, gnS, wkS, wfS, ovS, unS] = await Promise.allSettled([
+  const [cmS, wfS, ovS, unS] = await Promise.allSettled([
     (async () => scanClaudeMd({ repoAbsPath, resolve }))(),
-    (async () => rateGitNexusRepo(gnGlobal, repoAbsPath))(),
-    (async () => scanWikiForFamily(familyRoot, repoName, resolve))(),
     (async () => scanWorkflowVersionForRepo(repoAbsPath, workflowHead, resolve))(),
     (async () => scanOverrideSentinelsForRepo(repoAbsPath, resolve))(),
     // Phase 14 D-14-08: understand-anything staleness detection (pure FS, no subprocess)
@@ -211,38 +190,6 @@ async function buildRow(
       : (() => {
           rowDegraded.push(`claudeMd: ${String(cmS.reason)}`)
           return { kind: 'basic' as const, state: 'missing' as const, degraded: true, degradedReason: String(cmS.reason) }
-        })()
-
-  // ── gitNexus column (CoverageBasicColumnSchema) ───────────────────────────
-  const gitNexus =
-    gnS.status === 'fulfilled'
-      ? {
-          kind: 'basic' as const,
-          state: gnS.value.state,
-          ...(gnS.value.daysSinceIndex !== undefined
-            ? { label: `${gnS.value.daysSinceIndex}d ago`, daysSince: gnS.value.daysSinceIndex }
-            : {}),
-        }
-      : (() => {
-          rowDegraded.push(`gitNexus: ${String(gnS.reason)}`)
-          return { kind: 'basic' as const, state: 'missing' as const, degraded: true, degradedReason: String(gnS.reason) }
-        })()
-
-  // ── wiki column (CoverageBasicColumnSchema) ───────────────────────────────
-  const wiki =
-    wkS.status === 'fulfilled'
-      ? {
-          kind: 'basic' as const,
-          state: wkS.value.state,
-          ...(wkS.value.hint
-            ? { label: wkS.value.hint }
-            : wkS.value.daysSinceCompile !== undefined
-            ? { label: `${wkS.value.daysSinceCompile}d ago`, daysSince: wkS.value.daysSinceCompile }
-            : {}),
-        }
-      : (() => {
-          rowDegraded.push(`wiki: ${String(wkS.reason)}`)
-          return { kind: 'basic' as const, state: 'missing' as const, degraded: true, degradedReason: String(wkS.reason) }
         })()
 
   // ── workflowVersion column (CoverageWorkflowColumnSchema) ─────────────────
@@ -324,8 +271,6 @@ async function buildRow(
     family,
     repo: repoName,
     claudeMd,
-    gitNexus,
-    wiki,
     workflowVersion,
     overrideCount: overrides.length,
     overrides: overrides.map((o) => ({
@@ -358,10 +303,7 @@ function stripInternal(internal: InternalCoverageRow): CoverageRow {
 
 /**
  * D-13-EXT-07: derive `family/repo` from an absolute path under sourcecodeRoot.
- * Inlined here (vs imported from gitnexusScan.ts:367 derivedRepoId) to avoid
- * any risk of import-cycle and to let coverage scanner tests run without
- * pulling gitnexusScan's module-level state. Kept in lockstep manually —
- * if gitnexusScan.ts:derivedRepoId semantics change, update both.
+ * Kept local because coverage discovery is the only consumer.
  */
 function familyRepoIdFromRoot(root: string, sourcecodeRoot: string): string | null {
   const prefix = sourcecodeRoot.endsWith(sep) ? sourcecodeRoot : sourcecodeRoot + sep

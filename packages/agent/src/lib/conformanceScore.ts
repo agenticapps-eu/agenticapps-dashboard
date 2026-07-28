@@ -8,16 +8,11 @@
  * record strings there).
  *
  * Implements:
- *   - D-12-03: equal-weighted % of green cells across the 4 Coverage columns
- *     (CLAUDE.md / GitNexus / Wiki / Workflow).
+ *   - D-12-03: equal-weighted % of green cells across CLAUDE.md and Workflow.
  *   - D-12-05: Math.round → integer 0..100 (no decimals).
  *   - D-12-06: 3 family cards + 1 fleet aggregate.
  *   - D-12-07: drifted repo IDs (`${family}/${repo}`) are pre-filtered out of
  *     per-family denominators before scoring.
- *   - Pitfall 2 (RESEARCH §): `not-applicable` cells are excluded from BOTH
- *     numerator AND denominator. The gitNexusInstallState=not-installed case
- *     would otherwise cap every family at 75% (3 of 4 columns green) and the
- *     ≥90% green gate would be structurally unreachable.
  *   - Pitfall 3 / A8 (ratified): fleet score = MEAN of 3 family scores
  *     (Math.round((aa + factiv + neuroflash) / 3)) — NOT the more-obvious
  *     sum-over-rows formula. With unequal repo counts (~30 / ~5 / ~5),
@@ -44,11 +39,7 @@ export interface FamilyScore {
 }
 
 /**
- * Equal-weighted % of green cells across the 4 Coverage columns for one
- * family's rows. `not-applicable` cells are skipped — they neither contribute
- * to the numerator (green count) nor the denominator (total count). This is
- * the Pitfall 2 defence that makes gitNexusInstallState=not-installed scores
- * meaningful instead of capped.
+ * Equal-weighted % of green cells across the retained Coverage columns.
  */
 function scoreRows(rows: CoverageRow[]): FamilyScore {
   let green = 0
@@ -56,9 +47,8 @@ function scoreRows(rows: CoverageRow[]): FamilyScore {
   let red = 0
   let total = 0
   for (const row of rows) {
-    const cells = [row.claudeMd, row.gitNexus, row.wiki, row.workflowVersion]
+    const cells = [row.claudeMd, row.workflowVersion]
     for (const cell of cells) {
-      if (cell.state === 'not-applicable') continue // Pitfall 2
       total += 1
       if (cell.state === 'fresh') green += 1
       else if (cell.state === 'stale') amber += 1
@@ -110,8 +100,8 @@ export function computeConformanceScores(
   // install, or transient state during onboarding) was previously treated as
   // "0% conformance" and dragged the fleet aggregate down to ~33% when the
   // other two families were healthy — primary metric silently lying.
-  // The correct semantic is "not-applicable": exclude empty families from
-  // the divisor, same way Pitfall 2 excludes not-applicable cells.
+  // Empty families are excluded from the divisor because they contain no
+  // coverage observations.
   const populated = [agenticapps, factiv, neuroflash].filter((f) => f.total > 0)
   const fleetScore =
     populated.length === 0

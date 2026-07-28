@@ -32,6 +32,13 @@ afterEach(() => {
 const VIEWER_URL = 'http://127.0.0.1:5193/understand/agenticapps/claude-workflow/?token=v1.abc.def'
 
 describe('UnderstandCopyPill — Test 1: state=missing', () => {
+  it('keeps the copy action at the mobile touch-target height', () => {
+    render(withToast(<UnderstandCopyPill family="agenticapps" repo="claude-workflow" state="missing" />))
+    expect(
+      screen.getByRole('button', { name: /copy understand command/i }).className,
+    ).toContain('min-h-11')
+  })
+
   it('renders copy pill (button labelled /understand) when state=missing', () => {
     render(withToast(<UnderstandCopyPill family="agenticapps" repo="claude-workflow" state="missing" />))
     const pill = screen.getByRole('button', { name: /copy understand command for claude-workflow/i })
@@ -66,6 +73,13 @@ describe('UnderstandCopyPill — Test 2: state=stale', () => {
 })
 
 describe('UnderstandCopyPill — Test 3: state=fresh', () => {
+  it('keeps the viewer action at the mobile touch-target height', () => {
+    render(withToast(<UnderstandCopyPill family="agenticapps" repo="claude-workflow" state="fresh" viewerUrl={VIEWER_URL} />))
+    expect(screen.getByRole('link', { name: /open knowledge graph/i }).className).toContain(
+      'min-h-11',
+    )
+  })
+
   it('renders viewer link when state=fresh + viewerUrl set', () => {
     render(withToast(<UnderstandCopyPill family="agenticapps" repo="claude-workflow" state="fresh" viewerUrl={VIEWER_URL} />))
     const link = screen.getByRole('link', { name: /open knowledge graph for claude-workflow/i })

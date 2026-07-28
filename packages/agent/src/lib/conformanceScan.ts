@@ -24,7 +24,7 @@
  *   - readDailySeriesForFleet raise → series=[], deltaBaseline=0
  *
  * This file MUST NOT recompute scores per-day — readDailySeriesForFleet already
- * applies the same Pitfall 2 (not-applicable) + Pitfall 3 (mean-of-3) rules.
+ * applies retained-cell normalization and the populated-family mean.
  * Today's scores come from computeConformanceScores on the live coverage
  * response; the series scores come from the NDJSON-record-equivalent path.
  *

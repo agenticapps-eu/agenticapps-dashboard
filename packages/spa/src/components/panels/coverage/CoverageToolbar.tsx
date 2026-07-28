@@ -1,7 +1,7 @@
 /**
- * CoverageToolbar.tsx — Filter chips (4-state multi-select) + debounced search input.
+ * CoverageToolbar.tsx — Three-state filter chips + debounced search input.
  *
- * UI-SPEC §5: 4-chip multi-select with 'all' as default.
+ * UI-SPEC §5: status-chip multi-select with 'all' as default.
  * Multi-select logic:
  *   - All chips deselected → auto-select 'all'
  *   - 'all' selected + clicking another → 'all' deselects, other selects
@@ -43,10 +43,10 @@ const CHIPS: Array<{ key: ChipKey; label: string }> = [
 ]
 
 const CHIP_SELECTED =
-  'bg-accent text-card-bg border border-accent px-3 py-1.5 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
+  'min-h-11 md:min-h-0 bg-accent text-card-bg border border-accent px-3 py-1.5 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 const CHIP_UNSELECTED =
-  'bg-card-bg text-text-secondary border border-divider-soft px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
+  'min-h-11 md:min-h-0 bg-card-bg text-text-secondary border border-divider-soft px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 export function CoverageToolbar({
   filter,
@@ -93,7 +93,7 @@ export function CoverageToolbar({
       [key]: !filter[key],
     }
 
-    // Auto-revert: if all 4 chips would be false, flip 'all' back to true
+    // Auto-revert: if every status chip would be false, flip 'all' back to true
     if (!next.missing && !next.stale && !next.fresh) {
       onFilterChange({ all: true, missing: false, stale: false, fresh: false })
     } else {
@@ -113,7 +113,7 @@ export function CoverageToolbar({
 
   return (
     <div className="flex items-center gap-3 flex-wrap py-3">
-      {/* 4-chip filter group (UI-SPEC §7 ARIA) */}
+      {/* Status filter group (UI-SPEC §7 ARIA) */}
       <div role="group" aria-label="Filter by status" className="flex items-center gap-2 flex-wrap">
         {CHIPS.map(({ key, label }) => {
           const selected = filter[key]
@@ -145,7 +145,7 @@ export function CoverageToolbar({
           placeholder="Search repos…"
           value={inputValue}
           onChange={handleSearchChange}
-          className="w-48 md:w-64 bg-card-bg-hover border border-border-subtle rounded-md pl-8 pr-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-11 md:min-h-0 w-48 md:w-64 bg-card-bg-hover border border-border-subtle rounded-md pl-8 pr-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
       </div>
     </div>

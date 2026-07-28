@@ -15,4 +15,4 @@ compensating controls. The scaffolder ships that template at
 
 | ADR | Title | Status |
 |---|---|---|
-| _(none yet — add your first ADR as `0001-<slug>.md`)_ | | |
+| [0001](0001-coverage-v2-history-compatibility.md) | Coverage v2 history compatibility | Accepted |

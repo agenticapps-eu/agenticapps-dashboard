@@ -28,7 +28,7 @@ export type CoverageCellDrift = z.infer<typeof CoverageCellDriftSchema>
  * Bulk-per-repo drift summary returned by GET /api/coverage/history?repoId=.
  *
  * PD-11-02 — Phase 11 chose the bulk-per-repo shape (one response carries
- * drift for ALL FOUR cells of one repo) over the per-(repo, cell) shape that
+ * drift for all retained cells of one repo) over the per-(repo, cell) shape that
  * an earlier draft considered. Why: cuts first-paint fan-out on /coverage
  * from O(rows × cells) ≈ 168 requests to O(rows) ≈ 42 requests; lets
  * CoverageCell stay purely presentational with a `drift?` prop fanned out
@@ -39,26 +39,63 @@ export type CoverageCellDrift = z.infer<typeof CoverageCellDriftSchema>
  * forces a deliberate schema bump (`schemaVersion: 2`) before the window
  * can change — guards against silent contract drift.
  *
- * The four cell keys MUST match Phase 10's CoverageResponseSchema column
- * vocabulary exactly (claudeMd | gitNexus | wiki | workflowVersion). All
- * four are REQUIRED — the daemon always returns a complete row even when
- * three of the four have no transition (cells with no transition carry
+ * The two cell keys MUST match the current CoverageResponseSchema column
+ * vocabulary exactly (claudeMd | workflowVersion). Both are REQUIRED — the
+ * daemon always returns a complete row even when neither has a transition
+ * (cells with no transition carry
  * { direction: null, daysSince: null }).
  *
  * `.strict()` rejects extra cell keys so a typo or smuggled column smell
  * surfaces as 400 / parse-error rather than silent acceptance.
  */
 export const CoverageHistoryResponseSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   repoId: z.string().min(1),
   windowDays: z.literal(14),
   cells: z
     .object({
       claudeMd: CoverageCellDriftSchema,
-      gitNexus: CoverageCellDriftSchema,
-      wiki: CoverageCellDriftSchema,
       workflowVersion: CoverageCellDriftSchema,
     })
     .strict(),
 })
 export type CoverageHistoryResponse = z.infer<typeof CoverageHistoryResponseSchema>
+export type CompatibleCoverageHistoryResponse = Omit<CoverageHistoryResponse, 'schemaVersion'> & {
+  schemaVersion: 1 | 2
+}
+
+const CoverageHistoryResponseV1CompatibilitySchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    repoId: z.string().min(1),
+    windowDays: z.literal(14),
+    cells: z
+      .object({
+        claudeMd: CoverageCellDriftSchema,
+        workflowVersion: CoverageCellDriftSchema,
+      })
+      .passthrough(),
+  })
+  .passthrough()
+
+/**
+ * Parse the deployed v1 history response while dropping retired drift cells.
+ */
+export function parseCoverageHistoryResponse(input: unknown): CompatibleCoverageHistoryResponse {
+  const version = z.object({ schemaVersion: z.union([z.literal(1), z.literal(2)]) }).parse(input)
+  if (version.schemaVersion === 2) {
+    return CoverageHistoryResponseSchema.parse(input)
+  }
+
+  const parsed = CoverageHistoryResponseV1CompatibilitySchema.parse(input)
+
+  return {
+    schemaVersion: parsed.schemaVersion,
+    repoId: parsed.repoId,
+    windowDays: parsed.windowDays,
+    cells: {
+      claudeMd: parsed.cells.claudeMd,
+      workflowVersion: parsed.cells.workflowVersion,
+    },
+  }
+}

@@ -35,14 +35,12 @@ import { readDailySeriesForFleet } from './snapshots/snapshotFleetReader.js'
 function makeRow(
   family: 'agenticapps' | 'factiv' | 'neuroflash',
   repo: string,
-  state: 'fresh' | 'stale' | 'missing' | 'not-applicable' = 'fresh',
+  state: 'fresh' | 'stale' | 'missing' = 'fresh',
 ) {
   return {
     family,
     repo,
     claudeMd: { kind: 'basic' as const, state },
-    gitNexus: { kind: 'basic' as const, state },
-    wiki: { kind: 'basic' as const, state },
     workflowVersion: {
       kind: 'workflow' as const,
       state,
@@ -51,15 +49,15 @@ function makeRow(
     },
     overrideCount: 0,
     overrides: [],
-    inRegistry: true, // D-13-EXT-07: registry membership default — tests not exercising the gate set true
+    inRegistry: true,
+    understand: { kind: 'basic' as const, state },
   }
 }
 
 function makeCoverage(rows: ReturnType<typeof makeRow>[]) {
   return {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     generatedAtIso: new Date().toISOString(),
-    gitNexusInstallState: 'installed-with-registry' as const,
     workflowHeadVersion: '1.8.0',
     rows,
   }

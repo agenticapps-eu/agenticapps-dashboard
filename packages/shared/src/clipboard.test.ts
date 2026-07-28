@@ -1,56 +1,10 @@
 /**
- * Tests for clipboard.ts — pure clipboard-string builders (CODEX MED-13 dedup).
- * Both daemon and SPA import from @agenticapps/dashboard-shared; no duplication.
+ * Tests for the retained Understand clipboard-string builder.
  */
 
 import { describe, it, expect } from 'vitest'
 
-import {
-  buildWikiCompileClipboardString,
-  buildWorkflowUpdateClipboardString,
-  buildClaudeMdHelpUrl,
-  buildGitnexusInstallClipboardString,
-  buildGitnexusIndexClipboardString,
-  buildUnderstandCommand,
-} from './clipboard.js'
-
-describe('buildWikiCompileClipboardString', () => {
-  it("returns correct string for 'agenticapps' family", () => {
-    expect(buildWikiCompileClipboardString('agenticapps')).toBe(
-      'cd ~/Sourcecode/agenticapps && claude /wiki-compile'
-    )
-  })
-
-  it("returns correct string for 'factiv' family", () => {
-    expect(buildWikiCompileClipboardString('factiv')).toBe(
-      'cd ~/Sourcecode/factiv && claude /wiki-compile'
-    )
-  })
-
-  it("returns correct string for 'neuroflash' family", () => {
-    expect(buildWikiCompileClipboardString('neuroflash')).toBe(
-      'cd ~/Sourcecode/neuroflash && claude /wiki-compile'
-    )
-  })
-})
-
-describe('buildWorkflowUpdateClipboardString', () => {
-  it('returns the workflow update command', () => {
-    expect(buildWorkflowUpdateClipboardString()).toBe('claude /update-agenticapps-workflow')
-  })
-})
-
-describe('buildClaudeMdHelpUrl', () => {
-  it('returns the deep link to the CLAUDE.md help doc', () => {
-    expect(buildClaudeMdHelpUrl()).toBe('/help/operations/install#claude-md-bootstrap')
-  })
-})
-
-describe('buildGitnexusInstallClipboardString', () => {
-  it('returns the gitnexus install command', () => {
-    expect(buildGitnexusInstallClipboardString()).toBe('npm install -g gitnexus')
-  })
-})
+import { buildUnderstandCommand } from './clipboard.js'
 
 // Phase 14 D-14-10: buildUnderstandCommand — single source of truth for /understand invocation
 describe('buildUnderstandCommand (D-14-10)', () => {
@@ -115,22 +69,5 @@ describe('buildUnderstandCommand (D-14-10)', () => {
       const cmd = buildUnderstandCommand('agenticapps', 'repo-1_v2.0')
       expect(cmd.string).toBe('cd ~/Sourcecode/agenticapps/repo-1_v2.0 && claude "/understand"')
     })
-  })
-})
-
-describe('buildGitnexusIndexClipboardString (10.6 / 13-00)', () => {
-  it('returns { string, argv } shape — D-13-10 single source of truth for gitnexus invocation', () => {
-    expect(buildGitnexusIndexClipboardString()).toEqual({ string: 'gitnexus analyze', argv: ['analyze'] })
-  })
-
-  it('string field is a string', () => {
-    const cmd = buildGitnexusIndexClipboardString()
-    expect(typeof cmd.string).toBe('string')
-  })
-
-  it('argv field is an array of strings', () => {
-    const cmd = buildGitnexusIndexClipboardString()
-    expect(Array.isArray(cmd.argv)).toBe(true)
-    expect(cmd.argv).toEqual(['analyze'])
   })
 })

@@ -2,8 +2,8 @@
  * Tooltip — Hand-rolled tooltip primitive (Phase 11.2 P1 #1).
  *
  * Closes the Phase 10 → 11 → 11.1 → 11.2 column-header explanation debt.
- * Used by CoverageFamilySection to wrap the CLAUDE.md / GitNexus / Wiki / Workflow
- * <th> text with explanatory hover/focus reveals.
+ * Used by CoverageFamilySection to wrap column headers with explanatory
+ * hover/focus reveals.
  *
  * Constraints (D-5.1-10):
  * - NO cn / clsx / CVA utility
@@ -19,7 +19,7 @@
  * Phase 11.2 follow-up: panel renders via createPortal(document.body) using
  * position: fixed + viewport coords from trigger.getBoundingClientRect(). This
  * escapes table-fixed containing-block width constraints so the max-w-xs (320px)
- * cap survives inside narrow <th> cells (CLAUDE.md / GitNexus / Workflow columns).
+ * cap survives inside narrow table-header cells.
  * Re-measures on scroll (capture phase) and resize so the panel tracks the trigger.
  *
  * ARIA: trigger receives aria-describedby={tooltipId}; panel uses role="tooltip" + matching id.

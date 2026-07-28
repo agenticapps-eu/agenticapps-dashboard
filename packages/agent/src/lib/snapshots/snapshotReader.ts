@@ -2,7 +2,7 @@
  * snapshotReader.ts — server-side drift computation across the 14d NDJSON window.
  *
  * PD-11-02 (bulk-per-repo): the public helper is readDriftForRepo(repoId) which
- * returns drift for ALL FOUR cells of one repo in one call. There is intentionally
+ * returns drift for both retained cells of one repo in one call. There is intentionally
  * NO per-cell helper — the bulk shape lets the route hand a single CoverageHistory
  * response back to the SPA per matrix row, cutting fan-out from O(rows × cells)
  * to O(rows).
@@ -15,8 +15,7 @@
  * reader walks the date-ordered series back-to-front and emits the first
  * transition it finds. Older transitions are discarded.
  *
- * NA-state exclusion: transitions into/out of `not-applicable` are NOT drift
- * signal. Direction stays null for those edges.
+ * Legacy `not-applicable` values in retained cells normalise to `missing`.
  *
  * Resilience: malformed JSON lines and malformed filenames are skipped silently
  * (T-11-02-08 — bounded enum values + structural defence; no 500s on garbage).
@@ -28,7 +27,7 @@ import type { CoverageCellDrift, CoverageDriftDirection } from '@agenticapps/das
 
 import { isSnapshotFilename, resolveSnapshotDir } from './snapshotPaths.js'
 
-export const CELL_KEYS = ['claudeMd', 'gitNexus', 'wiki', 'workflowVersion'] as const
+export const CELL_KEYS = ['claudeMd', 'workflowVersion'] as const
 export type CellKey = (typeof CELL_KEYS)[number]
 
 export type RepoDriftSummary = Record<CellKey, CoverageCellDrift>
@@ -38,23 +37,17 @@ interface SnapshotLine {
   family: string
   repo: string
   claudeMd: string
-  gitNexus: string
-  wiki: string
   workflowVersion: string
 }
 
 /**
- * The three "real" cell states. Transitions into/out of these states are drift
- * signal; transitions involving 'not-applicable' are NOT signal (a column that
- * doesn't apply to a repo flipping on/off doesn't tell us anything about that
- * repo's coverage trajectory).
+ * The current three-state vocabulary. Unknown values remain non-signal.
  */
 const SIGNAL_STATES = new Set(['fresh', 'stale', 'missing'])
 
 /**
  * 'up' = improvement (missing → stale → fresh ordering); 'down' = regression.
- * Returns null for same-state or for any edge involving 'not-applicable' /
- * an unknown enum value.
+ * Returns null for same-state or an unknown enum value.
  */
 function classifyTransition(prev: string, next: string): CoverageDriftDirection | null {
   if (!SIGNAL_STATES.has(prev) || !SIGNAL_STATES.has(next)) return null
@@ -70,8 +63,6 @@ function emptyDrift(): CoverageCellDrift {
 function emptySummary(): RepoDriftSummary {
   return {
     claudeMd: emptyDrift(),
-    gitNexus: emptyDrift(),
-    wiki: emptyDrift(),
     workflowVersion: emptyDrift(),
   }
 }
@@ -111,8 +102,6 @@ export async function readDriftForRepo(
   // Per cell: { date → state } with last-record-wins on same-day collapse.
   const perCellSeries: Record<CellKey, Map<string, string>> = {
     claudeMd: new Map(),
-    gitNexus: new Map(),
-    wiki: new Map(),
     workflowVersion: new Map(),
   }
 
@@ -138,7 +127,8 @@ export async function readDriftForRepo(
       if (recRepoId !== repoId) continue
       // Last-record-wins per (date, cell) — Map.set overwrites prior entry.
       for (const cell of CELL_KEYS) {
-        perCellSeries[cell].set(date, rec[cell])
+        const state = rec[cell]
+        perCellSeries[cell].set(date, state === 'not-applicable' ? 'missing' : state)
       }
     }
   }

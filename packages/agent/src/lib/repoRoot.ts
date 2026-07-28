@@ -1,9 +1,7 @@
 /**
  * repoRoot.ts — Canonical repoId → absolute root resolver (Plan 14-02, D-14-09).
  *
- * Single source of truth for the two core resolution functions previously
- * inlined in gitnexusScan.ts. Wave-3 plans (14-05, 14-06, 14-07) all import
- * from this module — do NOT duplicate the logic elsewhere.
+ * Single source of truth for repo resolution used by the Understand viewer.
  *
  * Security model:
  * ── D-13-EXT-08 — Deterministic forward resolver `family/repo` → absolute path.
@@ -23,10 +21,9 @@ import { existsSync, realpathSync, statSync } from 'node:fs'
  *
  * D-13-EXT-09 corollary (Codex CRITICAL #2) — Realpath-guarded.
  *   After existence + directory checks, realpath the candidate and refuse
- *   unless the resolved path equals the candidate OR lives under the family
- *   prefix. A symlink at ~/Sourcecode/agenticapps/evil → /etc would otherwise
- *   pass the directory check and let the daemon spawn gitnexus analyze with
- *   cwd=/etc. Mirrors assertSnapshotDirInDaemonHome (server/boot.ts:98-116).
+ *   unless the resolved path lives under the family prefix. A symlink at
+ *   ~/Sourcecode/agenticapps/evil → /etc would otherwise escape the approved
+ *   source tree. Mirrors assertSnapshotDirInDaemonHome (server/boot.ts:98-116).
  *
  * D-13-EXT-11 (Codex CRITICAL #1) — Defence-in-depth dot-segment rejection.
  *   The wire schema already rejects `.`, `..`, and `..` substrings, but the

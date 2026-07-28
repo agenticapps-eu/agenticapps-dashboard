@@ -13,12 +13,10 @@
  *      1.7.0 → 1.8.0 since coverage matrix is a dashboard surface, not a
  *      consumer-repo capability bump. CLAUDE.md vendoring (0009) carries the
  *      1.6 → 1.8 jump that was originally bundled with 0008.)
- *   - Migration documents the jq registry.json correction (top-level array)
- *   - Migration documents the clipboard-only wiki refresh stance (D-10-09)
  */
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { parseFrontmatter } from '../skillsScan.js'
@@ -65,17 +63,4 @@ describe('migration 0008 smoke (cross-repo; warns when upstream missing)', () =>
     expect((fm as Record<string, unknown>)?.to_version).toBe('1.6.0')
   })
 
-  it.skipIf(!HAS_UPSTREAM)('documents jq registry.json correction (Pitfall 7)', () => {
-    const content = readFileSync(MIGRATION_PATH, 'utf8')
-    // Must document the corrected 'jq length' form (top-level array)
-    expect(content).toMatch(/jq 'length'/)
-    // Must reference the top-level array note (the correction, not the bug)
-    expect(content).toMatch(/top-level array/i)
-  })
-
-  it.skipIf(!HAS_UPSTREAM)('documents clipboard-only wiki refresh stance (D-10-09)', () => {
-    const content = readFileSync(MIGRATION_PATH, 'utf8')
-    expect(content).toMatch(/clipboard.?only/i)
-    expect(content).toMatch(/wiki/i)
-  })
 })

@@ -5,11 +5,8 @@
  * Phase 12 D-12-09: 90-day x-axis. Reads the SAME NDJSON store Phase 11
  * writes (snapshotWriter.ts); Phase 12 is a read-only consumer. NEVER writes.
  *
- * Pitfall 2 (RESEARCH §): not-applicable cells are excluded from BOTH the
- * numerator AND denominator on the daily score path. The contract MUST match
- * conformanceScore.ts on a per-family basis or the "Today" card and the
- * rightmost point of the trend chart would disagree for the same coverage
- * snapshot.
+ * Legacy not-applicable values in retained fields normalise to missing. The
+ * contract MUST match conformanceScore.ts on a per-family basis.
  *
  * Pitfall 3 / A8 (ratified): the fleet score per day is the MEAN of the 3
  * family scores, NOT sum-over-rows. With unequal repo counts the two
@@ -49,13 +46,11 @@ interface SnapshotLine {
   family: string
   repo: string
   claudeMd: string
-  gitNexus: string
-  wiki: string
   workflowVersion: string
 }
 
-/** The 4 Coverage cells contributing to the score (matches conformanceScore.ts). */
-const CELL_KEYS = ['claudeMd', 'gitNexus', 'wiki', 'workflowVersion'] as const
+/** The retained Coverage cells contributing to the score. */
+const CELL_KEYS = ['claudeMd', 'workflowVersion'] as const
 type CellKey = (typeof CELL_KEYS)[number]
 
 /** D-12-06: 3 family cards only. 'other' is excluded from per-family scoring. */
@@ -68,9 +63,7 @@ type Family = (typeof FAMILY_KEYS)[number]
 const FAMILY_SET: ReadonlySet<string> = new Set<string>(FAMILY_KEYS)
 
 /**
- * The three "real" cell states. Anything outside this set (`not-applicable`
- * + any unknown enum value from an older snapshot) is silently excluded from
- * the score — Pitfall 2 + bounded-defence (T-11-02-08).
+ * The current three-state vocabulary. Unknown values are silently excluded.
  */
 const SIGNAL_STATES = new Set(['fresh', 'stale', 'missing'])
 const GREEN_STATE = 'fresh'
@@ -107,7 +100,8 @@ function scoreFamilyRecords(records: SnapshotLine[]): number {
   let total = 0
   for (const rec of records) {
     for (const cellKey of CELL_KEYS) {
-      const state = rec[cellKey as CellKey]
+      const rawState = rec[cellKey as CellKey]
+      const state = rawState === 'not-applicable' ? 'missing' : rawState
       if (!SIGNAL_STATES.has(state)) continue // Pitfall 2 + T-11-02-08
       total += 1
       if (state === GREEN_STATE) green += 1

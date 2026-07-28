@@ -95,9 +95,8 @@ describe('readRegistry / writeRegistry', () => {
         drifted: [],
       })
       coverage.setCoverageCache({
-        schemaVersion: 1,
+        schemaVersion: 2,
         generatedAtIso: '2026-05-15T00:00:00.000Z',
-        gitNexusInstallState: 'installed-no-registry',
         workflowHeadVersion: null,
         rows: [],
       })

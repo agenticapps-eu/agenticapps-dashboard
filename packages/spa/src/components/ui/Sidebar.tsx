@@ -8,9 +8,7 @@
  * a single Coverage entry linking to /coverage. Section architecture allows growth.
  *
  * Phase 14 D-14-06: Code Intelligence section inserted between Observability and ACCOUNT.
- * Contains Knowledge graphs entry linking to /code-intelligence. Section as new peer
- * (not sub-item) per user sidebar-architecture preference: new section with growth room
- * for future GitNexus explorer entries.
+ * Contains Knowledge graphs entry linking to /code-intelligence as a new peer section.
  *
  * Constraints (D-5.1-10):
  * - NO transition utilities
@@ -96,8 +94,7 @@ export function Sidebar(): React.JSX.Element {
         </SidebarSection>
 
         {/* Code Intelligence section — Phase 14 D-14-06. Inserted between Observability
-            and ACCOUNT as a NEW section (not sub-item) per user sidebar-architecture
-            preference: section with growth room for future GitNexus explorer entries. */}
+            and ACCOUNT as a new section rather than a sub-item. */}
         <SidebarSection label="Code Intelligence">
           <SidebarItem
             to="/code-intelligence"
