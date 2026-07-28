@@ -95,8 +95,20 @@ like.
   typecheck clean across 5 packages; lint 0 errors, no warnings in any changed
   file; `openspec validate --all` 19/19.
 
-**One item remains open and this change should not archive until it is ruled
-on:** the refusal diagnostic is a synchronous pre-auth stderr write per refused
-request (unbounded log growth, event-loop blocking, possible timing oracle).
-Both reviewers raised it independently. The spec requires the diagnostic and is
-silent on its volume, so this is a design decision, not a defect.
+### Refusal-diagnostic volume — ruled on and closed (2026-07-28)
+
+- [x] Rate limit refusal diagnostics: one correlated line per class per window,
+      repeats collapsed into a reported count. Spec delta and ADR 0002 record
+      the requirement and the two rejected alternatives.
+- [x] Amending the spec delta after the frozen-packet review is recorded in
+      REVIEWS.md as spending the override's artifact scoping, rather than being
+      carried forward silently.
+
+Final verification: agent suite 1208 passed / 1 skipped / 0 failed; typecheck
+clean across 5 packages; lint 0 errors with no warnings in any changed file;
+`openspec validate --all` 19/19.
+
+The only item still carrying `[~]` is the pre-implementation plan review, which
+was overridden and never satisfied. It is left open deliberately: the Stage-3
+implementation review does not retroactively discharge a gate that exists to run
+*before* code.
