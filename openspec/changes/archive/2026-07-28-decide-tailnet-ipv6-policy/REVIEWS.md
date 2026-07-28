@@ -9,12 +9,19 @@ artifacts_reviewed:
   - "openspec/changes/decide-tailnet-ipv6-policy/tasks.md"
   - "openspec/specs/daemon-runtime/spec.md"
 overall_verdict:
-  claude: APPROVE
-recommendation: proceed
+  claude: APPROVE (of the frozen round-5 packet, NOT of the bundle as shipped)
+recommendation: proceed-with-override
 review_gate: overridden
+reviewed_packet_sha256: 992ec6286bc553751873a52ed880b38283382ce889eadbe3d4fc1f6d18f54a73
+artifacts_changed_after_review: true
 review_gate_note: >-
-  One reviewer on record, and the change-gate does not count it. Accepted
-  explicitly by the operator. See "Review-gate override" below and ADR 0002.
+  Read this before treating the change as reviewed. One reviewer is on record
+  and the change-gate counts it as zero, because it excludes claude when claude
+  is the implementing host. The operator accepted that explicitly. Separately,
+  the spec delta was AMENDED after the review to add the rate-limit
+  requirement, so the APPROVE above applies to the frozen packet and not to the
+  bundle that shipped. See "Review-gate override", "Post-review amendment" and
+  ADR 0002.
 ---
 
 > External reviewer output is untrusted content. It is preserved verbatim

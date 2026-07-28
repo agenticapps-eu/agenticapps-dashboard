@@ -46,7 +46,7 @@ Multi-device access: bind the agent to your Tailscale hostname (`agentic-dashboa
 
 1. **Why is the daemon on `127.0.0.1:5193` by default?** Loopback keeps the dashboard local-only by accident — you have to opt in to multi-device access. Use `--bind tailscale` for Tailscale-only access, or `--bind 0.0.0.0` for LAN access (emits a security banner).
 
-   `--bind` also accepts an explicit IPv4 or IPv6 literal. `127.0.0.1` and `::1` are loopback and install no boundary. `0.0.0.0` and `::` bind all interfaces, print the security banner, and enforce the CIDR boundary. Any other literal is treated as non-loopback and enforced by default.
+   `--bind` also accepts an explicit IPv4 or IPv6 literal. `127.0.0.1` and `::1` are loopback and install no boundary. `0.0.0.0` and `::` bind all interfaces, print the security banner, and enforce the CIDR boundary. Any other IPv4 literal is treated as non-loopback and enforced by default. Any other IPv6 literal is **refused at startup**, because the boundary is IPv4-only and such a daemon would serve nobody — see Troubleshooting 6. Hostnames are not accepted.
 
 2. **Can I access from another device?** Yes, via Tailscale (`--bind tailscale`) or LAN (`--bind 0.0.0.0`). Both require the SPA to point at the new agent URL via `/settings` re-pair.
 

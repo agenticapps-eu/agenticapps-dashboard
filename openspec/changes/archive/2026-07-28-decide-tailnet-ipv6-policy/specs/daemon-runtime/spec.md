@@ -8,8 +8,10 @@ literals, including `0.0.0.0` and `::`. For explicit IP literals,
 `127.0.0.1` and `::1` SHALL be classified as loopback and every other literal
 SHALL be classified as non-loopback. For CLI binds classified as non-loopback,
 CIDR enforcement MUST be enabled by default unless the operator explicitly
-disables it. Dual-stack wildcard `::` SHALL start with enforcement enabled,
-admitting IPv6-mapped CGNAT IPv4 while refusing raw IPv6. Any other
+disables it. Dual-stack wildcard `::` SHALL start with enforcement enabled by default,
+admitting IPv6-mapped CGNAT IPv4 while refusing raw IPv6; the existing
+explicit opt-out disables that enforcement as it does for any other
+non-loopback bind. Any other
 non-loopback IPv6 literal with enforcement enabled MUST fail before server
 startup with a diagnostic that the admission boundary is IPv4-only; the
 existing explicit opt-out permits that bind. The daemon MUST print a startup
