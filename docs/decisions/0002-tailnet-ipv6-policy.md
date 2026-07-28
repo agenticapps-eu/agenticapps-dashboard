@@ -62,6 +62,34 @@ separately from a running node that has no CGNAT IPv4 address.
   device evidence, and review the fixed IPv6 prefix and bind behavior.
 - Public errors intentionally remain less specific than internal diagnostics.
 
+## Refusal diagnostics are rate limited
+
+Admission runs before authentication, so any peer that can open a socket
+controls how often the daemon writes a refusal diagnostic. Written naively that
+is one synchronous `stderr` line per refused request, into a log the service
+units do not rotate. Two independent implementation reviewers raised it
+separately: unbounded log growth, event-loop blocking on a regular-file
+descriptor, and a class-dependent write sitting on the response path where it
+could serve as a statistical timing oracle.
+
+The diagnostic itself is not negotiable — telling malformed socket state apart
+from a policy refusal is the reason this change exists. The volume is. Within a
+bounded window the daemon emits one fully correlated line per refusal class
+(class plus the existing `requestId`, never the address) and collapses the
+repeats into a count. Suppressed refusals are reported, not discarded.
+
+**Rejected: a plain per-class counter.** It removes the write amplification but
+also removes the `requestId`, and correlating a refusal to a request is the
+property that made the diagnostic worth adding. Keeping one correlated line per
+class per window costs nothing and preserves it.
+
+**Rejected: accepting the unbounded write.** The daemon is meant to sit behind
+a tailnet, but `0.0.0.0` and `::` are supported binds and the exposure needs
+only one of them facing a hostile network. Bounding the rate is a few lines.
+
+Admission is unaffected: every refused request is still refused, and the rate
+limit never influences the decision.
+
 ## Review record and gate exception
 
 This ADR was accepted on **one** review, and the §18 change-gate counts that

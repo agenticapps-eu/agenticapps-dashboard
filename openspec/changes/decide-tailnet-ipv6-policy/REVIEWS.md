@@ -173,3 +173,24 @@ this change received. It does **not** retire the §18 override: that gate wants
 after. What it does establish is that the implementation was reviewed by another
 vendor, that the review found two serious defects the author did not, and that
 those defects are fixed and pinned by tests.
+
+
+## Post-review amendment to the spec delta (2026-07-28)
+
+The frozen-packet override above is scoped to artifacts at SHA-256
+`992ec62…`, and **the spec delta has since changed**, so that scoping is
+recorded as spent rather than quietly carried forward.
+
+What changed: one paragraph and one scenario were added requiring refusal
+diagnostics to be rate limited, in response to the finding both Stage-3
+reviewers raised independently. The operator ruled on it explicitly.
+
+What did not change: the accepted address set, the three refusal classes, the
+prohibition on the class reaching any HTTP response, the prohibition on logging
+the client address, the bind classification rules, and the Tailscale setup
+diagnostics. The amendment constrains the *volume* of a diagnostic the delta
+already required; it relaxes nothing and widens nothing.
+
+Whether that counts as material is a judgement call, and it is being flagged
+rather than decided quietly: a reader re-running the plan review against the
+current bundle will not get the round-5 packet hash, and should not expect to.

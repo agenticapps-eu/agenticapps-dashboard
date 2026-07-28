@@ -93,11 +93,36 @@ export function isTailscaleCIDR(ip: string): boolean {
  * refused them. The class goes to stderr with the requestId the upstream
  * request-ID middleware already installed, and the peer address goes nowhere:
  * correlation without retention.
+ *
+ * Diagnostics are rate limited to one correlated line per class per window,
+ * with the repeats collapsed into a summary. See the comment on the emit.
  */
-export function cidrMiddleware(): MiddlewareHandler<{
+const REFUSAL_LOG_WINDOW_MS = 60_000
+
+export function cidrMiddleware(options: { logWindowMs?: number } = {}): MiddlewareHandler<{
   Bindings: HttpBindings
   Variables: { requestId: string }
 }> {
+  const windowMs = options.logWindowMs ?? REFUSAL_LOG_WINDOW_MS
+
+  // Rate-limit state, per middleware instance rather than per module, so two
+  // daemons in one process (and two tests) cannot silence each other.
+  let windowStart = Date.now()
+  const refusedInWindow = new Map<AdmissionClass, number>()
+  const correlatedInWindow = new Set<AdmissionClass>()
+
+  // Report what was suppressed rather than dropping it. A class that refused
+  // once needs no summary — its correlated line already said everything.
+  const flushWindow = (): void => {
+    for (const [cls, count] of refusedInWindow) {
+      if (count > 1) {
+        agentError(`cidr_refusal_summary class=${cls} refused=${count} windowMs=${windowMs}`)
+      }
+    }
+    refusedInWindow.clear()
+    correlatedInWindow.clear()
+  }
+
   return async (c, next) => {
     const ip = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
       ?.incoming?.socket?.remoteAddress ?? ''
@@ -105,8 +130,26 @@ export function cidrMiddleware(): MiddlewareHandler<{
     const classification = classifyAddress(ip)
     if (classification !== 'accepted') {
       const requestId = c.get('requestId') ?? generateRequestId()
-      // Class and correlation ID only — never the raw or normalised peer address.
-      agentError(`cidr_refusal requestId=${requestId} class=${classification}`)
+
+      const now = Date.now()
+      if (now - windowStart >= windowMs) {
+        flushWindow()
+        windowStart = now
+      }
+      refusedInWindow.set(classification, (refusedInWindow.get(classification) ?? 0) + 1)
+
+      // One fully correlated line per class per window. Both reviewers flagged
+      // the unbounded per-request write: it is pre-auth, so a peer that can
+      // open a socket controls the rate, and on a regular-file stderr the write
+      // is synchronous — unbounded log growth, event-loop blocking, and a
+      // class-dependent write sitting on the response path. Capping it keeps
+      // the spec property that made the diagnostic worth having (the class and
+      // the existing requestId, never the address) while removing the volume.
+      if (!correlatedInWindow.has(classification)) {
+        correlatedInWindow.add(classification)
+        agentError(`cidr_refusal requestId=${requestId} class=${classification}`)
+      }
+
       return c.json({ ok: false, error: 'cidr_violation', requestId }, 403)
     }
 

@@ -43,6 +43,14 @@ per-request `requestId` installed before CIDR middleware; they MUST NOT record
 the client address. This requirement introduces no new correlation identifier
 or header.
 
+Refusal diagnostics SHALL be rate limited, because admission runs before
+authentication and a peer that can open a socket would otherwise control the
+daemon's diagnostic write rate. Within a bounded window the daemon SHALL emit
+at most one correlated diagnostic per refusal class, and SHALL report the count
+of further refusals of that class rather than discarding them. The admission
+decision itself SHALL NOT depend on the rate limit: every refused request is
+still refused, and every admitted request is still admitted.
+
 #### Scenario: Tailscale bind setup failures are distinct
 - **WHEN** `--bind tailscale` is used and Tailscale is missing or unavailable, or the running daemon node has no CGNAT IPv4 address
 - **THEN** the daemon fails gracefully and distinguishes an unavailable installation from an IPv4-unavailable node
@@ -120,6 +128,12 @@ or header.
 - **WHEN** requests are refused under different internal classification codes
 - **THEN** every refusal response carries the same status, public error code, and field set
 - **AND** no response field, on any route and for any caller, reveals which rule refused the request.
+
+#### Scenario: Refusal diagnostics are rate limited
+- **WHEN** many requests are refused under the same classification within one window
+- **THEN** the daemon emits one diagnostic carrying that class and a `requestId`
+- **AND** it reports the number of further refusals of that class rather than discarding them
+- **AND** every one of those requests is still refused.
 
 #### Scenario: Refusal diagnostics do not retain the peer address
 - **WHEN** the daemon records any admission-refusal classification
