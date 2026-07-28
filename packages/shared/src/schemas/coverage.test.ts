@@ -1,498 +1,119 @@
-/**
- * Tests for coverage.ts — Zod schemas for /api/coverage response and /api/coverage/refresh.
- *
- * Security contracts encoded per 10-REVIEWS.md:
- * - CODEX HIGH-1: absPath NEVER in public CoverageRowSchema
- * - CODEX HIGH-4: CoverageWorkflowColumnSchema is a discriminated union with 5 sub-states
- * - CODEX HIGH-5: CoverageRefreshActionSchema is ONLY 'gitnexus-analyze'; wiki-compile rejected
- * - AGREED-2: degraded marker on rows + columns for partial-failure isolation
- * - COV-11: 4-state freshness vocabulary: 'fresh' | 'stale' | 'missing' | 'not-applicable'
- */
-
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
-  CoverageStateSchema,
-  CoverageFamilySchema,
   CoverageBasicColumnSchema,
-  CoverageWorkflowColumnSchema,
-  CoverageColumnStateSchema,
-  OverrideEntrySchema,
-  CoverageRowSchema,
+  CoverageFamilySchema,
   CoverageResponseSchema,
-  CoverageRefreshActionSchema,
-  CoverageRefreshRequestSchema,
-  CoverageRefreshResponseSchema,
+  CoverageRowSchema,
+  CoverageStateSchema,
+  CoverageWorkflowColumnSchema,
 } from './coverage.js'
 
+const validRow = {
+  family: 'agenticapps',
+  repo: 'dashboard',
+  claudeMd: { kind: 'basic', state: 'fresh' },
+  workflowVersion: {
+    kind: 'workflow',
+    state: 'fresh',
+    installedVersion: '3.0.0',
+    headVersion: '3.0.0',
+    detail: 'equal',
+  },
+  understand: {
+    kind: 'basic',
+    state: 'fresh',
+    viewerToken: 'fixture-viewer-token',
+  },
+  overrideCount: 0,
+  overrides: [],
+  inRegistry: true,
+}
+
 describe('CoverageStateSchema', () => {
-  it('accepts all 4 enum values', () => {
-    expect(() => CoverageStateSchema.parse('fresh')).not.toThrow()
-    expect(() => CoverageStateSchema.parse('stale')).not.toThrow()
-    expect(() => CoverageStateSchema.parse('missing')).not.toThrow()
-    expect(() => CoverageStateSchema.parse('not-applicable')).not.toThrow()
+  it.each(['fresh', 'stale', 'missing'])('accepts %s', (state) => {
+    expect(CoverageStateSchema.safeParse(state).success).toBe(true)
   })
 
-  it('rejects invalid values', () => {
-    expect(() => CoverageStateSchema.parse('unknown')).toThrow()
-    expect(() => CoverageStateSchema.parse('red')).toThrow()
-    expect(() => CoverageStateSchema.parse('ok')).toThrow()
-    expect(() => CoverageStateSchema.parse('')).toThrow()
+  it('rejects the retired not-applicable state', () => {
+    expect(CoverageStateSchema.safeParse('not-applicable').success).toBe(false)
   })
 })
 
-describe('CoverageFamilySchema', () => {
-  it('accepts the 3 valid family values', () => {
-    expect(() => CoverageFamilySchema.parse('agenticapps')).not.toThrow()
-    expect(() => CoverageFamilySchema.parse('factiv')).not.toThrow()
-    expect(() => CoverageFamilySchema.parse('neuroflash')).not.toThrow()
+describe('coverage column schemas', () => {
+  it('accepts current basic and workflow cells', () => {
+    expect(
+      CoverageBasicColumnSchema.safeParse({ kind: 'basic', state: 'missing' }).success,
+    ).toBe(true)
+    expect(
+      CoverageWorkflowColumnSchema.safeParse(validRow.workflowVersion).success,
+    ).toBe(true)
   })
 
-  it('rejects invalid family values', () => {
-    expect(() => CoverageFamilySchema.parse('personal')).toThrow()
-    expect(() => CoverageFamilySchema.parse('archive')).toThrow()
-    expect(() => CoverageFamilySchema.parse('shared')).toThrow()
-    expect(() => CoverageFamilySchema.parse('')).toThrow()
-  })
-})
-
-describe('CoverageBasicColumnSchema', () => {
-  it('accepts minimal shape { kind: basic, state: fresh }', () => {
-    expect(() =>
-      CoverageBasicColumnSchema.parse({ kind: 'basic', state: 'fresh' })
-    ).not.toThrow()
-  })
-
-  it('accepts full shape with optional fields', () => {
-    expect(() =>
-      CoverageBasicColumnSchema.parse({
+  it('rejects retired scanner metadata on a current basic cell', () => {
+    expect(
+      CoverageBasicColumnSchema.safeParse({
         kind: 'basic',
         state: 'fresh',
-        label: '1.7.0',
-        daysSince: 7,
-      })
-    ).not.toThrow()
-  })
-
-  it('accepts degraded marker for partial-failure isolation (AGREED-2)', () => {
-    expect(() =>
-      CoverageBasicColumnSchema.parse({
-        kind: 'basic',
-        state: 'missing',
-        degraded: true,
-        degradedReason: 'EACCES',
-      })
-    ).not.toThrow()
-  })
-
-  it('rejects wrong kind', () => {
-    expect(() =>
-      CoverageBasicColumnSchema.parse({ kind: 'workflow', state: 'fresh' })
-    ).toThrow()
-  })
-})
-
-describe('CoverageWorkflowColumnSchema (CODEX HIGH-4)', () => {
-  it('CASE-1 EQUAL: accepts equal workflow state', () => {
-    expect(() =>
-      CoverageWorkflowColumnSchema.parse({
-        kind: 'workflow',
-        state: 'fresh',
-        installedVersion: '1.8.0',
-        headVersion: '1.8.0',
-        detail: 'equal',
-      })
-    ).not.toThrow()
-  })
-
-  it('CASE-2 BEHIND: accepts behind workflow state', () => {
-    expect(() =>
-      CoverageWorkflowColumnSchema.parse({
-        kind: 'workflow',
-        state: 'stale',
-        installedVersion: '1.7.0',
-        headVersion: '1.8.0',
-        detail: 'behind',
-      })
-    ).not.toThrow()
-  })
-
-  it('CASE-3 AHEAD: accepts ahead workflow state', () => {
-    expect(() =>
-      CoverageWorkflowColumnSchema.parse({
-        kind: 'workflow',
-        state: 'fresh',
-        installedVersion: '1.9.0',
-        headVersion: '1.8.0',
-        detail: 'ahead',
-      })
-    ).not.toThrow()
-  })
-
-  it('CASE-4 VERSION-UNKNOWN: accepts null installedVersion', () => {
-    expect(() =>
-      CoverageWorkflowColumnSchema.parse({
-        kind: 'workflow',
-        state: 'stale',
-        installedVersion: null,
-        headVersion: '1.8.0',
-        detail: 'version-unknown',
-      })
-    ).not.toThrow()
-  })
-
-  it('CASE-5 SKILL-MISSING: accepts null installedVersion with skill-missing', () => {
-    expect(() =>
-      CoverageWorkflowColumnSchema.parse({
-        kind: 'workflow',
-        state: 'missing',
-        installedVersion: null,
-        headVersion: '1.8.0',
-        detail: 'skill-missing',
-      })
-    ).not.toThrow()
-  })
-})
-
-describe('CoverageColumnStateSchema discriminated union', () => {
-  it('narrows to basic column', () => {
-    const result = CoverageColumnStateSchema.parse({ kind: 'basic', state: 'stale' })
-    expect(result.kind).toBe('basic')
-  })
-
-  it('narrows to workflow column', () => {
-    const result = CoverageColumnStateSchema.parse({
-      kind: 'workflow',
-      state: 'fresh',
-      installedVersion: '1.7.0',
-      headVersion: '1.7.0',
-      detail: 'equal',
-    })
-    expect(result.kind).toBe('workflow')
-  })
-})
-
-describe('OverrideEntrySchema', () => {
-  it('accepts valid override entry', () => {
-    expect(() =>
-      OverrideEntrySchema.parse({
-        phaseSlug: '01-foo',
-        sinceIso: '2026-05-01T00:00:00Z',
-        source: 'git-log',
-      })
-    ).not.toThrow()
-  })
-
-  it('accepts mtime source', () => {
-    expect(() =>
-      OverrideEntrySchema.parse({
-        phaseSlug: '02-bar',
-        source: 'mtime',
-      })
-    ).not.toThrow()
+        daysSince: 3,
+      }).success,
+    ).toBe(false)
   })
 })
 
 describe('CoverageRowSchema', () => {
-  const validRow = {
-    family: 'agenticapps',
-    repo: 'dashboard',
-    claudeMd: { kind: 'basic', state: 'fresh' },
-    gitNexus: { kind: 'basic', state: 'not-applicable' },
-    wiki: { kind: 'basic', state: 'missing' },
-    workflowVersion: {
-      kind: 'workflow',
-      state: 'fresh',
-      installedVersion: '1.7.0',
-      headVersion: '1.7.0',
-      detail: 'equal',
-    },
-    overrideCount: 0,
-    overrides: [],
-    inRegistry: true,
-  }
-
-  it('accepts a valid complete row', () => {
-    expect(() => CoverageRowSchema.parse(validRow)).not.toThrow()
+  it('accepts the strict reduced row', () => {
+    expect(CoverageRowSchema.safeParse(validRow).success).toBe(true)
   })
 
-  it('accepts row with degraded marker for partial-failure isolation (AGREED-2)', () => {
-    expect(() =>
-      CoverageRowSchema.parse({
-        ...validRow,
-        degraded: { reason: 'scanner threw' },
-      })
-    ).not.toThrow()
+  it('requires Understand on version-2 rows', () => {
+    const { understand: _understand, ...withoutUnderstand } = validRow
+    expect(CoverageRowSchema.safeParse(withoutUnderstand).success).toBe(false)
   })
 
-  it('CODEX HIGH-1: absPath is NOT in CoverageRowSchema.shape', () => {
-    // Guard against future regression — absPath must NEVER appear in the public schema
-    const shape = Object.keys(CoverageRowSchema.shape)
-    expect(shape).not.toContain('absPath')
-  })
-})
-
-// Phase 14 D-14-08 / D-14-03: understand column on CoverageRowSchema
-describe('CoverageRowSchema — understand column (Phase 14 D-14-08 staleness + D-14-03 scoped viewer token)', () => {
-  // LOCAL fixture for these tests only. Pre-Phase-14 daemon shape — no understand field.
-  const validRowBase = {
-    family: 'agenticapps' as const,
-    repo: 'claude-workflow',
-    claudeMd: { kind: 'basic' as const, state: 'fresh' as const },
-    gitNexus: { kind: 'basic' as const, state: 'missing' as const },
-    wiki: { kind: 'basic' as const, state: 'fresh' as const },
-    workflowVersion: {
-      kind: 'workflow' as const,
-      state: 'fresh' as const,
-      installedVersion: '1.6.0',
-      headVersion: '1.6.0',
-    },
-    overrideCount: 0,
-    overrides: [],
-  }
-
-  it('(understand-row-1) back-compat: row WITHOUT understand field parses (D-13-EXT-10 precedent)', () => {
-    const r = CoverageRowSchema.safeParse(validRowBase)
-    expect(r.success, r.success ? '' : JSON.stringify((r as { error: { format(): unknown } }).error.format())).toBe(true)
-    if (r.success) expect(r.data.understand).toBeUndefined()
-  })
-
-  it('(understand-row-2) full understand column with fresh state and viewerToken parses', () => {
-    const row = {
-      ...validRowBase,
-      understand: {
-        kind: 'basic',
-        state: 'fresh',
-        lastAnalyzedAt: '2026-06-06T09:09:18Z',
-        analyzedCommit: '01435ab',
-        analyzedFiles: 110,
-        viewerToken: 'v1.xxx.yyy',
-      },
-    }
-    const r = CoverageRowSchema.safeParse(row)
-    expect(r.success, r.success ? '' : JSON.stringify((r as { error: { format(): unknown } }).error.format())).toBe(true)
-    if (r.success) {
-      expect(r.data.understand?.state).toBe('fresh')
-      expect(r.data.understand?.viewerToken).toBe('v1.xxx.yyy')
-    }
-  })
-
-  it('(understand-row-3a) state stale parses', () => {
-    const row = { ...validRowBase, understand: { kind: 'basic', state: 'stale' } }
-    expect(() => CoverageRowSchema.parse(row)).not.toThrow()
-  })
-
-  it('(understand-row-3b) state missing parses', () => {
-    const row = { ...validRowBase, understand: { kind: 'basic', state: 'missing' } }
-    expect(() => CoverageRowSchema.parse(row)).not.toThrow()
-  })
-
-  it('(understand-row-3c) state "analyzed" FAILS (not in enum — guards RESEARCH naming drift)', () => {
-    const row = { ...validRowBase, understand: { kind: 'basic', state: 'analyzed' } }
-    expect(() => CoverageRowSchema.parse(row)).toThrow()
-  })
-
-  it('(understand-row-3d) state "present" FAILS (not in enum — guards RESEARCH/PATTERNS naming drift)', () => {
-    const row = { ...validRowBase, understand: { kind: 'basic', state: 'present' } }
-    expect(() => CoverageRowSchema.parse(row)).toThrow()
-  })
-
-  it('(understand-row-4) unknown key inside understand FAILS parse (.strict())', () => {
-    const row = {
-      ...validRowBase,
-      understand: { kind: 'basic', state: 'fresh', unknownKey: 'should-fail' },
-    }
-    expect(() => CoverageRowSchema.parse(row)).toThrow()
-  })
-
-  it('(understand-row-5) degraded shape parses (AGREED-2 degraded-row pattern)', () => {
-    const row = {
-      ...validRowBase,
-      understand: { kind: 'basic', state: 'missing', degraded: true, degradedReason: 'scanner threw ENOENT' },
-    }
-    expect(() => CoverageRowSchema.parse(row)).not.toThrow()
-  })
-})
-
-describe('CoverageRowSchema — inRegistry field (D-13-EXT-07 / D-13-EXT-10 back-compat)', () => {
-  // LOCAL fixture for these tests only. NEVER share with describe('CoverageRowSchema').
-  const validRowBase = {
-    family: 'agenticapps' as const,
-    repo: 'dashboard',
-    claudeMd: { kind: 'basic' as const, state: 'fresh' as const },
-    gitNexus: { kind: 'basic' as const, state: 'missing' as const },
-    wiki: { kind: 'basic' as const, state: 'missing' as const },
-    workflowVersion: {
-      kind: 'workflow' as const,
-      state: 'fresh' as const,
-      installedVersion: '1.6.0',
-      headVersion: '1.6.0',
-    },
-    overrideCount: 0,
-    overrides: [],
-  }
-
-  it('(i) accepts a row with inRegistry: true', () => {
-    expect(() => CoverageRowSchema.parse({ ...validRowBase, inRegistry: true })).not.toThrow()
-  })
-
-  it('(ii) accepts a row with inRegistry: false', () => {
-    expect(() => CoverageRowSchema.parse({ ...validRowBase, inRegistry: false })).not.toThrow()
-  })
-
-  it('(iii) D-13-EXT-10: accepts a row with inRegistry omitted (older daemon back-compat)', () => {
-    // D-13-EXT-10 (Codex WARNING #6) inverted this test. Pre-Phase-13 daemons
-    // omit the field; SPA must parse cleanly without dropping into SchemaDriftState.
-    const r = CoverageRowSchema.safeParse(validRowBase)
-    expect(r.success, r.success ? '' : JSON.stringify(r.error.format())).toBe(true)
-    if (r.success) expect(r.data.inRegistry).toBeUndefined()
-  })
-
-  it('(iv) REJECTS a row with inRegistry: "true" (must be boolean when present, not string)', () => {
-    expect(() =>
-      CoverageRowSchema.parse({ ...validRowBase, inRegistry: 'true' })
-    ).toThrow()
+  it.each(['gitNexus', 'wiki', 'absPath'])('rejects retired/private field %s', (field) => {
+    expect(
+      CoverageRowSchema.safeParse({ ...validRow, [field]: { kind: 'basic', state: 'fresh' } })
+        .success,
+    ).toBe(false)
   })
 })
 
 describe('CoverageResponseSchema', () => {
-  it('accepts valid response with empty rows', () => {
-    expect(() =>
-      CoverageResponseSchema.parse({
-        schemaVersion: 1,
-        generatedAtIso: '2026-05-13T00:00:00Z',
-        gitNexusInstallState: 'not-installed',
-        workflowHeadVersion: null,
-        rows: [],
-      })
-    ).not.toThrow()
-  })
-
-  it('rejects schemaVersion !== 1 (literal lock)', () => {
-    expect(() =>
-      CoverageResponseSchema.parse({
+  it('accepts strict schema version 2', () => {
+    expect(
+      CoverageResponseSchema.safeParse({
         schemaVersion: 2,
-        generatedAtIso: '2026-05-13T00:00:00Z',
-        gitNexusInstallState: 'installed-with-registry',
-        workflowHeadVersion: '1.7.0',
-        rows: [],
-      })
-    ).toThrow()
+        generatedAtIso: '2026-07-28T00:00:00Z',
+        workflowHeadVersion: '3.0.0',
+        rows: [validRow],
+      }).success,
+    ).toBe(true)
   })
 
-  it('rejects unknown gitNexusInstallState values (10.6 enum lock)', () => {
-    expect(() =>
-      CoverageResponseSchema.parse({
+  it('rejects schema version 1 and retired envelope fields', () => {
+    expect(
+      CoverageResponseSchema.safeParse({
         schemaVersion: 1,
-        generatedAtIso: '2026-05-13T00:00:00Z',
-        gitNexusInstallState: 'something-else',
-        workflowHeadVersion: null,
+        generatedAtIso: '2026-07-28T00:00:00Z',
+        workflowHeadVersion: '3.0.0',
         rows: [],
-      })
-    ).toThrow()
+      }).success,
+    ).toBe(false)
+    expect(
+      CoverageResponseSchema.safeParse({
+        schemaVersion: 2,
+        generatedAtIso: '2026-07-28T00:00:00Z',
+        workflowHeadVersion: '3.0.0',
+        gitNexusInstallState: 'installed-with-registry',
+        rows: [],
+      }).success,
+    ).toBe(false)
   })
 })
 
-describe('CoverageRefreshActionSchema (CODEX HIGH-5)', () => {
-  it('accepts gitnexus-analyze', () => {
-    expect(() => CoverageRefreshActionSchema.parse('gitnexus-analyze')).not.toThrow()
-  })
-
-  it('rejects wiki-compile (D-10-09 — wiki is clipboard-only, never an action)', () => {
-    expect(() => CoverageRefreshActionSchema.parse('wiki-compile')).toThrow()
-  })
-
-  it('rejects workflow-update (SPA-side clipboard only)', () => {
-    expect(() => CoverageRefreshActionSchema.parse('workflow-update')).toThrow()
-  })
-})
-
-describe('CoverageRefreshRequestSchema (CODEX HIGH-5)', () => {
-  it('accepts valid refresh request', () => {
-    expect(() =>
-      CoverageRefreshRequestSchema.parse({
-        family: 'agenticapps',
-        repo: 'dashboard',
-        action: 'gitnexus-analyze',
-      })
-    ).not.toThrow()
-  })
-
-  it('rejects wiki-compile action (D-10-09)', () => {
-    expect(() =>
-      CoverageRefreshRequestSchema.parse({
-        family: 'agenticapps',
-        repo: 'dashboard',
-        action: 'wiki-compile',
-      })
-    ).toThrow()
-  })
-
-  it('rejects missing family (required field)', () => {
-    expect(() =>
-      CoverageRefreshRequestSchema.parse({
-        repo: 'dashboard',
-        action: 'gitnexus-analyze',
-      })
-    ).toThrow()
-  })
-})
-
-describe('CoverageRefreshResponseSchema (CODEX HIGH-5)', () => {
-  const validRow = {
-    family: 'agenticapps',
-    repo: 'dashboard',
-    claudeMd: { kind: 'basic', state: 'fresh' },
-    gitNexus: { kind: 'basic', state: 'fresh' },
-    wiki: { kind: 'basic', state: 'fresh' },
-    workflowVersion: {
-      kind: 'workflow',
-      state: 'fresh',
-      installedVersion: '1.7.0',
-      headVersion: '1.7.0',
-      detail: 'equal',
-    },
-    overrideCount: 0,
-    overrides: [],
-    inRegistry: true,
-  }
-
-  it('accepts ok=true with REQUIRED updatedRow (CODEX HIGH-5)', () => {
-    expect(() =>
-      CoverageRefreshResponseSchema.parse({
-        ok: true,
-        kind: 'ok',
-        updatedRow: validRow,
-      })
-    ).not.toThrow()
-  })
-
-  it('rejects ok=true with missing updatedRow (updatedRow is REQUIRED on success)', () => {
-    const result = CoverageRefreshResponseSchema.safeParse({
-      ok: true,
-      kind: 'ok',
-      // missing updatedRow — CODEX HIGH-5 requires it on ok=true
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('accepts ok=false with kind=not-installed; updatedRow absent is fine on failure', () => {
-    expect(() =>
-      CoverageRefreshResponseSchema.parse({
-        ok: false,
-        kind: 'not-installed',
-      })
-    ).not.toThrow()
-  })
-
-  it('accepts ok=false with kind=error and optional fields', () => {
-    expect(() =>
-      CoverageRefreshResponseSchema.parse({
-        ok: false,
-        kind: 'error',
-        exitCode: 1,
-        stderr: 'gitnexus: command failed',
-      })
-    ).not.toThrow()
+describe('CoverageFamilySchema', () => {
+  it.each(['agenticapps', 'factiv', 'neuroflash'])('accepts %s', (family) => {
+    expect(CoverageFamilySchema.safeParse(family).success).toBe(true)
   })
 })

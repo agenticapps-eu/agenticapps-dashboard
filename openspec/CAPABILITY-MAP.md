@@ -317,3 +317,22 @@ proposed without evidence of a peer that cannot connect.
 The sequence recorded above lists seven changes. `decide-tailnet-ipv6-policy` is
 the ninth and is independent of all of them: it touches only `daemon-runtime`,
 adds no behaviour, and can run at any point.
+
+### Coverage integration supersession — 2026-07-28
+
+The ratified capability table above is preserved as historical decision
+context. Current product truth now supersedes its GitNexus, Wiki, four-state,
+and scoped-refresh descriptions:
+
+- `fleet-coverage` tracks `CLAUDE.md`, workflow version, and Understand Anything
+  analysis with the three states `fresh`, `stale`, and `missing`; its snapshots
+  and drift responses retain only `claudeMd` and `workflowVersion`.
+- `fleet-conformance` scores those same two historically comparable fields.
+- `code-intelligence` now means Understand Anything status, SPA-constructed
+  analysis commands, and the daemon-hosted knowledge-graph viewer.
+
+The dashboard's GitNexus scan routes, health extension, coverage column, and
+vendored skill, plus the Wiki coverage column and compiler reads, are removed.
+The machine-level GitNexus MCP registration and installation remain outside
+dashboard scope. Compatibility and retained-history decisions are recorded in
+`docs/decisions/0001-coverage-v2-history-compatibility.md`.

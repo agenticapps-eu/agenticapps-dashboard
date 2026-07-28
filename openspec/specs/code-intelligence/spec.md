@@ -2,80 +2,26 @@
 
 ## Purpose
 
-Two external tools build machine-readable maps of a repo: a code-graph indexer
-and an LLM-driven knowledge-graph analyser. Both produce artifacts on disk that
-are useless if nobody can see whether they exist, whether they are current, or
-what they contain.
-
-This capability is the dashboard's surface over both: per-repo status in the
-coverage matrix, scoped actions to refresh what can be refreshed headlessly, and
-a daemon-hosted viewer for the analysis that has a real UI. The user-facing
-capability is "see and refresh code intelligence for a repo"; the two tools are
-implementation behind it.
-
-> **⚠ SCHEDULED FOR REMOVAL — GitNexus integration.** The GitNexus half of this
-> capability (`Scoped Code-Graph Scan Actions` and the code-graph coverage
-> column) is being **removed from the dashboard entirely** — decided 2026-07-26,
-> GAP-04. Until that removal ships, the requirements below remain **current
-> truth**: the feature works and is in use. Do not extend it; see the active
-> change `openspec/changes/remove-gitnexus-integration/`.
->
-> Note that removal is a *product* decision, not a consequence of migration
-> `0032`. That migration removed GitNexus from the AgenticApps workflow scaffold
-> only; the tool itself remains installed and registered as an MCP server, and
-> stays available outside the dashboard.
->
-> The knowledge-graph viewer half of this capability is **not** affected.
+Understand Anything builds an LLM-driven, machine-readable knowledge graph for
+a repo. This capability makes that analysis visible: per-repo status in the
+coverage matrix, an SPA-constructed command for running or refreshing analysis,
+and a daemon-hosted viewer for inspecting the generated artifacts.
 
 ## Requirements
-
-### Requirement: Code-Graph Coverage Status
-
-The coverage matrix SHALL carry a column reporting each repo's code-graph index
-state, using the standard four freshness states. Index staleness SHALL be
-measured against the age of the last index.
-
-#### Scenario: Index age drives staleness
-- **WHEN** a repo's code-graph index is older than the staleness threshold
-- **THEN** its cell reports `stale`
-- **AND** a repo with no index at all reports `missing`.
-
-#### Scenario: Indexer absent yields a neutral state and a hint
-- **WHEN** the code-graph tool is not installed on the machine
-- **THEN** every repo's cell reports `not-applicable` rather than red
-- **AND** a family-level install hint with a copyable command is offered, without a page-level banner.
-
-### Requirement: Scoped Code-Graph Scan Actions
-
-> Scheduled for removal (GAP-04) — recorded as current truth; do not extend.
-
-The daemon SHALL offer scan actions scoped to a single family or a single repo,
-spawning the indexer as a subprocess and returning a job identifier the SPA polls
-until completion. On success the coverage cache MUST be invalidated so the cell
-updates without user action. The binary MUST be resolved from PATH rather than
-invoked through a package runner.
-
-#### Scenario: A scoped scan flips the cell without a reload
-- **WHEN** a per-repo scan action completes successfully
-- **THEN** the coverage data is invalidated and the repo's cell reflects the new index state
-- **AND** the user did not have to reload the page.
-
-#### Scenario: The clipboard fallback survives for the uninstalled case
-- **WHEN** the indexer binary is not installed
-- **THEN** the surface offers the copyable install command rather than a scan action
-- **AND** that fallback path remains available.
 
 ### Requirement: Knowledge-Graph Analysis Status
 
 The coverage matrix SHALL carry a column reporting each repo's knowledge-graph
-analysis state: analysed, stale, or missing. Staleness SHALL be determined by
-comparing the commit recorded in the analysis metadata against the repo's current
-head.
+analysis state. Its wire values SHALL be `fresh`, `stale`, or `missing`;
+`fresh` is presented to the user as analysed. Staleness SHALL be determined by
+comparing the commit recorded in the analysis metadata against the repo's
+current head. Any copyable re-analysis command SHALL be constructed in the SPA
+and MUST NOT round-trip through the daemon.
 
 #### Scenario: A commit mismatch marks the analysis stale
 - **WHEN** a repo's recorded analysis commit differs from its current head commit
 - **THEN** the cell reports the analysis as stale
-- **AND** offers a copyable command to re-run the analysis.
+- **AND** offers an SPA-constructed copyable command to re-run the analysis.
 
 ### Requirement: Analysis Is Not Daemon-Triggered
 

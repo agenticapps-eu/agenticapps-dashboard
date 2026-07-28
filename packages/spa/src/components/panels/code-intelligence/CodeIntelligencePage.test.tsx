@@ -17,7 +17,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
-import type { CoverageResponse, HealthResponse } from '@agenticapps/dashboard-shared'
+import type {
+  CompatibleCoverageResponse,
+  HealthResponse,
+} from '@agenticapps/dashboard-shared'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 // ── Mock hooks ────────────────────────────────────────────────────────────────
@@ -50,29 +53,34 @@ const AGENT_URL = 'http://127.0.0.1:5193'
 const VIEWER_TOKEN = 'scoped-viewer-token-abc123'
 
 function makeCoverageResponse(
-  understands: Array<{ state: 'fresh' | 'stale' | 'missing' | 'not-applicable'; viewerToken?: string } | undefined>,
-): CoverageResponse {
+  understands: Array<{ state: 'fresh' | 'stale' | 'missing'; viewerToken?: string } | undefined>,
+): CompatibleCoverageResponse {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAtIso: '2026-06-07T09:00:00.000Z',
-    gitNexusInstallState: 'installed-with-registry',
     workflowHeadVersion: '1.6.0',
     rows: understands.map((u, i) => ({
       family: 'agenticapps' as const,
       repo: `repo-${i + 1}`,
       claudeMd: { kind: 'basic' as const, state: 'fresh' as const },
-      gitNexus: { kind: 'basic' as const, state: 'fresh' as const },
-      wiki: { kind: 'basic' as const, state: 'fresh' as const },
       workflowVersion: { kind: 'workflow' as const, state: 'fresh' as const, installedVersion: '1.6.0', headVersion: '1.6.0' },
       overrideCount: 0,
       overrides: [],
-      understand: u === undefined ? undefined : {
-        kind: 'basic' as const,
-        state: u.state,
-        lastAnalyzedAt: u.state !== 'missing' ? '2026-06-01T10:00:00.000Z' : undefined,
-        analyzedFiles: u.state !== 'missing' ? 42 : undefined,
-        viewerToken: u.viewerToken,
-      },
+      ...(u === undefined
+        ? {}
+        : {
+            understand: {
+              kind: 'basic' as const,
+              state: u.state,
+              ...(u.state !== 'missing'
+                ? {
+                    lastAnalyzedAt: '2026-06-01T10:00:00.000Z',
+                    analyzedFiles: 42,
+                  }
+                : {}),
+              ...(u.viewerToken !== undefined ? { viewerToken: u.viewerToken } : {}),
+            },
+          }),
     })),
   }
 }
@@ -144,12 +152,11 @@ beforeEach(() => {
 
 describe('CodeIntelligencePage', () => {
   describe('Test 1: filtered project listing', () => {
-    it('lists repos with understand.state fresh or stale; excludes missing/not-applicable/undefined', () => {
+    it('lists repos with understand.state fresh or stale; excludes missing/undefined', () => {
       mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
         { state: 'fresh', viewerToken: VIEWER_TOKEN },
         { state: 'stale' },
         { state: 'missing' },
-        { state: 'not-applicable' },
         undefined,
       ])))
       mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))
@@ -159,10 +166,9 @@ describe('CodeIntelligencePage', () => {
       // fresh and stale repos are listed
       expect(screen.getByText('repo-1')).toBeDefined()
       expect(screen.getByText('repo-2')).toBeDefined()
-      // missing/not-applicable/undefined are excluded
+      // missing/undefined are excluded
       expect(screen.queryByText('repo-3')).toBeNull()
       expect(screen.queryByText('repo-4')).toBeNull()
-      expect(screen.queryByText('repo-5')).toBeNull()
     })
 
     it('renders staleness badge for stale repos', () => {
@@ -259,7 +265,6 @@ describe('CodeIntelligencePage', () => {
     it('renders EmptyState with /understand mention when no repos are analyzed', () => {
       mockUseCoverage.mockReturnValue(makeQueryResult(makeCoverageResponse([
         { state: 'missing' },
-        { state: 'not-applicable' },
         undefined,
       ])))
       mockUseHealth.mockReturnValue(makeQueryResult(makeHealthResponse()))

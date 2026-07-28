@@ -242,23 +242,24 @@ describe('snapshotFleetReader.readDailySeriesForFleet', () => {
     })
   })
 
-  it('not-applicable cells excluded from numerator AND denominator (Pitfall 2 — daily)', async () => {
-    // 3 cells fresh + 1 not-applicable → score 100 (not 75 — denominator must be 3).
+  it('legacy not-applicable on a retained cell is normalised to missing', async () => {
+    // Retained v1 not-applicable values become missing, so one of two scored
+    // cells is green and the daily score is 50.
     writeSnapshot(dir, '2026-05-20', [
       baseRecord({
         family: 'agenticapps',
         repo: 'a1',
         claudeMd: 'fresh',
-        gitNexus: 'not-applicable',
+        gitNexus: 'fresh',
         wiki: 'fresh',
-        workflowVersion: 'fresh',
+        workflowVersion: 'not-applicable',
       }),
     ])
 
     const result = await readDailySeriesForFleet({ dir, now, windowDays: 90 })
 
     expect(result).toHaveLength(1)
-    expect(result[0]?.agenticapps).toBe(100)
+    expect(result[0]?.agenticapps).toBe(50)
   })
 
   it('fleet score = mean-of-3 (Pitfall 3 daily case — discriminator)', async () => {
@@ -343,7 +344,7 @@ describe('snapshotFleetReader.readDailySeriesForFleet', () => {
   })
 
   it('returns integer scores per entry (D-12-05)', async () => {
-    // 1/3 cells green → 33 per family (round of 33.333…). All integer.
+    // 1/2 retained cells green → 50 per family. All scores remain integers.
     writeSnapshot(dir, '2026-05-20', [
       baseRecord({
         family: 'agenticapps',
@@ -379,8 +380,8 @@ describe('snapshotFleetReader.readDailySeriesForFleet', () => {
     expect(Number.isInteger(entry.agenticapps)).toBe(true)
     expect(Number.isInteger(entry.factiv)).toBe(true)
     expect(Number.isInteger(entry.neuroflash)).toBe(true)
-    expect(entry.agenticapps).toBe(33)
-    expect(entry.fleet).toBe(33)
+    expect(entry.agenticapps).toBe(50)
+    expect(entry.fleet).toBe(50)
   })
 
   it('default windowDays sourced from snapshotPaths.RETENTION_DAYS', async () => {

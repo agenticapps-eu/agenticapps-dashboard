@@ -32,7 +32,6 @@ import { coverageHistoryRoute } from '../routes/coverageHistory.js'
 import { skillDriftRoute } from '../routes/skillDrift.js'
 import { conformanceRoute } from '../routes/conformance.js'
 import { registryFixPathRoute } from '../routes/registryFixPath.js'
-import { gitnexusScanRoute } from '../routes/gitnexusScan.js'
 import { understandViewerRoute, understandDataRoute } from '../routes/understandViewer.js'
 
 import { errorHandler } from './middleware/errors.js'
@@ -70,7 +69,7 @@ export interface CreateAppOptions {
   registryFile?: string
   /** Override auth file path (for isolated testing). */
   authFile?: string
-  /** Daemon bind mode — defaults to 'loopback' (safest; refuses scan routes). */
+  /** Daemon bind mode — defaults to 'loopback'. */
   bindMode?: BindMode
   /** Override viewer token file path (for isolated testing). */
   viewerTokenFile?: string
@@ -149,9 +148,8 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   // the main bearer token. Mounting here short-circuits the bearerAuth middleware so
   // the browser can reach data endpoints and static assets without an Authorization header.
   //
-  // D-14-04: no bindMode check in understandViewer — full Tailscale parity (deliberate
-  // contrast with D-13-11/gitnexusScan which refuses non-loopback because it spawns
-  // processes; these routes are read-only data serving only).
+  // D-14-04: no bindMode check in understandViewer — full Tailscale parity is
+  // deliberate because these routes serve read-only viewer data.
   app.route('/understand', understandViewerRoute)  // Phase 14 D-14-03/D-14-04
   app.route('/', understandDataRoute)  // Phase 14 D-14-03/D-14-04: root-absolute data endpoints
 
@@ -196,7 +194,6 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api', skillDriftRoute) // Phase 11 SKD-02, SKD-03 (D-11-14 single-project-per-request)
   app.route('/api', conformanceRoute) // Phase 12 D-12-14: GET /api/observability/conformance
   app.route('/api/admin', registryFixPathRoute) // Phase 12 D-12-19, D-12-26: POST /api/admin/registry/fix-path
-  app.route('/api/gitnexus', gitnexusScanRoute) // Phase 13 D-13-11: POST /api/gitnexus/scan + GET /api/gitnexus/scan/:id
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)

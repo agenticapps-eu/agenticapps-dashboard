@@ -34,9 +34,6 @@ const FIXTURE_CONTENT = [
   DELIM,
   '',
   '# Migration 0008',
-  '',
-  'clipboard-only wiki refresh (D-10-09).',
-  "jq 'length' ~/.gitnexus/registry.json — top-level array.",
 ].join('\n')
 
 describe('migration 0008 fixture (CODEX MED-17 — CI-resident, never skips)', () => {
@@ -63,16 +60,6 @@ describe('migration 0008 fixture (CODEX MED-17 — CI-resident, never skips)', (
       to_version: '1.6.0',
       type: 'workflow-surface',
     })
-  })
-
-  it('contains the jq length correction language (Pitfall 7)', () => {
-    expect(FIXTURE_CONTENT).toMatch(/jq 'length'/)
-    expect(FIXTURE_CONTENT).toMatch(/top-level array/i)
-  })
-
-  it('documents clipboard-only wiki refresh (D-10-09)', () => {
-    expect(FIXTURE_CONTENT).toMatch(/clipboard.?only/i)
-    expect(FIXTURE_CONTENT).toMatch(/wiki/i)
   })
 
   it('parseFrontmatter returns null for empty content', () => {

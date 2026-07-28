@@ -522,9 +522,8 @@ describe('POST /api/admin/registry/fix-path', () => {
     )
     setCoverageCache(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         generatedAtIso: new Date().toISOString(),
-        gitNexusInstallState: 'not-installed',
         workflowHeadVersion: null,
         rows: [],
       },

@@ -45,7 +45,6 @@ describe('makeCoverageResolver', () => {
     mkdirSync(join(root, 'Sourcecode', 'agenticapps'), { recursive: true })
     mkdirSync(join(root, 'Sourcecode', 'factiv'), { recursive: true })
     mkdirSync(join(root, 'Sourcecode', 'neuroflash'), { recursive: true })
-    mkdirSync(join(root, '.gitnexus'), { recursive: true })
     // Create the resolver bound to our tmpdir roots
     resolve = makeCoverageResolver({ sourcecodeRoot: join(root, 'Sourcecode') })
   })

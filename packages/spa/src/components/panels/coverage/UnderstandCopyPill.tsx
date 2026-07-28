@@ -11,7 +11,7 @@
  *
  * Copy pill writes `cd ~/Sourcecode/{family}/{repo} && claude "/understand"` to
  * clipboard via the shared buildUnderstandCommand helper (D-14-10, T-14-03-03).
- * Toast feedback mirrors InstallGitNexusButton pattern.
+ * Toast feedback confirms whether the command reached the clipboard.
  *
  * Constraints (D-5.1-10): no utility-merge helpers, no hex literals, no shadcn aliases.
  */
@@ -63,7 +63,7 @@ export function UnderstandCopyPill({
           href={viewerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-md text-xs text-accent hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-11 md:min-h-0 inline-flex items-center gap-1 rounded-md text-xs text-accent hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={`Open knowledge graph for ${repo} in new tab`}
         >
           View <ExternalLink size={12} aria-hidden="true" />
@@ -81,7 +81,7 @@ export function UnderstandCopyPill({
             )
           }}
           aria-label={`Copy understand command for ${repo} to clipboard`}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary bg-card-bg-hover hover:bg-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-11 md:min-h-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary bg-card-bg-hover hover:bg-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Copy size={12} aria-hidden="true" />
           /understand

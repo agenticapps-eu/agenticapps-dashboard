@@ -9,7 +9,7 @@
  *   import type { PathResolver } from '../coverageResolver.js'
  *
  * `makeCoverageResolver()` produces a sync resolver bound to Phase 10's allowed roots
- * (gitnexus home, 3 family roots, migrations dir). Mirrors the async `resolveAllowedNamed`
+ * (3 family roots and the migrations dir). Mirrors the async `resolveAllowedNamed`
  * semantics from paths.ts but is sync so it can be used inside synchronous scanner code.
  *
  * Security: mirrors resolveAllowedNamed's realpath + root-prefix + basename-whitelist model.
@@ -53,8 +53,6 @@ export type PathResolver = (
 export interface CoverageResolverOptions {
   /** Override for ~/Sourcecode root (tests only). Default: homedir()+'/Sourcecode'. */
   sourcecodeRoot?: string
-  /** Override for ~/.gitnexus home (tests only). Default: homedir()+'/.gitnexus'. */
-  gitnexusHome?: string
   /** Override for migrations directory (tests only). */
   migrationsDir?: string
 }
@@ -63,7 +61,6 @@ export interface CoverageResolverOptions {
 
 /**
  * Produce a synchronous PathResolver bound to Phase 10's allowed roots:
- *  - ~/.gitnexus (gitnexus registry)
  *  - ~/Sourcecode/agenticapps
  *  - ~/Sourcecode/factiv
  *  - ~/Sourcecode/neuroflash
@@ -76,7 +73,6 @@ export interface CoverageResolverOptions {
  */
 export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathResolver {
   const sourcecodeRoot = opts.sourcecodeRoot ?? join(homedir(), 'Sourcecode')
-  const gitnexusHome = opts.gitnexusHome ?? join(homedir(), '.gitnexus')
   const migrationsDir =
     opts.migrationsDir ?? join(sourcecodeRoot, 'agenticapps', 'claude-workflow', 'migrations')
 
@@ -91,7 +87,6 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
   }
 
   const allowedRoots = [
-    gitnexusHome,
     join(sourcecodeRoot, 'agenticapps'),
     join(sourcecodeRoot, 'factiv'),
     join(sourcecodeRoot, 'neuroflash'),

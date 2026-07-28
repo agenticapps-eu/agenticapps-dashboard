@@ -1,10 +1,10 @@
 /**
  * coverageHistory.ts — Hono route exposing GET /api/coverage/history?repoId=...
  *
- * PD-11-02: bulk-per-repo shape. ONE response carries drift for all four cells
+ * PD-11-02: bulk-per-repo shape. ONE response carries drift for both retained cells
  * of the named repo. There is intentionally NO ?cell= query param — the SPA's
  * CoverageRow.tsx owns the single useCoverageHistory(repoId) hook and fans
- * drift props out to its four CoverageCell children.
+ * drift props out to its CoverageCell children.
  *
  * REVIEWS.md action item 3: repoId is validated against the registry +
  * coverage scan output (data-driven), NOT a hardcoded regex. Unknown repoId
@@ -48,7 +48,7 @@ export const coverageHistoryRoute = new Hono<Env>()
 /**
  * Query schema — PD-11-02 leaves ONLY repoId. The `cell` param is not
  * accepted; any callers that send it have it silently ignored (the bulk
- * response carries all four cells regardless).
+ * response carries both retained cells regardless).
  */
 const QuerySchema = z.object({
   repoId: z.string().min(1),
@@ -93,8 +93,6 @@ async function buildLegalRepoIdSet(): Promise<Set<string>> {
 /** The bulk drift shape — matches CoverageHistoryResponseSchema's `cells`. */
 type DriftCells = {
   claudeMd: CoverageCellDrift
-  gitNexus: CoverageCellDrift
-  wiki: CoverageCellDrift
   workflowVersion: CoverageCellDrift
 }
 
@@ -119,7 +117,7 @@ coverageHistoryRoute.get('/coverage/history', async (c) => {
 
   // 4. Build response in the bulk-per-repo shape (PD-11-02).
   const response = {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     repoId,
     windowDays: 14 as const,
     cells,

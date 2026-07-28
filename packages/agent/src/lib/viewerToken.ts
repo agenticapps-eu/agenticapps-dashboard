@@ -164,9 +164,8 @@ function readSecretFile(filePath: string): ViewerTokenFile {
 // ── D-13-EXT-11 repoId validation (replicated from shared schema) ─────────────
 
 /**
- * Validate a decoded repoId against the same two-layer semantics as the shared
- * RepoTargetRe regex + refine in packages/shared/src/schemas/gitnexusScan.ts
- * (D-13-EXT-11 hardened pattern — Codex CRITICAL #1).
+ * Validate a decoded repoId against the D-13-EXT-11 hardened family/repo
+ * semantics.
  *
  * Layer 1 — regex: `family/repo` where family is [a-z0-9-]+ and repo STARTS with [a-z0-9].
  * Layer 2 — refine: no `.` or `..` exact matches; no `..` substrings in repo segment.

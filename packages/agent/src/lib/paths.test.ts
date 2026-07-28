@@ -239,10 +239,6 @@ describe('resolveAllowedNamed', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('COVERAGE_ROOTS', () => {
-  it('COVERAGE_ROOTS.gitnexus() returns <homedir>/.gitnexus', () => {
-    expect(COVERAGE_ROOTS.gitnexus()).toBe(join(homedir(), '.gitnexus'))
-  })
-
   it('COVERAGE_ROOTS.agenticapps() returns <homedir>/Sourcecode/agenticapps', () => {
     expect(COVERAGE_ROOTS.agenticapps()).toBe(join(homedir(), 'Sourcecode', 'agenticapps'))
   })
@@ -264,7 +260,6 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
     tmpRoot = mkdtempSync(join(tmpdir(), 'cov-roots-test-'))
     cleanup = () => rmSync(tmpRoot, { recursive: true, force: true })
     // Build fake family roots under tmpRoot
-    mkdirSync(join(tmpRoot, '.gitnexus'), { recursive: true })
     mkdirSync(join(tmpRoot, 'Sourcecode', 'agenticapps'), { recursive: true })
     mkdirSync(join(tmpRoot, 'Sourcecode', 'factiv'), { recursive: true })
     mkdirSync(join(tmpRoot, 'Sourcecode', 'neuroflash'), { recursive: true })
@@ -275,48 +270,11 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
   // Helper: build fake COVERAGE_ROOTS bound to tmpRoot
   function fakeRoots() {
     return {
-      gitnexus: () => join(tmpRoot, '.gitnexus'),
       agenticapps: () => join(tmpRoot, 'Sourcecode', 'agenticapps'),
       factiv: () => join(tmpRoot, 'Sourcecode', 'factiv'),
       neuroflash: () => join(tmpRoot, 'Sourcecode', 'neuroflash'),
     }
   }
-
-  it('resolveAllowedNamed accepts registry.json inside fake gitnexus root', async () => {
-    const roots = fakeRoots()
-    const registryPath = join(roots.gitnexus(), 'registry.json')
-    writeFileSync(registryPath, '[]')
-    const result = await resolveAllowedNamed(registryPath, {
-      roots: [roots.gitnexus()],
-      allowedNames: ['registry.json'],
-    })
-    expect(result).toContain('registry.json')
-  })
-
-  it('resolveAllowedNamed rejects wrong filename inside gitnexus root (name not in allow-list)', async () => {
-    const roots = fakeRoots()
-    const badPath = join(roots.gitnexus(), 'something-else.json')
-    writeFileSync(badPath, '{}')
-    await expect(
-      resolveAllowedNamed(badPath, {
-        roots: [roots.gitnexus()],
-        allowedNames: ['registry.json'],
-      }),
-    ).rejects.toSatisfy(
-      (e: unknown) => e instanceof PathViolation && /allow-list/i.test((e as PathViolation).message),
-    )
-  })
-
-  it('resolveAllowedNamed accepts .wiki-compiler.json inside fake factiv root', async () => {
-    const roots = fakeRoots()
-    const wikiPath = join(roots.factiv(), '.wiki-compiler.json')
-    writeFileSync(wikiPath, '{}')
-    const result = await resolveAllowedNamed(wikiPath, {
-      roots: [roots.factiv()],
-      allowedNames: ['.wiki-compiler.json'],
-    })
-    expect(result).toContain('.wiki-compiler.json')
-  })
 
   it('resolveAllowedNamed rejects file outside all roots (outside allowed roots)', async () => {
     const roots = fakeRoots()
@@ -380,7 +338,7 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
     // A relative path that would traverse OUTSIDE .planning/.claude
     // The new COVERAGE_ROOTS must NOT be reachable via the existing resolveAllowed function
     await expect(
-      resolveAllowed(projectRoot, '../../../.gitnexus/registry.json'),
+      resolveAllowed(projectRoot, '../../../outside.txt'),
     ).rejects.toBeInstanceOf(PathViolation)
   })
 

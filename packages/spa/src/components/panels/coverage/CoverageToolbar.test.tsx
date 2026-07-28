@@ -45,6 +45,14 @@ function ToolbarWrapper(props: {
 }
 
 describe('CoverageToolbar', () => {
+  it('keeps filter and search controls at the mobile touch-target height', () => {
+    render(<ToolbarWrapper />)
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.className).toContain('min-h-11')
+    }
+    expect(screen.getByRole('searchbox').className).toContain('min-h-11')
+  })
+
   it('renders with "All" chip selected by default (no status filter active)', () => {
     render(<ToolbarWrapper />)
     const allBtn = screen.getByRole('button', { name: /all/i })

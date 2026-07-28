@@ -143,8 +143,7 @@ const conformanceRoute = createRoute({
 /**
  * codeIntelligenceRoute — /code-intelligence page under the _appshell layout.
  * Phase 14 D-14-06: Code Intelligence sidebar section; knowledge-graph discoverability surface.
- * Section placed between Observability and ACCOUNT (user sidebar-architecture preference:
- * new section with growth room for future GitNexus explorer entries).
+ * Section placed between Observability and ACCOUNT.
  */
 const codeIntelligenceRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,

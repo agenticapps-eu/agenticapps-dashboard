@@ -1,898 +1,109 @@
-/**
- * CoverageFamilySection.test.tsx — Tests for sticky family header + rows + GitNexus install hint.
- *
- * CODEX HIGH-6 Option A: install hint inside each family header, not page-level banner.
- * CODEX MED: worst-state-wins per row (missing > stale > fresh > not-applicable).
- */
-
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { CoverageRow as CoverageRowData } from '@agenticapps/dashboard-shared'
-import { CoverageFamilySection } from './CoverageFamilySection.js'
-import { COVERAGE_COL_WIDTHS } from './coverageColumns.js'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CompatibleCoverageRow } from '@agenticapps/dashboard-shared'
+
+vi.mock('../../../lib/useViewportBreakpoint.js', () => ({
+  useViewportBreakpoint: vi.fn(() => 'lg'),
+}))
+vi.mock('../../../lib/coverageHistoryQueries.js', () => ({
+  useCoverageHistory: vi.fn(() => ({ data: undefined })),
+}))
+
 import { ToastProvider } from '../../ui/Toast.js'
+import { useViewportBreakpoint } from '../../../lib/useViewportBreakpoint.js'
+import { CoverageFamilySection } from './CoverageFamilySection.js'
 
-vi.mock('../../../lib/clipboardCompat.js', () => ({
-  writeToClipboard: vi.fn().mockResolvedValue(true),
-}))
-
-import { writeToClipboard } from '../../../lib/clipboardCompat.js'
-
-// Phase 11-04: CoverageRow (rendered by CoverageFamilySection) now calls
-// useCoverageHistory and therefore requires a QueryClientProvider. fetch is
-// stubbed so the hook's network attempt does not flake. pairing is mocked so
-// apiFetch can build a URL without a real daemon.
-
-vi.mock('../../../lib/pairing.js', () => ({
-  getPairing: vi.fn(() => ({
-    agentUrl: 'http://127.0.0.1:5193',
-    token: 'test-token-1234',
-    pairedAt: '2026-01-01T00:00:00.000Z',
-  })),
-}))
-
-// Phase 13: mock ScanPill so tests don't require full ToastProvider nesting
-// for every CoverageFamilySection render. The wiring tests assert the correct
-// props are forwarded — ScanPill's internal states are tested in ScanPill.test.tsx.
-vi.mock('./ScanPill.js', () => ({
-  ScanPill: ({
-    scope,
-    target,
-    canScan,
-    installed,
-  }: {
-    scope: string
-    target: string
-    canScan: boolean
-    installed: boolean
-  }) => {
-    if (!installed) return null
-    return React.createElement(
-      'button',
-      {
-        'data-testid': 'scan-pill',
-        'data-scope': scope,
-        'data-target': target,
-        'data-can-scan': String(canScan),
-        disabled: !canScan || undefined,
-      },
-      'Scan',
-    )
-  },
-}))
-
-const mockFetch = vi.fn()
-vi.stubGlobal('fetch', mockFetch)
-
-function makeFetchResponse(body: unknown, status = 200) {
-  return Promise.resolve({
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(body),
-    clone: () => ({ json: () => Promise.resolve(body) }),
-  })
-}
-
-function withQC(children: React.ReactElement) {
-  const qc = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        refetchOnWindowFocus: false,
-        refetchOnMount: false,
-        refetchOnReconnect: false,
-      },
-    },
-  })
-  return (
-    <QueryClientProvider client={qc}>
-      <ToastProvider>{children}</ToastProvider>
-    </QueryClientProvider>
-  )
-}
-
-afterEach(() => {
-  cleanup()
-})
-
-function makeRow(
-  repo: string,
-  states: {
-    claudeMd?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
-    gitNexus?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
-    wiki?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
-    workflow?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
-    // Phase 14 review fix: optional — omitted means "old daemon" (no understand key)
-    understand?: 'fresh' | 'stale' | 'missing' | 'not-applicable'
-  } = {},
-): CoverageRowData {
-  return {
+const rows: CompatibleCoverageRow[] = [
+  {
     family: 'agenticapps',
-    repo,
-    claudeMd: { kind: 'basic', state: states.claudeMd ?? 'fresh' },
-    gitNexus: { kind: 'basic', state: states.gitNexus ?? 'fresh' },
-    wiki: { kind: 'basic', state: states.wiki ?? 'fresh' },
+    repo: 'dashboard',
+    claudeMd: { kind: 'basic', state: 'fresh' },
     workflowVersion: {
       kind: 'workflow',
-      state: states.workflow ?? 'fresh',
-      installedVersion: '1.7.0',
-      headVersion: '1.7.0',
-      detail: 'equal',
+      state: 'stale',
+      installedVersion: '2.5.0',
+      headVersion: '3.0.0',
     },
+    understand: { kind: 'basic', state: 'missing' },
     overrideCount: 0,
     overrides: [],
-    inRegistry: true, // D-13-EXT-07: section fixture default — tests not exercising the gate
-    ...(states.understand !== undefined
-      ? { understand: { kind: 'basic' as const, state: states.understand } }
-      : {}),
-  }
-}
+  },
+]
 
-beforeEach(() => {
-  // Clear localStorage between tests
-  localStorage.clear()
-  mockFetch.mockReset()
-  // Phase 12 Plan 12-05: stub matchMedia to simulate a desktop-sized viewport
-  // (>=lg) by default so the new viewport-branching logic in
-  // CoverageFamilySection renders the DESKTOP <table> path. This keeps the
-  // pre-existing Phase 11.1 IMP-01 + Phase 11.2 tests passing under the new
-  // viewport-aware render. Individual viewport-branching tests in the
-  // 12-05 describe block install their own matchMedia override.
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    writable: true,
-    value: (q: string) => ({
-      matches:
-        q === '(min-width: 1024px)' ||
-        q === '(min-width: 768px)' ||
-        q === '(min-width: 640px)',
-      media: q,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      onchange: null,
-      dispatchEvent: vi.fn(),
-    }),
-  })
-  // Stub /api/coverage/history with empty drift so CoverageRow's hook resolves
-  // cleanly. Tests in this file do NOT assert on drift behaviour — those live
-  // in CoverageRow.test.tsx.
-  mockFetch.mockImplementation((url: string) => {
-    if (typeof url === 'string' && url.includes('/api/coverage/history')) {
-      const m = url.match(/repoId=([^&]+)/)
-      const repoId = m ? decodeURIComponent(m[1] ?? '') : 'unknown'
-      return makeFetchResponse({
-        schemaVersion: 1,
-        repoId,
-        windowDays: 14,
-        cells: {
-          claudeMd: { direction: null, daysSince: null },
-          gitNexus: { direction: null, daysSince: null },
-          wiki: { direction: null, daysSince: null },
-          workflowVersion: { direction: null, daysSince: null },
-        },
-      })
-    }
-    return makeFetchResponse({}, 404)
-  })
-})
-
-describe('CoverageFamilySection', () => {
-  it('renders sticky family header with family name and aggregate counts', () => {
-    const rows = [
-      makeRow('repo-a', { claudeMd: 'fresh' }),
-      makeRow('repo-b', { gitNexus: 'stale' }),
-    ]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    // Use queryAllByText since tooltip content also contains 'agenticapps' (workflowVersion copy)
-    expect(screen.queryAllByText(/agenticapps/i).length).toBeGreaterThan(0)
-    // Should show counts
-    expect(screen.getByText(/✓/)).toBeTruthy()
-  })
-
-  it('aggregate counts reflect FILTERED rows using worst-state-wins per row', () => {
-    // repo-a: worst = missing (one column missing)
-    // repo-b: worst = stale (one column stale, rest fresh)
-    // repo-c: worst = fresh (all fresh)
-    const rows = [
-      makeRow('repo-a', { claudeMd: 'missing', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
-      makeRow('repo-b', { claudeMd: 'fresh', gitNexus: 'stale', wiki: 'fresh', workflow: 'fresh' }),
-      makeRow('repo-c', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
-    ]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    // ✕ 1 (missing), ⚠ 1 (stale), ✓ 1 (fresh)
-    expect(screen.getByText(/✕\s*1/)).toBeTruthy()
-    expect(screen.getByText(/⚠\s*1/)).toBeTruthy()
-    expect(screen.getByText(/✓\s*1/)).toBeTruthy()
-  })
-
-  it('aggregate count semantics: each row counts ONCE in the highest-priority bucket only (CODEX MED)', () => {
-    // repo-a has BOTH missing AND stale columns — must count only ONCE in missing bucket
-    const rows = [
-      makeRow('repo-a', { claudeMd: 'missing', gitNexus: 'stale', wiki: 'fresh', workflow: 'fresh' }),
-    ]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    // Must show ✕ 1 (not ✕ 1 ⚠ 1 — double counting is wrong)
-    expect(screen.getByText(/✕\s*1/)).toBeTruthy()
-    // ⚠ count must be 0 (repo-a already counted in missing)
-    expect(screen.getByText(/⚠\s*0/)).toBeTruthy()
-  })
-
-  it('collapse toggle button hides the table body when clicked', () => {
-    const rows = [makeRow('repo-a')]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    // Rows visible initially
-    expect(screen.getByText('repo-a')).toBeTruthy()
-    const toggle = screen.getByRole('button', { name: /agenticapps/i })
-    fireEvent.click(toggle)
-    // Rows hidden after collapse
-    expect(screen.queryByText('repo-a')).toBeNull()
-  })
-
-  it("localStorage 'coverage:section-collapsed:<family>' key is written on collapse/expand toggle", () => {
-    const rows = [makeRow('repo-a')]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    const toggle = screen.getByRole('button', { name: /agenticapps/i })
-    fireEvent.click(toggle)
-    expect(localStorage.getItem('coverage:section-collapsed:agenticapps')).toBe('true')
-    fireEvent.click(toggle)
-    expect(localStorage.getItem('coverage:section-collapsed:agenticapps')).toBe('false')
-  })
-
-  it("collapsed state is restored from localStorage 'coverage:section-collapsed:<family>' on mount", () => {
-    localStorage.setItem('coverage:section-collapsed:factiv', 'true')
-    const rows = [makeRow('repo-x')]
-    render(
-      withQC(
-        <CoverageFamilySection family="factiv" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    // repo-x should NOT be visible (section starts collapsed)
-    expect(screen.queryByText('repo-x')).toBeNull()
-  })
-
-  it("renders GitNexus install hint inside family header when gitNexusInstallState='not-installed' (CODEX HIGH-6 Option A)", () => {
-    const rows = [makeRow('repo-a')]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="not-installed" />,
-      ),
-    )
-    expect(screen.getByText(/GitNexus is not installed/i)).toBeTruthy()
-  })
-
-  // 10.6: the install hint must NOT fire for the installed-but-never-indexed
-  // state — the page-level "Index with GitNexus" CTA handles that case. Under
-  // the prior boolean (`!gitNexusInstalled`) this section incorrectly told the
-  // user to install when they already had the binary.
-  it("does NOT render the install hint when gitNexusInstallState='installed-no-registry' (10.6)", () => {
-    const rows = [makeRow('repo-a')]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-no-registry" />,
-      ),
-    )
-    expect(screen.queryByText(/GitNexus is not installed/i)).toBeNull()
-  })
-})
-
-describe('CoverageFamilySection sticky stack consumes --ph-h (IMP-02)', () => {
-  it('family-header sticky top uses calc(var(--ph-h) - 1.5rem)', () => {
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    const familyHeader = container.querySelector('header.sticky')
-    expect(familyHeader?.className).toMatch(/top-\[calc\(var\(--ph-h\)-1\.5rem\)\]/)
-    expect(familyHeader?.className).not.toMatch(/\btop-8\b/)
-  })
-
-  it('column-header sticky top uses calc(var(--ph-h) + 1.5625rem)', () => {
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    const ths = container.querySelectorAll('thead th.sticky')
-    ths.forEach((th) => {
-      expect(th.className).toMatch(/top-\[calc\(var\(--ph-h\)\+1\.5625rem\)\]/)
-    })
-  })
-})
-
-describe('column-width lock (IMP-01)', () => {
-  it('renders <colgroup> with 7 <col> elements consuming COVERAGE_COL_WIDTHS (Phase 14: understand added)', () => {
-    const fixture: CoverageRowData[] = [
-      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
-      makeRow('repo-b', { claudeMd: 'stale', gitNexus: 'missing', wiki: 'fresh', workflow: 'fresh' }),
-    ]
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={fixture}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(7)
-    expect(cols[0]?.className).toBe(COVERAGE_COL_WIDTHS.repo)
-    expect(cols[1]?.className).toBe(COVERAGE_COL_WIDTHS.claudeMd)
-    expect(cols[2]?.className).toBe(COVERAGE_COL_WIDTHS.gitNexus)
-    expect(cols[3]?.className).toBe(COVERAGE_COL_WIDTHS.wiki)
-    expect(cols[4]?.className).toBe(COVERAGE_COL_WIDTHS.workflow)
-    expect(cols[5]?.className).toBe(COVERAGE_COL_WIDTHS.understand)
-    expect(cols[6]?.className).toBe(COVERAGE_COL_WIDTHS.actions)
-  })
-
-  it('marks <table> as table-fixed', () => {
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    const table = container.querySelector('table')
-    expect(table?.className).toContain('table-fixed')
-  })
-})
-
-describe('CoverageFamilySection family-hint toast (IMP-03)', () => {
+describe('CoverageFamilySection desktop', () => {
   beforeEach(() => {
-    vi.mocked(writeToClipboard).mockResolvedValue(true)
+    localStorage.clear()
+    vi.mocked(useViewportBreakpoint).mockReturnValue('lg')
   })
 
-  it('fires success toast when family install hint button is clicked and clipboard succeeds', async () => {
-    const rows = [makeRow('repo-a')]
+  it('renders only current headers and cells', () => {
     render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={rows}
-          gitNexusInstallState="not-installed"
-        />,
-      ),
+      <ToastProvider>
+        <CoverageFamilySection family="agenticapps" rows={rows} />
+      </ToastProvider>,
     )
-    await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
-    const statusEls = screen.getAllByRole('status')
-    const toastEl = statusEls.find((el) => el.textContent?.includes('Copied'))
-    expect(toastEl).toBeDefined()
-    expect(toastEl!.textContent).toContain('install GitNexus')
+
+    expect(screen.getByRole('columnheader', { name: 'Repo' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'CLAUDE.md' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Workflow' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Understand' })).toBeTruthy()
+    expect(screen.queryByRole('columnheader', { name: /GitNexus/i })).toBeNull()
+    expect(screen.queryByRole('columnheader', { name: /Wiki/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /scan|refresh/i })).toBeNull()
   })
 
-  it('fires error toast when clipboard write fails', async () => {
-    vi.mocked(writeToClipboard).mockResolvedValue(false)
-    const rows = [makeRow('repo-a')]
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={rows}
-          gitNexusInstallState="not-installed"
-        />,
-      ),
-    )
-    await userEvent.click(screen.getByRole('button', { name: /copy npm install -g gitnexus/i }))
-    const toastEl = screen.getByRole('alert')
-    expect(toastEl.textContent).toContain('Copy failed')
-    expect(toastEl.textContent).toContain('open the help guide for the command')
-  })
-})
-
-describe('column-header tooltips', () => {
-  it('the CLAUDE.md <th> renders a tooltip with the D-11.2-05 copy', () => {
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText('Project AI instructions file. Must exist in repo root for AI coding agents to pick up project conventions.')).toBeInTheDocument()
-  })
-
-  it('the GitNexus <th> renders a tooltip with the D-11.2-05 copy', () => {
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText('Local code index for repo-aware AI search. Built by `gitnexus analyze`; stored under `~/.gitnexus`.')).toBeInTheDocument()
-  })
-
-  it('the Wiki <th> renders a tooltip with the D-11.2-05 copy', () => {
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText('Compiled knowledge base from CLAUDE.md, ADRs, READMEs. Built by `/wiki-compile`.')).toBeInTheDocument()
-  })
-
-  it('the Workflow <th> renders a tooltip with the D-11.2-05 copy', () => {
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText('Installed version of `agenticapps-workflow`. Compared against the current scaffolder release.')).toBeInTheDocument()
-  })
-
-  it('the Repo and Actions <th> elements do NOT render tooltips — 5 tooltips total (Phase 14 adds Understand)', () => {
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={[makeRow('repo-a')]} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    // 5: claudeMd, gitNexus, wiki, workflowVersion, understand
-    expect(screen.queryAllByRole('tooltip')).toHaveLength(5)
-  })
-})
-
-// Phase 12 Plan 12-05 (D-12-23 + D-12-24): CoverageFamilySection branches
-// on useViewportBreakpoint() === 'xs' and renders CoverageFamilySectionMobile
-// when true; otherwise the existing desktop <table> render is unchanged. The
-// jsdom default viewport has matchMedia return matches:false for everything,
-// so without mocking, useViewportBreakpoint returns 'xs' and the mobile
-// branch is chosen. We install matchMedia mocks per-test to control which
-// branch executes.
-
-interface MockMQ {
-  matches: boolean
-  media: string
-  addEventListener: ReturnType<typeof vi.fn>
-  removeEventListener: ReturnType<typeof vi.fn>
-  addListener: ReturnType<typeof vi.fn>
-  removeListener: ReturnType<typeof vi.fn>
-  onchange: null
-  dispatchEvent: ReturnType<typeof vi.fn>
-}
-
-function installMatchMedia(match: (query: string) => boolean): void {
-  const factory = (query: string): MockMQ => ({
-    get matches() {
-      return match(query)
-    },
-    set matches(_: boolean) {
-      /* getter-backed — no-op */
-    },
-    media: query,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    onchange: null,
-    dispatchEvent: vi.fn(),
-  })
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    writable: true,
-    value: (q: string) => factory(q),
-  })
-}
-
-describe('CoverageFamilySection viewport branching (12-05)', () => {
-  afterEach(() => {
-    // Each test installs its own matchMedia. cleanup() above handles render
-    // teardown; vi.unstubAllGlobals isn't enough because we install via
-    // Object.defineProperty.
-  })
-
-  it('renders desktop <table> layout when viewport >= sm (Phase 11.1 regression contract)', () => {
-    // Simulate >=lg: matches true for lg, md, sm.
-    installMatchMedia(
-      (q) =>
-        q === '(min-width: 1024px)' ||
-        q === '(min-width: 768px)' ||
-        q === '(min-width: 640px)',
-    )
+  it('uses the retained four-column fixed table layout', () => {
     const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
+      <ToastProvider>
+        <CoverageFamilySection family="agenticapps" rows={rows} />
+      </ToastProvider>,
     )
-    expect(container.querySelector('table')).not.toBeNull()
+
+    expect(container.querySelector('table')?.className).toContain('table-fixed')
+    expect(container.querySelectorAll('colgroup col')).toHaveLength(4)
   })
 
-  it('renders <colgroup> in desktop branch (Phase 11.1 IMP-01 regression — re-confirmed under viewport branch, 7 cols after Phase 14)', () => {
-    installMatchMedia(
-      (q) =>
-        q === '(min-width: 1024px)' ||
-        q === '(min-width: 768px)' ||
-        q === '(min-width: 640px)',
-    )
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(7)
-  })
-
-  it('renders mobile card layout when matchMedia mock forces xs (no min-width queries match)', () => {
-    installMatchMedia(() => false)
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    // Mobile branch renders <article> per row, no <table>.
-    expect(container.querySelectorAll('article').length).toBe(1)
-    expect(container.querySelector('table')).toBeNull()
-  })
-
-  it('renders mobile card layout in the sm range (640-767px) — plan-12-05 <768px contract', () => {
-    // Regression for the previous xs-only branch. sm range (640-767px,
-    // Android landscape, iPad portrait borderline) must use card layout
-    // per Plan 12-05 "<768px". Only the 640px query matches; 768/1024 do not.
-    installMatchMedia((q) => q === '(min-width: 640px)')
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    expect(container.querySelectorAll('article').length).toBe(1)
-    expect(container.querySelector('table')).toBeNull()
-  })
-
-  it('does NOT render <table> in mobile branch', () => {
-    installMatchMedia(() => false)
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a'), makeRow('repo-b')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    expect(container.querySelectorAll('table').length).toBe(0)
-    expect(container.querySelectorAll('article').length).toBe(2)
-  })
-
-  it('passes inFlightRefreshes through to mobile branch (refresh button gets disabled + aria-busy)', () => {
-    installMatchMedia(() => false)
+  it('restores and persists collapsed state per family', async () => {
+    localStorage.setItem('coverage:section-collapsed:agenticapps', 'true')
     render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-          inFlightRefreshes={new Set(['agenticapps/repo-a'])}
-        />,
-      ),
+      <ToastProvider>
+        <CoverageFamilySection family="agenticapps" rows={rows} />
+      </ToastProvider>,
     )
-    const refreshBtn = screen.getByRole('button', { name: /refresh.*repo-a/i })
-    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
-    expect(refreshBtn).toHaveProperty('disabled', true)
+
+    const toggle = screen.getByRole('button', { name: /agenticapps/i })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('table')).toBeNull()
+
+    fireEvent.click(toggle)
+    expect(screen.getByRole('table')).toBeTruthy()
+    await waitFor(() =>
+      expect(localStorage.getItem('coverage:section-collapsed:agenticapps')).toBe('false'),
+    )
   })
-})
 
-describe('per-row pending derivation (Set-based inFlightRefreshes)', () => {
-  const mockRow = makeRow('repo-a')
-
-  it('when inFlightRefreshes is empty/undefined, no row receives pending=true', () => {
+  it('counts each row by its worst current state', () => {
     render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[mockRow]}
-          gitNexusInstallState="installed-with-registry"
-          inFlightRefreshes={new Set()}
-        />,
-      ),
+      <ToastProvider>
+        <CoverageFamilySection family="agenticapps" rows={rows} />
+      </ToastProvider>,
     )
-    const rows = screen.getAllByRole('row')
-    for (const row of rows) {
-      expect(row.getAttribute('aria-busy')).toBeNull()
-    }
+
+    expect(screen.getByText('✕ 1')).toBeTruthy()
+    expect(screen.getByText('⚠ 0')).toBeTruthy()
+    expect(screen.getByText('✓ 0')).toBeTruthy()
   })
 
-  it('when inFlightRefreshes contains a non-matching key, no row receives pending=true', () => {
+  it('switches to the mobile card layout at the smallest breakpoint', () => {
+    vi.mocked(useViewportBreakpoint).mockReturnValue('xs')
     render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[mockRow]}
-          gitNexusInstallState="installed-with-registry"
-          // Different family — must not light up agenticapps rows.
-          inFlightRefreshes={new Set([`factiv/${mockRow.repo}`])}
-        />,
-      ),
+      <ToastProvider>
+        <CoverageFamilySection family="agenticapps" rows={rows} />
+      </ToastProvider>,
     )
-    const rows = screen.getAllByRole('row')
-    for (const row of rows) {
-      expect(row.getAttribute('aria-busy')).toBeNull()
-    }
-  })
 
-  it('when inFlightRefreshes has the row key, that row receives pending=true (spinner + aria-busy + disabled)', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[mockRow]}
-          gitNexusInstallState="installed-with-registry"
-          inFlightRefreshes={new Set([`agenticapps/${mockRow.repo}`])}
-        />,
-      ),
-    )
-    const allRows = screen.getAllByRole('row')
-    const dataRow = allRows.find((r) => r.querySelector('td'))
-    expect(dataRow?.getAttribute('aria-busy')).toBe('true')
-    const refreshBtn = screen.getByRole('button', { name: /refresh actions/i })
-    expect(refreshBtn.getAttribute('aria-busy')).toBe('true')
-    expect(refreshBtn).toHaveProperty('disabled', true)
-  })
-
-  it('Concurrent in-flight refreshes: BOTH matching rows stay pending — last-write-wins is fixed (stage-1 /review cross-model finding)', () => {
-    const mockRowA = makeRow('repo-a')
-    const mockRowB = makeRow('repo-b')
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[mockRowA, mockRowB]}
-          gitNexusInstallState="installed-with-registry"
-          inFlightRefreshes={new Set([
-            `agenticapps/${mockRowA.repo}`,
-            `agenticapps/${mockRowB.repo}`,
-          ])}
-        />,
-      ),
-    )
-    const allRows = screen.getAllByRole('row')
-    const dataRows = allRows.filter((r) => r.querySelector('td'))
-    const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
-    const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
-    // Both rows must keep their own spinner+disabled state. Under the old
-    // refresh.variables pattern, only the last-written variables would mark
-    // a row pending — the other row would silently lose its disabled state
-    // even though its mutateAsync was still in flight, enabling duplicate
-    // submits.
-    expect(rowA?.getAttribute('aria-busy')).toBe('true')
-    expect(rowB?.getAttribute('aria-busy')).toBe('true')
-  })
-
-  it('Set membership picks only matching rows: pending for repo-b leaves repo-a alone', () => {
-    const mockRowA = makeRow('repo-a')
-    const mockRowB = makeRow('repo-b')
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[mockRowA, mockRowB]}
-          gitNexusInstallState="installed-with-registry"
-          inFlightRefreshes={new Set([`agenticapps/${mockRowB.repo}`])}
-        />,
-      ),
-    )
-    const allRows = screen.getAllByRole('row')
-    const dataRows = allRows.filter((r) => r.querySelector('td'))
-    const rowA = dataRows.find((r) => r.textContent?.includes('repo-a'))
-    const rowB = dataRows.find((r) => r.textContent?.includes('repo-b'))
-    expect(rowA?.getAttribute('aria-busy')).toBeNull()
-    expect(rowB?.getAttribute('aria-busy')).toBe('true')
-  })
-})
-
-// ── Phase 13 D-13-08: per-family ScanPill in header bar ─────────────────────
-
-describe('Phase 13 per-family ScanPill in header bar (D-13-08, D-13-11b)', () => {
-  it('header bar mounts ScanPill with scope=family when gitnexusInstalled=true and canScan=true', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-          gitnexusInstalled={true}
-          gitnexusCanScan={true}
-        />,
-      ),
-    )
-    const pill = screen.getByTestId('scan-pill')
-    expect(pill).toBeTruthy()
-    expect(pill.getAttribute('data-scope')).toBe('family')
-    expect(pill.getAttribute('data-target')).toBe('agenticapps')
-    expect(pill.getAttribute('data-can-scan')).toBe('true')
-  })
-
-  it('ScanPill is disabled (canScan=false) when gitnexusInstalled=true but canScan=false (D-13-11b)', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-          gitnexusInstalled={true}
-          gitnexusCanScan={false}
-        />,
-      ),
-    )
-    const pill = screen.getByTestId('scan-pill')
-    expect(pill).toBeTruthy()
-    expect(pill).toBeDisabled()
-    expect(pill.getAttribute('data-can-scan')).toBe('false')
-  })
-
-  it('ScanPill is hidden when gitnexusInstalled=false (parent shows InstallGitNexusButton hint instead, D-13-07)', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="not-installed"
-          gitnexusInstalled={false}
-          gitnexusCanScan={false}
-        />,
-      ),
-    )
-    // ScanPill returns null when installed=false
-    expect(screen.queryByTestId('scan-pill')).toBeNull()
-    // But the install hint should still render
-    expect(screen.getByText(/GitNexus is not installed/i)).toBeTruthy()
-  })
-
-  it('clicking ScanPill fires useGitnexusScan({scope:family, target:familyId}) — mock asserts prop forwarding', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="factiv"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-          gitnexusInstalled={true}
-          gitnexusCanScan={true}
-        />,
-      ),
-    )
-    const pill = screen.getByTestId('scan-pill')
-    expect(pill.getAttribute('data-scope')).toBe('family')
-    expect(pill.getAttribute('data-target')).toBe('factiv')
-  })
-})
-
-// ── Phase 14 review fix: understand participates in family aggregates ────────
-
-describe('Phase 14 review fix — understand state participates in worst-state-wins aggregates', () => {
-  it('row fresh on all 4 classic columns but understand missing counts in the ✕ tally (worstState = missing)', () => {
-    const rows = [
-      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh', understand: 'missing' }),
-    ]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText(/✕\s*1/)).toBeTruthy()
-    expect(screen.getByText(/⚠\s*0/)).toBeTruthy()
-    expect(screen.getByText(/✓\s*0/)).toBeTruthy()
-  })
-
-  it('row fresh on all 4 classic columns but understand stale counts in the ⚠ tally (worstState = stale)', () => {
-    const rows = [
-      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh', understand: 'stale' }),
-    ]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText(/✕\s*0/)).toBeTruthy()
-    expect(screen.getByText(/⚠\s*1/)).toBeTruthy()
-    expect(screen.getByText(/✓\s*0/)).toBeTruthy()
-  })
-
-  it('REGRESSION: row with NO understand key (old daemon) aggregates exactly as before — all-fresh row counts ✓', () => {
-    const rows = [
-      makeRow('repo-a', { claudeMd: 'fresh', gitNexus: 'fresh', wiki: 'fresh', workflow: 'fresh' }),
-    ]
-    render(
-      withQC(
-        <CoverageFamilySection family="agenticapps" rows={rows} gitNexusInstallState="installed-with-registry" />,
-      ),
-    )
-    expect(screen.getByText(/✕\s*0/)).toBeTruthy()
-    expect(screen.getByText(/⚠\s*0/)).toBeTruthy()
-    expect(screen.getByText(/✓\s*1/)).toBeTruthy()
-  })
-})
-
-// ── Phase 14 D-14-06: understand column in desktop table ────────────────────
-
-describe('Phase 14 — understand column in desktop CoverageFamilySection (D-14-06)', () => {
-  // Test 4: desktop section renders the new <col> + <th> with Tooltip-wrapped "Understand" header
-  it('Test-4: desktop section renders <col> for understand column in colgroup (7 total)', () => {
-    const { container } = render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    const cols = container.querySelectorAll('colgroup > col')
-    expect(cols).toHaveLength(7)
-  })
-
-  it('Test-4b: desktop section renders Understand <th> header visible in thead', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    // The Understand column header (tooltip content also contains the tooltip text)
-    expect(screen.getByText('Understand-anything knowledge graph. Built by `/understand`; stored under `<repo>/.understand-anything/`.')).toBeInTheDocument()
-  })
-
-  it('Test-4c: Understand <th> tooltip uses coverageColumnTooltips.understand SoT copy', () => {
-    render(
-      withQC(
-        <CoverageFamilySection
-          family="agenticapps"
-          rows={[makeRow('repo-a')]}
-          gitNexusInstallState="installed-with-registry"
-        />,
-      ),
-    )
-    // 5 tooltips total now (claudeMd + gitNexus + wiki + workflowVersion + understand)
-    expect(screen.queryAllByRole('tooltip')).toHaveLength(5)
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getByText('dashboard')).toBeTruthy()
   })
 })

@@ -42,7 +42,7 @@ const MIGRATIONS_DIR_DEFAULT = join(
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface WorkflowRepoState {
-  state: 'fresh' | 'stale' | 'missing' | 'not-applicable'
+  state: 'fresh' | 'stale' | 'missing'
   installedVersion?: string | null
   headVersion?: string | null
   detail?: 'version-unknown' | 'behind' | 'ahead' | 'equal' | 'skill-missing'

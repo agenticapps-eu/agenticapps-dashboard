@@ -48,7 +48,7 @@ export function OverrideChip({ count, overrides, repoName }: OverrideChipProps):
         aria-label={ariaLabel}
         onClick={() => setExpanded((v) => !v)}
         onKeyDown={handleKeyDown}
-        className="inline-flex items-center gap-1 bg-status-warning/10 text-status-warning rounded-md px-2 py-0.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="min-h-11 md:min-h-0 inline-flex items-center gap-1 bg-status-warning/10 text-status-warning rounded-md px-2 py-0.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <AlertTriangle size={12} aria-hidden="true" />
         {count} {label}

@@ -2,10 +2,10 @@
  * coverageCache.ts — Singleton 30s TTL memo for /api/coverage responses.
  *
  * COV-03: Single-key memo (not per-id like overviewCache.ts). First call computes,
- * subsequent calls within 30s return the same instance. POST refresh clears.
+ * subsequent calls within 30s return the same instance. Registry mutations
+ * clear the memo so repo membership changes are visible immediately.
  *
- * T-10-03-05: invalidateCoverageCache() called on every POST /refresh → next GET re-scans.
- * Cache eviction policy is "clear all" (not row-level, per Claude's Discretion default).
+ * Cache eviction policy is "clear all" when registry state changes.
  *
  * Pattern mirrors overviewCache.ts (single-key variant of the per-id Map pattern).
  */
@@ -45,7 +45,7 @@ export function setCoverageCache(value: CoverageResponse, now: number = Date.now
 
 /**
  * Clear the cache entry unconditionally.
- * Called by POST /api/coverage/refresh — clears the entire memo (clear-all policy per T-10-03-05).
+ * Called after registry mutations so the next GET re-scans the fleet.
  */
 export function invalidateCoverageCache(): void {
   cache = null

@@ -11,9 +11,8 @@
  *   2. filter chip click — selecting "missing" reflects in URL
  *   3. search input — typing "agent" updates URL with q=agent
  *   4. override chip — expand/collapse (conditional: skipped when no sentinels)
- *   5. refresh popover — opens on button click, Esc dismisses
- *   6. keyboard navigation — Tab through page-header → toolbar → first section
- *   7. GitNexus not-installed banner — shown when daemon reports gitNexusInstalled=false
+ *   5. keyboard navigation — Tab through page-header → toolbar → first section
+ *   6. desktop and smallest-breakpoint layouts expose only current columns
  *
  * @see .planning/phases/DASH-10-coverage-matrix-page-per-repo-presence-freshness-of-claude-m/10-REVIEWS.md CODEX MED-16
  */
@@ -87,24 +86,6 @@ test.describe('/coverage user journey', () => {
     }
   })
 
-  test('refresh popover — opens on row refresh button click, Esc dismisses', async ({ page }) => {
-    await page.goto('/coverage')
-    // Row refresh buttons render on hover/focus — focus the first one via Tab
-    // The button has aria-label matching "Refresh for <repo>"
-    const firstRefreshBtn = page.getByRole('button', { name: /refresh.*for/i }).first()
-    const btnCount = await firstRefreshBtn.count()
-    if (btnCount > 0) {
-      await firstRefreshBtn.focus()
-      await firstRefreshBtn.click()
-      // Popover should open — dismiss with Escape
-      await page.keyboard.press('Escape')
-      // After Escape, the button should still be in the DOM (popover dismissed, row intact)
-      await expect(firstRefreshBtn).toBeAttached()
-    } else {
-      test.skip(true, 'No refresh buttons found — stale rows may be absent on this machine')
-    }
-  })
-
   test('keyboard navigation — Tab through page-header → toolbar → first family section', async ({ page }) => {
     await page.goto('/coverage')
     // Wait for page to stabilise
@@ -120,22 +101,22 @@ test.describe('/coverage user journey', () => {
     expect(['BUTTON', 'INPUT', 'A', 'SPAN']).toContain(focused)
   })
 
-  test('GitNexus not-installed banner — shown when daemon reports gitNexusInstalled=false', async ({ page }) => {
-    // On a dev machine without gitnexus installed, the family header shows the install hint.
-    // This test checks whether at least one hint is visible (CODEX HIGH-6 Option A).
+  test('desktop layout exposes only the current coverage columns', async ({ page }) => {
     await page.goto('/coverage')
-    // Wait for data to load (family sections appear)
-    await expect(page.getByText('agenticapps')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('columnheader', { name: 'CLAUDE.md' }).first()).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Workflow' }).first()).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Understand' }).first()).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /GitNexus/i })).toHaveCount(0)
+    await expect(page.getByRole('columnheader', { name: /^Wiki$/i })).toHaveCount(0)
+  })
 
-    // If gitNexusInstalled=false, install hints appear in each family section header.
-    // If gitNexusInstalled=true (gitnexus is installed), this assertion is a soft check.
-    const hints = page.getByText(/GitNexus is not installed/i)
-    const hintCount = await hints.count()
-    if (hintCount === 0) {
-      // gitnexus is installed on this machine — banner correctly absent
-      test.skip(true, 'GitNexus is installed on this machine — install banner correctly absent')
-    } else {
-      await expect(hints.first()).toBeVisible()
-    }
+  test('smallest breakpoint omits retired integration labels and actions', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/coverage')
+    await expect(page.getByText('CLAUDE.md').first()).toBeVisible()
+    await expect(page.getByText('Workflow').first()).toBeVisible()
+    await expect(page.getByText('Understand').first()).toBeVisible()
+    await expect(page.getByText(/GitNexus/i)).toHaveCount(0)
+    await expect(page.getByText(/^Wiki$/i)).toHaveCount(0)
   })
 })

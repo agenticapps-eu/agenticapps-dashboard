@@ -54,7 +54,7 @@ A single place to see, from any device, what every AgenticApps project's pipelin
 
 ## Surfaces in focus this session
 
-- `/coverage` (Phase 10/10.5/10.6/11) — the Coverage Matrix page with three family sections (agenticapps, factiv, neuroflash), four columns per repo (CLAUDE.md, GitNexus, Wiki, Workflow), and Phase 11's inline `▲Nd/▼Nd` drift badges on `CoverageCell`. Sticky `PageHeader` (Phase 11 PLI-03) opt-in. Sticky family-section headers and column-headers per Phase 10.
+- `/coverage` (Phase 10/10.5/10.6/11) — the Coverage Matrix page with three family sections (agenticapps, factiv, neuroflash), current columns for CLAUDE.md, Workflow, and Understand, and Phase 11's inline `▲Nd/▼Nd` drift badges on the two scored cells. Sticky `PageHeader` (Phase 11 PLI-03) opt-in. Sticky family-section headers and column-headers per Phase 10.
 
 ## Out of scope
 

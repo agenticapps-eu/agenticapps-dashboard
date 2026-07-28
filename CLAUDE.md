@@ -102,7 +102,7 @@ capabilities; read the one you are touching before you touch it:
 | [`skills-and-linting`](openspec/specs/skills-and-linting/spec.md) | Skill inventory, AgentLinter, cross-repo drift |
 | [`fleet-coverage`](openspec/specs/fleet-coverage/spec.md) | Coverage matrix, freshness states, history and trends |
 | [`fleet-conformance`](openspec/specs/fleet-conformance/spec.md) | Conformance scoring, tiers, trend chart, path-drift panel |
-| [`code-intelligence`](openspec/specs/code-intelligence/spec.md) | Code-graph and knowledge-graph surfaces (GitNexus half **deprecated**) |
+| [`code-intelligence`](openspec/specs/code-intelligence/spec.md) | Understand Anything analysis status, commands, and knowledge-graph viewer (GitNexus removed from the dashboard) |
 | [`optional-integrations`](openspec/specs/optional-integrations/spec.md) | Sentry / Linear / Infisical, and the works-without-them contract |
 | [`help-docs`](openspec/specs/help-docs/spec.md) | The in-product `/help` documentation system |
 | [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, shared primitives, shell IA |

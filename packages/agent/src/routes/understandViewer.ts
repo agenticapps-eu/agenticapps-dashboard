@@ -29,9 +29,8 @@
  *   T-14-05-07 — static assets tokenless (no project data; D-14-04 ratified all-bind)
  *
  * D-14-04: NO bindMode check in this module — full Tailscale parity.
- *   DELIBERATE CONTRAST with D-13-11 (gitnexusScan.ts), which refuses non-loopback
- *   because gitnexus-scan spawns processes. These routes are read-only data serving
- *   only — the threat model accepts them on all bind modes (T-14-05-07).
+ * These routes only serve read-only data, so the threat model accepts them on
+ * all bind modes (T-14-05-07).
  */
 
 import {
@@ -111,7 +110,7 @@ function detectLanguage(filePath: string): string {
 /**
  * Test injection map: repoId -> absolute root path override.
  * When set, resolveUnderstandRoot() uses this map instead of registry + FS.
- * Follow the gitnexusScan.ts override convention — app.ts reads c.get('viewerRootOverrides').
+ * app.ts reads this map from c.get('viewerRootOverrides').
  */
 type RepoRootOverrides = Record<string, string>
 
@@ -290,8 +289,7 @@ function isSensitivePath(safeRelativePath: string): boolean {
  * The main bearer token is NOT accepted here (T-14-05-01).
  *
  * Note: This function is called per-endpoint handler, NOT as middleware on the
- * data router, so each handler remains individually testable. The pattern follows
- * the functional style of gitnexusScan.ts.
+ * data router, so each handler remains individually testable.
  */
 function verifyToken(
   token: string | undefined,

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "repoId": "agenticapps/fixture-repo",
+  "windowDays": 14,
+  "cells": {
+    "claudeMd": {
+      "direction": null,
+      "daysSince": null
+    },
+    "gitNexus": {
+      "direction": "down",
+      "daysSince": 2
+    },
+    "wiki": {
+      "direction": "down",
+      "daysSince": 45
+    },
+    "workflowVersion": {
+      "direction": "up",
+      "daysSince": 2
+    }
+  }
+}
