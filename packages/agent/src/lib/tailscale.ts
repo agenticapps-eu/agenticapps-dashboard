@@ -1,8 +1,7 @@
 import { execa } from 'execa'
 
-import { isTailscaleCIDR } from '../server/middleware/cidr.js'
-
 import { TAILSCALE_SUBPROCESS_TIMEOUT_MS } from '../constants.js'
+import { isTailscaleCIDR } from '../server/middleware/cidr.js'
 
 /**
  * Error thrown when the Tailscale binary is absent or daemon is not running.

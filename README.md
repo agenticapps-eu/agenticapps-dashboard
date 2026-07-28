@@ -40,23 +40,31 @@ Manual fallback: open `https://agenticapps-dashboard.pages.dev/settings`, paste 
 
 Multi-device access: bind the agent to your Tailscale hostname (`agentic-dashboard start --bind tailscale`) and point a second browser at the same SPA URL. The daemon still runs on one machine; the SPA just talks to it over Tailscale.
 
+**The tailnet boundary is IPv4-only.** When the daemon is reachable beyond loopback it admits only Tailscale's CGNAT IPv4 range, `100.64.0.0/10` — in dotted-quad or IPv6-mapped form. A raw IPv6 peer is refused, including one from your tailnet's own IPv6 range. Both machines therefore need IPv4 enabled on Tailscale, and the second device must reach the daemon at its CGNAT IPv4 address (or the MagicDNS name that resolves to it). See [ADR 0002](docs/decisions/0002-tailnet-ipv6-policy.md).
+
 ## FAQ
 
 1. **Why is the daemon on `127.0.0.1:5193` by default?** Loopback keeps the dashboard local-only by accident — you have to opt in to multi-device access. Use `--bind tailscale` for Tailscale-only access, or `--bind 0.0.0.0` for LAN access (emits a security banner).
 
+   `--bind` also accepts an explicit IPv4 or IPv6 literal. `127.0.0.1` and `::1` are loopback and install no boundary. `0.0.0.0` and `::` bind all interfaces, print the security banner, and enforce the CIDR boundary. Any other literal is treated as non-loopback and enforced by default.
+
 2. **Can I access from another device?** Yes, via Tailscale (`--bind tailscale`) or LAN (`--bind 0.0.0.0`). Both require the SPA to point at the new agent URL via `/settings` re-pair.
 
-3. **What data does the dashboard read?** Only `.planning/`, `.claude/`, and `git log` per registered project, plus `~/.claude/skills/` globally. The path allow-list rejects `..` and absolute paths outside the registered root. Read-only — the daemon never writes to a registered project.
+3. **Does this work on an IPv6-only tailnet?** No. Running Tailscale with IPv4 disabled is a supported upstream configuration that this daemon does not support: its admission boundary accepts only CGNAT IPv4. Keep IPv4 enabled on both the daemon node and the client node and connect over the CGNAT IPv4 address. Widening the boundary to tailnet IPv6 is deliberately deferred — see [ADR 0002](docs/decisions/0002-tailnet-ipv6-policy.md).
 
-4. **How do I rotate my auth token?** `agentic-dashboard rotate-token`. The old token is invalid immediately; the SPA detects the 401 and shows a re-pair banner.
+4. **Why did `--bind 0.0.0.0` refuse a request from my own machine?** Because enforcement follows the bind mode, not the source of the individual request. On `0.0.0.0` or `::` the CIDR boundary applies to every request, including one arriving from `127.0.0.1`, so a local `curl` is refused with `cidr_violation` unless you pass `--no-enforce-cidr`. Use the default `127.0.0.1` bind for local-only work.
 
-5. **Why is there no cloud component?** Architectural commitment. The registry, auth tokens, and project data all stay on your machine. The SPA on Cloudflare Pages is pure-static HTML/JS — no Workers, no Pages Functions, no analytics.
+5. **What data does the dashboard read?** Only `.planning/`, `.claude/`, and `git log` per registered project, plus `~/.claude/skills/` globally. The path allow-list rejects `..` and absolute paths outside the registered root. Read-only — the daemon never writes to a registered project.
 
-6. **How do I register multiple projects?** `agentic-dashboard register <path>` once per project, OR `agentic-dashboard register --auto <parent-dir>` to scan a parent directory and confirm each match.
+6. **How do I rotate my auth token?** `agentic-dashboard rotate-token`. The old token is invalid immediately; the SPA detects the 401 and shows a re-pair banner.
 
-7. **What is "impeccable critique" and why is it a CI gate?** A dogfooded design QA. The dashboard's own UI must score ≥ 87 on `impeccable:critique` at the lg (1440×900) breakpoint before merging to main — enforced by [`.github/workflows/impeccable.yml`](.github/workflows/impeccable.yml). v1.1 commits to lifting the floor to ≥ 90.
+7. **Why is there no cloud component?** Architectural commitment. The registry, auth tokens, and project data all stay on your machine. The SPA on Cloudflare Pages is pure-static HTML/JS — no Workers, no Pages Functions, no analytics.
 
-8. **Does this work on Windows?** Not in v1.0. macOS (LaunchAgent) and Linux (systemd) only. The Windows install path is deferred to v2 or beyond.
+8. **How do I register multiple projects?** `agentic-dashboard register <path>` once per project, OR `agentic-dashboard register --auto <parent-dir>` to scan a parent directory and confirm each match.
+
+9. **What is "impeccable critique" and why is it a CI gate?** A dogfooded design QA. The dashboard's own UI must score ≥ 87 on `impeccable:critique` at the lg (1440×900) breakpoint before merging to main — enforced by [`.github/workflows/impeccable.yml`](.github/workflows/impeccable.yml). v1.1 commits to lifting the floor to ≥ 90.
+
+10. **Does this work on Windows?** Not in v1.0. macOS (LaunchAgent) and Linux (systemd) only. The Windows install path is deferred to v2 or beyond.
 
 ## Troubleshooting
 
@@ -72,7 +80,11 @@ Multi-device access: bind the agent to your Tailscale hostname (`agentic-dashboa
 
 5. **systemd unit fails to start on older Linux (Ubuntu 18.04 / Debian 9).** The unit uses `StandardOutput=append:` which requires systemd ≥ 240. On older systems, edit `~/.config/systemd/user/eu.agenticapps.dashboard.service` and change both `append:` lines to `file:` (truncates on each restart instead of appending). Then `systemctl --user daemon-reload && systemctl --user restart eu.agenticapps.dashboard`.
 
-6. **Windows: "command not found".** Windows is not supported in v1.0 (`install-windows-service` deferred to v2). Run on macOS or Linux. WSL2 with a systemd-enabled distro works as the Linux path.
+6. **`--bind <ipv6-address>` refuses to start.** Expected. The admission boundary is IPv4-only, so a daemon on a specific IPv6 address would start cleanly and then refuse every peer that reached it — it fails before startup instead. Bind the node's CGNAT IPv4 address or use `--bind tailscale`. If you genuinely want that bind, `--no-enforce-cidr` permits it, which disables the boundary entirely: both the range rule and the address-family rule stop applying, so any peer that can route to the address is admitted. `::` is exempt because it can serve IPv6-mapped CGNAT IPv4 peers; it starts, warns, and enforces.
+
+7. **`--bind tailscale` says this node has no CGNAT IPv4 address.** Tailscale is installed and running — the node just has no IPv4 address to bind, usually because IPv4 is disabled for it. That is a different problem from "Tailscale not detected", which means the binary or daemon is unavailable. Enable IPv4 on this node in the Tailscale admin console, then restart the daemon.
+
+8. **Windows: "command not found".** Windows is not supported in v1.0 (`install-windows-service` deferred to v2). Run on macOS or Linux. WSL2 with a systemd-enabled distro works as the Linux path.
 
 ## Architecture
 
