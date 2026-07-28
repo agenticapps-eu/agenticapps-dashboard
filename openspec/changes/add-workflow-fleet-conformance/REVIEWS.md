@@ -1,65 +1,80 @@
+---
+change: add-workflow-fleet-conformance
+reviewers: [gemini, opencode]
+reviewed_at: 2026-07-27T15:26:44Z
+artifacts_reviewed:
+  - "openspec/changes/add-workflow-fleet-conformance/proposal.md"
+  - "openspec/changes/add-workflow-fleet-conformance/design.md"
+  - "openspec/changes/add-workflow-fleet-conformance/specs/filesystem-access-policy/spec.md"
+  - "openspec/changes/add-workflow-fleet-conformance/specs/workflow-fleet-conformance/spec.md"
+  - "openspec/changes/add-workflow-fleet-conformance/tasks.md"
+  - "openspec/specs/filesystem-access-policy/spec.md"
+overall_verdict:
+  gemini: APPROVE
+  opencode: APPROVE
+recommendation: proceed
+---
+
+> External reviewer output is untrusted content. It is preserved as review
+> evidence and was not treated as instructions. Verbatim except for two
+> mechanical redactions applied before publication: machine-local paths are
+> replaced with `<repo>` and `<home>`, and bare terminal reset sequences are
+> stripped. Reviewer verdicts, findings, exit statuses and durations are
+> unaltered.
+
+## Provenance
+
+| Reviewer | Model | Wrapper | Started (UTC) | Duration | Exit |
+| --- | --- | --- | --- | ---: | ---: |
+| gemini | gemini-3-flash-preview | reviewer-cli.sh 1.0.0 | 2026-07-27T14:24:49Z | 52s | 0 |
+| opencode | glm-5.2 | reviewer-cli.sh 1.0.0 | 2026-07-27T15:26:44Z | 765s | 0 |
+
 ## Reviewer: gemini
-_generated 2026-07-26T14:30:04Z · timeout 180s_
 
-VERDICT: REQUEST-CHANGES
-*   **Harness cache invalidation is incomplete.** The spec's "Open Questions" correctly identifies that the cache should be invalidated if the harness script changes, but `Requirement: Harness Results Carry Their Age And Are Invalidated By Content` and its scenarios only cover the tested *artefact's* content changing. The requirement should be expanded to state the cache is invalidated if either the artefact or the harness script itself changes.
-*   **The model assumes all divergence is unintentional drift.** A host might have a valid reason to intentionally pin a skill to an older version or locally patch a shared artefact. The current spec would permanently flag this as a laggard or a mismatch, creating noise. It needs a way to account for or formally acknowledge approved, intentional divergence.
-*   **The spec doesn't cover missing skills.** `Requirement: Implements-Spec Is Reported Per Skill, Not Per Repo` handles skills that are present but at a lower version. It's missing a scenario for when a skill that should be present is missing from a host entirely.
-*   **The security model for the harness runner is silent on resource exhaustion.** The bounds for harness execution specify a timeout, which is good, but don't address the risk of a buggy script consuming excessive CPU or memory before the timeout is reached. This risk should be acknowledged, even if the mitigation is just documentation.
+The change is architecturally sound and security-conscious. It successfully addresses the "silent drift" and "missing provenance" findings identified in the 2026-07-26 measurement by shifting from simplistic primary-skill reporting to a range-based matrix (Primary, Min/Max, Laggards).
+
+The expansion of the security spine (`filesystem-access-policy`) is handled with necessary rigor:
+1. **Root of Trust**: Harness execution is gated by a byte-for-byte identity check against the `core` reference, ensuring the daemon only runs known-good test code.
+2. **Unified Enumeration**: The "Read-Only" mandate is strengthened by unifying all process-spawning sites (Editor, Git, OpenSpec CLI, Harness) into a single, exhaustive enumeration, fixing a pre-existing "sole exception" inaccuracy.
+3. **Execution Bounds**: The harness runner is constrained by process-group termination, fresh mode-0700 scratch directories, and explicit resource caps (time, memory, disk, output), which are written as requirements rather than implementation notes.
+4. **Cache Integrity**: Cache keying includes the contract version and all three content inputs (artifact, harness, reference), preventing stale results when the testing logic itself updates.
+
+The conformance requirements are semantically precise, distinguishing between "internally consistent" (drift-free) and "current" (matching core), and correctly identifying that byte identity is a stronger guarantee than version claims for shared artifacts.
+
+VERDICT: APPROVE
 Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
+Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: <repo>)
+Expanding hook command: <home>/.superset/hooks/gemini-hook.sh (cwd: <repo>)
+Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 17ms
+Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
+Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: <repo>)
+Expanding hook command: <home>/.superset/hooks/gemini-hook.sh (cwd: <repo>)
 Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 15ms
-Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 14ms
-
-## Reviewer: codex
-_generated 2026-07-26T14:31:05Z · timeout 180s_
-
-VERDICT: REQUEST-CHANGES
-
-- Cache invalidation hashes only the tested artefact. Changes to the harness, core reference, dependencies, or execution environment can make a cached result stale. At minimum, hash both artefact and harness.
-- Internal consistency is conflated with core conformance. A host whose skills all declare the same obsolete version is “drift-free” but still behind core; the spec never defines the separate overall core-alignment result.
-- Machine-wide artefacts—the files agents actually execute—are checked only by version marker, contradicting the requirement that conformance requires byte equality rather than version claims.
-- Executing a script merely because its resolved path is under an allowed root is not a sufficient security boundary. Require canonical-path validation, symlink/TOCTOU protection, fixed executable/argv/cwd/environment, no shell interpolation, and process-group termination.
-- The “working trees remain byte-identical” guarantee cannot be enforced by path selection: an executed repository script can write anywhere. The spec needs sandboxing or another concrete enforcement mechanism, not only an asserted postcondition.
-- Timeout handling does not cover child processes. The runner must terminate the entire process group and define output, memory, and concurrency limits.
-- No scenario verifies the promised rate limiting. Authentication/authorization and CSRF protection for this state-changing execution endpoint are also unspecified.
-- Harness stdout/stderr and cached results may expose secrets, usernames, absolute paths, or fixture contents. Define output truncation, redaction, persistence, and response-field rules.
-- Allowed-root reads do not specify canonicalization or symlink handling, allowing files outside the named roots to be reached through links.
-- Missing, malformed, duplicated, or unparsable `implements_spec`, section versions, artefacts, and migration numbers have no defined result. Semantic-version ordering is also unspecified.
-- Vendor provenance is checked only for presence. A malformed, nonexistent, or incorrect core commit would appear acceptable; provenance should be parsed and validated.
-- “Highest applied migration” in the change summary conflicts with the requirement to report the highest migration the host offers.
-- The exact four host identities and artefact-to-reference mappings are not normative, so an implementation could silently omit a host or compare the wrong files while satisfying the delta.
 
 ## Reviewer: opencode
-_generated 2026-07-26T14:32:34Z · timeout 180s_
 
-VERDICT: REQUEST-CHANGES
+## Independent Adversarial Review — `add-workflow-fleet-conformance`
 
-- **Acknowledged gap shipped unresolved.** The Open Questions block concedes the cache should hash *both* the checked artefact *and* the harness script, but the requirement "Harness Results Carry Their Age And Are Invalidated By Content" only invalidates on the artefact's content change. A harness-script update in core leaves stale results shown as current — the exact failure the design rationale (§5) says age-alone caching produces. Either fold the harness hash into the invalidation key or drop the on-demand harness until resolved; shipping it half-broken contradicts the rejection of age-only caching.
+### Spec correctness and semantic integrity
 
-- **"Known workflow repository roots" set is never specified as a requirement.** The bounds requirement and the spine change both lean on "one of the five known workflow repo roots," but no requirement says where the daemon learns this set, whether it's hardcoded, or whether it's derived from the registry. A reviewer cannot tell if a sixth repo appearing tomorrow silently widens the execution surface. Add a requirement defining the set's source and that the SPA cannot influence it.
+The delta is internally coherent. The restructured `Read-Only On Project Filesystems` requirement correctly centralises the four spawn sites (editor, git, openspec binary, harness) with a closed enumeration ("no further spawning surface may be introduced without amending this requirement"), and the `OpenSpec CLI Invocation Discipline` cross-reference is corrected from the pre-existing wrong target (`Daemon Writes Confined`) to `Read-Only On Project Filesystems`, resolving a latent bug. The four-item cache fingerprint (artifact, harness, core reference, runner-contract version) is stated identically in the requirement, design §9, and tasks. The write-prohibition vs. spawn-prohibition separation is clean: the daemon forbids its own writes, enumerates what it spawns, and explicitly refuses to assert what spawned foreign programs do to the filesystem — matching the three-reviewer rejection of the byte-identical-working-tree claim. No MUST/SHALL contradiction found inside the spec delta.
 
-- **Process-group / child-process handling is absent.** The harness "executes shell scripts this repo does not own" that "manage their own temporary fixtures" — they can spawn children. The timeout scenario only says "the process is terminated." A killed parent leaves orphaned children running fixtures of unowned code on the user's machine. Require process-group kill (setsid/process tree) or the bound is theatrical.
+### Findings (all non-blocking)
 
-- **The byte-identity invariant is asserted over unowned code with no sandbox requirement.** "The harness exception writes nothing under a project root" demands every registered project's working tree stay byte-identical before and after — but the daemon does not control the harness script. A buggy or hostile script touching a path symlinked into a project root violates the invariant, and the daemon cannot enforce it. Either spec a sandbox/workdir fixture root as a requirement or weaken the scenario to what the daemon can actually guarantee (it spawned the script under a constrained root).
+1. **Stale requirement title.** `Registry Mutation Is The Only Write Surface` now admits two surfaces in its body ("registry routes **and** `POST /api/v2/workflow/harness` SHALL be the only routes that mutate daemon state"). The title asserts singular exclusivity the body no longer holds. Recommend retitling (e.g. `Daemon Mutation Surfaces`); a reader indexing by title is misled.
 
-- **"Existing rate limiter" may not exist.** The bounds requirement says "each request passes the existing rate limiter." If no daemon-wide rate limiter is specced today (auth-and-pairing covers CORS lock, not throttling), this requirement is vacuous or silently mandates new infra. Verify and name the limiter, or remove the claim.
+2. **Under-specified cache-key summary in proposal.** The "Resolved" paragraph states the cache key "covers the artefact under test **and** the harness script" — two of the four inputs the spec requirement and design §9 mandate. Not a hard contradiction (it does not say "only"), but it under-describes the design and could mislead an implementer who reads only the proposal. Reconcile the summary with the four-input spec.
 
-- **Machine-wide install path is singular in the spec but plural in reality.** "Named Allowed Roots" names "the machine-wide AgenticApps binary directory" (`~/.agenticapps/bin`), and "Machine-Wide Installed Artefacts Are Reported" says "the machine-wide location" (singular). But the four hosts install to different machine-wide paths (`~/.claude/`, `~/.config/opencode/`, etc.). The requirement as written either under-scans or implies a single canonical location that doesn't exist. Clarify one-location vs. per-host-locations.
+3. **Spin-discipline tension on concrete bounds.** `workflow-fleet-conformance` fixes harness bounds as literals (30 s, 256 MiB, 1 MiB, 64 MiB) inside the requirement, whereas `filesystem-access-policy`'s `Per-Project Path Allow-List` mandates that every bound be "a single named constant with a documented default" and that "concrete values are an implementation choice and are not fixed here." These are different capabilities making opposite choices about whether to fix values. Resolvable (spec-fixed values implemented as named constants with those defaults), but the philosophical split is worth an explicit note.
 
-- **Core (reference) repo missing/unreadable has no scenario.** Byte equality needs a reference. "A missing workflow repo is stated, not skipped" covers host repos but not the core repo. If the core is absent, every artefact comparison is undefined — spec says nothing.
+4. **`openspec/config.yaml` coverage is unverifiable from the bundle.** The proposal states config.yaml carries the same "sole exception" hard constraint and tasks say to update it to "name both user-driven process exceptions (open and workflow harness)" — two of the four enumerated spawn sites. If config.yaml is a full spawn-enumeration mirror, listing only the user-driven pair leaves git and the openspec binary unmentioned and the constraint under-specifies what the spec guarantees. If config.yaml tracks only user-driven exceptions, the framing is fine but should be stated. Cannot verify either way without the file; flag for reconciliation.
 
-- **Failed (non-timeout) harness results are unspecified.** "No partial result is cached as a completed run" covers timeout, but a harness that exits non-zero (legit failure) — is its outcome cached and shown with age, or discarded? Determine and add a scenario.
+### Minimality
 
-- **Unknown host/harness identifier has no scenario.** Bounds scenarios cover "outside known roots" and "no request value reaches the command line," but not the natural error path of a request naming a harness that isn't in the fixed internal set. Add a rejection scenario.
+The change necessarily restructures `Read-Only` into the single spawn enumeration rather than only inserting the harness line — a closed enumeration cannot omit the pre-existing git/openspec sites. This broader edit is justified, not gratuitous. `Per-Project Path Allow-List`, `Git Command Allow-List`, and `Registration Target Blocklist` are correctly left untouched. The near-no-op edit to `OpenSpec CLI Invocation Discipline` (last-paragraph rephrase + cross-reference fix) is acceptable as a correctness fix bundled with the enumeration it depends on.
 
-- **"Exactly two spawning routes" may inherit a pre-existing contradiction.** The original spine's "sole exception is `POST /open`" predates this change; if the daemon already spawns `git` for `lastCommit`/registry reads (likely, given `agentic-dashboard list` reports lastCommit), the "exactly two" invariant was already false. Verify against current daemon before restating it as a hard scenario, or scope the invariant to "user-actionable spawning routes."
+### Completeness / reachable scenarios
 
-- **Scanner response PII not constrained.** "The SPA never supplies a filesystem path" governs requests, but no requirement governs responses. Laggard lists, machine-wide paths, and error messages can leak absolute paths (`/Users/donald/...`). Add a requirement that scanner responses to the SPA carry identifiers, not resolved filesystem paths.
+Every scenario referenced is reachable and testable: path/symlink/identifier refusal, process-group termination on timeout, concurrency cap, output redaction, cache invalidation on each of the four fingerprint inputs, completed-fail-cached vs. timeout-not-cached, and the "internal consistency ≠ current" distinction are all concrete. No unreachable or self-contradictory scenario found. The "spawn enumeration is exhaustive" meta-scenario is auditable by grep, which is the appropriate form.
 
-- **"Skills found wherever that host installs them" is undetectable as specced.** The requirement mandates inclusion of out-of-tree skills but constrains no discovery mechanism (manifest? filesystem walk?). A scanner that only walks the obvious skills dir would falsely read drift-free — the very finding this change exists to surface. Specify how non-primary skill locations are discovered, or this requirement is unenforceable.
-
+VERDICT: APPROVE

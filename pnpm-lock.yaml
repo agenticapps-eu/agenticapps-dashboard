@@ -169,10 +169,10 @@ importers:
         version: link:../shared
       '@hono/node-server':
         specifier: ^2.0.1
-        version: 2.0.1(hono@4.12.16)
+        version: 2.0.1(hono@4.12.32)
       '@hono/zod-validator':
         specifier: ^0.7.6
-        version: 0.7.6(hono@4.12.16)(zod@3.25.76)
+        version: 0.7.6(hono@4.12.32)(zod@3.25.76)
       commander:
         specifier: 'catalog:'
         version: 14.0.3
@@ -180,8 +180,8 @@ importers:
         specifier: ^9.6.1
         version: 9.6.1
       hono:
-        specifier: ^4.12.16
-        version: 4.12.16
+        specifier: ^4.12.25
+        version: 4.12.32
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -2354,8 +2354,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.12.16:
-    resolution: {integrity: sha512-jN0ZewiNAWSe5khM3EyCmBb250+b40wWbwNILNfEvq84VREWwOIkuUsFONk/3i3nqkz7Oe1PcpM2mwQEK2L9Kg==}
+  hono@4.12.32:
+    resolution: {integrity: sha512-XcuyW9qE2kJn07PkecMOBd5Vq/hMy7mmGw+idz1yblbg9N17ijJODrvPkn7/dwL3Kulj8LcRJ69DLOWf91dRUg==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -4117,13 +4117,13 @@ snapshots:
 
   '@fontsource-variable/inter@5.2.8': {}
 
-  '@hono/node-server@2.0.1(hono@4.12.16)':
+  '@hono/node-server@2.0.1(hono@4.12.32)':
     dependencies:
-      hono: 4.12.16
+      hono: 4.12.32
 
-  '@hono/zod-validator@0.7.6(hono@4.12.16)(zod@3.25.76)':
+  '@hono/zod-validator@0.7.6(hono@4.12.32)(zod@3.25.76)':
     dependencies:
-      hono: 4.12.16
+      hono: 4.12.32
       zod: 3.25.76
 
   '@humanfs/core@0.19.2':
@@ -5939,7 +5939,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.12.16: {}
+  hono@4.12.32: {}
 
   html-encoding-sniffer@6.0.0:
     dependencies:
