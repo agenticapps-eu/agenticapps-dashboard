@@ -11,12 +11,17 @@
 **Reason**: The matrix answered "which repos have which tools installed". v2 asks
 "is this repo production-ready", and answers it with six checks that are the same
 for every repo. Tool presence is at most an input to the `workflow` check, never
-a surface of its own. The matrix is withdrawn because the question was replaced,
-not because it stopped working.
+a surface of its own. The matrix also discovered every git repo one level below
+the configured family roots, including repos that were never registered. v2's
+readiness fleet is intentionally registry-scoped, so that automatic population
+is withdrawn with the coverage scanner. The matrix is withdrawn because the
+question and population model were replaced, not because it stopped working.
 
-**Migration**: Repos appear on the fleet surface as one row with six readiness
-checks. The per-tool columns have no successor; a repo's tooling is visible in
-the repo itself.
+**Migration**: Registered repos appear on the fleet surface as one row with six
+readiness checks. A family-root repo that is not registered no longer appears
+automatically; it is added through the surviving home registration affordance.
+The per-tool columns have no successor; a repo's tooling is visible in the repo
+itself.
 
 ### Requirement: Four-State Column Freshness
 
@@ -64,7 +69,9 @@ rather than against matrix columns.
 cell. With no cells, there is nothing to override. v2's equivalent is tier B: a
 repo declares a check's state directly, and the result is marked as declared
 rather than derived — which is a stronger form of the same idea, because it
-carries the claim rather than merely suppressing the machine's.
+carries the claim rather than merely suppressing the machine's. The tier-B
+declared-check model is introduced by `add-repo-readiness`, which must be applied
+before this retirement.
 
 **Migration**: Overrides are expressed as declared checks in a repo's readiness
 file. The detail surface shows provenance for every check.
@@ -77,7 +84,9 @@ the history that matters — when a review last ran, whether it predates the cod
 is carried per check as a timestamp and the `stale` state.
 
 **Migration**: Snapshot writing stops. Existing snapshot files under the daemon's
-own directory are left in place rather than deleted; they are inert.
+own directory are left in place for rollback rather than deleted. Inert means v2
+neither reads nor writes them. Deletion or archival requires a separate cleanup
+decision with an explicit retention policy.
 
 ### Requirement: Per-Cell Drift Indicator
 
@@ -99,6 +108,7 @@ repo, specified in `repo-readiness`.
 rules and its breakpoint behaviour are specified in `design-system` and apply to
 the fleet table.
 
-**Migration**: The fleet surface is a dense table with its own responsive
-behaviour; the card-per-repo fallback has no successor because the row already
-fits where a card did not.
+**Migration**: The fleet surface remains one logical row per repo. At the `xs`
+verification viewport, `Dense Rows And Aligned Figures` in `design-system`
+permits that row to wrap its required fields internally without becoming a card
+or creating page-level horizontal scrolling.

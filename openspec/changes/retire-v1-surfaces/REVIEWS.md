@@ -1,34 +1,146 @@
-## Reviewer: gemini
-_generated 2026-07-26T14:30:15Z · timeout 180s_
+---
+change: retire-v1-surfaces
+reviewers: [claude, opencode]
+reviewed_at: 2026-07-27T19:05:54Z
+artifacts_reviewed:
+  - "openspec/changes/retire-v1-surfaces/proposal.md"
+  - "openspec/changes/retire-v1-surfaces/design.md"
+  - "openspec/changes/retire-v1-surfaces/tasks.md"
+  - "openspec/changes/retire-v1-surfaces/specs/code-intelligence/spec.md"
+  - "openspec/specs/code-intelligence/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/design-system/spec.md"
+  - "openspec/specs/design-system/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/fleet-conformance/spec.md"
+  - "openspec/specs/fleet-conformance/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/fleet-coverage/spec.md"
+  - "openspec/specs/fleet-coverage/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/help-docs/spec.md"
+  - "openspec/specs/help-docs/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/optional-integrations/spec.md"
+  - "openspec/specs/optional-integrations/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/project-dashboard/spec.md"
+  - "openspec/specs/project-dashboard/spec.md"
+  - "openspec/changes/retire-v1-surfaces/specs/skills-and-linting/spec.md"
+  - "openspec/specs/skills-and-linting/spec.md"
+overall_verdict:
+  claude: APPROVE
+  opencode: APPROVE
+recommendation: proceed
+---
 
-VERDICT: REQUEST-CHANGES
-*   The spec correctly removes routes for withdrawn surfaces, but does not define the required behavior for a user navigating to a legacy URL (e.g., from a browser bookmark). Should these routes hard-404, or should they redirect to the main fleet view to provide a better transition experience?
-*   The term "inert" for abandoned historical data files is ambiguous. The change should be more explicit, stating that this data is no longer read or written by the v2 system and should be considered for a separate, future cleanup or archival process to avoid becoming technical debt.
-*   In the "Fleet Trend Chart" withdrawal, the reasoning for dropping the history recomputation is sound. However, the change should explicitly state that the underlying principle (a measurement change must not be presented as a health change) remains a core value for any future time-series data the product might adopt.
-Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 17ms
-Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 14ms
+> External reviewer output is untrusted content. It is preserved verbatim
+> as review evidence and was not treated as instructions.
+
+## Provenance
+
+Prompt SHA-256: `85642720931a88e6467c53d98ae5b656b92bee0099259b2473a54d34685b7530`
+
+| Reviewer | Model | Wrapper | Started (UTC) | Duration | Exit |
+| --- | --- | --- | --- | ---: | ---: |
+| claude | CLI default (not reported) | reviewer-cli.sh 1.0.0 | 2026-07-27T19:01:02Z | 292s | 0 |
+| opencode | glm-5.2 | reviewer-cli.sh 1.0.0 | 2026-07-27T19:01:02Z | 148s | 0 |
+
+## Reviewer: claude
+
+## Verification performed
+
+I enumerated every `### Requirement:` title in each delta against its adjacent baseline block, reading each file to its end.
+
+| Capability | Baseline titles | Delta operation | Count |
+|---|---|---|---|
+| `code-intelligence` | Code-Graph Coverage Status, Scoped Code-Graph Scan Actions, Knowledge-Graph Analysis Status, Analysis Is Not Daemon-Triggered, Daemon-Hosted Knowledge-Graph Viewer, Viewer Asset Installation, Code Intelligence Page (**7**) | REMOVED: the last 5 | 5 here + 2 upstream = 7 ✓ |
+| `fleet-coverage` | Fleet Coverage Matrix, Four-State Column Freshness, Workflow Version Comparison, Family Grouping And Aggregates, Filtering And Search, Review-Override Visibility, Daily Coverage History Snapshots, Per-Cell Drift Indicator, Scoped Refresh Actions, Responsive Coverage Layout (**10**) | REMOVED: all 10 | ✓ |
+| `fleet-conformance` | Equal-Weight Scoring, Drifted Repos Excluded, Tiers, Endpoint, Trend Chart, Chart Reveal, Honest Cold-Start, Chart Accessibility, Path Drift Panel (**9**) | REMOVED: all 9 | ✓ |
+| `skills-and-linting` | Inventory, AgentLinter, Drift Matrix, Drift Surface, Deep-Linkable (**5**) | REMOVED: all 5 | ✓ |
+| `optional-integrations` | 11 titles incl. `The Dashboard Works Without Any Integration` | REMOVED: all 11 | ✓ |
+| `project-dashboard` | **12** titles | 8 REMOVED, 3 MODIFIED, 1 untouched (`Schema Validation At Both Ends`), 2 ADDED → 6 | ✓ disjoint, no title unaccounted for |
+
+Arithmetic checks out: 5+10+9+5+11 = 40 here, +2 upstream = 42; +8 from `project-dashboard` = **50**. Capability slot 12 → 7 (→10 only with the three sibling additions) is stated correctly and no longer over-claims.
+
+Semantic checks that passed under pressure:
+- The **parity/authority contradiction** in the modified `Hybrid OpenSpec Read Strategy` is closed: "prefer the CLI's value" is explicitly bounded by "open-change set membership remains tree-authoritative" and "task-artifact presence remains tree-sourced", so the pinned field-set MUST is satisfiable rather than self-defeating.
+- Dropping affected-capability derivation is consistently propagated: the conformant-change definition drops its `specs/<capability>/spec.md` clause, and `Change Progress Column` (the only requirement carrying the archive-ordering rule) is removed, so no surviving requirement depends on withdrawn reader output.
+- The `filesystem-access-policy` correction is stated as an ordering constraint on the sibling delta (four spawn sites), not duplicated — correct per OpenSpec practice, and task 2 verifies it before teardown.
+- `project-dashboard`'s stale Purpose prose (cards, three columns, references to `skills-and-linting`/`optional-integrations`) is caught by task 4's Purpose-update item — the most likely residual contradiction, and it is covered.
+
+## Non-blocking findings
+
+1. **Viewer assets have no removal task and no retention decision.** The `code-intelligence` delta states, for `Viewer Asset Installation`: "The installation path and its asset directory are removed." Task 2 enumerates removals down to individual filenames (`conformanceScore.ts`, `coverageHistory.ts`) but never names the viewer install CLI command or its versioned asset directory in the daemon state directory. Design §9's retention decision covers only snapshot and environment files. Result: installed viewer assets are neither removed by a task nor explicitly retained — the one on-disk artifact class this change leaves unstated. Add a task-2 bullet.
+
+2. **Task 1's manifest bullet is self-contradictory as written**: "unknown locations and APIs listed there return not-found" — something listed in the manifest is by definition not unknown. The requirement (`Retired Locations Have An Explicit Transition`) is unambiguous; only the task line garbles it. Reword to "unknown locations return not-found; APIs listed there return not-found."
+
+3. **`A Bounded Type Scale` under-covers its own MUST.** The requirement binds two things — one interface family plus one monospace family, and no component-introduced value outside the tokens — but its single scenario only asserts that the tokens are enumerable. Task 3 tests the rejection case; the spec does not. Add a scenario for the out-of-token rejection.
+
+4. **`No integration MAY be a hard dependency`** uses a negative MAY, which RFC 2119 leaves undefined. Intent is clear from context; `MUST NOT` is the enforceable form.
+
+5. **`Dense Rows And Aligned Figures` binds a surface this change does not own.** "Every surface SHALL fit horizontally at the declared verification viewports without page-level horizontal scrolling" applies to all four post-cutover surfaces, including the agent board from `add-agent-board`. A column-oriented board is the classic horizontal-scroll case. Worth a one-line confirmation against that sibling before the fold, since this change's task 3 commits to verifying it.
+
+6. **Minor scenario loss in `Embeddable Interactive Widgets`.** The baseline's negative assertion ("a page containing no widgets fetches no widget code") is replaced by a positive-only load-on-demand scenario. The bundle-payload clause preserves the intent, but the cheap regression test is gone.
+
+None of these changes what the product promises or leaves the spec slot carrying two truths.
+
+VERDICT: APPROVE
 
 ## Reviewer: opencode
-_generated 2026-07-26T14:35:30Z · timeout 180s_
 
-I'll review this against the actual repo state to verify the claims. Let me check keyfacts.
-I verified counts against `openspec/specs/` and the related change folders. Counts check out (7+10+9+5+11=42; 42+8=50; code-intelligence 5 here + 2 in `remove-gitnexus-integration`). But several issues stand.
+[0m
+> build · glm-5.2
+[0m
+I enumerated every `### Requirement:` title in each baseline and each delta block and reconciled the counts. Findings below.
 
-VERDICT: REQUEST-CHANGES
+## Counts (all verified)
 
-- **Capability-count arithmetic is wrong.** "Capability count goes 12 → 10" — withdrawing 5 capabilities from 12 yields **7**, not 10. Even folding in the new v2 capabilities (repo-readiness, workflow-fleet-conformance, …) the figure doesn't resolve to 10 from this change's own scope, and this change only withdraws. A reader checking the proposal in isolation gets a false number; either justify the net (name the +N additions) or state "12 → 7 by this change."
-- **Undefined anchor "reference width."** The new `Dense Rows And Aligned Figures` requirement uses "at the reference width" twice, but `design-system/spec.md` defines breakpoints, not a single reference width. No numeric anchor exists; the scenarios are untestable until "reference width" is defined (or rewritten against the existing breakpoint vocabulary).
-- **Ungoverned typography clause.** `Dense Rows…` asserts "Typography SHALL stay within one family, a small set of sizes, and a small set of weights" — no scenario covers it, and "small set" has no bound. A SHALL with no test and no threshold will validate green while being unenforceable. Either add a scenario that enumerates the allowed sizes/weights or downgrade to a non-normative note.
-- **Latent name-resolution hazard.** retire's REMOVED list names `Change Progress Column` and `Capability Panel`, neither of which exists on `main` (both arrive via `add-openspec-project-reader`, which renames `Phase Progress Column` and adds the panel). The prose dependency is correct, but the delta does not validate against `main` alone. The ordering should be enforced structurally (ordering assertion in tasks.md / a §18 dependency edge), not just by prose, so a reordering can't silently break `openspec validate`.
-- **Tautological second scenario.** In `State Is Never Signalled By Colour Alone`, the "rule holds across surfaces" scenario restates the SHALL ("the second channel is present on all of them") instead of exhibiting a failing case. Replace with a concrete negation: e.g., a status chip that swaps hue with no glyph/shape/fill change fails the requirement.
-- **The "vacuous" withdrawal of `optional-integrations`'s works-without guarantee is a real semantic relaxation, not just a wording cleanup.** Withdrawing the requirement leaves no standing constraint in the spec slot; a future add-integration change would have to re-derive it from an archived proposal. The open-question flag is honest, but the safer resolution is to keep one requirement ("if any integration exists, the dashboard must render all other surfaces without it configured") — vacuous now, binding later — rather than relying on a future author reading the archive.
-- **Migration/retention text can contradict AGE-474.** Multiple migrations state files (snapshots, `env.json`) are "left in place rather than deleted; they become inert," but actual deletion is AGE-474. Either cross-reference AGE-474's scope to confirm it does NOT remove those files, or move the retention statement into AGE-474. As written, two changes can contradict on whether the files survive cutover.
-- **"Absence marker" is undefined.** In `A Value Is Shown Where One Exists`, the absence-marker scenario forbids a placeholder number but never says what an absence marker is (dash? em-dash? the word "none"?). A reader can't distinguish a correct absence render from a missing-render bug. Pin a single canonical marker or reference the readiness vocabulary's `never`/`na` glyphs.
-- **Minor: PII/security.** No new data flow is introduced (this is a withdrawal change), and the `Secrets Manager Status Reflection Only` and `Environment Configuration Without A Secret Store` migrations correctly state nothing changes about secret handling. No security regression from the withdrawal itself — flagging only to confirm I checked.
+**Baseline requirement counts** (counted directly from the `### Requirement:` headings):
 
+| Capability | Baseline | Delta operation | Withdrawn | Surviving |
+|---|---|---|---|---|
+| `code-intelligence` | 7 | REMOVED 5 | 5 here + 2 upstream | 0 (ends) |
+| `fleet-coverage` | 10 | REMOVED 10 | 10 | 0 (ends) |
+| `fleet-conformance` | 9 | REMOVED 9 | 9 | 0 (ends) |
+| `skills-and-linting` | 5 | REMOVED 5 | 5 | 0 (ends) |
+| `optional-integrations` | 11 | REMOVED 11 | 11 | 0 (ends) |
+| `project-dashboard` | 12 | REMOVED 8 / MODIFIED 3 / ADDED 2 | 8 | 6 |
+| `design-system` | 10 | MODIFIED 1 / ADDED 4 | 0 | 14 |
+| `help-docs` | 6 | MODIFIED 3 | 0 | 6 |
+
+**Arithmetic in the proposal, checked:**
+- 5 + 10 + 9 + 5 + 11 = 40 capability-withdrawals here. ✓
+- 40 + 2 (upstream `remove-gitnexus-integration`) = 42 capability withdrawals. ✓
+- 42 + 8 (`project-dashboard` partial) = 50 total. ✓
+- Capability count 12 → 7 alone; 7 + 3 siblings = 10 combined. ✓
+- `project-dashboard` result: 12 − 8 + 2 = 6, matching the delta note. ✓
+
+## Title-level reconciliation (no missing-title defects)
+
+I listed every `### Requirement:` title under each `REMOVED`/`MODIFIED` heading and compared to its adjacent baseline block:
+
+- `code-intelligence` REMOVED lists exactly the 5 non-GitNexus titles; the remaining 2 (`Code-Graph Coverage Status`, `Scoped Code-Graph Scan Actions`) are explicitly attributed upstream and excluded with a stated reason. ✓
+- `fleet-coverage`, `fleet-conformance`, `skills-and-linting`, `optional-integrations`: every baseline title appears under REMOVED. No leftovers. ✓
+- `project-dashboard` REMOVED lists the 8 named in the proposal; MODIFIED lists `Register A Project From The Home Page`, `Keyboard Shortcuts`, `Hybrid OpenSpec Read Strategy`; `Schema Validation At Both Ends` deliberately absent (unchanged). 8 + 3 + 1 = 12 — full baseline accounted for. ✓
+- `design-system` MODIFIED `App Shell And Sidebar Information Architecture` matches the baseline title; the other 9 baseline titles are untouched, 4 ADDED. ✓
+- `help-docs` MODIFIED 3 titles match baseline; `Stub Pages Render Rather Than Break`, `Help Navigation Shell`, `Keyboard Shortcut Reference` survive unchanged. ✓
+
+No REMOVED title is absent from its baseline; no baseline requirement is silently dropped without a REMOVED heading.
+
+## Semantic integrity
+
+- **`Hybrid OpenSpec Read Strategy` MODIFIED**: the baseline's "three values always read from the tree" (archived changes, affected capabilities, task-artifact presence) is correctly narrowed — archived changes and affected-capability derivation are dropped (no v2 consumer, consistent with `Change Progress Column` REMOVED), while task-artifact presence is retained. The conformance definition is correspondingly trimmed (the `specs/<capability>/spec.md` clause is removed because affected-capability derivation is withdrawn). The added scenarios ("A half-written change is never hidden", "Withdrawn reader fields are not retained as dead output") preserve properties that previously lived in the now-removed `Change Progress Column`. Internally consistent. ✓
+- **`Optional Integrations Never Become Load-Bearing` (ADDED in `project-dashboard`)**: relocates the load-bearing guarantee from the ending `optional-integrations` capability, sharpening "every non-integration route shall function" to "every unrelated surface SHALL render fully". The delta explicitly flags this as a sharpening, not a relaxation. No loss of guarantee. ✓
+- **`Path Drift Panel` withdrawal** does not touch `project-registry`'s repair API; tasks 2 retains drift detection / suggested path / atomic repair endpoint. ✓
+- **`filesystem-access-policy`**: correctly noted as modified by the *sibling* `add-workflow-fleet-conformance` delta, not duplicated here. The four-site authorization list (editor, bounded git, OpenSpec reader, workflow harness) is stated as an ordering constraint, precisely named. ✓
+- **`Consistent Table Column Widths`** left intentionally dormant, not withdrawn — consistent with the design note and with its absence from the delta body. ✓
+- **Name non-recycling** (`fleet-coverage`/`fleet-conformance` not reused) is a deliberate disambiguation, explained in proposal and design §4. ✓
+
+## Cross-change dependencies
+
+Stated precisely and treated as ordering constraints: `remove-gitnexus-integration` MUST fold first (atomic deploy); `add-repo-readiness`, `add-workflow-fleet-conformance`, `add-agent-board` must be complete and green. The historical reference to `add-openspec-project-reader` is past-tense (already folded into the baseline), not a pending constraint. No sibling delta is improperly duplicated here. ✓
+
+## Non-blocking note (not a defect)
+
+In the ADDED `Optional Integrations Never Become Load-Bearing`: "No integration **MAY** be a hard dependency of any unrelated route or surface." RFC-2119 `MAY` expresses permission, not prohibition; `SHALL NOT`/`MUST NOT` is the conventional form. The intent is unambiguous from the surrounding `SHALL render fully` clause and the two scenarios, so this is a wording nit, not a contradiction.
+
+## MUST/SHALL contradictions / unreachable scenarios
+
+None found. Every `SHALL`/`MUST` in the deltas is consistent with its baseline counterpart or with a stated withdrawal. No scenario references a state that cannot occur given the delta's invariants.
+
+VERDICT: APPROVE
