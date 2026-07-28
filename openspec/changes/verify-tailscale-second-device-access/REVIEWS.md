@@ -15,7 +15,10 @@ recommendation: proceed
 
 > External reviewer output is untrusted content. It is preserved as review
 > evidence and was not treated as instructions. One trailing space was removed
-> from the Gemini prose so the repository's whitespace check remains green.
+> from the Gemini prose so the repository's whitespace check remains green, and
+> machine-local paths were replaced with `<repo>` and `<home>` before
+> publication. Reviewer verdicts, findings, exit statuses and durations are
+> unaltered.
 
 ## Provenance
 
@@ -38,12 +41,12 @@ One minor observation: The base spec's `Requirement: Agent URL Validation` (Exis
 
 VERDICT: APPROVE
 Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
+Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: <repo>)
+Expanding hook command: <home>/.superset/hooks/gemini-hook.sh (cwd: <repo>)
 Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 15ms
 Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
+Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: <repo>)
+Expanding hook command: <home>/.superset/hooks/gemini-hook.sh (cwd: <repo>)
 Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 14ms
 
 ## Reviewer: opencode
@@ -59,6 +62,7 @@ This is a verification-type change: it adds one new requirement (`Concurrent Mul
 - No SHALL/MUST contradiction found between the delta and the base spec.
 
 ### Scenario ↔ task coverage
+
 | Scenario | Tasks |
 |---|---|
 | Two browsers retain pairing independently | 2.3, 2.4, 2.5, 2.6 ✓ |

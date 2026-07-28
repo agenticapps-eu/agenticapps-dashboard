@@ -51,9 +51,13 @@ Scheduled after the Dashboard v2 cutover. Linear: AGE-481, and the project this
 sequence is recorded in — see the *Sequence* section of
 `openspec/CAPABILITY-MAP.md`.
 
-Task block 2 verifies the four v2 surfaces — fleet, repo detail, workflow, and
-board. Setting up the second device is the expensive part of this work, and the
-evidence should be produced once against the surfaces that ship.
+Task block 2 verifies the v2 surfaces that ship — fleet, repo detail, and
+workflow. The agent-change surface is not among them: `add-agent-board` was
+withdrawn on 2026-07-28 and no replacement is proposed yet. If one lands before
+this verification runs, it joins the block; if it does not, its absence is not a
+reason to hold the evidence. Setting up the second device is the expensive part
+of this work, and the evidence should be produced once against the surfaces that
+actually ship.
 
 **Not affected by v2:** task block 3. The security boundary — a client outside
 the tailnet CIDR is refused, disabling enforcement requires an explicit flag and
@@ -110,7 +114,10 @@ dispositions below are the revision submitted for a fresh review.
 5. **Address-family policy is owned by `decide-tailnet-ipv6-policy`** and is an
    explicit verification item here.
 
-6. **Task block 2 now names the four v2 surfaces.**
+6. **Task block 2 now names the v2 surfaces individually** rather than
+   verifying "the dashboard" as a whole. It named four when the finding was
+   written; the agent board's withdrawal has since reduced that to three, and
+   the block is written to take a replacement surface if one arrives first.
 
 7. **Inter-device transport is an explicit operator responsibility**, and
    rotation requires a fresh URL to be shared through that operator-chosen

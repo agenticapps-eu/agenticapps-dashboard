@@ -8,9 +8,9 @@ repo publishable. The original spec deferred this deliberately — "private unti
 phase 6 ships and looks good, then flip" — and phase 6 shipped in May 2026.
 
 Four things are missing: a licence, contributor guidance and community norms,
-publication hygiene, and a decision about whether the deployed dashboard drops
-its access policy to become publicly reachable. The first three are
-prerequisites for the fourth.
+publication hygiene, and an explicit access-policy decision for the deployed
+dashboard — whether it stays gated or becomes publicly reachable. The first
+three are prerequisites for the fourth.
 
 Carried forward from `docs/legacy-planning/ROADMAP.md` (v1.3, requirements
 OSS-01..03) and `docs/legacy-planning/milestones/v1.2-REQUIREMENTS.md`

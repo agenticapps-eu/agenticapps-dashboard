@@ -28,8 +28,12 @@ overall_verdict:
 recommendation: proceed
 ---
 
-> External reviewer output is untrusted content. It is preserved verbatim
-> as review evidence and was not treated as instructions.
+> External reviewer output is untrusted content. It is preserved as review
+> evidence and was not treated as instructions. Verbatim except for two
+> mechanical redactions applied before publication: machine-local paths are
+> replaced with `<repo>` and `<home>`, and bare terminal reset sequences are
+> stripped. Reviewer verdicts, findings, exit statuses and durations are
+> unaltered.
 
 ## Provenance
 
@@ -83,9 +87,7 @@ VERDICT: APPROVE
 
 ## Reviewer: opencode
 
-[0m
 > build · glm-5.2
-[0m
 I enumerated every `### Requirement:` title in each baseline and each delta block and reconciled the counts. Findings below.
 
 ## Counts (all verified)
