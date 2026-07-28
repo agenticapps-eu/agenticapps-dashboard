@@ -1,6 +1,11 @@
 # agenticapps-dashboard v2 — Spezifikation
 
 > Status: Entwurf zur Freigabe · Autor: Claude (Cowork) · Datum: 2026-07-26
+>
+> **Nachtrag nach PR #66 (gleicher Tag).** Das Repo ist inzwischen nach OpenSpec
+> migriert: 12 ratifizierte Capabilities, 100 deployte Requirements, vier offene
+> Changes. Die betroffenen Stellen sind unten mit ⚠ markiert und korrigiert.
+> Die Auswirkungen auf den Plan stehen in §14.
 > Zielrepo: `~/Sourcecode/agenticapps/agenticapps-dashboard`
 > Grundlage: Messung des Ist-Stands aller Fleet-Repos am 2026-07-26 (Abschnitt 1)
 
@@ -77,9 +82,10 @@ Nachweiskette fehlt. Das ist ein Kandidat für die Versions-Seite.
 | `pi-agentic-apps-workflow` | ✗ | — | — | — |
 | `agenticapps-dashboard` | ✗ | — | — | — |
 
-Das Dashboard selbst hat noch kein `openspec/` — die OpenSpec-Kachel wird für
-das eigene Repo zunächst „nicht eingerichtet" zeigen. Das ist korrekt und
-gewollt (siehe §4.3).
+⚠ **Überholt.** Diese Tabelle bildet den Stand *vor* PR #66 ab. Das Dashboard
+hat seit dem 2026-07-26 einen vollständigen Spec-Slot: 12 ratifizierte
+Capabilities, 100 deployte Requirements, vier offene Changes, 21 archivierte.
+Siehe §14.
 
 ### 1.5 Das Dashboard-Repo ist selbst nicht up-to-date
 
@@ -177,7 +183,7 @@ nicht „cso v3 bestanden".
 | # | `id` | Frage | Herkunft (Tier A, abgeleitet) |
 |---|---|---|---|
 | 1 | `workflow` | Läuft das Repo auf dem aktuellen Workflow? | hostabhängig, siehe §4.1.1 |
-| 2 | `spec` | Wie ist der OpenSpec-Stand? | `openspec/changes/*` (ohne `archive`), `openspec/specs/**/spec.md` |
+| 2 | `spec` | Wie ist der OpenSpec-Stand? | ⚠ **nicht selbst ableiten** — den Reader aus `add-openspec-project-reader` konsumieren, siehe §14.2 |
 | 3 | `code-review` | Wurde Code-Review gefahren? | `openspec/changes/**/{REVIEWS.md,CODE-REVIEW.md}`, Fallback `.planning/phases/**/*-REVIEW.md` |
 | 4 | `security-review` | Wurde ein Security-Review gefahren? | `openspec/changes/**/SECURITY.md`, Fallback `.planning/phases/**/*-SECURITY.md` |
 | 5 | `pen-test` | Wurde ein Penetrationstest gefahren? | **kein Tier-A-Signal** → immer `never`, bis Tier B es liefert |
@@ -583,3 +589,80 @@ Jubel-Copy. Was sich ändert:
 5. `pnpm lint` meldet 0 Fehler und 0 Warnungen (heute: 3 Fehler, ~247
    Warnungen).
 6. Impeccable-Composite ≥ 90 auf allen vier Seiten bei 1440 × 900.
+
+---
+
+## 14. Nachtrag — was PR #66 an diesem Plan ändert
+
+Die OpenSpec-Migration landete am selben Tag wie dieser Entwurf, wenige Stunden
+später. Sie ändert nichts am Produktziel, aber vier Dinge an der Ausführung.
+
+### 14.1 Der Plan hat jetzt einen Vorlauf
+
+Vier Changes liegen offen auf `main`. Sie sind älter als dieser Plan und werden
+eingeordnet, nicht überschrieben — Milestone **M0** im Linear-Projekt:
+
+| Change | Entscheidung | Warum |
+|---|---|---|
+| `add-openspec-project-reader` | zuerst | liefert den Reader, den der `spec`-Check konsumiert |
+| `remove-gitnexus-integration` | descopen, dann umsetzen | Task-Block 1 (Conformance-History-Kontinuität) entfällt, weil v2 die Conformance-Fläche löscht |
+| `verify-tailscale-second-device-access` | nach v2 | verifiziert Panels, die v2 löscht |
+| `add-oss-readiness` | nach v2 | veröffentlicht sonst 145 Dateien, von denen die meisten fallen |
+
+### 14.2 §4.1 ist an einer Stelle überholt
+
+Diese Spec schloss den Aufruf der `openspec`-CLI pauschal aus („nicht
+garantiert vorhanden, zu teuer pro Render"). `add-openspec-project-reader` löst
+das besser: CLI wenn das Binary auflöst, direkter Tree-Read sonst, das Archiv
+immer aus dem Tree — plus ein Test, der für dieselbe Fixture identische Werte
+aus beiden Pfaden beweist.
+
+**Der `spec`-Check baut keinen zweiten Reader.** Er bildet ab, was der
+bestehende liefert, auf das Statusvokabular aus §4.2. Zwei Reader über
+dasselbe Verzeichnis wären genau die Drift, gegen die die Fleet-Disziplin
+existiert.
+
+Nebeneffekt, der erhalten bleiben soll: der Reader-Change retiriert den
+GSD-Reader und blankt damit bewusst acht noch nicht migrierte Repos. Auf der
+Fleet-Seite erscheinen sie in der `spec`-Spalte als `—`. Das ist der gewünschte
+Zustand — die Spalte macht den Migrationsrückstand sichtbar. Ein GSD-Fallback
+würde genau die Information verstecken, wegen der die Spalte existiert.
+
+### 14.3 Der Abbau ist jetzt auch eine Spec-Aussage
+
+Als dieser Entwurf entstand, hatte das Repo keinen Spec-Slot — der Abbau war
+reines Löschen von Code. Jetzt sind es **100 deployte Requirements**, und v2
+nimmt 42 davon zurück:
+
+- **zurückgezogen (5 Capabilities):** `code-intelligence` (7 Req.),
+  `fleet-coverage` (10), `fleet-conformance` (9), `skills-and-linting` (5),
+  `optional-integrations` (11)
+- **modifiziert (3):** `project-dashboard`, `design-system`, `help-docs`
+- **unberührt (4):** `daemon-runtime`, `auth-and-pairing`,
+  `filesystem-access-policy`, `project-registry` — die Sicherheits- und
+  Infrastrukturwirbelsäule bleibt, weil v2 ändert *was* gezeigt wird, nicht
+  *wie* die Daten geholt werden
+- **neu (3):** `repo-readiness`, `workflow-fleet-conformance`, `agent-board`
+
+Netto 12 → 10 Capabilities. Jede Rücknahme braucht ein
+`## REMOVED Requirements`-Delta mit Begründung. „Der Code ist weg" ist keine;
+„das Produkt beantwortet eine andere Frage" ist eine.
+
+**Namensregel:** die neue Test-Coverage-Capability heißt **nicht**
+`fleet-coverage`, und der Versionsvergleich heißt **nicht** `fleet-conformance`.
+Beide Namen gehören zurückgezogenen Konzepten. Dieselbe Vokabel für zwei
+Konzepte im selben Slot ist die zuverlässigste Art, ein halbes Jahr später
+falsch zu lesen.
+
+### 14.4 Die Ratifizierung hat Fragen bereits beantwortet
+
+`openspec/CAPABILITY-MAP.md` löst GAP-01 bis GAP-05 mit Begründung auf, und
+zwei davon korrigieren ausdrücklich eine vorher falsche Prämisse — etwa die
+Annahme, GitNexus sei „ein Feature, dessen Upstream die Fleet fallengelassen
+hat". Tatsächlich hat Migration 0032 GitNexus nur aus dem *Workflow-Scaffold*
+entfernt; das Werkzeug ist v1.6.4 installiert und als MCP-Server registriert.
+Die Entfernung aus dem Dashboard ist deshalb eine Produktentscheidung, keine
+mechanische Folge.
+
+Das Dokument ist ratifiziert und datiert. Änderungen werden **angehängt**,
+nicht eingearbeitet (§08: supersede, never delete).
