@@ -287,7 +287,10 @@ describe('workflow harness private state and redaction', () => {
       'codex-workflow',
       'change-gate',
       script(
-        'mode=$(stat -f "%Lp" "$PWD" 2>/dev/null || stat -c "%a" "$PWD")\n' +
+        // GNU stat first: on Linux `stat -f` means "filesystem status", succeeds,
+        // and would swallow the mode in a filesystem dump. BSD stat rejects -c,
+        // so the fallback is what runs on macOS.
+        'mode=$(stat -c "%a" "$PWD" 2>/dev/null || stat -f "%Lp" "$PWD")\n' +
           'printf "scratch-mode=%s\\n" "$mode"\n' +
           'printf "home=%s\\nuser=%s\\nAuthorization: Bearer secret-value\\n" "$HOME" "$(id -un)"',
       ),
