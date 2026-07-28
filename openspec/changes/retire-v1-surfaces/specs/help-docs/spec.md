@@ -1,9 +1,13 @@
 ## MODIFIED Requirements
 
-> The four product content surfaces after the atomic cutover are supplied by the
-> prerequisite changes: fleet and repo detail by `add-repo-readiness`, workflow
-> conformance by `add-workflow-fleet-conformance`, and the agent board by
-> `add-agent-board`. This change owns the fold-time documentation coverage check.
+> The product content surfaces after the atomic cutover are supplied by the
+> prerequisite changes: fleet and repo detail by `add-repo-readiness`, and
+> workflow conformance by `add-workflow-fleet-conformance`. The agent-change
+> surface is a further prerequisite with no change proposed for it yet —
+> `add-agent-board` was withdrawn on 2026-07-28 — and the cutover does not run
+> until it exists. This change owns the fold-time documentation coverage check,
+> which is written against whichever surfaces exist at fold time rather than a
+> fixed count.
 
 ### Requirement: Authored Documentation Pages
 

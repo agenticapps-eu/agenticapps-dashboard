@@ -220,11 +220,13 @@ Machine-global reads SHALL use only the host-specific named roots authorised by
 Canonical/symlink containment and the scanner's file-size bounds apply. This
 check MUST NOT ship before that dependency is archived.
 
-Host detection and layout resolution SHALL cover only the explicitly supported
-Claude, Codex, and opencode layouts. An unknown host, malformed version artifact,
-unavailable authorised root, or unsupported layout SHALL become an
-error-bearing result for this check only; it MUST NOT abort the repo or fleet
-response. Machine-global context SHALL be labelled as applying to every project
+Host detection and layout resolution SHALL cover the explicitly supported Claude,
+Codex, opencode, and Pi layouts, and no others. Pi is supported as the unpinnable
+case: it ships no per-repo version artifact, so a Pi repo SHALL take the
+unpinnable-host rule above and report `na` with a reason, **not** an
+error-bearing result. An unknown host, malformed version artifact, unavailable
+authorised root, or unsupported layout SHALL become an error-bearing result for
+this check only; it MUST NOT abort the repo or fleet response. Machine-global context SHALL be labelled as applying to every project
 for that host in both compact and detail surfaces.
 
 #### Scenario: A repo-scoped host is compared against what its host repo ships

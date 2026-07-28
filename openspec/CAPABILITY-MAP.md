@@ -327,9 +327,14 @@ change's task-shaped wire contract, columns, blocker semantics, and adapter
 extraction plan.
 
 Re-propose the dashboard surface only after the upstream OpenSpec `ChangeCard`
-contract, package exports, fixtures, and shared host styles are stable.
-`retire-v1-surfaces` remains blocked on that replacement; the withdrawal does
-not authorize a v2 cutover without an agent-change surface.
+contract, package exports, fixtures, and shared host styles are stable. Those
+four are necessary but **not** sufficient: a stable upstream contract is not a
+surface.
+
+`retire-v1-surfaces` remains blocked until an agent-change surface has been
+proposed, implemented, and is actually available in the product. The withdrawal
+does not authorize a v2 cutover, and neither does upstream stabilising its
+contract.
 
 ### Coverage integration supersession — 2026-07-28
 

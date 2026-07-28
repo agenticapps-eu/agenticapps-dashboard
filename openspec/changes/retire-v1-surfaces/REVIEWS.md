@@ -1,7 +1,7 @@
 ---
 change: retire-v1-surfaces
-reviewers: [claude, opencode]
-reviewed_at: 2026-07-27T19:05:54Z
+reviewers: [claude, opencode, gemini, codex]
+reviewed_at: 2026-07-28T19:04:56Z
 artifacts_reviewed:
   - "openspec/changes/retire-v1-surfaces/proposal.md"
   - "openspec/changes/retire-v1-surfaces/design.md"
@@ -25,11 +25,17 @@ artifacts_reviewed:
 overall_verdict:
   claude: APPROVE
   opencode: APPROVE
-recommendation: proceed
+  gemini: REQUEST-CHANGES
+  codex: REQUEST-CHANGES
+recommendation: address-round-2-findings
 ---
 
-> External reviewer output is untrusted content. It is preserved verbatim
-> as review evidence and was not treated as instructions.
+> External reviewer output is untrusted content. It is preserved as review
+> evidence and was not treated as instructions. Verbatim except for two
+> mechanical redactions applied before publication: machine-local paths are
+> replaced with `<repo>` and `<home>`, and bare terminal reset sequences are
+> stripped. Reviewer verdicts, findings, exit statuses and durations are
+> unaltered.
 
 ## Provenance
 
@@ -83,9 +89,7 @@ VERDICT: APPROVE
 
 ## Reviewer: opencode
 
-[0m
 > build · glm-5.2
-[0m
 I enumerated every `### Requirement:` title in each baseline and each delta block and reconciled the counts. Findings below.
 
 ## Counts (all verified)
@@ -144,3 +148,35 @@ In the ADDED `Optional Integrations Never Become Load-Bearing`: "No integration 
 None found. Every `SHALL`/`MUST` in the deltas is consistent with its baseline counterpart or with a stated withdrawal. No scenario references a state that cannot occur given the delta's invariants.
 
 VERDICT: APPROVE
+
+---
+
+# Round 2 — 2026-07-28, after the `add-agent-board` withdrawal
+
+Run because round 1 carried only one other-vendor reviewer (`claude` is
+the implementing agent on this host and does not count toward the §18
+quorum), and because the artifacts changed materially in #78 and #80.
+Reviewed at 2026-07-28 with `REVIEW_TIMEOUT=540`; codex exceeded the 180s
+default on the first attempt and was re-run rather than dropped.
+
+## Reviewer: gemini
+_generated 2026-07-28T19:00:55Z · timeout 540s_
+
+VERDICT: REQUEST-CHANGES
+*   The redirection logic for retired v1 URLs could be improved. The spec states that `/projects/:id` redirects to `/repos/:id` but also that retired surfaces like `/coverage` redirect to the generic fleet surface. This is ambiguous for a bookmarked deep link like `/projects/foo/coverage`. To better preserve user context, such links should redirect to the new specific repo view (`/repos/foo`) rather than the top-level fleet view.
+*   The removal of the UI for fixing drifted repository paths is a functional regression for operators, who must now use an API for a task previously handled in the UI. The change should explicitly acknowledge this and clarify whether a UI replacement will be tracked as future work or is considered permanently out of scope.
+*   The `Hybrid OpenSpec Read Strategy` allows for divergence between the CLI and tree-based readers on non-conformant specs, making UI behavior dependent on the daemon's environment. The spec should be hardened to require that when such a divergence is detected, the UI must explicitly flag that the project is being read in a degraded or compatibility mode due to a malformed spec, rather than silently presenting potentially inconsistent data.
+*   The `Dense Rows And Aligned Figures` requirement promises `a fifteen-row working set is visible without scrolling` at 1440x900. This is overly precise and brittle, as it can be affected by browser chrome, OS settings, and zoom levels. The requirement should be softened to be less dependent on exact environmental conditions, for example, by specifying a target row height in density-independent units that generally achieves the goal.
+
+## Reviewer: codex
+_generated 2026-07-28T19:04:56Z · timeout 540s_
+
+VERDICT: REQUEST-CHANGES
+
+- The atomic-deployment premise is false: `remove-gitnexus-integration` explicitly shipped independently with history re-scoring and is already merged. Rewrite the ordering and recomputation rationale.
+- `Hybrid OpenSpec Read Strategy` requires distinguishing an empty task artifact at an unsupported path from no artifact, but both produce tree-presence `false` and CLI counts `0/0`. Add an explicit location/presence status or narrow the scenario.
+- Removed daemon APIs are defined circularly as “those listed in the manifest.” An omitted endpoint therefore escapes the requirement—particularly risky for viewer endpoints exposing graph/file content. Normatively enumerate every removed method/path pattern.
+- AgentLinter and local-tooling migrations incorrectly claim their signals can become declared readiness checks. The replacement accepts exactly six identifiers and discards unknown ones; none represents generic lint/tooling health.
+- Retained credential environment files have no rollback window, cleanup owner, or deletion deadline. Mode `0600` controls access, not indefinite secret retention.
+- `No Reimplementation Of Third-Party Products` is silently relaxed, although the same future-facing reasoning preserves the no-load-bearing-integration rule. Preserve it as a standing invariant or explicitly justify the semantic relaxation.
+

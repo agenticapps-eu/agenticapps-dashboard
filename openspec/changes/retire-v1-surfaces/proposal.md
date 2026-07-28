@@ -89,10 +89,12 @@ restated as a new standing requirement in surviving `project-dashboard`; it does
 not keep `optional-integrations` alive.
 
 **Capability count, stated precisely.** This change alone takes the slot from
-**12 to 7**. It reaches 10 only in combination with the three capabilities added
-by `add-repo-readiness`, `add-workflow-fleet-conformance`, and `add-agent-board`.
-The earlier phrasing "12 → 10" invited a reader checking this change in isolation
-to find a number that does not follow from it.
+**12 to 7**. It reaches 9 in combination with the two capabilities added by
+`add-repo-readiness` and `add-workflow-fleet-conformance`, and 10 once an
+agent-change capability is proposed and added — `add-agent-board`, which was to
+supply it, was withdrawn on 2026-07-28. The earlier phrasing "12 → 10" invited a
+reader checking this change in isolation to find a number that does not follow
+from it.
 
 The distinction is worth keeping visible: a capability that ends and a capability
 that is cut back are different statements about the product, and only the second
