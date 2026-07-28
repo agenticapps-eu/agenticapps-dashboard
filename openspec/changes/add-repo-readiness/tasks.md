@@ -5,6 +5,12 @@ Depends on `add-openspec-project-reader` for task 4 and on
 machine-global host state. The remaining tasks are independent of those
 dependencies.
 
+**`add-workflow-fleet-conformance` is a release gate for this whole change, not
+just for task 3.** The spec states that the `workflow` check MUST NOT ship
+before that dependency is archived, so this change MUST NOT be marked complete,
+merged, or folded while it remains unarchived — even if every task below is
+ticked. Verify the dependency is archived as the last step before folding.
+
 ## 1. Shared vocabulary (do first — everything binds to it) · AGE-456
 
 - [ ] `packages/shared/src/schemas/readiness.ts`: `CheckId` as an exported const array of the six ids in fixed order (TDD)
@@ -128,6 +134,7 @@ dependencies.
 - [ ] `pnpm lint` green; per-package tests green
 - [ ] Design critique on the two new surfaces at 1440×900, artifact committed
 - [ ] Two-stage review
+- [ ] **Release gate:** confirm `add-workflow-fleet-conformance` is archived. This change does not fold while it is not.
 
 ## Out of scope
 

@@ -1,10 +1,17 @@
 # Tasks
 
-**Applies in the atomic cutover.** `add-repo-readiness`,
-`add-workflow-fleet-conformance`, and `add-agent-board` must be complete and
-green. `remove-gitnexus-integration` MUST be folded before this change; its code
+**Applies in the atomic cutover.** `add-repo-readiness` and
+`add-workflow-fleet-conformance` must be complete and green.
+`remove-gitnexus-integration` MUST be folded before this change; its code
 removal may be prepared earlier, but it and this retirement MUST deploy
 atomically so the old conformance chart never renders the changed measurement.
+
+**The agent-change surface is a further prerequisite and is not yet proposed.**
+`add-agent-board` was withdrawn on 2026-07-28. This cutover MUST NOT run until a
+replacement agent-change surface is proposed, implemented, and available — the
+upstream `ChangeCard` contract being stable is necessary but not sufficient. The
+surface counts below are stated for the three surfaces that exist today and MUST
+be restated when the replacement lands.
 The spec deltas in this change are written now, alongside the v2 changes, so the
 slot never carries two truths — but nothing here is applied until the
 replacements stand.
@@ -14,10 +21,10 @@ replacements stand.
 - [ ] Delete the old SPA package
 - [ ] Rename the v2 SPA package to the original name and package identifier
 - [ ] Update the workspace file, the build config, and the deploy build command
-- [ ] Verify the deployment serves v2, pairing works, and all four surfaces load
+- [ ] Verify the deployment serves v2, pairing works, and every post-cutover surface loads — fleet, repo detail, and workflow conformance today, plus the agent-change surface once it is proposed and implemented
 - [ ] Implement one migration manifest enumerating the four retired legacy surface routes → fleet, `/projects/:id` → `/repos/:id`, and every removed daemon API; unknown locations and APIs listed there return not-found
 - [ ] Remove authored help pages, widget dispatch entries, contextual links, and keyboard-shortcut targets whose only destination is a retired surface; audit that every surviving contextual link resolves to an authored page and any specified anchor
-- [ ] Author or update one help page for each post-cutover content surface — fleet, repo detail, workflow conformance, and agent board — and verify each explains that surface's vocabulary; retain the cross-cutting shortcut reference
+- [ ] Author or update one help page for each post-cutover content surface — fleet, repo detail, and workflow conformance, plus the agent-change surface once it exists — and verify each explains that surface's vocabulary; retain the cross-cutting shortcut reference
 - [ ] **One commit.** The cutover deletes; a revert of that single commit is the rollback
 
 ## 2. Daemon teardown · AGE-474

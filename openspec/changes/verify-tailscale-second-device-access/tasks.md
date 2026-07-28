@@ -15,7 +15,7 @@
 - [ ] Pair the second device via the one-click URL
 - [ ] Confirm the SPA accepts the Tailscale hostname as a valid agent URL
 - [ ] Confirm the fleet surface renders every registered project from the second device
-- [ ] Confirm repo detail, workflow, and board surfaces each render and refresh from the second device
+- [ ] Confirm repo detail and workflow surfaces each render and refresh from the second device; include the agent-change surface only if one has shipped by then (`add-agent-board` was withdrawn on 2026-07-28)
 - [ ] Confirm pairing the second browser does not invalidate the first browser's stored pairing
 - [ ] Clear only one browser's local-storage pairing entry and confirm the other browser remains paired
 - [ ] Inspect daemon state and confirm pairing creates no device roster or per-device revocation record

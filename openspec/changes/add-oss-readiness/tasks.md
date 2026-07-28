@@ -25,10 +25,12 @@
 - [ ] Audit public-fork workflow trust, especially `pull_request_target` and secret-bearing jobs
 - [ ] Record a publication checklist stating that visibility remains private until this change is validated, approved, implemented, folded, and archived
 - [ ] Record the post-archive human action to make the source public and verify that the deployment access policy remains unchanged
+- [ ] Record the separate post-archive human action to publish `@agenticapps/dashboard-agent` to the registry, gated by the same completed audit
 
 ## 4. Verify
 
 - [ ] `openspec validate --all` green
 - [ ] `pnpm lint` and per-package tests green
 - [ ] Fresh independent OpenSpec review approves the revised change
-- [ ] Two-stage implementation review complete
+- [ ] gstack `/review` complete
+- [ ] `superpowers:requesting-code-review` complete as a separate stage — the two stages do not collapse into one
