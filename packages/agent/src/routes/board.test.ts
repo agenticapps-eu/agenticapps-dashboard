@@ -9,7 +9,7 @@ import { ensureAuthFile, setActiveToken } from '../lib/auth.js'
 import { makeTmpHome } from '../lib/__fixtures__/tmpHome.js'
 import { createApp } from '../server/app.js'
 
-import { boardRoute } from './board.declare.js'
+import { boardRoute } from './board.js'
 
 describe('GET /api/v2/board', () => {
   let authFile: string

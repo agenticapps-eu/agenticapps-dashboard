@@ -13,7 +13,7 @@ import {
   buildBoardSnapshot,
   createSyntheticBoardFixture,
   type BoardProjectReference,
-} from './boardSnapshot.declare.js'
+} from './boardSnapshot.js'
 
 const HOSTS: Host[] = ['claude', 'codex', 'opencode', 'pi']
 const GENERATED_AT = 1_800_000_000_000
