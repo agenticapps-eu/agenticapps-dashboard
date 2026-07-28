@@ -7,7 +7,12 @@ vi.mock('execa', () => ({
 
 import { execa } from 'execa'
 
-import { getTailscaleIP, getTailscaleHostname, TailscaleNotDetectedError } from './tailscale.js'
+import {
+  getTailscaleIP,
+  getTailscaleHostname,
+  TailscaleNotDetectedError,
+  TailscaleNoCgnatIPv4Error,
+} from './tailscale.js'
 
 const mockExeca = execa as unknown as ReturnType<typeof vi.fn>
 
@@ -38,9 +43,13 @@ describe('getTailscaleIP', () => {
     await expect(getTailscaleIP()).rejects.toBeInstanceOf(TailscaleNotDetectedError)
   })
 
-  it('throws TailscaleNotDetectedError on empty stdout', async () => {
+  // Was TailscaleNotDetectedError until decide-tailnet-ipv6-policy. Empty
+  // stdout means the command RAN and reported no address, which is a running
+  // node without IPv4 — a different problem from an absent installation, and
+  // the spec now requires the two be told apart. See tailscaleSetup.test.ts.
+  it('throws TailscaleNoCgnatIPv4Error on empty stdout', async () => {
     mockExeca.mockResolvedValueOnce({ stdout: '   \n', stderr: '', exitCode: 0 } as unknown as Awaited<ReturnType<typeof execa>>)
-    await expect(getTailscaleIP()).rejects.toBeInstanceOf(TailscaleNotDetectedError)
+    await expect(getTailscaleIP()).rejects.toBeInstanceOf(TailscaleNoCgnatIPv4Error)
   })
 })
 

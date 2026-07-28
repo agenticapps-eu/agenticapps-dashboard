@@ -29,9 +29,9 @@ program
 program
   .command('start')
   .description('Start the dashboard agent daemon')
-  .option('--bind <mode>', 'bind mode: 127.0.0.1 | tailscale | 0.0.0.0', '127.0.0.1')
+  .option('--bind <mode>', 'bind mode: tailscale, or an IPv4/IPv6 literal (127.0.0.1, ::1, 0.0.0.0, ::)', '127.0.0.1')
   .option('--port <port>', 'port', String(DEFAULT_PORT))
-  .option('--no-enforce-cidr', 'disable CIDR enforcement on tailscale/0.0.0.0 binds')
+  .option('--no-enforce-cidr', 'disable the IPv4-only tailnet boundary on non-loopback binds')
   .action(async (opts) => {
     await (await import('./cli/start.js')).runStart(opts)
   })
