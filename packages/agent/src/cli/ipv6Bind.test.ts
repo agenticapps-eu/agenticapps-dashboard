@@ -29,6 +29,7 @@ import {
   shouldEnforceCidr,
   assertBindSupported,
   Ipv6BindNotSupportedError,
+  UnsupportedBindError,
 } from './start.js'
 
 describe('IPv6 bind literals are classified, not swallowed', () => {
@@ -52,10 +53,16 @@ describe('IPv6 bind literals are classified, not swallowed', () => {
     expect(shouldEnforceCidr(bindMode, true)).toBe(true)
   })
 
-  // Unrecognised non-address strings keep their existing treatment. Not part of
-  // this change, pinned so the new branches do not capture them by accident.
-  it('leaves a non-address string on its existing path', () => {
-    expect(classifyExplicitBind('not-an-address').bindMode).toBe('loopback')
+  // This assertion was WRONG when first written. It pinned the old fallthrough
+  // — an unrecognised value is treated as loopback — as though it were
+  // deliberate, on the reasoning that input validation was out of scope.
+  // Independent review showed that fallthrough is the same fail-open hole this
+  // change exists to close, reached by a different door: `--bind 0` is not a
+  // recognised literal, so it took this path, and Node's listen() resolves `0`
+  // to 0.0.0.0. The result was every interface, no CIDR middleware, no warning.
+  // Unrecognised values now fail closed; bindHardening.test.ts owns the detail.
+  it('refuses a non-address string rather than treating it as loopback', () => {
+    expect(() => classifyExplicitBind('not-an-address')).toThrow(UnsupportedBindError)
   })
 })
 

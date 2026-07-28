@@ -8,7 +8,7 @@ import type { Hono } from 'hono'
 import { writePidfile, removePidfile } from '../lib/pidfile.js'
 import { writeServerInfo, removeServerInfo } from '../lib/serverInfo.js'
 import { agentLog, agentError } from '../lib/logging.js'
-import { renderBanner, renderZeroBindWarning } from '../lib/banner.js'
+import { renderBanner, renderZeroBindWarning, formatUrlHost } from '../lib/banner.js'
 import { readRegistry } from '../lib/registry.js'
 import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getActiveToken } from '../lib/auth.js'
@@ -159,7 +159,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
   void getOpenspecBinary()
 
   const projects = readRegistry().projects
-  const bindUrl = `http://${opts.host}:${opts.port}`
+  const bindUrl = `http://${formatUrlHost(opts.host)}:${opts.port}`
 
   // Wire signal handlers BEFORE serve() so a Ctrl-C between the listen-callback
   // (which writes the pidfile + server.json) and a later handler-attach call

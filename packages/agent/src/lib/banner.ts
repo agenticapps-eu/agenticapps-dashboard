@@ -1,3 +1,5 @@
+import { isIPv6 } from 'node:net'
+
 import pc from 'picocolors'
 
 import { PROD_ORIGIN } from '../constants.js'
@@ -58,4 +60,17 @@ export function renderZeroBindWarning(enforceCIDR = true, host = '0.0.0.0'): str
       `[agent] WARNING: bound to ${host} — only safe on Tailscale-isolated machines.${cidrNote}`,
     ) + '\n'
   )
+}
+
+/**
+ * Format a host for use inside a URL authority.
+ *
+ * An IPv6 literal MUST be bracketed: `http://::1:5193` is not a valid URL, and
+ * `writeServerInfo` validates the bind URL with `z.string().url()`, so an
+ * unbracketed one throws AFTER the listener is already up — the daemon accepts
+ * connections and then dies during startup bookkeeping. Non-IPv6 hosts,
+ * including MagicDNS names, pass through untouched.
+ */
+export function formatUrlHost(host: string): string {
+  return isIPv6(host) ? `[${host}]` : host
 }

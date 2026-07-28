@@ -99,3 +99,38 @@ describe('getTailscaleIP distinguishes the two setup failures', () => {
     expect(noIPv4.message).not.toMatch(/not detected/)
   })
 })
+
+describe('the CIDR opt-out reaches address validation', () => {
+  beforeEach(() => mockExeca.mockReset())
+
+  // Regression. Validating the address against the boundary unconditionally
+  // made --bind tailscale --no-enforce-cidr refuse to start on a control
+  // server using a custom IPv4 prefix — a setup that worked before, broken by
+  // the boundary overruling the operator who had just switched the boundary
+  // off. The error did not even mention the flag.
+  it('binds a non-CGNAT IPv4 when enforcement is explicitly disabled', async () => {
+    mockExeca.mockResolvedValueOnce(ok('10.64.0.5\n'))
+    await expect(getTailscaleIP({ requireCgnat: false })).resolves.toBe('10.64.0.5')
+  })
+
+  it('still refuses a non-CGNAT IPv4 while enforcement is on', async () => {
+    mockExeca.mockResolvedValueOnce(ok('10.64.0.5\n'))
+    await expect(getTailscaleIP()).rejects.toBeInstanceOf(TailscaleNoCgnatIPv4Error)
+  })
+
+  it('points at the opt-out when the address is merely outside the range', async () => {
+    mockExeca.mockResolvedValueOnce(ok('10.64.0.5\n'))
+    const err = (await getTailscaleIP().catch((e: unknown) => e)) as Error
+    expect(err.message).toContain('--no-enforce-cidr')
+    expect(err.message).toContain('100.64.0.0/10')
+  })
+
+  // The opt-out cannot conjure an address that is not there, so this still
+  // fails, and its message must NOT suggest the flag.
+  it('still fails with no IPv4 at all, even under the opt-out', async () => {
+    mockExeca.mockResolvedValueOnce(ok('fd7a:115c:a1e0::1\n'))
+    const err = (await getTailscaleIP({ requireCgnat: false }).catch((e: unknown) => e)) as Error
+    expect(err).toBeInstanceOf(TailscaleNoCgnatIPv4Error)
+    expect(err.message).not.toContain('--no-enforce-cidr')
+  })
+})

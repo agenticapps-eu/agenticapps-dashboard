@@ -1,4 +1,4 @@
-import { isIPv6 } from 'node:net'
+import { isIPv4, isIPv6 } from 'node:net'
 
 import {
   ensureAuthFile,
@@ -11,6 +11,7 @@ import { ensureViewerSecretFile } from '../lib/viewerToken.js'
 import { ensureRegistryFile } from '../lib/registry.js'
 import { assertNoStaleDaemon, StaleDaemonError } from '../lib/pidfile.js'
 import { createApp, type BindMode } from '../server/app.js'
+import { formatUrlHost } from '../lib/banner.js'
 import { bootDaemon } from '../server/boot.js'
 import {
   getTailscaleIP,
@@ -29,11 +30,6 @@ export interface StartOpts {
   port: string
   /** CIDR enforcement — commander --no-enforce-cidr sets this to false */
   enforceCidr: boolean
-}
-
-/** Returns true for a dotted-quad IPv4 string */
-function isIPv4(s: string): boolean {
-  return /^(\d{1,3}\.){3}\d{1,3}$/.test(s)
 }
 
 /**
@@ -58,12 +54,93 @@ export class Ipv6BindNotSupportedError extends Error {
 }
 
 /**
- * An IPv6 literal that is neither loopback (`::1`) nor the dual-stack wildcard
- * (`::`). Those two are excluded because they are usable: `::1` is loopback,
- * and `::` can carry IPv6-mapped CGNAT IPv4 peers.
+ * Error thrown when `--bind` is given a value that is not a supported literal.
+ *
+ * This exists because the previous fallthrough FAILED OPEN: anything the
+ * classifier did not recognise was called loopback, which silently means no
+ * CIDR middleware and no all-interfaces warning. `--bind 0` is the sharp case —
+ * the strict IPv4 test rejects it, but Node's listen() resolves `0` to
+ * `0.0.0.0`, so the daemon bound every interface with no boundary and printed
+ * nothing unusual. Hostnames behaved the same way and could resolve anywhere.
+ */
+export class UnsupportedBindError extends Error {
+  constructor(bind: string) {
+    super(
+      `Unsupported --bind value ${JSON.stringify(bind)}. Use \`tailscale\`, or an ` +
+        'explicit IPv4 or IPv6 literal such as `127.0.0.1`, `::1`, `0.0.0.0` or ' +
+        '`::`. Hostnames and shorthand forms are refused because they can ' +
+        'resolve to a public interface, which would start the daemon with no ' +
+        'tailnet boundary and no warning.',
+    )
+    this.name = 'UnsupportedBindError'
+  }
+}
+
+/**
+ * Expand an IPv6 literal to its 16 bytes, or null when it is not valid IPv6.
+ *
+ * The unspecified address and loopback each have many legal spellings (`::`,
+ * `::0`, `0:0:0:0:0:0:0:0`). Comparing the literal by string equality is what
+ * let `--bind ::0` escape the all-interfaces path entirely, so the comparison
+ * is done on bytes instead of on text.
+ */
+function ipv6Bytes(literal: string): number[] | null {
+  if (!isIPv6(literal)) return null
+
+  let text = literal
+  const zone = text.indexOf('%')
+  if (zone !== -1) text = text.slice(0, zone)
+
+  // A trailing dotted quad (`::ffff:1.2.3.4`) stands in for the last two groups.
+  const embedded = /(\d{1,3}(?:\.\d{1,3}){3})$/.exec(text)
+  if (embedded) {
+    const octets = embedded[1]!.split('.').map(Number)
+    if (octets.some((n) => n > 255)) return null
+    text =
+      text.slice(0, embedded.index) +
+      (((octets[0]! << 8) | octets[1]!).toString(16)) +
+      ':' +
+      (((octets[2]! << 8) | octets[3]!).toString(16))
+  }
+
+  const halves = text.split('::')
+  if (halves.length > 2) return null
+  const head = halves[0] ? halves[0].split(':') : []
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : []
+  const groups =
+    halves.length === 2
+      ? [...head, ...Array<string>(8 - head.length - tail.length).fill('0'), ...tail]
+      : head
+  if (groups.length !== 8) return null
+
+  const bytes: number[] = []
+  for (const group of groups) {
+    const value = Number.parseInt(group, 16)
+    if (!Number.isInteger(value) || value < 0 || value > 0xffff) return null
+    bytes.push((value >> 8) & 0xff, value & 0xff)
+  }
+  return bytes
+}
+
+/** The unspecified address `::`, in any spelling. Binds every interface. */
+function isUnspecifiedIPv6(host: string): boolean {
+  const bytes = ipv6Bytes(host)
+  return bytes !== null && bytes.every((b) => b === 0)
+}
+
+/** The loopback address `::1`, in any spelling. */
+function isLoopbackIPv6(host: string): boolean {
+  const bytes = ipv6Bytes(host)
+  return bytes !== null && bytes[15] === 1 && bytes.slice(0, 15).every((b) => b === 0)
+}
+
+/**
+ * An IPv6 literal that is neither loopback nor the wildcard. Those two are
+ * excluded because they are usable: loopback is local, and the wildcard can
+ * carry IPv6-mapped CGNAT IPv4 peers.
  */
 function isSpecificNonLoopbackIPv6(host: string): boolean {
-  return isIPv6(host) && host !== '::1' && host !== '::'
+  return isIPv6(host) && !isUnspecifiedIPv6(host) && !isLoopbackIPv6(host)
 }
 
 /**
@@ -92,15 +169,26 @@ export function assertBindSupported(host: string, enforceCIDR: boolean): void {
  *         and assertBindSupported then refuses it before startup unless the
  *         operator has explicitly opted out.
  *
- * A string that parses as neither family keeps its previous treatment; this
- * change is about addresses, not about tightening input validation.
+ * A value that parses as neither family is REFUSED. It used to be treated as
+ * loopback, which meant an unrecognised bind ran with no boundary and no
+ * warning — the same failure this change exists to close, reached by a
+ * different door.
  */
 export function classifyExplicitBind(bind: string): { host: string; bindMode: BindMode } {
-  if (bind === '0.0.0.0' || bind === '::') return { host: bind, bindMode: '0.0.0.0' }
-  if (bind === '127.0.0.1' || bind === '::1') return { host: bind, bindMode: 'loopback' }
-  if (isIPv4(bind)) return { host: bind, bindMode: 'tailscale' }
-  if (isIPv6(bind)) return { host: bind, bindMode: 'tailscale' }
-  return { host: bind, bindMode: 'loopback' }
+  if (isIPv4(bind)) {
+    if (bind === '0.0.0.0') return { host: bind, bindMode: '0.0.0.0' }
+    if (bind === '127.0.0.1') return { host: bind, bindMode: 'loopback' }
+    return { host: bind, bindMode: 'tailscale' }
+  }
+
+  if (isIPv6(bind)) {
+    if (isUnspecifiedIPv6(bind)) return { host: bind, bindMode: '0.0.0.0' }
+    if (isLoopbackIPv6(bind)) return { host: bind, bindMode: 'loopback' }
+    return { host: bind, bindMode: 'tailscale' }
+  }
+
+  // Fail closed. Anything else is refused rather than assumed harmless.
+  throw new UnsupportedBindError(bind)
 }
 
 /**
@@ -164,9 +252,14 @@ export async function runStart(opts: StartOpts): Promise<void> {
   let bindMode: BindMode = 'loopback'
 
   if (opts.bind === 'tailscale') {
+    // bindMode on this path is always 'tailscale', so enforcement is on unless
+    // the operator opted out. That decision has to reach address validation:
+    // refusing to start on a non-CGNAT address is the boundary talking, and
+    // --no-enforce-cidr is the operator switching the boundary off.
+    const enforcing = shouldEnforceCidr('tailscale', opts.enforceCidr)
     // D-17: resolve Tailscale IP; refuse with exact remediation message if absent
     try {
-      const ip = await getTailscaleIP()
+      const ip = await getTailscaleIP({ requireCgnat: enforcing })
       host = ip
       // D-19: use MagicDNS hostname if available; fall back to raw IP
       const dns = await getTailscaleHostname(ip)
@@ -183,23 +276,28 @@ export async function runStart(opts: StartOpts): Promise<void> {
       throw e
     }
   } else {
-    const plan = classifyExplicitBind(opts.bind)
+    let plan: { host: string; bindMode: BindMode }
+    try {
+      plan = classifyExplicitBind(opts.bind)
+    } catch (e) {
+      if (e instanceof UnsupportedBindError) {
+        agentError(e.message)
+        process.exit(1)
+      }
+      throw e
+    }
     host = plan.host
-    pairHostname = `${host}:${port}`
+    // IPv6 literals must be bracketed inside a URL authority.
+    pairHostname = `${formatUrlHost(host)}:${port}`
     bindMode = plan.bindMode
   }
 
   const enforceCIDR = shouldEnforceCidr(bindMode, opts.enforceCidr)
 
   // Fail before startup rather than serving nobody (ADR 0002).
-  try {
-    assertBindSupported(host, enforceCIDR)
-  } catch (e) {
-    if (e instanceof Ipv6BindNotSupportedError) {
-      agentError(e.message)
-      process.exit(1)
-    }
-    throw e
+  if (enforceCIDR && isSpecificNonLoopbackIPv6(host)) {
+    agentError(new Ipv6BindNotSupportedError(host).message)
+    process.exit(1)
   }
 
   const app = createApp({ enforceCIDR, bindMode })

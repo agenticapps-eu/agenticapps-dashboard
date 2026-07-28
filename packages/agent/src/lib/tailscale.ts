@@ -1,3 +1,5 @@
+import { isIPv4 } from 'node:net'
+
 import { execa } from 'execa'
 
 import { TAILSCALE_SUBPROCESS_TIMEOUT_MS } from '../constants.js'
@@ -25,11 +27,17 @@ export class TailscaleNotDetectedError extends Error {
  * someone to reinstall software that is already working. See ADR 0002.
  */
 export class TailscaleNoCgnatIPv4Error extends Error {
-  constructor() {
+  constructor(reason: 'no-ipv4' | 'outside-cgnat' = 'no-ipv4') {
     super(
-      'Tailscale is running, but this node has no CGNAT IPv4 address. The ' +
-        "dashboard's tailnet boundary is IPv4-only — enable IPv4 on this node, " +
-        'or use --bind 127.0.0.1.',
+      reason === 'no-ipv4'
+        ? 'Tailscale is running, but this node has no IPv4 address to bind. ' +
+          "The dashboard's tailnet boundary is IPv4-only — enable IPv4 on this " +
+          'node, or use --bind 127.0.0.1.'
+        : 'Tailscale is running, but its IPv4 address is outside the CGNAT ' +
+          'range 100.64.0.0/10 that the boundary admits, so the daemon would ' +
+          'refuse every peer. This is expected on a control server using a ' +
+          'custom IPv4 prefix. Bind it anyway with --no-enforce-cidr, or use ' +
+          '--bind 127.0.0.1.',
     )
     this.name = 'TailscaleNoCgnatIPv4Error'
   }
@@ -49,7 +57,9 @@ export class TailscaleNoCgnatIPv4Error extends Error {
  *
  * T-01-05-05: explicit timeout to prevent start hanging on subprocess.
  */
-export async function getTailscaleIP(): Promise<string> {
+export async function getTailscaleIP(
+  opts: { requireCgnat?: boolean } = {},
+): Promise<string> {
   let stdout: string
   try {
     const result = await execa('tailscale', ['ip', '-4'], {
@@ -64,7 +74,20 @@ export async function getTailscaleIP(): Promise<string> {
 
   // `tailscale ip -4` prints one address per line; take the first.
   const ip = stdout.trim().split('\n')[0]?.trim() ?? ''
-  if (!isTailscaleCIDR(ip)) throw new TailscaleNoCgnatIPv4Error()
+
+  // No IPv4 at all — an IPv6-only node. The opt-out cannot help: there is no
+  // address here to bind.
+  if (!isIPv4(ip)) throw new TailscaleNoCgnatIPv4Error('no-ipv4')
+
+  // An IPv4 outside CGNAT is only a problem BECAUSE the boundary would refuse
+  // it. When the operator has explicitly disabled the boundary, refusing to
+  // start would be the boundary overruling the person who just switched it
+  // off — and it would regress a control server on a custom IPv4 prefix that
+  // worked before this change.
+  if (opts.requireCgnat !== false && !isTailscaleCIDR(ip)) {
+    throw new TailscaleNoCgnatIPv4Error('outside-cgnat')
+  }
+
   return ip
 }
 
