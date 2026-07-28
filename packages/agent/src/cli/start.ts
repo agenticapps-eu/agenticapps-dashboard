@@ -10,7 +10,12 @@ import { ensureRegistryFile } from '../lib/registry.js'
 import { assertNoStaleDaemon, StaleDaemonError } from '../lib/pidfile.js'
 import { createApp, type BindMode } from '../server/app.js'
 import { bootDaemon } from '../server/boot.js'
-import { getTailscaleIP, getTailscaleHostname, TailscaleNotDetectedError } from '../lib/tailscale.js'
+import {
+  getTailscaleIP,
+  getTailscaleHostname,
+  TailscaleNotDetectedError,
+  TailscaleNoCgnatIPv4Error,
+} from '../lib/tailscale.js'
 import { agentError } from '../lib/logging.js'
 import { loadEnvFile } from '../lib/envFile.js'
 import { AUTH_FILE, DEFAULT_HOST, DEFAULT_PORT } from '../constants.js'
@@ -119,7 +124,10 @@ export async function runStart(opts: StartOpts): Promise<void> {
       pairHostname = `${dns}:${port}`
       bindMode = 'tailscale'
     } catch (e) {
-      if (e instanceof TailscaleNotDetectedError) {
+      // Both are operator setup problems, reported before startup with their
+      // own remediation: absent installation vs. a running node with no CGNAT
+      // IPv4 address (ADR 0002).
+      if (e instanceof TailscaleNotDetectedError || e instanceof TailscaleNoCgnatIPv4Error) {
         agentError(e.message)
         process.exit(1)
       }
