@@ -1,9 +1,9 @@
 ## REMOVED Requirements
 
-> v2 has no third-party integrations at all. Every panel is withdrawn, and with
-> them the contract governing how they behave when unconfigured. **One
-> requirement survives**, rewritten as a conditional — see the MODIFIED section
-> at the end of this delta.
+> v2 has no third-party integrations at all. Every panel and requirement in this
+> capability is withdrawn. The standing no-integration invariant moves to the
+> surviving `project-dashboard` capability so the guarantee remains without
+> leaving an otherwise-ended capability alive.
 
 ### Requirement: Unconfigured Panels Explain Themselves
 
@@ -65,8 +65,10 @@ written by this surface, so nothing changes about secret handling.
 withdrawn. With no integration to configure, it has no consumer.
 
 **Migration**: The management surface is removed. Existing files under the
-daemon's own directory are left in place rather than deleted; they become inert.
-The daemon's file-mode discipline in `filesystem-access-policy` is unaffected.
+daemon's own directory are left in place for rollback rather than deleted. Inert
+means v2 neither reads nor writes them. Deletion or archival requires separate
+cleanup with an explicit retention decision. The daemon's file-mode discipline
+in `filesystem-access-policy` is unaffected.
 
 ### Requirement: Local Tooling Health Detection
 
@@ -94,26 +96,10 @@ here.
 **Migration**: None. If integrations return, this constraint should return with
 them.
 
-## MODIFIED Requirements
-
 ### Requirement: The Dashboard Works Without Any Integration
 
-Where the dashboard offers an integration with a third-party service, every
-surface that is not that integration's own SHALL render fully without it being
-configured. An unconfigured integration MUST NOT degrade, block, or error any
-other surface.
+**Reason**: The guarantee remains load-bearing, but `optional-integrations` ends
+because v2 ships no integration surface.
 
-v2 ships no integrations, so this requirement currently binds nothing. It is kept
-rather than withdrawn deliberately: it is the guarantee that shaped this product,
-and a future change adding an integration should inherit it as a standing
-constraint instead of having to rediscover it in an archived proposal.
-
-#### Scenario: No integration configured is the fully-supported state
-- **WHEN** the dashboard runs with no integration configured
-- **THEN** every surface renders its own data completely
-- **AND** no surface reports an error, a degraded state, or a missing prerequisite.
-
-#### Scenario: A future integration cannot become load-bearing
-- **WHEN** an integration is added and left unconfigured
-- **THEN** the surfaces that do not belong to it are unaffected
-- **AND** no other surface's data is withheld pending its configuration.
+**Migration**: Restated as `Optional Integrations Never Become Load-Bearing` in
+`project-dashboard`; no behavioural guarantee is lost.

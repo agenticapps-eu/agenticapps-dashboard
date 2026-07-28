@@ -318,6 +318,19 @@ The sequence recorded above lists seven changes. `decide-tailnet-ipv6-policy` is
 the ninth and is independent of all of them: it touches only `daemon-runtime`,
 adds no behaviour, and can run at any point.
 
+### Agent board deferred — 2026-07-28
+
+`add-agent-board` was withdrawn before implementation and AGE-470, AGE-471, and
+AGE-472 returned to backlog. The upstream `agents-task-viewer` is replacing its
+agent-task board with OpenSpec change cards, which invalidates the withdrawn
+change's task-shaped wire contract, columns, blocker semantics, and adapter
+extraction plan.
+
+Re-propose the dashboard surface only after the upstream OpenSpec `ChangeCard`
+contract, package exports, fixtures, and shared host styles are stable.
+`retire-v1-surfaces` remains blocked on that replacement; the withdrawal does
+not authorize a v2 cutover without an agent-change surface.
+
 ### Coverage integration supersession — 2026-07-28
 
 The ratified capability table above is preserved as historical decision

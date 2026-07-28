@@ -13,22 +13,37 @@ deferred it as infra-gated, and the v1.2 close carried it forward noting it was
 "verified at code/test level only". A second device and a working tailnet cannot
 be simulated in the test suite.
 
+The run must use the deployed SPA's real origin and a browser-fetchable daemon
+URL. In particular, an HTTPS SPA paired to a plain-HTTP Tailscale hostname would
+be blocked by browser mixed-content policy. The preparation step records both
+schemes and treats that combination as a failed founding use case, not as a test
+environment problem to bypass with a browser exception.
+
 Source: `docs/legacy-planning/STATE.md` §"Deferred Items" (infra-gated).
 
 ## What changes
 
-No product change is expected. This is a verification pass against behaviour
-already specified. If it uncovers defects, those become their own changes.
+The implementation is expected to remain unchanged. This change formalises one
+previously implicit product guarantee — independent browser-local pairing on
+multiple devices — and then verifies it on real hardware. CIDR enforcement is
+not restated here; it remains governed by `daemon-runtime` and the sibling
+`decide-tailnet-ipv6-policy` change. Defects found by the run become their own
+changes.
+
+The stateless bearer-token consequence is deliberate: the daemon keeps no device
+roster, so this change does not introduce per-device revocation, audit, or
+expiry. Adding those features later requires an explicit auth-model change rather
+than quietly turning browser-local pairing into daemon-managed device identity.
 
 ## Capabilities
 
-- `auth-and-pairing` — two added requirements: concurrent multi-device pairing,
-  and reachability confined to the tailnet.
+- `auth-and-pairing` — one added requirement: concurrent multi-device pairing.
 
 > **Correction, 2026-07-26.** This section previously read "None expected". That
-> was wrong about this change's own contents: the `auth-and-pairing` delta in
-> `specs/` adds two requirements, because neither behaviour was assured anywhere
-> before. The delta is correct; the self-description had fallen behind it.
+> was wrong about this change's own contents: concurrent multi-device pairing
+> was not assured anywhere before. CIDR enforcement was already assured in
+> `daemon-runtime` and is verified here without being duplicated into the
+> pairing capability.
 
 ## Sequence: this change waits for the v2 surfaces
 
@@ -36,15 +51,9 @@ Scheduled after the Dashboard v2 cutover. Linear: AGE-481, and the project this
 sequence is recorded in — see the *Sequence* section of
 `openspec/CAPABILITY-MAP.md`.
 
-Task block 2 verifies that a single-project view renders in full, including the
-panels that spawn subprocesses. Those are precisely the panels
-`retire-v1-surfaces` withdraws. Verifying against a surface that is weeks from
-deletion produces evidence with an expiry date, and the run would have to be
-repeated afterwards anyway. Setting up the second device is the expensive part of
-this work, and it should be paid once.
-
-**Before running:** rewrite task block 2 against the four v2 surfaces — fleet,
-repo detail, workflow, board.
+Task block 2 verifies the four v2 surfaces — fleet, repo detail, workflow, and
+board. Setting up the second device is the expensive part of this work, and the
+evidence should be produced once against the surfaces that ship.
 
 **Not affected by v2:** task block 3. The security boundary — a client outside
 the tailnet CIDR is refused, disabling enforcement requires an explicit flag and
@@ -52,64 +61,72 @@ is not the default, and token rotation forces re-pairing on every device — is
 entirely independent of which surfaces exist. It could be verified today. It
 waits only because it shares the second device with block 2.
 
-The two requirements added here stand regardless of v2 and are **not** withdrawn
-by it. This change stays open; it does not get closed and reopened.
+The pairing requirement added here stands regardless of v2 and is **not**
+withdrawn by it. This change stays open; it does not get closed and reopened.
 
 ## Non-goals
 
 - Adding new remote-access transports. Tailscale is the supported path.
+- Adding TLS termination in this verification change. If the currently
+  supported Tailscale path cannot provide an agent URL fetchable from the
+  deployed SPA's secure context, that is a blocking product defect and becomes
+  a separately specified implementation change.
 - Relaxing CIDR enforcement to make the test easier. If enforcement blocks a
   legitimate device, that is a finding, not an obstacle to route around.
+- Adding an explicit device-unpair operation. No such operation exists today;
+  token rotation is the only global invalidation mechanism.
+- Providing a device-to-device credential transport. The operator owns the
+  channel used to share a one-click pair URL, including sharing a fresh URL
+  after rotation.
+- Defining simultaneous registry-write conflict semantics. This change verifies
+  concurrent paired reads and independent browser storage, not concurrent
+  register/unregister operations.
 
 ## Resolved: defects spin out
 
-The open question about whether a defect found during verification is fixed here
-or spun out is **decided: spun out.** `tasks.md` already adopts it. Recorded as a
-decision so the executor does not re-litigate it, and so this change stays a
-clean evidence record.
+The open question about whether an unrelated defect found during verification is
+fixed here or spun out is **decided: spun out.** If verification falsifies the
+new multi-device requirement itself, this change does not archive until the
+requirement is corrected or an implementation change makes it true.
 
-## Review findings, 2026-07-26 — recorded, not yet resolved
+## Review findings, 2026-07-26 — resolved in the planning artifacts
 
 Two reviewers (`gemini`, `opencode`) returned REQUEST-CHANGES; see `REVIEWS.md`.
-`codex` was unavailable. Carried here for the next editor. **None is fixed yet.**
+`codex` was unavailable. The historical verdicts remain unchanged; the
+dispositions below are the revision submitted for a fresh review.
 
-1. **The CIDR requirement may be in the wrong capability.**
-   `CAPABILITY-MAP.md` assigns CIDR enforcement to `daemon-runtime` and tokens,
-   CORS, and the pair flow to `auth-and-pairing`. This change's second added
-   requirement puts a daemon-runtime mechanism into `auth-and-pairing`. Either
-   move it, or restate it as a remote-access policy that references the mechanism
-   without duplicating it.
+1. **CIDR governance stays in `daemon-runtime`.** The duplicate pairing-capability
+   requirement is removed; this change only verifies that boundary.
 
-2. **The correction note overstates its case.** It says neither behaviour was
-   assured anywhere before. `daemon-runtime` already carries "rejects clients
-   outside the Tailscale CIDR unless that enforcement is explicitly disabled", so
-   the second requirement partly restates existing coverage. The first
-   requirement — concurrent multi-device pairing — is genuinely new.
+2. **The correction note now distinguishes the new pairing guarantee from
+   existing CIDR coverage.**
 
-3. **A scenario implies daemon-side state that does not exist.** `auth-and-pairing`
-   specifies that pairing state is client-side only; the daemon tracks no paired
-   devices. "A second device pairs against a daemon that already has a paired
-   device" cannot be arranged from the daemon side. Restate as observable
-   browser-side behaviour.
+3. **Pairing is described through two independent browser stores**, never as
+   daemon-side device state.
 
-4. **The opt-out flag has no scenario of its own.** Task 3.2 asserts that
-   disabling enforcement requires an explicit flag and is not the default, but
-   that assertion is folded into the off-tailnet rejection scenario instead of
-   having its own.
+4. **The opt-out assertion is verified against the daemon-runtime requirement**
+   rather than duplicated into this delta.
 
-5. **Address family is unspecified.** A tailnet IPv6 peer is refused, because the
-   boundary is IPv4 CGNAT. This is a spec gap rather than a defect — the code
-   matches the spec — and is addressed by the separate change
-   `decide-tailnet-ipv6-policy`. Verification should exercise it rather than
-   discover it.
+5. **Address-family policy is owned by `decide-tailnet-ipv6-policy`** and is an
+   explicit verification item here.
 
-6. **Task block 2 is stale.** The sequence note above requires rewriting it
-   against the four v2 surfaces before the run. It still names the v1
-   three-column view and its subprocess-spawning panels. Rewrite it before
-   execution, or an executor will run it as written.
+6. **Task block 2 now names the four v2 surfaces.**
 
-7. **Inter-device transport of the bearer token is unspecified.** Multi-device
-   pairing introduces a device-to-device hop for the pair URL, which carries a
-   credential. Existing specs cover daemon-to-browser transport only. Either
-   state that the operator owns that hop as a non-goal, or specify re-sharing
-   after rotation.
+7. **Inter-device transport is an explicit operator responsibility**, and
+   rotation requires a fresh URL to be shared through that operator-chosen
+   channel.
+
+8. **Browser security is part of the end-to-end check.** The run records the SPA
+   and daemon URL schemes and may not bypass mixed-content or secure-context
+   enforcement. An incompatible scheme pairing blocks verification and archive.
+
+9. **Local unpairing is distinct from token rotation.** The independence
+   scenario now names clearing one browser's own stored pairing; global rotation
+   still invalidates every browser.
+
+10. **Address-free diagnostics remain governed by the sibling daemon-runtime
+    delta.** Verification uses controlled known inputs and a correlation
+    identifier; it does not need to retain the peer address.
+
+11. **Credential transport remains a proposal-level non-goal**, not an
+    assertion embedded in the successful re-pair scenario.
