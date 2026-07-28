@@ -18,12 +18,48 @@ SHALL NOT change the reported version.
 - **THEN** the reported core spec version is unchanged
 - **AND** no host is reported as behind because of it.
 
+#### Scenario: An unavailable core makes comparisons unavailable
+- **WHEN** the core repository or a required reference artifact is missing or unreadable
+- **THEN** every comparison that depends on it is reported as unavailable
+- **AND** no host is reported as conformant against a missing reference.
+
+### Requirement: The Workflow Fleet And Artifact Mappings Are Fixed
+
+The workflow fleet SHALL consist of exactly
+`agenticapps-workflow-core`, `claude-workflow`, `codex-workflow`,
+`opencode-workflow`, and `pi-agentic-apps-workflow`. For each shared artifact,
+the host path and core-reference path SHALL come from one daemon-side mapping.
+No request field or registry entry may add a repository or alter a mapping.
+
+#### Scenario: Every expected host is represented
+- **WHEN** the workflow matrix is produced
+- **THEN** the core and all four named host implementations appear in fixed order
+- **AND** a missing repository appears as missing rather than being omitted.
+
+#### Scenario: Requests cannot widen the fleet
+- **WHEN** a request supplies an unknown repository, host, or artifact identifier
+- **THEN** it is rejected
+- **AND** the fixed fleet and artifact mappings remain unchanged.
+
+#### Scenario: The compared files come from one mapping
+- **WHEN** an artifact is compared across hosts
+- **THEN** every host copy is matched to the declared core reference for that artifact
+- **AND** a request cannot substitute a different file.
+
 ### Requirement: Implements-Spec Is Reported Per Skill, Not Per Repo
 
 For each host the scanner SHALL report the primary skill's `implements_spec`, the
 minimum and maximum across all of that host's skills, and the name and version of
 every skill whose value differs from the maximum. A host SHALL NOT be summarised
-by its primary skill alone.
+by its primary skill alone. The expected skill set SHALL be the tracked skill
+directories declared by that host repository. Machine-global installs SHALL be
+compared against that expected set, so an expected skill that is absent is
+reported as missing.
+
+Version values SHALL parse as semantic versions. Missing, duplicate, or
+unparseable declarations SHALL be reported as unknown and SHALL prevent the host
+from being called drift-free. Unknown values SHALL be listed alongside the
+numeric range but SHALL not enter its minimum or maximum.
 
 #### Scenario: A drifting host is not reported as current
 - **WHEN** a host's primary skill matches the core spec version but other skills declare lower values
@@ -47,13 +83,28 @@ by its primary skill alone.
 
 #### Scenario: A skill with no declared value is reported as unknown
 - **WHEN** a host carries a skill whose frontmatter declares no `implements_spec`, or declares one that cannot be parsed as a version
-- **THEN** that skill is listed as unknown rather than silently excluded from the range
+- **THEN** that skill is listed as unknown alongside the range rather than silently omitted
 - **AND** the host is not reported as drift-free on the strength of skills that were skipped.
+
+#### Scenario: A required skill is missing
+- **WHEN** the host repository declares a skill in its tracked skill set but that skill is absent from the scanned install
+- **THEN** the skill is listed as missing
+- **AND** the host is not reported as drift-free or complete.
+
+#### Scenario: Duplicate or malformed declarations are unknown
+- **WHEN** a skill contains duplicate `implements_spec` fields or a value that is not a semantic version
+- **THEN** that skill is reported as unknown with a stable reason code
+- **AND** no lexical or partial ordering is attempted.
 
 #### Scenario: A host's skills are found wherever that host installs them
 - **WHEN** a host stores some skills outside its main skills directory
 - **THEN** those skills are included in the range and the laggard list
 - **AND** the scan does not report a narrower range than the host actually carries.
+
+#### Scenario: Explained divergence remains divergence
+- **WHEN** a host intentionally pins an older version or carries a local patch with an ADR explaining it
+- **THEN** the surface may link or name that explanation
+- **AND** the version or byte comparison remains divergent rather than becoming green.
 
 ### Requirement: Shared Artefact Conformance Is Byte Equality, Not A Version Claim
 
@@ -82,7 +133,11 @@ evidence of conformance.
 Where a host's shared artefact does not record the core commit it was vendored
 from, the scanner SHALL report that provenance as absent. This SHALL be reported
 independently of byte identity, so that an artefact can be simultaneously
-identical and lacking recorded provenance.
+identical and lacking recorded provenance. A present provenance value SHALL be
+parsed as a full commit identifier. A malformed or missing value SHALL be a
+finding. This change verifies recorded provenance presence and syntax only; it
+MUST NOT spawn git or claim that the commit exists or that historical bytes
+match.
 
 #### Scenario: Identical but unprovenanced is visible
 - **WHEN** a host's artefact is byte-identical to the reference but records no core commit
@@ -93,6 +148,11 @@ identical and lacking recorded provenance.
 - **WHEN** no host records vendor provenance for an artefact
 - **THEN** the row reports absence for all of them
 - **AND** the surface does not suppress a finding for being fleet-wide.
+
+#### Scenario: A provenance claim is syntactically valid
+- **WHEN** an artifact records a core commit
+- **THEN** the value parses as a full commit identifier
+- **AND** a malformed value is reported as invalid provenance without a historical git read.
 
 ### Requirement: Machine-Wide Installed Artefacts Are Reported
 
@@ -160,14 +220,21 @@ polling it MUST NOT execute a harness.
 ### Requirement: Harness Results Carry Their Age And Are Invalidated By Content
 
 A cached harness result SHALL be stored with the timestamp of its run and
-displayed with its age. The cache entry SHALL be keyed on the content of **both**
-the artefact under test **and** the harness script that tested it, and SHALL be
-invalidated when either changes. Age alone MUST NOT be the invalidation rule.
+displayed with its age. The cache entry SHALL be keyed on the content of the
+artifact under test, the harness script, the core reference, and a
+runner-contract version covering the fixed command environment and resource
+bounds. It SHALL be invalidated when any input changes. Age alone MUST NOT be
+the invalidation rule.
 
 Keying on the artefact alone is insufficient: the harness is vendored from the
 same upstream as the artefact and changes on its own schedule, so a harness
 update would otherwise leave a result produced by different test logic on display
-as current.
+as current. Entries SHALL be capped to the latest result per fixed host/harness
+pair; replacement removes the prior entry.
+
+A completed run's outcome SHALL come from its process exit status: exit zero is
+passing and any non-zero exit is non-passing. Captured stdout/stderr is
+diagnostic text only and MUST NOT be parsed into a score.
 
 #### Scenario: A result is shown with its age
 - **WHEN** a cached harness result renders
@@ -183,19 +250,31 @@ as current.
 - **THEN** the cached result is discarded
 - **AND** it is not shown as current merely because the artefact still matches.
 
-#### Scenario: An unchanged pair keeps its result
-- **WHEN** time passes but both the tested artefact and the harness are unchanged
+#### Scenario: The reference or runner contract invalidates the result
+- **WHEN** the core reference bytes or runner-contract version changes while the artifact and harness are unchanged
+- **THEN** the cached result is discarded
+- **AND** evidence from the old comparison contract is not shown as current.
+
+#### Scenario: An unchanged fingerprint keeps its result
+- **WHEN** time passes but the artifact, harness, core reference, and runner-contract version are unchanged
 - **THEN** the cached result is retained and displayed with its increased age.
 
 #### Scenario: A failing run is cached as a result
-- **WHEN** a harness completes and reports a non-passing score
+- **WHEN** a harness completes with a non-zero exit status
 - **THEN** that outcome is cached and displayed with its age like any other completed run
 - **AND** it is distinguishable from a run that timed out or was bounded out, which are not cached as completed.
 
 ### Requirement: Harness Execution Is Bounded
 
-The set of workflow repository roots SHALL be a fixed daemon-side list that no
-request can extend, and the SPA MUST NOT be able to influence it.
+The five fixed workflow repository identifiers SHALL resolve beneath configured
+source-family roots through a daemon-side mapping that no request or registry
+entry can extend. Configuration may relocate a source-family root; it cannot add
+a sixth workflow repository or provide a harness path. The SPA MUST NOT be able
+to influence the resolved paths.
+
+Only a harness whose bytes are currently identical to its mapped core reference
+SHALL execute. A missing, non-executable, or divergent harness SHALL be refused
+and no cached result SHALL be presented as current.
 
 Harness execution SHALL be constrained by all of the following:
 
@@ -207,14 +286,21 @@ Harness execution SHALL be constrained by all of the following:
   commands. No string taken from the request SHALL reach an argument vector, a
   working directory, or an environment variable.
 - The process SHALL be started in its own process group, with a scratch working
-  directory under the daemon's own directory, and with bounds on CPU time,
-  memory, and captured output size.
+  directory under the daemon's own `workflow-harness/tmp/` tree. Each request
+  gets a fresh mode-`0700` directory, removed after completion. One run is
+  bounded to 30 seconds wall time, a platform-enforced or sampled 256 MiB memory
+  ceiling, 1 MiB combined captured output, and 64 MiB scratch disk usage.
 - On timeout or bound violation the **entire process group** SHALL be terminated,
   not the direct child alone.
-- Concurrency SHALL be bounded: at most one harness run per host at a time, and a
-  bounded number overall.
+- Concurrency SHALL be bounded: at most one harness run per host at a time and
+  at most two runs overall.
 - Captured output SHALL be truncated to the bound and stripped of absolute
-  filesystem paths before it is stored or returned.
+  filesystem paths, credential-shaped values, and machine usernames before it
+  is stored or returned.
+
+The harness endpoint SHALL inherit the daemon's bearer-token authentication and
+origin lock. It uses no cookie authentication, and therefore MUST NOT introduce
+a second CSRF-bearing credential path.
 
 #### Scenario: A script outside the known roots is refused
 - **WHEN** execution is requested for a path whose canonical form does not resolve under a known workflow repository root
@@ -229,6 +315,11 @@ Harness execution SHALL be constrained by all of the following:
 - **WHEN** a request names a host or harness that is not in the fixed internal table
 - **THEN** the request is refused and no process is started.
 
+#### Scenario: A missing or divergent harness is refused
+- **WHEN** the mapped harness is absent, non-executable, or differs from its core reference
+- **THEN** the request is refused and no process is started
+- **AND** the surface shows the conformance finding instead of a harness result.
+
 #### Scenario: Request values never reach a command line
 - **WHEN** a harness request is served
 - **THEN** the identifiers select an entry from the fixed internal table
@@ -241,14 +332,29 @@ Harness execution SHALL be constrained by all of the following:
 - **AND** no partial result is cached as a completed run.
 
 #### Scenario: Runaway resource use is bounded
-- **WHEN** a harness exceeds its memory or output bound
+- **WHEN** a harness exceeds its memory, output, or scratch-disk bound
 - **THEN** the run is terminated and reported as bounded-out
 - **AND** the captured output is truncated rather than stored in full.
+
+#### Scenario: Harness execution is authenticated and origin-locked
+- **WHEN** the harness endpoint is called without the bearer token or from a disallowed origin
+- **THEN** the request is refused before command selection
+- **AND** no process is started.
+
+#### Scenario: Concurrency has exact limits
+- **WHEN** a host already has a run in progress or two runs are active overall
+- **THEN** another conflicting request is refused as busy
+- **AND** the configured concurrency bound is not exceeded.
 
 #### Scenario: Stored output carries no absolute paths
 - **WHEN** a harness result is cached or returned
 - **THEN** absolute filesystem paths are reduced to symbolic references
 - **AND** no home-directory path reaches the response.
+
+#### Scenario: Stored output carries no captured credential
+- **WHEN** harness output contains a token-shaped value or machine username
+- **THEN** that value is redacted before storage and response
+- **AND** truncation happens before the bounded output is persisted.
 
 #### Scenario: The root set cannot be widened by a request
 - **WHEN** any request attempts to name a repository root
@@ -261,6 +367,10 @@ The workflow surface SHALL report on the core repository and the host workflow
 implementations only. Registered product repositories MUST NOT appear on it, and
 their readiness results MUST NOT be derived from it.
 
+Scanner responses SHALL carry fixed repo, host, skill, and artifact identifiers
+rather than absolute repository or machine-global paths. The daemon MUST NOT
+export or persist the resolved machine paths used by the scanner.
+
 #### Scenario: Product repos are absent
 - **WHEN** the workflow surface renders with product repos registered
 - **THEN** only the workflow repositories appear
@@ -270,3 +380,8 @@ their readiness results MUST NOT be derived from it.
 - **WHEN** one of the workflow repositories cannot be found on disk
 - **THEN** it appears with its absence stated
 - **AND** the other repositories are still reported.
+
+#### Scenario: Scanner paths remain daemon-internal
+- **WHEN** the workflow response describes a laggard, missing skill, or unreadable artifact
+- **THEN** it uses symbolic identifiers and a stable reason code
+- **AND** no absolute path or machine username appears in the response.

@@ -110,4 +110,12 @@ describe('router — single AppShellV2 route tree', () => {
     // It is NOT registered at the root (would bypass AppShellV2 chrome).
     expect(ids.some((id) => id === '/observability/skill-drift')).toBe(false)
   })
+
+  it('RT6: /workflow is mounted under the paired _appshell layout', async () => {
+    const { router } = await import('./router.js')
+    const ids = Object.keys(router.routesById ?? {})
+
+    expect(ids.some((id) => id === '/_appshell/workflow')).toBe(true)
+    expect(ids.some((id) => id === '/workflow')).toBe(false)
+  })
 })

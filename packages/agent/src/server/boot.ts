@@ -14,6 +14,7 @@ import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getActiveToken } from '../lib/auth.js'
 import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
 import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
+import { disposeWorkflowHarnessRuns } from '../lib/workflowHarness.js'
 import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
 import type { Env } from './app.js'
@@ -82,20 +83,19 @@ export function _runDisposersForTests(): void {
   runDisposers()
 }
 
-// ── Symlink-escape boot check (Plan 11-02 Task 7 — T-11-02-03) ────────────────
+// ── Daemon-write symlink-escape boot check ────────────────────────────────────
 //
-// The daemon writes coverage-history NDJSON snapshots under
-// ~/.agenticapps/dashboard/coverage-history/ (D-11-13). If that directory has
-// been replaced by a symlink that resolves OUTSIDE ~/.agenticapps/dashboard/,
-// every subsequent snapshot would be written to attacker-controlled storage.
+// The daemon writes coverage snapshots and workflow-harness results below
+// ~/.agenticapps/dashboard/. If either directory has been replaced by a symlink
+// that resolves outside the daemon home, subsequent writes would land in
+// attacker-controlled storage.
 //
-// Defence: at boot, realpathSync() the snapshot dir parent + the snapshot dir
-// itself and refuse to start if the realpath escapes the daemon home. Mirrors
-// auth.ts's "refuse to start if X" idiom for INV-02 enforcement.
+// Defence: at boot, realpathSync() every existing daemon-write directory and
+// refuse to start if it escapes. Mirrors auth.ts's "refuse to start if X"
+// idiom for INV-02 enforcement.
 //
-// If the snapshot dir doesn't exist yet (first-run), there is no symlink to
-// check — boot proceeds normally and snapshotWriter.mkdir() will create it
-// with mode 0o700 on the first tick.
+// If a directory doesn't exist yet (first-run), there is no symlink to check;
+// its writer creates it at mode 0o700 on first use.
 export function assertSnapshotDirInDaemonHome(): void {
   const expected = join(homedir(), '.agenticapps', 'dashboard')
   let expectedReal: string
@@ -106,13 +106,18 @@ export function assertSnapshotDirInDaemonHome(): void {
     // it. Nothing to check; auth path will create + chmod it.
     return
   }
-  const snapshotDir = resolveSnapshotDir()
-  if (!existsSync(snapshotDir)) return
-  const real = realpathSync(snapshotDir)
-  if (real !== expectedReal && !real.startsWith(expectedReal + '/')) {
-    throw new Error(
-      `[boot] coverage-history dir escapes daemon home: ${real} (expected under ${expectedReal})`,
-    )
+  const daemonWriteDirs = [
+    { name: 'coverage-history', path: resolveSnapshotDir() },
+    { name: 'workflow-harness', path: join(expected, 'workflow-harness') },
+  ]
+  for (const directory of daemonWriteDirs) {
+    if (!existsSync(directory.path)) continue
+    const real = realpathSync(directory.path)
+    if (real !== expectedReal && !real.startsWith(expectedReal + '/')) {
+      throw new Error(
+        `[boot] ${directory.name} dir escapes daemon home: ${real} (expected under ${expectedReal})`,
+      )
+    }
   }
 }
 
@@ -136,9 +141,9 @@ export function _earlyShutdownForTests(): void {
  * SIGTERM and SIGINT are wired to gracefulShutdown automatically.
  */
 export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
-  // Symlink-escape defence — refuse to start if the snapshot dir realpath
-  // escapes the daemon home (T-11-02-03). Runs BEFORE any state write or
-  // signal-handler attach so a bad symlink fails fast at process start.
+  // Symlink-escape defence — refuse to start if a daemon-write directory
+  // escapes the daemon home. Runs before any state write or signal-handler
+  // attach so a bad symlink fails fast.
   assertSnapshotDirInDaemonHome()
 
   /*
@@ -212,6 +217,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
       // gracefulShutdown drains it on every shutdown branch.
       registerDisposer(startSnapshotScheduler())
 
+      registerDisposer(() => disposeWorkflowHarnessRuns())
     },
   )
 
