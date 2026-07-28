@@ -109,3 +109,67 @@ Also minor: `Dual-stack wildcard :: SHALL start with enforcement enabled` reads 
 None of these change the accepted address set, weaken the boundary, or leave an implementer unable to proceed.
 
 VERDICT: APPROVE
+
+---
+
+# Stage-3 implementation review (post-implementation, 2026-07-28)
+
+The record above concerns the *plan* review, which the §18 gate counts as zero.
+This section records the *implementation* review, which is separate — and which
+found real defects, so it is the part of this file most worth reading.
+
+Two independent reviewers examined the implemented diff. Both were given the
+spec delta, design note and ADR, and neither was told what the other found. The
+Codex pass was commissioned specifically because "no other-vendor review at all"
+was this change's recorded weakness.
+
+| Reviewer | Vendor | Scope | Verdict |
+| --- | --- | --- | --- |
+| code-reviewer | claude | Implementation, adversarial | 4 findings, no explicit verdict |
+| codex | **codex** | Implementation, adversarial | **REQUEST-CHANGES** |
+
+## What they found
+
+They converged, from different directions, on **one root cause**:
+`classifyExplicitBind`'s fallthrough **failed open**. Anything it did not
+recognise was classified loopback, and loopback silently means no CIDR
+middleware and no all-interfaces warning.
+
+| # | Severity | Defect | Status |
+| --- | --- | --- | --- |
+| 1 | **Critical** (codex) | `--bind 0` (also `00`, `0000`) took the fallthrough; Node's `listen()` resolves `0` to `0.0.0.0`. Every interface, no boundary, no banner. | Fixed |
+| 2 | **High** (codex) | `--bind ::1` / `::` built `http://::1:5193`. `writeServerInfo` validates with `z.string().url()`, which rejects it — so the two IPv6 modes this change *added* threw after the listener was already accepting connections. | Fixed |
+| 3 | Important (claude) | `::0`, `0:0:0:0:0:0:0:0` and the expanded form escaped the all-interfaces path, because the wildcard was matched by string equality against `'::'`. With the opt-out: all interfaces, unenforced, unwarned. | Fixed |
+| 4 | Important (claude) | `getTailscaleIP` validated against the boundary unconditionally, overruling `--no-enforce-cidr` and regressing control servers on a custom IPv4 prefix. Its message never mentioned the flag. | Fixed |
+| 5 | Important (claude) | Nothing tested the `runStart` wiring, which is where "fail before startup" actually lives — and which is why 1 and 2 passed every unit test. | Fixed: `bind-wiring.subprocess.test.ts` runs the real CLI |
+| 6 | Medium (both) | The refusal diagnostic is a synchronous pre-auth `stderr` write per refused request: unbounded log growth, event-loop blocking, and a possible statistical timing oracle. | **Open — see below** |
+
+Both reviewers independently confirmed the two claims that matter most:
+**the accepted address set did not change** (codex traced it; the claude
+reviewer ran a 1.4M-case differential fuzz of the old and new predicates and
+found zero disagreements), and **the refusal class does not leak** over HTTP.
+
+## Verification of the reviewers' claims
+
+Their findings were reproduced before being acted on, not taken on trust:
+`node listen('0')` binds `0.0.0.0`; `net.isIPv6` accepts `::0`,
+`0:0:0:0:0:0:0:0` and `0000:…:0000` while none is `=== '::'`; and
+`z.string().url()` rejects every unbracketed IPv6 authority and accepts the
+bracketed form.
+
+## Open item carried forward
+
+Finding 6 is **not fixed**. The spec mandates recording the class but says
+nothing about volume, so this is a design decision rather than a defect, and it
+is recorded here rather than silently resolved. Options are sampling, a
+periodic per-class counter, or accepting it. It needs an explicit ruling before
+this ships.
+
+## What this does and does not settle
+
+This is a genuine cross-vendor review, and it is the first independent scrutiny
+this change received. It does **not** retire the §18 override: that gate wants
+≥2 independent reviewers on the *plan*, before code, and this review happened
+after. What it does establish is that the implementation was reviewed by another
+vendor, that the review found two serious defects the author did not, and that
+those defects are fixed and pinned by tests.

@@ -84,5 +84,19 @@ like.
 - Accepted-set sweep — ~4,000 addresses agree with an independent reference
   implementation of the requirement.
 
-Outstanding at hand-off: the `cso` security gate and the independent Stage-3
-implementation review have NOT been run. Neither is discharged by the above.
+### Post-implementation gates (2026-07-28)
+
+- `cso` security gate — RUN, diff-scoped. 1 MEDIUM finding (the fail-open bind
+  fallthrough), since fixed. Report at `.gstack/security-reports/`.
+- Stage-3 implementation review — RUN, two independent reviewers including a
+  genuine cross-vendor (codex) pass. Verdict from codex was REQUEST-CHANGES.
+  Five defects found and fixed; see the Stage-3 section of REVIEWS.md.
+- Post-fix verification: agent suite 1201 passed / 1 skipped / 0 failed;
+  typecheck clean across 5 packages; lint 0 errors, no warnings in any changed
+  file; `openspec validate --all` 19/19.
+
+**One item remains open and this change should not archive until it is ruled
+on:** the refusal diagnostic is a synchronous pre-auth stderr write per refused
+request (unbounded log growth, event-loop blocking, possible timing oracle).
+Both reviewers raised it independently. The spec requires the diagnostic and is
+silent on its volume, so this is a design decision, not a defect.
