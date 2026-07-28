@@ -5,6 +5,9 @@
 > `remove-gitnexus-integration`, which applies before this change. Listing them
 > again here would withdraw them twice. With the five below, the capability ends
 > rather than being thinned: nothing remains under `code-intelligence`.
+> The upstream change's statement that the viewer is unaffected means unaffected
+> by that earlier GitNexus-only removal. It does not survive this later cutover:
+> the five requirements below explicitly withdraw the remaining viewer half.
 
 ### Requirement: Knowledge-Graph Analysis Status
 
@@ -23,8 +26,8 @@ its state runs it directly.
 knowledge-graph analysis reported, there is no trigger to constrain. The
 principle it protected — that the daemon does not spawn expensive third-party
 work on a render — survives as an explicit requirement in
-`workflow-fleet-conformance`, which is the only remaining surface that runs
-anything.
+`workflow-fleet-conformance`, which is the only remaining product-analysis
+surface that runs a harness.
 
 **Migration**: None. The rule is carried forward where it still binds.
 

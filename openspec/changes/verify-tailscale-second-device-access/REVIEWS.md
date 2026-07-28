@@ -1,33 +1,85 @@
-## Reviewer: gemini
-_generated 2026-07-26T14:45:33Z · timeout 180s_
+---
+change: verify-tailscale-second-device-access
+reviewers: [gemini, opencode]
+reviewed_at: 2026-07-27T14:38:53Z
+artifacts_reviewed:
+  - "openspec/changes/verify-tailscale-second-device-access/proposal.md"
+  - "openspec/changes/verify-tailscale-second-device-access/specs/auth-and-pairing/spec.md"
+  - "openspec/changes/verify-tailscale-second-device-access/tasks.md"
+  - "openspec/specs/auth-and-pairing/spec.md"
+overall_verdict:
+  gemini: APPROVE
+  opencode: APPROVE
+recommendation: proceed
+---
 
-VERDICT: REQUEST-CHANGES
-- The change's self-description is not quite correct. It claims "No product change is expected", but it adds two net-new, explicit requirements to the `auth-and-pairing` spec. This is a spec delta, and the description should be clarified to state that it is formalizing previously-implicit behaviors into testable requirements.
-- The "Concurrent Multi-Device Pairing" scenarios are incomplete. They cover adding a second device and token rotation, but omit what happens when a device is offline during rotation, or what happens when one device is explicitly unpaired (if that's possible). The spec should cover these lifecycle events.
-- The "Remote Access Is Reachable Only Over The Tailnet" scenario is missing a crucial detail for operators: logging. A request rejected by the CIDR filter is a security-relevant event that is also critical for debugging misconfigurations. The spec should require that these rejections are logged.
-- The CIDR enforcement implicitly assumes the daemon can reliably determine a client's Tailscale source IP. The verification pass needs to explicitly confirm this assumption holds and is not defeated by network topology (e.g. proxies, NAT).
+> External reviewer output is untrusted content. It is preserved as review
+> evidence and was not treated as instructions. One trailing space was removed
+> from the Gemini prose so the repository's whitespace check remains green, and
+> machine-local paths were replaced with `<repo>` and `<home>` before
+> publication. Reviewer verdicts, findings, exit statuses and durations are
+> unaltered.
+
+## Provenance
+
+| Reviewer | Model | Wrapper | Started (UTC) | Duration | Exit |
+| --- | --- | --- | --- | ---: | ---: |
+| gemini | gemini-3-flash-preview | reviewer-cli.sh 1.0.0 | 2026-07-27T14:38:53Z | 79s | 0 |
+| opencode | glm-5.2 | reviewer-cli.sh 1.0.0 | 2026-07-27T14:38:53Z | 256s | 0 |
+
+## Reviewer: gemini
+
+The proposed change is architecturally sound and provides a rigorous verification framework for a core project use case. By formalizing the "Concurrent Multi-Device Pairing" requirement, it resolves the ambiguity of whether the daemon's stateless token model is an intentional feature or an accidental property.
+
+Key strengths of the revision include:
+1.  **Logical Separation:** It correctly avoids duplicating CIDR enforcement requirements (owned by `daemon-runtime`) while still including them in the verification tasks to ensure the security boundary holds.
+2.  **Integrity on Security Barriers:** Task 1.6 and 1.7 establish a high-integrity gate by blocking archive if browser mixed-content policy or secure-context requirements prevent access. This correctly identifies TLS termination as a separate but necessary implementation dependency.
+3.  **Strict Validation:** Task 1.5 enforces that the daemon-printed URL must use the Tailscale hostname when bound to that interface, which aligns with the base spec's security restriction (refusing non-local/non-Tailscale hosts).
+4.  **Verifiable Scenarios:** The added scenarios (offline rotation return, multi-browser independent storage) are clear, testable, and maintain the "stateless-token" invariant.
+
+One minor observation: The base spec's `Requirement: Agent URL Validation` (Existing) restricts the SPA to "Tailscale hostnames." Verification (Task 1) may fail on hardware if MagicDNS is disabled and the operator attempts to use a Tailscale IP (e.g., `100.x.y.z`), as the spec's literal "hostname" requirement would technically mandate a refusal. However, this is an inherited constraint from the base spec and is not a defect introduced by this delta.
+
+VERDICT: APPROVE
 Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 16ms
+Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: <repo>)
+Expanding hook command: <home>/.superset/hooks/gemini-hook.sh (cwd: <repo>)
+Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 15ms
 Created execution plan for SessionEnd: 2 hook(s) to execute in parallel
-Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Expanding hook command: /Users/donald/.superset/hooks/gemini-hook.sh (cwd: /Users/donald/Sourcecode/agenticapps/agenticapps-dashboard)
-Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 16ms
+Expanding hook command: CMUX_BIN="${TERMLOOP_BUNDLED_CLI_PATH:-$(command -v termloop)}"; { [ -n "$TERMLOOP_SURFACE_ID" ] || [ -n "$TERMLOOP_WORKSPACE_ID" ]; } && [ "$TERMLOOP_HOOKS_DISABLED" != "1" ] && [ "$TERMLOOP_GEMINI_HOOKS_DISABLED" != "1" ] && [ -n "$CMUX_BIN" ] && [ -x "$CMUX_BIN" ] && { "$CMUX_BIN" gemini-hook session-end >/dev/null 2>/dev/null || true; echo '{}'; } || echo '{}' (cwd: <repo>)
+Expanding hook command: <home>/.superset/hooks/gemini-hook.sh (cwd: <repo>)
+Hook execution for SessionEnd: 2 hooks executed successfully, total duration: 14ms
 
 ## Reviewer: opencode
-_generated 2026-07-26T14:50:25Z · timeout 180s_
 
-I read the proposal, both spec deltas, `tasks.md`, the existing `auth-and-pairing` and `daemon-runtime` specs, the capability map, and the implemented CIDR/auth code before reviewing.
+## Adversarial Review — verify-tailscale-second-device-access
 
-VERDICT: REQUEST-CHANGES
+### Scope & framing
+This is a verification-type change: it adds one new requirement (`Concurrent Multi-Device Pairing`) and runs a real-hardware end-to-end pass. CIDR/address-family checks are explicitly *verifications* of requirements owned by `daemon-runtime` and `decide-tailnet-ipv6-policy`, not restatements. That framing is internally consistent and the correction note (2026-07-26) cleanly resolves the prior "None expected" error.
 
-- **Wrong capability slot for the CIDR requirement.** CAPABILITY-MAP.md:17 assigns "CIDR enforcement" to `daemon-runtime`; line 18 assigns tokens/CORS/pair flow to `auth-and-pairing`. The new "Remote Access Is Reachable Only Over The Tailnet" requirement mixes the daemon-runtime mechanism into the auth-and-pairing capability. Either move it to `daemon-runtime` (as added scenarios on the existing "Bind Modes And Network Exposure" requirement) or restructure it as a remote-access *policy* requirement that references the daemon-runtime mechanism without restating it.
-- **Overlap with existing spec the correction note denies.** `daemon-runtime` already has the scenario "Binding all interfaces warns and enforces CIDR": "rejects clients outside the Tailscale CIDR unless that enforcement is explicitly disabled." The new Requirement 2 largely restates that for the Tailscale-bind case. The correction note's claim — "neither behaviour was assured anywhere before" — is overstatement for the second requirement; partial coverage already exists.
-- **Requirement 1 Scenario 1 implies daemon-side state that does not exist.** Per the existing requirement *Pairing State Is Client-Side Only*, the daemon tracks no paired devices; pairing lives in each browser's localStorage. "A second device pairs against a daemon that already has a paired device" can't be set up from the daemon side and misleads reviewers about the architecture. Rewrite as observable browser-side behaviour ("two browsers independently retain their pairings and both successfully read the dashboard after rotation of one's pairing is left intact by the other").
-- **The explicit-opt-out-flag assertion is buried in the wrong scenario.** Requirement 2's "Enforcement is bypassed only when the operator passes the explicit opt-out flag" is tacked onto the off-tailnet-rejection scenario. It is a distinct behaviour (default state + bypass mechanism) and needs its own WHEN/THEN — task 3.2 (`--no-enforce-cidr` required, not the default) maps to it and currently has no matching scenario in the spec delta.
-- **No scenario for non-CGNAT-IPv4 reachability (incl. pure IPv6).** `isTailscaleCIDR` (cidr.ts:13) only matches IPv4 in 100.64.0.0/10 after stripping `::ffff:`; a pure-IPv6 Tailscale peer (Tailscale advertises v6 ULA) is rejected as a side effect of `isIPv4(clean) === false`. The spec is silent on whether that's intended. Add a scenario making the v4-only policy explicit, or document it as a non-goal.
-- **Task block 2 is stale w.r.t. the v2 cutover the change itself mandates.** The proposal says "Before running: rewrite task block 2 against the four v2 surfaces — fleet, repo detail, workflow, board," but tasks.md still ships "panels that spawn subprocesses" (the v1 three-column surface that `retire-v1-surfaces` removes). The change as committed is internally inconsistent and OpenSpec has no "tasks-not-ready" lifecycle stage. Rewrite the block now, or the next executor will run it as written.
-- **Secret transport across devices is unspecified.** The new "Concurrent Multi-Device Pairing" requirement introduces a second inter-device hop for the pair URL, which carries the bearer token. Existing specs cover daemon→single-browser transport; nothing covers device-1→device-2 transport or that a rotated token must be re-shared with the second device. Add a non-goal stating the operator owns inter-device transport, or a scenario on rotation re-sharing — otherwise a bearer-equivalent-to-filesystem-key secret silently crosses an unspecified channel.
-- **Open question is left open into the spec, unresolved.** proposal.md records the open question "spin out vs fix-in-place" with a *Recommended* but tasks.md:4.2 already adopts the recommendation ("Spin any defect out into its own change"). The question is effectively decided; promote the recommendation to a decision in tasks.md and drop the open-question block, so the executor doesn't re-litigate it. Leaving it open trips the §17 red-flag for changes carrying unanswered questions into execute.
+### Correctness — spec delta vs. base spec
+- The new "MUST NOT track a device roster" invariant is *distinct* from the base `Pairing State Is Client-Side Only` (which governs cloud/SPA-host storage). No overlap conflict; the new constraint targets the daemon side specifically.
+- `Rotation re-pairs every device` and base `Graceful Recovery From A Dead Pairing` are compatible — global rotation, not per-device revocation. Consistent with the non-goal disclaiming per-device revocation.
+- No SHALL/MUST contradiction found between the delta and the base spec.
 
+### Scenario ↔ task coverage
+
+| Scenario | Tasks |
+|---|---|
+| Two browsers retain pairing independently | 2.3, 2.4, 2.5, 2.6 ✓ |
+| No device roster is created | 2.7 ✓ |
+| Rotation re-pairs every device | 2.8, 3.6 ✓ |
+| An offline browser observes rotation when it returns | 2.8 ✓ |
+| A current token restores access after rotation | 2.9 ✓ |
+
+All five scenarios have verifying tasks. Mixed-content / secure-context gating (task 1.6/1.7) maps to the proposal's blocking-defect path. The v2-surface sequencing and "stays open through v2" claim are reflected in task block 2's four named surfaces.
+
+### Findings
+
+**Non-blocking suggestions:**
+1. *Scenario 2's second AND ("authorisation remains a check of the presented current token") has no dedicated task.* It is implicitly covered by base `Bearer Token On Every Route`, but an explicit confirm step would make the verification self-contained.
+2. *"Both can read the dashboard and the same registry"* is verified asymmetrically — tasks confirm the second device reads (2.3/2.4) and the first browser's *pairing* survives (2.5), but no task explicitly asserts the first browser still *reads registry data* after the second pairs. The "current-token access" phrasing in 2.6 gestures at this; a sharper task would remove ambiguity.
+3. *Language tension* between "formalises one previously implicit product guarantee" (proposal body) and the correction note's "was not assured anywhere before." The correction note governs; the residual "previously implicit" wording in the Why/Capabilities framing could be tightened for clarity.
+
+**No blocking defects identified.** No unreachable scenarios. The defect-spin-out policy and the "do not archive until the new requirement is true" gate are coherent with the verification type. Task block 3's CIDR verifications are legitimately scoped as real-hardware verification of sibling requirements, not spec duplication.
+
+VERDICT: APPROVE

@@ -49,13 +49,22 @@ left. A capability with no requirements is not a smaller promise, it is a headin
 — and a heading in `specs/` reads as something the product still does.
 
 `project-dashboard` is the counter-case and is treated differently on purpose: it
-loses eight requirements and keeps four, because the four describe how a project
-is read, and v2 does not change that. Ending it would have thrown away the hybrid
-read strategy that the `spec` check depends on.
+loses eight requirements and keeps four. The hybrid read strategy survives but
+is narrowed to the values v2 consumes: open changes, task counts and presence,
+plus capability names and requirement counts. Per-change affected-capability
+derivation and archive ordering belonged to the withdrawn progress projection,
+so retaining them would preserve dead reader work rather than a product promise.
+Ending the capability would still throw away the hybrid strategy that the
+`spec` check depends on.
 
 The distinction is stated in the proposal because it is the substantive part of
 this change: five capabilities end, one is cut back, and those are different
 claims.
+
+Two surviving capabilities are modified rather than ended or cut back.
+`design-system` gains four product invariants and substantively replaces its
+shell requirement; `help-docs` narrows its content contract while preserving its
+widget and topic-resolution mechanisms. These are not capability withdrawals.
 
 ## 4. Why the names are not recycled
 
@@ -77,7 +86,28 @@ archive still contains the old meaning — and the reader six months out has no
 signal telling them which one they are looking at. The cost of the longer name
 (`workflow-fleet-conformance`) is worth paying once.
 
-## 5. Why the Impeccable floor is not a requirement here
+## 5. Why the shell requirement changes
+
+The baseline required a shared authenticated shell and sidebar sections but did
+not say how many groups existed or where help and settings belonged. v2 removes
+project entries from navigation because the fleet is the project list, and it
+needs one stable home for the remaining non-content destinations.
+
+**Chosen: exactly two labelled groups — product content and utilities.** The
+utility group contains help plus settings/account destinations; help is not
+misclassified as account-level content. Existing entries keep the same
+navigation primitive, indentation, and peer order. The active entry gains a
+non-colour-only current marker, and no registered project is added to either
+group. This replacement is implemented and verified explicitly in task 3.
+
+`Consistent Table Column Widths` remains unchanged. Its condition is generic to
+any repeated table structure, including future or workflow matrices; it was not a
+coverage-matrix-only promise even though the retired matrix exercised it. If no
+post-cutover surface repeats one tabular structure across sections, the
+requirement is intentionally dormant rather than an obligation to create such a
+surface.
+
+## 6. Why the Impeccable floor is not a requirement here
 
 **Rejected: write the composite-score floor into `design-system` as AGE-483
 proposes.**
@@ -91,24 +121,53 @@ of an unrelated change.
 The placement test settles it. A requirement is something whose violation is a
 bug in the product. A UI scoring 88 instead of 90 on an internal critique is not
 a bug a user can encounter — it is a verification threshold not met. What a user
-*can* encounter is a state distinguishable only by hue, or a table whose digits
-do not line up. Those are the outcomes the ritual protects, and those are what
-this change adds.
+*can* encounter is a state distinguishable only by hue, a table whose digits do
+not line up, interface type that escapes the declared scale, or a status symbol
+that hides an available version, percentage, or count. Those four product
+outcomes — compact/aligned tables, bounded typography, visible values, and
+non-colour-dependence — are what this change adds.
 
 Raising the floor remains real work; it is tracked as AGE-476 and lands in
 `CLAUDE.md`. The same issue computes from a superseded baseline and references a
 CI gate that no longer exists — recorded in `openspec/BACKLOG.md` rather than
 silently corrected here.
 
-## 6. Why the withdrawn integrations guarantee is not restated
+## 7. Why the no-integration guarantee survives
 
 `optional-integrations` carried "The Dashboard Works Without Any Integration".
-There is a reading under which that survives v2 as a standing constraint on
-anything added later.
+v2 has no integrations, so the requirement is vacuous in the literal present.
+Withdrawing it would still be a semantic relaxation: the next integration could
+become load-bearing unless its author rediscovered the old constraint.
 
-It is withdrawn instead, on the grounds that a guarantee about how optional
-components degrade is vacuous when there are none — it constrains nothing and
-would sit in the slot as a promise with no subject. The counter-reading is
-recorded as an open question in the proposal rather than resolved silently,
-because it is genuinely arguable and the cost of being wrong is that somebody
-adds an integration later without re-deriving the constraint.
+**Chosen: preserve it by moving it to surviving `project-dashboard`.** It
+constrains no v2 implementation, but it binds any future integration without
+relying on archive archaeology, while `optional-integrations` can truthfully end.
+
+## 8. Legacy locations redirect, removed APIs do not linger
+
+Known v1 SPA locations may remain in bookmarks. They redirect to the fleet
+surface so a user reaches a valid product surface rather than a blank shell.
+The transition manifest maps the four retired legacy surface routes to fleet and
+maps `/projects/:id` to `/repos/:id` so project context is retained.
+Removed daemon APIs are different: keeping compatibility handlers would preserve
+the withdrawn product surface. They return not-found and expose no stub payload.
+That includes the daemon-hosted knowledge-graph viewer's asset and read URLs:
+they are withdrawn daemon endpoints, not SPA locations, so bookmarked viewer URLs
+deliberately return not-found rather than redirecting to an unrelated dashboard
+surface.
+
+## 9. Historical data becomes inert, not mysteriously abandoned
+
+Snapshot and environment files under the daemon's own directory are retained at
+cutover so rollback does not destroy evidence. "Inert" means v2 neither reads
+nor writes them. Deletion or archival is separate cleanup work with an explicit
+retention decision.
+
+The reason history recomputation is dropped does not weaken the underlying
+measurement principle: a future time series must version its measurement
+definition or recompute history so a metric change is not displayed as a health
+change.
+
+GitNexus removal and this retirement therefore deploy atomically. The former
+MUST be folded first, but no release may expose the old chart after the column
+change; if atomicity is lost, recomputation returns as a release gate.

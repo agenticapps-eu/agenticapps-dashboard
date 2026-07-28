@@ -56,9 +56,11 @@ become inert.
 > a removed column would not read as a fleet-wide improvement. **The analysis was
 > correct and remains correct** — an uncorrected cutover would have written a
 > measurement change into the chart as a health change, permanently. The measure
-> is dropped only because the chart it protects is withdrawn here, leaving the
-> recomputation with no consumer. The reasoning is preserved in that change's
-> proposal so the descope reads as a decision rather than a missed task.
+> is dropped only because GitNexus removal and this retirement deploy atomically,
+> so no live interval renders the changed measurement. If that atomic deployment
+> cannot be maintained, the recomputation must be restored before release. The
+> reasoning is preserved in that change's proposal so the descope reads as a
+> decision rather than a missed task.
 
 ### Requirement: Chart Reveal Across Input Modalities
 
@@ -79,19 +81,26 @@ Value` in `repo-readiness`, which binds more broadly than this requirement did.
 
 ### Requirement: Chart Accessibility
 
-**Reason**: An accessibility contract for the withdrawn chart. The general
-principle survives and is strengthened: `design-system` gains a standing
-requirement that state is never signalled by colour alone, which applies to every
-surface rather than to one chart.
+**Reason**: An accessibility contract for a chart and plotted values that no
+longer exist. There is no chart whose points require a screen-reader table after
+the cutover. The adjacent general principle survives and is strengthened:
+`design-system` gains a standing requirement that state is never signalled by
+colour alone, applying to every remaining surface rather than to one chart.
 
-**Migration**: Superseded by the non-colour-dependence requirement in
-`design-system`.
+**Migration**: No chart-equivalent successor is needed because the chart is
+withdrawn. The non-colour-dependence requirement in `design-system` governs the
+remaining state indicators; it is not a substitute for the removed chart's
+tabular equivalent.
 
 ### Requirement: Path Drift Panel
 
 **Reason**: A panel on the conformance page, which is withdrawn. Path drift
-detection itself is **not** withdrawn — it lives in `project-registry`, which v2
-leaves untouched.
+detection and the repair API are **not** withdrawn — `project-registry`
+separately specifies reasoned detection, best-effort path suggestion, and the
+strict, atomic repair endpoint. What ends here is the conformance-page UI,
+including its toast wording and duplicate-click behavior.
 
-**Migration**: Detection and repair remain available through the registry
-surface. Only the panel on the conformance page goes.
+**Migration**: The `project-registry` daemon contracts remain available. v2
+promises no path-repair panel or replacement registry UI; an operator can use
+the surviving API, and a future UI must specify its own feedback and
+concurrency behavior.
