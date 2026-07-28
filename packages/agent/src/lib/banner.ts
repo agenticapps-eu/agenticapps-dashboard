@@ -43,15 +43,19 @@ export function renderBanner(input: BannerInput): string {
 }
 
 /**
- * Render the yellow warning printed when daemon binds to 0.0.0.0.
+ * Render the yellow warning printed when the daemon binds all interfaces.
  * See CONTEXT.md D-20 for exact wording.
  * When enforceCIDR is false (via --no-enforce-cidr), omit the "CIDR enforcement is ON" clause.
+ *
+ * `host` names the address actually bound so the dual-stack wildcard `::` does
+ * not report itself as `0.0.0.0`. It defaults to `0.0.0.0`, which keeps the
+ * long-standing banner byte-identical for the IPv4 case.
  */
-export function renderZeroBindWarning(enforceCIDR = true): string {
+export function renderZeroBindWarning(enforceCIDR = true, host = '0.0.0.0'): string {
   const cidrNote = enforceCIDR ? ' CIDR enforcement is ON.' : ''
   return (
     pc.yellow(
-      `[agent] WARNING: bound to 0.0.0.0 — only safe on Tailscale-isolated machines.${cidrNote}`,
+      `[agent] WARNING: bound to ${host} — only safe on Tailscale-isolated machines.${cidrNote}`,
     ) + '\n'
   )
 }

@@ -55,14 +55,17 @@ describe('characterisation: bind literal classification', () => {
     expect(classifyExplicitBind('127.0.0.2').bindMode).toBe('tailscale')
   })
 
-  // The pre-change gap this change exists to close. An IPv6 literal falls
-  // through to loopback-equivalent today, which means a non-loopback IPv6 bind
-  // runs with NO CIDR enforcement. Pinned as the BEFORE state so the diff that
-  // closes it is visible and deliberate.
-  it('currently treats every IPv6 literal as loopback-equivalent (the gap)', () => {
+  // This assertion CHANGED with decide-tailnet-ipv6-policy, by design. It was
+  // written to pin the pre-change gap — every IPv6 literal, including :: and a
+  // tailnet ULA, fell through to loopback-equivalent and ran with no CIDR
+  // enforcement — precisely so that closing the gap would show up as a diff
+  // here rather than passing unnoticed. The BEFORE state is preserved in git
+  // history and in the commit that introduced it; ipv6Bind.test.ts now owns the
+  // AFTER state in full.
+  it('no longer treats every IPv6 literal as loopback-equivalent', () => {
     expect(classifyExplicitBind('::1').bindMode).toBe('loopback')
-    expect(classifyExplicitBind('::').bindMode).toBe('loopback')
-    expect(classifyExplicitBind('fd7a:115c:a1e0::1').bindMode).toBe('loopback')
+    expect(classifyExplicitBind('::').bindMode).toBe('0.0.0.0')
+    expect(classifyExplicitBind('fd7a:115c:a1e0::1').bindMode).not.toBe('loopback')
   })
 })
 

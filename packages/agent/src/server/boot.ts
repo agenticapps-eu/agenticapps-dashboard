@@ -191,7 +191,7 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
     () => {
       // Print zero-bind warning before main banner (D-20)
       if (opts.bindMode === '0.0.0.0') {
-        process.stdout.write(renderZeroBindWarning(opts.enforceCIDR ?? true))
+        process.stdout.write(renderZeroBindWarning(opts.enforceCIDR ?? true, opts.host))
       }
 
       process.stdout.write(
