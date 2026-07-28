@@ -16,3 +16,4 @@ compensating controls. The scaffolder ships that template at
 | ADR | Title | Status |
 |---|---|---|
 | [0001](0001-coverage-v2-history-compatibility.md) | Coverage v2 history compatibility | Accepted |
+| [0002](0002-tailnet-ipv6-policy.md) | Keep the tailnet boundary IPv4-only | Accepted |

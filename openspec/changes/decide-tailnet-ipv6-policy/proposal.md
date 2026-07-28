@@ -8,9 +8,10 @@ strips an IPv6-mapped IPv4 prefix, requires a strict dotted quad, and rejects
 everything else.
 
 Tailscale assigns each node **both** a CGNAT IPv4 address and an IPv6 ULA from
-`fd7a:115c:a1e0::/48`. A peer that reaches the daemon over its IPv6 address is
-therefore refused with a CIDR violation, on a tailnet, from a legitimately paired
-device.
+`fd7a:115c:a1e0::/48`. A direct IPv6 connection is unsupported because the
+daemon binds an IPv4 address. The admission helper also refuses a raw IPv6
+address if one is presented to it. In either case, a legitimately paired
+IPv6-only device cannot connect.
 
 **The code is not wrong.** It matches the spec, which names an IPv4 range and is
 silent on IPv6. The gap is in the specification: it never says whether the tailnet
@@ -24,19 +25,35 @@ Found during the OpenSpec plan review of
 
 ## What changes
 
-**The accepted address set is unchanged.** Exactly the same clients are admitted
-and refused as today.
+**The CIDR admission function's accepted address set is unchanged.** It
+continues to accept only `100.64.0.0/10` in dotted or IPv6-mapped IPv4 form.
 
-There is one behaviour change, and it is daemon-side: refusals become
-**classified** in the daemon's own diagnostics as either *address family* or
-*outside range*. Today a single undifferentiated violation is emitted, so an
-operator debugging a second device that will not connect cannot tell an IPv6 peer
-from an off-tailnet one. That classification never leaves the daemon — not to the
-rejected client, and not to an authenticated caller either, so no one can probe
-which rule refused a request.
+There are three daemon-side behaviour changes:
 
-An earlier draft of this proposal claimed "no behaviour change is proposed" while
-mandating those diagnostics. Two reviewers caught the contradiction.
+1. Admission refusals become **classified** in the daemon's own diagnostics as
+   `unsupported-family`, `outside-range`, or `address-unavailable`. Today a
+   single undifferentiated violation is emitted, so middleware failures cannot
+   be separated from malformed socket state.
+2. `--bind tailscale` distinguishes a missing/unavailable Tailscale installation
+   from a Tailscale node that is running without a CGNAT IPv4 address. Today
+   those setup failures collapse to the same message.
+3. Explicit IPv6 literals receive deliberate bind classification instead of
+   falling through the CLI's loopback-equivalent branch. `::1` is loopback.
+   Dual-stack wildcard `::` is all-interfaces: it warns, enables CIDR by default,
+   admits mapped CGNAT IPv4, and refuses raw IPv6 as `unsupported-family`. A
+   specific non-loopback IPv6 literal cannot carry the admitted IPv4 path, so it
+   fails before startup while enforcement is enabled; the existing explicit
+   `--no-enforce-cidr` opt-out permits that bind.
+
+The classification never leaves the daemon — not to the rejected client, and
+not to an authenticated caller either, so no one can probe which rule refused a
+request. The existing `requestId` installed before CIDR middleware is the
+correlation identifier used for the diagnostic; this change does not introduce
+a new correlation mechanism.
+
+Explicit IPv4 and IPv6 literals remain valid `--bind` inputs. The new bind
+classification closes an enforcement-selection gap; it does not add any address
+to the CIDR admission set.
 
 ## Capabilities
 
@@ -46,8 +63,6 @@ mandating those diagnostics. Two reviewers caught the contradiction.
 ## Why not simply widen the range — and what that costs
 
 Widening a security boundary is not a free default, so the narrow policy stays.
-But the honest version of this argument is weaker than the first draft's, and a
-reviewer was right to press on it.
 
 **Tailscale supports disabling IPv4 per node or tailnet-wide.** An IPv6-only peer
 is therefore a *supported upstream configuration*, not an exotic edge case. This
@@ -55,9 +70,9 @@ change consequently declares a supported Tailscale configuration **unsupported b
 this daemon**. That is a real limitation and is stated here rather than left to be
 discovered by whoever hits it.
 
-**The workaround, for anyone who does:** leave IPv4 enabled for the node running
-the dashboard client. The daemon accepts that node's CGNAT address, and no other
-setting has to change.
+**The workaround, for anyone who does:** leave IPv4 enabled both for the daemon
+node and the node running the dashboard client. `--bind tailscale` requires the
+daemon node's CGNAT address, and the client connects to that IPv4 address.
 
 The narrow policy is kept anyway because making it explicit is cheap and
 reversible, while widening is neither. Widening means accepting a second address
@@ -69,12 +84,19 @@ workaround above is what carries the gap until then.
 
 ## What this change explicitly does not do
 
-- **It does not change who can reach the daemon.** The accepted set is exactly
-  what it is today.
+- **It does not widen who the CIDR admission function accepts.** The accepted
+  set remains exactly `100.64.0.0/10` in dotted or IPv6-mapped IPv4 form.
 - **It does not relax CIDR enforcement**, and does not touch the opt-out flag or
   its default.
 - **It does not read `X-Forwarded-For`.** The client address continues to come
   from the raw socket; the anti-spoofing property is untouched.
+- **It does not add a generic overlay-network bind mode.** `--bind tailscale`
+  implements Tailscale's IPv4 CGNAT boundary. Other overlays and address ranges
+  require their own explicit bind policy.
+- **It does not remove explicit IPv4 or IPv6 bind inputs.** A specific
+  non-loopback IPv6 bind now requires the existing explicit CIDR opt-out because
+  it cannot carry the admitted IPv4 path. Dual-stack wildcard `::` remains
+  usable with enforcement.
 - **It does not move the requirement between capabilities.** CIDR enforcement
   belongs to `daemon-runtime`, and this change keeps it there — as a modification
   of the existing bind-mode requirement rather than a parallel one, so two
@@ -85,13 +107,20 @@ workaround above is what carries the gap until then.
 
 ## Resolved: the IPv6 prefix is fixed, not per-tailnet
 
-An earlier draft left open whether Tailscale's IPv6 prefix varies per tailnet. A
-reviewer closed it against first-party documentation: `fd7a:115c:a1e0::/48` is a
-**reserved prefix**, the same for every tailnet, not a per-tailnet value that
-would have to be discovered.
+Tailscale's `fd7a:115c:a1e0::/48` is a **reserved prefix**, the same for every
+tailnet, not a per-tailnet value that would have to be discovered.
 
 That makes a future widening simpler than assumed — a constant prefix, matched
 the same way the IPv4 range is. It also corrects a figure in the first draft:
 adding a `/48` does not "double" the accepted space, it adds an address family
 vastly larger than the IPv4 range. The argument against widening does not rest on
 that figure, but the figure was wrong and is not left standing.
+
+## Resolved: enforcement follows bind configuration
+
+"Non-loopback" names the daemon's configured bind mode, not a property inferred
+from each incoming address. For explicit IP literals, only `127.0.0.1` and
+`::1` are loopback. `tailscale`, `0.0.0.0`, `::`, and every other non-loopback
+literal select enforcement by default unless the operator passes the explicit
+opt-out flag. `::` can serve mapped IPv4 peers through that boundary; a specific
+non-loopback IPv6 literal fails fast while enforcement is selected.
