@@ -5,18 +5,18 @@ this change is not blocked by the adapter extraction.
 
 ## 1. Wire shape · AGE-471
 
-- [ ] `packages/shared/src/schemas/board.ts` in the dashboard's internal shared schema package, with strict runtime record schemas temporarily mirroring the upstream data model exactly (TDD)
-- [ ] `.strict()` like every other schema — drift becomes a parse error
-- [ ] Do **not** rename any identifier; the upstream model is frozen by explicit instruction
-- [ ] Encode exact `Host`, `TaskStatus`, `Session`, and `Task` fields, including `Host = claude | codex | opencode | pi` and required `Session.updatedAt`; all timestamps are epoch milliseconds
-- [ ] Add the strict response envelope with one state entry for each of the four hosts, safe-integer omission/window counts, `truncated`, and a required dashboard-owned `reason` on unreadable entries only, plus sessions and tasks
-- [ ] Validate composite identity and task-to-session referential integrity; exclude all duplicate-identity participants and unresolved/dependent tasks while counting each omission
-- [ ] Test: every schema is strict and missing required `Session.updatedAt` fails record parsing
-- [ ] Test: the host-entry union requires an allowed reason for `unreadable` and rejects a reason on `present` or `absent`
-- [ ] Test: equal session/task ids on different hosts remain distinct
-- [ ] Test: every participant in a duplicate composite identity is excluded and counted
-- [ ] Test: unresolved tasks and tasks dependent on an excluded session are excluded and counted
-- [ ] Re-export from the shared barrel
+- [x] `packages/shared/src/schemas/board.ts` in the dashboard's internal shared schema package, with strict runtime record schemas temporarily mirroring the upstream data model exactly (TDD) — evidence: `c271aa3`, `86f3a81`, `dc9e302`
+- [x] `.strict()` like every other schema — drift becomes a parse error — evidence: `packages/shared/src/schemas/board.test.ts`
+- [x] Do **not** rename any identifier; the upstream model is frozen by explicit instruction — evidence: declaration and implementation both export the upstream names
+- [x] Encode exact `Host`, `TaskStatus`, `Session`, and `Task` fields, including `Host = claude | codex | opencode | pi` and required `Session.updatedAt`; all timestamps are epoch milliseconds — evidence: shared typecheck and 407 passing tests
+- [x] Add the strict response envelope with one state entry for each of the four hosts, safe-integer omission/window counts, `truncated`, and a required dashboard-owned `reason` on unreadable entries only, plus sessions and tasks — evidence: `BoardResponseSchema` contract tests
+- [x] Validate composite identity and task-to-session referential integrity; exclude all duplicate-identity participants and unresolved/dependent tasks while counting each omission — evidence: `assembleBoardResponse` contract tests
+- [x] Test: every schema is strict and missing required `Session.updatedAt` fails record parsing — evidence: RED `86f3a81`, GREEN `dc9e302`
+- [x] Test: the host-entry union requires an allowed reason for `unreadable` and rejects a reason on `present` or `absent` — evidence: RED `86f3a81`, GREEN `dc9e302`
+- [x] Test: equal session/task ids on different hosts remain distinct — evidence: RED `86f3a81`, GREEN `dc9e302`
+- [x] Test: every participant in a duplicate composite identity is excluded and counted — evidence: RED `86f3a81`, GREEN `dc9e302`
+- [x] Test: unresolved tasks and tasks dependent on an excluded session are excluded and counted — evidence: RED `86f3a81`, GREEN `dc9e302`
+- [x] Re-export from the shared barrel — evidence: `packages/shared/src/index.ts` in `dc9e302`
 
 ## 2. Endpoint, stage 1 — fixture data · AGE-471
 
