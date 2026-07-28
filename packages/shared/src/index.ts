@@ -234,6 +234,28 @@ export type {
   WorkflowHarnessResult,
 } from './schemas/workflow.js'
 
+export {
+  HostSchema,
+  TaskStatusSchema,
+  SessionSchema,
+  TaskSchema,
+  BoardHostEntrySchema,
+  BoardResponseSchema,
+  assembleBoardResponse,
+} from './schemas/board.js'
+export type {
+  Host,
+  TaskStatus,
+  Session,
+  Task,
+  BoardHostState,
+  BoardUnreadableReason,
+  BoardHostEntry,
+  BoardResponse,
+  BoardHostSnapshotInput,
+  BoardAssemblyInput,
+} from './schemas/board.js'
+
 // Phase 13 — gitnexus scoped scan actions (D-13-01..11)
 export {
   GitnexusScanErrorCodeSchema,

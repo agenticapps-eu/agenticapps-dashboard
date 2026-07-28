@@ -15,7 +15,7 @@ import {
   type Host,
   type Session,
   type Task,
-} from './board.declare.js'
+} from './board.js'
 
 const HOSTS: Host[] = ['claude', 'codex', 'opencode', 'pi']
 
