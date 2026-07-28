@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { WorkflowResponse } from '@agenticapps/dashboard-shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -208,6 +208,39 @@ describe('WorkflowPage', () => {
 
     expect(screen.getByText('1 unknown')).toBeTruthy()
     expect(screen.getByText('agentic-apps-workflow · implements spec missing')).toBeTruthy()
+  })
+
+  it('shows laggards and unknown skills together', () => {
+    const fixture = data()
+    fixture.hosts[0].unknowns = [
+      {
+        id: 'injection-guard',
+        name: 'injection-guard',
+        state: 'unknown',
+        version: null,
+        reason: 'implements-spec-missing',
+      },
+    ]
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: fixture,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+
+    const matrix = screen.getByRole('region', {
+      name: 'Workflow spec conformance matrix',
+    })
+    const row = within(matrix).getByText('claude-workflow').closest('tr')
+    expect(row).not.toBeNull()
+    const hostRow = within(row as HTMLTableRowElement)
+    expect(hostRow.getByText('1 unknown')).toBeTruthy()
+    expect(hostRow.getByText('injection-guard · implements spec missing')).toBeTruthy()
+    expect(hostRow.getByText('1 laggard')).toBeTruthy()
+    expect(hostRow.getByText('observability · 0.4.0')).toBeTruthy()
   })
 
   it('shows machine byte identity and missing global skills', () => {

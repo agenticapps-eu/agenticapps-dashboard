@@ -62,10 +62,11 @@ names both.
 The exception is bounded, and every bound is a requirement rather than a note:
 canonical-path resolution under a fixed daemon-side root list with re-validation
 at spawn time, a fixed internal command table so no request value reaches an
-argument vector, a scratch working directory, its own process group with
-group-wide termination, CPU/memory/output bounds, bounded concurrency, and no
-execution on render. If those bounds cannot be held, the correct outcome is to
-drop the harness block, not to loosen them.
+argument vector, a fresh private scratch working directory, its own process group
+with group-wide termination, memory/output/disk bounds, bounded concurrency, and
+no execution on render. A harness must also be byte-identical to its core
+reference before it can run. If those bounds cannot be held, the correct outcome
+is to drop the harness block, not to loosen them.
 
 **What the daemon does not promise.** An earlier draft asserted that every
 registered project's working tree stays byte-identical across a harness run.
@@ -82,6 +83,13 @@ the harness requirement directly. Specifying the general limiter is separate wor
 `~/.agenticapps/bin` is added as a named allowed root for the scanner. It is
 read-only and it is the path that decides what the agents actually execute, which
 is why the surface exists.
+
+The durable security text and `openspec/config.yaml` are updated together: the
+registry route remains the ordinary mutation surface, while the explicitly
+requested harness may write only its private daemon-owned result/scratch tree.
+The fixed workflow repo names resolve beneath configured source-family roots;
+configuration can relocate a family but cannot add a sixth repo or supply a
+harness path.
 
 ## What this change explicitly does not do
 
@@ -109,3 +117,28 @@ that, and they were right — it was a known defect wearing an open question's
 clothing, and it contradicted this change's own rejection of age-only caching.
 Resolved: the cache key covers the artefact under test **and** the harness script,
 and either changing discards the result.
+
+## Review findings resolved in the planning artifacts
+
+- The fleet is a fixed daemon-side set:
+  `agenticapps-workflow-core`, `claude-workflow`, `codex-workflow`,
+  `opencode-workflow`, and `pi-agentic-apps-workflow`. Requests cannot add a
+  sixth root or change an artifact mapping.
+- Intentional divergence remains visible. An upstream ADR may explain it, but an
+  explanation does not make older bytes or versions conformant to current core.
+- Expected skills come from each host repository's tracked skill set. Missing,
+  duplicate, malformed, and non-semver declarations are explicit unknown or
+  missing results, never silently skipped.
+- Per-host machine-global skill directories join `~/.agenticapps/bin` as named
+  read-only roots. The obsolete `~/.gitnexus` scanner root is removed in the
+  same deployed cutover as `remove-gitnexus-integration`.
+- The harness endpoint inherits bearer authentication and the origin lock. Its
+  fixed commands run with exact time, memory, output, and concurrency bounds;
+  cached output and scanner responses expose symbolic identifiers rather than
+  absolute paths or captured credentials.
+- The cache fingerprint includes the tested artifact, harness, core reference,
+  and runner contract version. A completed failing result is cached; a timeout
+  or bounded-out run is not.
+- Vendor provenance is presence-and-syntax reporting in this change. Resolving
+  arbitrary historical commits would require a new git-read capability and is
+  deliberately not claimed.

@@ -203,33 +203,38 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                     <span className="ml-2 text-xs text-status-error">
                       Missing repository
                     </span>
-                  ) : host.unknowns.length > 0 ? (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                        {host.unknowns.length} unknown
-                      </summary>
-                      <ul className="mt-2 space-y-1 text-xs text-text-tertiary">
-                        {host.unknowns.map((skill) => (
-                          <li key={skill.id}>
-                            {skill.name} ·{' '}
-                            {reasonLabel(skill.reason ?? 'unknown')}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ) : host.laggards.length > 0 ? (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                        {host.laggards.length} {host.laggards.length === 1 ? 'laggard' : 'laggards'}
-                      </summary>
-                      <ul className="mt-2 space-y-1 text-xs text-text-tertiary">
-                        {host.laggards.map((laggard) => (
-                          <li key={laggard.id}>
-                            {laggard.name} · {laggard.version}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                  ) : host.unknowns.length > 0 || host.laggards.length > 0 ? (
+                    <>
+                      {host.unknowns.length > 0 ? (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                            {host.unknowns.length} unknown
+                          </summary>
+                          <ul className="mt-2 space-y-1 text-xs text-text-tertiary">
+                            {host.unknowns.map((skill) => (
+                              <li key={skill.id}>
+                                {skill.name} ·{' '}
+                                {reasonLabel(skill.reason ?? 'unknown')}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+                      {host.laggards.length > 0 ? (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs font-medium text-status-warning focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                            {host.laggards.length} {host.laggards.length === 1 ? 'laggard' : 'laggards'}
+                          </summary>
+                          <ul className="mt-2 space-y-1 text-xs text-text-tertiary">
+                            {host.laggards.map((laggard) => (
+                              <li key={laggard.id}>
+                                {laggard.name} · {laggard.version}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+                    </>
                   ) : host.internallyConsistent ? (
                     <span className="ml-2 text-xs text-status-success">
                       Aligned

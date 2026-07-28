@@ -67,7 +67,10 @@ behaves correctly", and byte identity alone cannot tell you the gate works.
 
 **Chosen: on-demand, bounded, with an aged cache.** The bounds are requirements,
 not implementation notes, because they are the entire justification for the
-exception.
+exception. The daemon executes only a harness whose bytes match the core
+reference; a divergent harness is a finding, not trusted test code. Each run gets
+a fresh private scratch child with a disk cap and unconditional cleanup, while
+the result cache is the only retained daemon state.
 
 **Why age alone is not enough for cache invalidation.** A harness result from
 three days ago against a gate that was re-vendored yesterday is worse than no
@@ -92,3 +95,33 @@ Shared artefacts are currently all green. The page should look unremarkable when
 that is true. Its value is that a glance is *possible*, not that it congratulates
 anyone — an instrument panel, not a scoreboard. This is a design constraint
 rather than a product guarantee, so it is recorded here and not as a requirement.
+
+## 8. Intentional divergence is annotated, not suppressed
+
+**Rejected: an allow-list that turns approved drift green.** Conformance answers
+whether a host matches current core. An ADR may make an older or patched copy a
+sound local choice, but it does not change that comparison. The surface may link
+the explanation; it still reports the measured divergence.
+
+## 9. Cache identity includes the test contract
+
+The checked artifact and harness are necessary but not sufficient when the core
+reference or runner contract changes independently. The cache fingerprint
+therefore covers four inputs: tested artifact bytes, harness bytes, core
+reference bytes, and a runner-contract version covering the fixed environment
+and bounds. A change to any input invalidates the result.
+
+## 10. Provenance presence is not historical verification
+
+This change reports whether a host recorded a syntactically valid core commit.
+It does not resolve arbitrary historical objects or compare bytes at that
+commit, because doing so would require widening the bounded git capability. The
+current-copy byte comparison remains independent and authoritative for content.
+
+## 11. The write exception is explicit
+
+The harness route may mutate only `~/.agenticapps/dashboard/workflow-harness/`.
+Result files inherit the daemon's private mode discipline; scratch children are
+fresh, bounded, and removed. `openspec/config.yaml` and the filesystem capability
+name the same exception so the architectural constraint and durable spec cannot
+disagree.
