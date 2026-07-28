@@ -8,7 +8,7 @@ import {
 import { ensureViewerSecretFile } from '../lib/viewerToken.js'
 import { ensureRegistryFile } from '../lib/registry.js'
 import { assertNoStaleDaemon, StaleDaemonError } from '../lib/pidfile.js'
-import { createApp } from '../server/app.js'
+import { createApp, type BindMode } from '../server/app.js'
 import { bootDaemon } from '../server/boot.js'
 import { getTailscaleIP, getTailscaleHostname, TailscaleNotDetectedError } from '../lib/tailscale.js'
 import { agentError } from '../lib/logging.js'
@@ -27,6 +27,34 @@ export interface StartOpts {
 /** Returns true for a dotted-quad IPv4 string */
 function isIPv4(s: string): boolean {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(s)
+}
+
+/**
+ * Classify an explicit `--bind` literal into a host + bind mode.
+ *
+ * Extracted verbatim from runStart so the enforcement-selection rule is
+ * reachable as a unit and can be pinned by characterisation tests before
+ * `decide-tailnet-ipv6-policy` changes it. Behaviour is unchanged by the
+ * extraction itself.
+ *
+ * Note the `else` branch: today an unrecognised literal — which includes every
+ * IPv6 literal — is treated as loopback-equivalent and therefore runs with NO
+ * CIDR enforcement. That is the enforcement-selection gap the change closes.
+ */
+export function classifyExplicitBind(bind: string): { host: string; bindMode: BindMode } {
+  if (bind === '0.0.0.0') return { host: '0.0.0.0', bindMode: '0.0.0.0' }
+  if (isIPv4(bind)) {
+    return { host: bind, bindMode: bind === '127.0.0.1' ? 'loopback' : 'tailscale' }
+  }
+  return { host: bind, bindMode: 'loopback' }
+}
+
+/**
+ * D-18: CIDR enforcement is ON by default for non-loopback binds; the operator
+ * opts out explicitly with --no-enforce-cidr.
+ */
+export function shouldEnforceCidr(bindMode: BindMode, enforceCidrFlag: boolean): boolean {
+  return bindMode !== 'loopback' && enforceCidrFlag !== false
 }
 
 export async function runStart(opts: StartOpts): Promise<void> {
@@ -79,7 +107,7 @@ export async function runStart(opts: StartOpts): Promise<void> {
   const port = Number.parseInt(opts.port, 10) || DEFAULT_PORT
   let host: string = DEFAULT_HOST
   let pairHostname: string
-  let bindMode: 'loopback' | 'tailscale' | '0.0.0.0' = 'loopback'
+  let bindMode: BindMode = 'loopback'
 
   if (opts.bind === 'tailscale') {
     // D-17: resolve Tailscale IP; refuse with exact remediation message if absent
@@ -97,25 +125,14 @@ export async function runStart(opts: StartOpts): Promise<void> {
       }
       throw e
     }
-  } else if (opts.bind === '0.0.0.0') {
-    // D-20: yellow warning banner BEFORE the daemon banner (printed in bootDaemon via bindMode)
-    host = '0.0.0.0'
-    pairHostname = `0.0.0.0:${port}`
-    bindMode = '0.0.0.0'
-  } else if (isIPv4(opts.bind)) {
-    // Explicit IPv4: treat as loopback for 127.0.0.1, tailscale-class for anything else
-    host = opts.bind
-    pairHostname = `${host}:${port}`
-    bindMode = host === '127.0.0.1' ? 'loopback' : 'tailscale'
   } else {
-    // Unknown string — treat as loopback-equivalent
-    host = opts.bind
+    const plan = classifyExplicitBind(opts.bind)
+    host = plan.host
     pairHostname = `${host}:${port}`
-    bindMode = 'loopback'
+    bindMode = plan.bindMode
   }
 
-  // D-18: CIDR enforcement ON by default for non-loopback binds; opt-out via --no-enforce-cidr
-  const enforceCIDR = bindMode !== 'loopback' && opts.enforceCidr !== false
+  const enforceCIDR = shouldEnforceCidr(bindMode, opts.enforceCidr)
 
   const app = createApp({ enforceCIDR, bindMode })
   await bootDaemon({
