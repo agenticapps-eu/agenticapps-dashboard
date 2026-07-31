@@ -13,22 +13,35 @@ ticked. Verify the dependency is archived as the last step before folding.
 
 ## 1. Shared vocabulary (do first — everything binds to it) · AGE-456
 
-- [ ] `packages/shared/src/schemas/readiness.ts`: `CheckId` as an exported const array of the six ids in fixed order (TDD)
-- [ ] `CheckStatus` with the six values; strict `CheckResult` with required nullable `at`, `value`, `threshold`, `evidence`, and `error`
-- [ ] `RepoSummary` with stable identity, boolean `ready`, six checks, UTC committer time, and notice; `RepoDetail` adds a non-empty remedy per check
-- [ ] Strict `ReadinessFileSchema`, `schemaVersion: 1`: bounded declarations, coverage path/threshold, production include/ignore paths
-- [ ] Require RFC 3339 `observedAt`, evidence path, and full commit SHA for declared review/pen-test results; pen tests also require `validUntil`
+- [x] `packages/shared/src/schemas/readiness.ts`: `CheckId` as an exported const array of the six ids in fixed order (TDD)
+- [x] `CheckStatus` with the six values; strict `CheckResult` with required nullable `at`, `value`, `threshold`, `evidence`, and `error`
+- [x] `RepoSummary` with stable identity, boolean `ready`, six checks, UTC committer time, and notice; `RepoDetail` adds a non-empty remedy per check
+- [x] Strict `ReadinessFileSchema`, `schemaVersion: 1`: bounded declarations, coverage path/threshold, production include/ignore paths
+- [x] Require RFC 3339 `observedAt`, evidence path, and full commit SHA for declared review/pen-test results; pen tests also require `validUntil`
 - [ ] Restrict declared pen-test status to `ok`, `warn`, or `fail`; derive `stale` from expiration, reserve `never` for absence, and reject declared `na`
 - [ ] Validate every configured/evidence path as bounded, repo-relative, canonical, and symlink-contained
 - [ ] Reuse the daemon's shared bounded project-read primitive for tier-B/evidence reads; adversarial tests cover traversal, escaping symlinks, and a symlink changed before open
-- [ ] Every nested object `.strict()`, matching the existing schemas
-- [ ] Test: `checks` always has length 6 in fixed order; a fully-underivable repo yields six `never`
-- [ ] Test: `source` is required on every result
-- [ ] Test: `ReadinessFileSchema` discards an unknown `id` rather than throwing — the one deliberate exception to `.strict()`, commented as such
-- [ ] Test: unknown top-level and recognised-entry fields invalidate the whole readiness file
-- [ ] Test: any malformed known entry invalidates the whole file; null evidence/time serialises for `never`, `na`, and evaluation errors
-- [ ] Test: readiness is false for error/`fail`/`stale`/`never` and for all-`na`, true with at least one `ok`/`warn` and only `na` otherwise, and never produces a score
-- [ ] Re-export from `packages/shared/src/index.ts`
+- [x] Every nested object `.strict()`, matching the existing schemas
+- [x] Test: `checks` always has length 6 in fixed order; a fully-underivable repo yields six `never`
+- [x] Test: `source` is required on every result
+- [x] Test: `ReadinessFileSchema` discards an unknown `id` rather than throwing — the one deliberate exception to `.strict()`, commented as such
+- [x] Test: unknown top-level and recognised-entry fields invalidate the whole readiness file
+- [x] Test: any malformed known entry invalidates the whole file; null evidence/time serialises for `never`, `na`, and evaluation errors
+- [x] Test: readiness is false for error/`fail`/`stale`/`never` and for all-`na`, true with at least one `ok`/`warn` and only `na` otherwise, and never produces a score
+- [x] Re-export from `packages/shared/src/index.ts`
+
+Three of the sixteen stay open because their remaining half is a filesystem
+property no schema can hold, not because they were skipped:
+
+- **Declared pen-test** — the schema restriction (`ok`/`warn`/`fail` only, `na`
+  rejected) ships; deriving `stale` from `validUntil` is the reader's, and is
+  tracked in section 6.
+- **Path validation** — `RepoRelativePathSchema` enforces bounded,
+  repo-relative and canonical by shape (absolute, `~`, drive letter, backslash,
+  `.`/`..`/empty segment, control character, 512-byte bound). Symlink
+  containment resolves at open time, so it ticks with the task below it.
+- **Bounded project-read primitive** — nothing in this change reads a file yet;
+  the reuse and its adversarial tests land with the tier-B reader in section 6.
 
 ## 2. Tier-A derivers: review checks and `stale` · AGE-459
 
