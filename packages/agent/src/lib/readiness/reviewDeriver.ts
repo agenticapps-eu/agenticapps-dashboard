@@ -10,10 +10,9 @@
  */
 import { readFile, stat } from 'node:fs/promises'
 
-import type { CheckStatus } from '@agenticapps/dashboard-shared'
-
 import { resolveAllowed } from '../paths.js'
 
+import { clampSummary, type DerivedCheck } from './derivedCheck.js'
 import {
   commitTimesFor,
   isAncestor,
@@ -24,15 +23,6 @@ import {
 import { isProductionPath, toPathspecs, type ProductionScope } from './productionScope.js'
 
 export type ReviewCheckId = 'code-review' | 'security-review'
-
-export interface DerivedCheck {
-  status: CheckStatus
-  /** Epoch milliseconds, or null where there is nothing observed to timestamp. */
-  at: number | null
-  summary: string
-  evidence: { path: string; commit: string | null } | null
-  error: { code: string; message: string } | null
-}
 
 export interface DeriveReviewOptions {
   root: string
@@ -62,8 +52,6 @@ const LAYOUTS: Record<ReviewCheckId, { openspec: RegExp; legacy: RegExp }> = {
 
 const EVIDENCE_DIRS = ['openspec/changes', '.planning/phases']
 const MAX_EVIDENCE_BYTES = 512 * 1024
-const MAX_SUMMARY = 600
-
 const PASSING_VERDICT = /^(pass|approve)/i
 const FAILING_VERDICT = /^(fail|reject|request[-_ ]?changes|blocked?)/i
 const OPEN_FINDING = /^\s*[-*]?\s*status\s*:\s*"?(open|blocking)\b/im
@@ -72,9 +60,6 @@ const LABEL: Record<ReviewCheckId, string> = {
   'code-review': 'code review',
   'security-review': 'security review',
 }
-
-const clamp = (text: string): string =>
-  text.length <= MAX_SUMMARY ? text : `${text.slice(0, MAX_SUMMARY - 1)}…`
 
 export async function deriveReview(opts: DeriveReviewOptions): Promise<DerivedCheck> {
   const { root, checkId, scope, facts, now } = opts
@@ -94,6 +79,8 @@ export async function deriveReview(opts: DeriveReviewOptions): Promise<DerivedCh
     return {
       status: 'never',
       at: null,
+      value: null,
+      threshold: null,
       summary: `No ${label} artifact exists in either the OpenSpec or the legacy layout.`,
       evidence: null,
       error: null,
@@ -113,7 +100,9 @@ export async function deriveReview(opts: DeriveReviewOptions): Promise<DerivedCh
     return {
       status: 'fail',
       at: commit?.at ?? now,
-      summary: clamp(`The ${label} at ${selected} reports ${verdict.reason}.`),
+      value: null,
+      threshold: null,
+      summary: clampSummary(`The ${label} at ${selected} reports ${verdict.reason}.`),
       evidence: { path: selected, commit: commit?.sha ?? null },
       error: null,
     }
@@ -141,7 +130,9 @@ async function freshness(input: FreshnessInput): Promise<DerivedCheck> {
   const stale = (reason: string): DerivedCheck => ({
     status: 'stale',
     at,
-    summary: clamp(`The passing ${label} at ${selected} no longer covers ${reason}.${scopeNote(scope)}`),
+    value: null,
+    threshold: null,
+    summary: clampSummary(`The passing ${label} at ${selected} no longer covers ${reason}.${scopeNote(scope)}`),
     evidence,
     error: null,
   })
@@ -158,7 +149,9 @@ async function freshness(input: FreshnessInput): Promise<DerivedCheck> {
     return {
       status: 'ok',
       at,
-      summary: clamp(
+      value: null,
+      threshold: null,
+      summary: clampSummary(
         `The uncommitted ${label} at ${selected} covers a clean production tree.${scopeNote(scope)}`,
       ),
       evidence,
@@ -174,7 +167,9 @@ async function freshness(input: FreshnessInput): Promise<DerivedCheck> {
   return {
     status: 'ok',
     at,
-    summary: clamp(
+    value: null,
+    threshold: null,
+    summary: clampSummary(
       `The ${label} at ${selected} passes and descends from the last production-code commit.${scopeNote(scope)}`,
     ),
     evidence,
@@ -331,7 +326,9 @@ function failure(
   return {
     status: 'fail',
     at: commit?.at ?? null,
-    summary: clamp(`This check could not be evaluated: ${message}.`),
+    value: null,
+    threshold: null,
+    summary: clampSummary(`This check could not be evaluated: ${message}.`),
     evidence: path ? { path, commit: commit?.sha ?? null } : null,
     error: { code, message },
   }
@@ -346,6 +343,8 @@ export function derivePenTest(): DerivedCheck {
   return {
     status: 'never',
     at: null,
+    value: null,
+    threshold: null,
     summary:
       'No penetration test has been reported. A result is reported through the repository readiness file.',
     evidence: null,
