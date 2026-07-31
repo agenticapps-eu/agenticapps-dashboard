@@ -320,8 +320,11 @@ no dirty or unignored-untracked production-code path; it is evaluated as
 working-tree evidence and has no ancestry comparison.
 
 By default, production code is every tracked or unignored-untracked path except
-`docs/**`, `.planning/**`, `openspec/**`, root-level `*.md`, and the configured
-coverage artifact. Gitignored paths do not enter the set. A repo MAY replace the
+`docs/**`, `.planning/**`, `openspec/**`, `.agenticapps/**`, root-level `*.md`,
+and the configured coverage artifact. `.agenticapps/**` is excluded for the same
+reason the coverage artifact is: it holds this feature's own declaration file,
+and a repo that reports its readiness would otherwise age every review it just
+declared. Gitignored paths do not enter the set. A repo MAY replace the
 included path set and extend the ignored set through the strict tier-B
 configuration; this is trusted author configuration and its effect is visible
 in the result summary. The response SHALL expose the effective include and
@@ -344,7 +347,7 @@ freshness.
 - **AND** the result distinguishes this from both `ok` and `fail`.
 
 #### Scenario: Documentation changes do not age a review
-- **WHEN** the only commits since the selected artifact touched documentation, planning, spec, ignored output, or the configured coverage artifact
+- **WHEN** the only commits since the selected artifact touched documentation, planning, spec, readiness declarations, ignored output, or the configured coverage artifact
 - **THEN** the check remains `ok`
 - **AND** the comparison uses the last commit touching production code rather than the repository head.
 

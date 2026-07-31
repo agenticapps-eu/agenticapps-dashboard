@@ -293,6 +293,25 @@ describe('assembleReadiness — degradation', () => {
     expect(result.ready).toBe(false)
   })
 
+  it('keeps the other five checks when a deriver throws outright', async () => {
+    put(join(repo, '.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md'), skill('3.2.0', '1.0.0'))
+    const exploding = {
+      get hostRepos(): never {
+        throw new Error('boom')
+      },
+      machineSkillRoots: {},
+    }
+
+    const result = await assembleReadiness(
+      options({ sources: exploding as unknown as AssembleReadinessOptions['sources'] }),
+    )
+    const workflow = byId(result.checks, 'workflow')
+    expect(workflow.status).toBe('fail')
+    expect(workflow.error?.code).toBeTruthy()
+    expect(result.checks).toHaveLength(6)
+    expect(result.checks.filter((check) => check.error === null)).not.toHaveLength(0)
+  })
+
   it('rejects a configured production scope that leaves no production path', async () => {
     write('packages/a.ts')
     commit(['packages/a.ts'], 'code', '2026-01-01T00:00:00Z')

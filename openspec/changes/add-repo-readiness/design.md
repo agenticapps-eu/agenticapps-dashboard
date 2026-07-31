@@ -70,11 +70,18 @@ must descend from the last commit touching production code. Dirty or untracked
 production-code changes also make committed review evidence stale.
 
 The default production-code set is every tracked or unignored-untracked
-repo-relative path except `docs/**`, `.planning/**`, `openspec/**`, root-level
-`*.md`, and the configured coverage artifact. Repos may
-replace the included paths and extend the ignored paths in
+repo-relative path except `docs/**`, `.planning/**`, `openspec/**`,
+`.agenticapps/**`, root-level `*.md`, and the configured coverage artifact. Repos
+may replace the included paths and extend the ignored paths in
 `.agenticapps/readiness.json`. This explicit boundary is part of the requirement,
 not an implementation detail.
+
+`.agenticapps/**` was added to that list during implementation, and the reason is
+worth recording: without it, writing `.agenticapps/readiness.json` is itself an
+unignored production change, so the act of declaring a review would make that
+same declared review stale on the next scan. The exclusion is the same one the
+coverage artifact already had — evidence must not age itself — and it was simply
+missed when the list was first written.
 
 `na` exists so that "not applicable" is sayable with a reason, instead of being
 smuggled in as `ok`.

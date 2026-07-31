@@ -18,9 +18,9 @@ ticked. Verify the dependency is archived as the last step before folding.
 - [x] `RepoSummary` with stable identity, boolean `ready`, six checks, UTC committer time, and notice; `RepoDetail` adds a non-empty remedy per check
 - [x] Strict `ReadinessFileSchema`, `schemaVersion: 1`: bounded declarations, coverage path/threshold, production include/ignore paths
 - [x] Require RFC 3339 `observedAt`, evidence path, and full commit SHA for declared review/pen-test results; pen tests also require `validUntil`
-- [ ] Restrict declared pen-test status to `ok`, `warn`, or `fail`; derive `stale` from expiration, reserve `never` for absence, and reject declared `na`
-- [ ] Validate every configured/evidence path as bounded, repo-relative, canonical, and symlink-contained
-- [ ] Reuse the daemon's shared bounded project-read primitive for tier-B/evidence reads; adversarial tests cover traversal, escaping symlinks, and a symlink changed before open
+- [x] Restrict declared pen-test status to `ok`, `warn`, or `fail`; derive `stale` from expiration, reserve `never` for absence, and reject declared `na`
+- [x] Validate every configured/evidence path as bounded, repo-relative, canonical, and symlink-contained
+- [x] Reuse the daemon's shared bounded project-read primitive for tier-B/evidence reads; adversarial tests cover traversal, escaping symlinks, and a symlink changed before open
 - [x] Every nested object `.strict()`, matching the existing schemas
 - [x] Test: `checks` always has length 6 in fixed order; a fully-underivable repo yields six `never`
 - [x] Test: `source` is required on every result
@@ -30,18 +30,13 @@ ticked. Verify the dependency is archived as the last step before folding.
 - [x] Test: readiness is false for error/`fail`/`stale`/`never` and for all-`na`, true with at least one `ok`/`warn` and only `na` otherwise, and never produces a score
 - [x] Re-export from `packages/shared/src/index.ts`
 
-Three of the sixteen stay open because their remaining half is a filesystem
-property no schema can hold, not because they were skipped:
-
-- **Declared pen-test** — the schema restriction (`ok`/`warn`/`fail` only, `na`
-  rejected) ships; deriving `stale` from `validUntil` is the reader's, and is
-  tracked in section 6.
-- **Path validation** — `RepoRelativePathSchema` enforces bounded,
-  repo-relative and canonical by shape (absolute, `~`, drive letter, backslash,
-  `.`/`..`/empty segment, control character, 512-byte bound). Symlink
-  containment resolves at open time, so it ticks with the task below it.
-- **Bounded project-read primitive** — nothing in this change reads a file yet;
-  the reuse and its adversarial tests land with the tier-B reader in section 6.
+All sixteen now hold. The three that stayed open through section 1 closed in
+sections 2, 5 and 6, where the reads they describe actually happen:
+`RepoRelativePathSchema` bounds every declared path by shape, every read of a
+declared or evidence path goes through the daemon's contained-read primitive
+(`resolveAllowed` for review evidence, `resolveAllowedNamed` for the coverage
+artifact and the readiness file), and an expired pen-test declaration ages to
+`stale` in the assembler.
 
 ## 2. Tier-A derivers: review checks and `stale` · AGE-459
 
@@ -49,19 +44,18 @@ property no schema can hold, not because they were skipped:
 - [x] Search OpenSpec and legacy layouts; OpenSpec match wins; archived changes count
 - [x] Parse passing/failed verdict and open-blocker metadata; artifact presence alone never passes
 - [x] Select the latest candidate by UTC committer time/path, then apply `stale` by commit ancestry; timestamps are display/selection metadata, never the freshness relation
-- [x] Default production-code set is tracked and unignored-untracked paths except docs/planning/OpenSpec/root markdown and the configured coverage artifact
+- [x] Default production-code set is tracked and unignored-untracked paths except docs/planning/OpenSpec/readiness-declaration/root markdown and the configured coverage artifact
 - [x] Relevant dirty or unignored-untracked production changes make evidence stale; uncommitted evidence is current only with no such production change
-- [ ] Return effective production include/ignore patterns as trusted declared context; reject a configured scope that becomes empty when the default scope finds production paths
+- [x] Return effective production include/ignore patterns as trusted declared context; reject a configured scope that becomes empty when the default scope finds production paths
 - [x] Fixture: no artifact → `never`
 - [x] Fixture: fresh artifact → `ok`
 - [x] Fixture: artifact older than last code commit → `stale`
 - [x] Fixture: artifact older than HEAD but newer than last *code* commit → stays `ok`
 - [ ] `pen-test`: no tier-A signal, always `never`, remedy text names no tool
 
-`scopeCollapses` and `derivePenTest` ship, but two lines stay open because the
-surface that consumes them does not exist yet: nothing reads
-`.agenticapps/readiness.json` to reject a collapsed scope (section 6), and no
-check carries remedy text until the detail surface defines it (section 10).
+The remedy line stays open until section 10 defines remedy text; the derived
+pen-test result itself ships, names no tool, and always reports `never`. The
+collapsed-scope rejection closed with the assembler in section 6.
 
 ## 3. Tier-A deriver: `workflow` · AGE-457
 
@@ -107,14 +101,14 @@ stays open rather than being ticked against a placeholder.
 
 ## 6. Tier-B reader and precedence · AGE-461
 
-- [ ] Read `<repo>/.agenticapps/readiness.json`, per-check precedence over tier A (TDD)
-- [ ] Absent file → no error, no notice
-- [ ] `schemaVersion` mismatch or unparsable JSON → ignore file entirely **and** raise a visible repo notice
-- [ ] Unknown `id` → discard that entry only
-- [ ] Declared results carry `source: 'declared'`
-- [ ] Malformed known entry or unsafe/oversized path → ignore the whole file and raise the visible notice
-- [ ] Review declarations age by ancestry/relevant dirty production paths; expired pen-test declaration → `stale`, retaining declared provenance
-- [ ] Integration test: repo declaring only `pen-test` yields five derived and one declared
+- [x] Read `<repo>/.agenticapps/readiness.json`, per-check precedence over tier A (TDD)
+- [x] Absent file → no error, no notice
+- [x] `schemaVersion` mismatch or unparsable JSON → ignore file entirely **and** raise a visible repo notice
+- [x] Unknown `id` → discard that entry only
+- [x] Declared results carry `source: 'declared'`
+- [x] Malformed known entry or unsafe/oversized path → ignore the whole file and raise the visible notice
+- [x] Review declarations age by ancestry/relevant dirty production paths; expired pen-test declaration → `stale`, retaining declared provenance
+- [x] Integration test: repo declaring only `pen-test` yields five derived and one declared
 
 ## 7. Daemon endpoints · AGE-462
 

@@ -81,6 +81,7 @@ describe('isProductionPath', () => {
     ['docs/spec/dashboard-prompt.md', false],
     ['docs/diagram.ts', false],
     ['.planning/phases/01/PLAN.md', false],
+    ['.agenticapps/readiness.json', false],
     ['openspec/specs/x/spec.md', false],
     [COVERAGE_PATH, false],
   ])('%s counts as production: %s', (path, expected) => {
@@ -154,6 +155,7 @@ describe('toPathspecs parity with isProductionPath', () => {
     'docs/spec/prompt.md',
     'docs/diagram.ts',
     '.planning/phases/01/PLAN.md',
+    '.agenticapps/readiness.json',
     'openspec/specs/x/spec.md',
     COVERAGE_PATH,
   ]

@@ -13,11 +13,15 @@
  * `*.md` is root-level only: `*` never crosses a separator, so a nested
  * `packages/spa/README.md` still counts as production. `openspec/**` covers the
  * spec slot; `docs/**` and `.planning/**` cover prose and frozen GSD history.
+ * `.agenticapps/**` holds the readiness declaration itself — without it, writing
+ * that file would age the very reviews it declares, which is the same reason the
+ * coverage artifact is excluded below.
  */
 export const DEFAULT_PRODUCTION_IGNORE = [
   'docs/**',
   '.planning/**',
   'openspec/**',
+  '.agenticapps/**',
   '*.md',
 ]
 
@@ -33,7 +37,7 @@ export interface ProductionScope {
 export interface ResolveProductionScopeOptions {
   /** Effective coverage artifact path; never ages evidence against itself. */
   coveragePath: string
-  configured?: { include?: string[]; ignore?: string[] }
+  configured?: { include?: string[] | undefined; ignore?: string[] | undefined }
 }
 
 export function resolveProductionScope(
