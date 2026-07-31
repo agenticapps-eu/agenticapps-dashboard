@@ -13,14 +13,9 @@ import { readFile, stat } from 'node:fs/promises'
 import { resolveAllowed } from '../paths.js'
 
 import { clampSummary, type DerivedCheck } from './derivedCheck.js'
-import {
-  commitTimesFor,
-  isAncestor,
-  lastCommitTouching,
-  type CommitStamp,
-  type GitFacts,
-} from './gitFacts.js'
-import { isProductionPath, toPathspecs, type ProductionScope } from './productionScope.js'
+import { stalenessReason } from './freshness.js'
+import { commitTimesFor, type CommitStamp, type GitFacts } from './gitFacts.js'
+import { type ProductionScope } from './productionScope.js'
 
 export type ReviewCheckId = 'code-review' | 'security-review'
 
@@ -125,7 +120,6 @@ async function freshness(input: FreshnessInput): Promise<DerivedCheck> {
   const { root, label, scope, facts, now, selected, commit } = input
   const evidence = { path: selected, commit: commit?.sha ?? null }
   const at = commit?.at ?? now
-  const dirty = facts.changed.filter((path) => isProductionPath(path, scope))
 
   const stale = (reason: string): DerivedCheck => ({
     status: 'stale',
@@ -137,11 +131,8 @@ async function freshness(input: FreshnessInput): Promise<DerivedCheck> {
     error: null,
   })
 
-  if (dirty.length > 0) {
-    return stale(
-      `${dirty.length} uncommitted production change${dirty.length === 1 ? '' : 's'}`,
-    )
-  }
+  const reason = await stalenessReason({ root, scope, facts, commit })
+  if (reason) return stale(reason)
 
   // An uncommitted artifact is working-tree evidence: there is no commit to run
   // an ancestry test against, and production code is clean, so it is current.
@@ -157,11 +148,6 @@ async function freshness(input: FreshnessInput): Promise<DerivedCheck> {
       evidence,
       error: null,
     }
-  }
-
-  const lastProduction = await lastCommitTouching(root, toPathspecs(scope))
-  if (lastProduction && !(await isAncestor(root, lastProduction.sha, commit.sha))) {
-    return stale('the last commit touching production code')
   }
 
   return {

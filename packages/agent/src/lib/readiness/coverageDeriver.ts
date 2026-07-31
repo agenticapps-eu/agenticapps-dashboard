@@ -16,13 +16,9 @@ import { basename, join } from 'node:path'
 import { resolveAllowedNamed } from '../paths.js'
 
 import { clampSummary, type DerivedCheck } from './derivedCheck.js'
-import {
-  isAncestor,
-  lastCommitTouching,
-  type CommitStamp,
-  type GitFacts,
-} from './gitFacts.js'
-import { isProductionPath, toPathspecs, type ProductionScope } from './productionScope.js'
+import { stalenessReason } from './freshness.js'
+import { lastCommitTouching, type GitFacts } from './gitFacts.js'
+import { type ProductionScope } from './productionScope.js'
 
 export const DEFAULT_COVERAGE_PATH = 'coverage/coverage-summary.json'
 export const DEFAULT_COVERAGE_THRESHOLD = 80
@@ -71,7 +67,7 @@ export async function deriveCoverage(opts: DeriveCoverageOptions): Promise<Deriv
   const at = commit?.at ?? now
   const pct = artifact.pct
 
-  const staleReason = await stalenessOf({ root, scope, facts, commit })
+  const staleReason = await stalenessReason({ root, scope, facts, commit })
   if (staleReason) {
     return {
       status: 'stale',
@@ -98,29 +94,6 @@ export async function deriveCoverage(opts: DeriveCoverageOptions): Promise<Deriv
     evidence,
     error: null,
   }
-}
-
-interface StalenessInput {
-  root: string
-  scope: ProductionScope
-  facts: GitFacts
-  commit: CommitStamp | null
-}
-
-async function stalenessOf(input: StalenessInput): Promise<string | null> {
-  const { root, scope, facts, commit } = input
-  const dirty = facts.changed.filter((path) => isProductionPath(path, scope))
-  if (dirty.length > 0) {
-    return `${dirty.length} uncommitted production change${dirty.length === 1 ? '' : 's'}`
-  }
-  // Uncommitted artifact, clean production tree: it describes what is here now.
-  if (!commit) return null
-
-  const lastProduction = await lastCommitTouching(root, toPathspecs(scope))
-  if (lastProduction && !(await isAncestor(root, lastProduction.sha, commit.sha))) {
-    return 'the last commit touching production code'
-  }
-  return null
 }
 
 type Artifact =
