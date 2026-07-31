@@ -22,7 +22,7 @@ export interface WorkflowSkillWire {
 
 export interface WorkflowArtifactWire {
   artifactId: WorkflowArtifactId
-  state: 'identical' | 'divergent' | 'missing' | 'unavailable'
+  state: 'identical' | 'divergent' | 'missing' | 'pinned' | 'unavailable'
   sha256: string | null
   referenceSha256: string | null
   marker: {
@@ -32,6 +32,11 @@ export interface WorkflowArtifactWire {
   provenance: {
     state: 'valid' | 'absent' | 'invalid'
     commit: string | null
+  }
+  pin: {
+    state: 'intact' | 'behind' | 'unlisted' | 'invalid' | 'not-declared'
+    commit: string | null
+    recordedSha256: string | null
   }
 }
 

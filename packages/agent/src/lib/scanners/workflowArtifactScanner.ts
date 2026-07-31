@@ -15,6 +15,7 @@ import type {
   WorkflowMachineRootId,
   WorkflowMachineRootOptions,
   WorkflowMachineRootResult,
+  WorkflowPin,
   WorkflowProvenance,
   WorkflowVersionMarker,
 } from './workflowArtifactScanner.declare.js'
@@ -133,6 +134,14 @@ interface ProvenanceManifest {
   state: 'valid' | 'absent' | 'invalid'
   commit: string | null
   coveredPaths: Set<string>
+  /**
+   * Entry key -> recorded digest. The keys are the host's publish targets, NOT
+   * paths in core: claude-workflow records `bin/openspec-change-gate.sh`, which
+   * core does not have (its copy is under reference-implementations/). Only the
+   * digest ties an entry to core, which is why pin verification keys on the
+   * artefact mapping and never on resolving these paths against core's tree.
+   */
+  digests: Map<string, string>
 }
 
 function readProvenanceManifest(
@@ -140,43 +149,76 @@ function readProvenanceManifest(
   relativePath: string | undefined,
   resolve: PathResolver,
 ): ProvenanceManifest {
-  if (!relativePath) {
-    return { state: 'absent', commit: null, coveredPaths: new Set() }
-  }
+  const empty = (state: ProvenanceManifest['state']): ProvenanceManifest => ({
+    state,
+    commit: null,
+    coveredPaths: new Set(),
+    digests: new Map(),
+  })
+
+  if (!relativePath) return empty('absent')
 
   const manifestPath = resolveFile(hostRepoRoot, relativePath, resolve)
-  if (!manifestPath) {
-    return { state: 'absent', commit: null, coveredPaths: new Set() }
-  }
+  if (!manifestPath) return empty('absent')
 
   let raw: string
   try {
     raw = readFileSync(manifestPath, 'utf8')
   } catch {
-    return { state: 'absent', commit: null, coveredPaths: new Set() }
+    return empty('absent')
   }
 
-  const commits = raw
-    .split(/\r?\n/)
+  const lines = raw.split(/\r?\n/)
+  const commits = lines
     .map((line) => line.match(/^core_commit=(\S+)\s*$/)?.[1])
     .filter((value): value is string => value !== undefined)
-  if (commits.length === 0) {
-    return { state: 'absent', commit: null, coveredPaths: new Set() }
-  }
+  if (commits.length === 0) return empty('absent')
   if (commits.length !== 1 || !/^[0-9a-fA-F]{40}$/.test(commits[0]!)) {
-    return { state: 'invalid', commit: null, coveredPaths: new Set() }
+    return empty('invalid')
   }
 
-  const coveredPaths = new Set(
-    raw
-      .split(/\r?\n/)
-      .map((line) => line.match(/^file=(\S+)\s+sha256=[0-9a-fA-F]{64}\s*$/)?.[1])
-      .filter((value): value is string => value !== undefined),
+  const digests = new Map<string, string>(
+    lines
+      .map((line) => line.match(/^file=(\S+)\s+sha256=([0-9a-fA-F]{64})\s*$/))
+      .filter((match): match is RegExpMatchArray => match !== null)
+      .map((match) => [match[1]!, match[2]!.toLowerCase()] as const),
   )
   return {
     state: 'valid',
     commit: commits[0]!,
-    coveredPaths,
+    coveredPaths: new Set(digests.keys()),
+    digests,
+  }
+}
+
+/**
+ * Pin integrity for one artefact.
+ *
+ * `referenceSha256` is core's CURRENT reference digest. A recorded digest that
+ * differs means the host is pinned to something other than that — reported as
+ * `behind`, never as a dishonest manifest, because distinguishing the two would
+ * require reading core at the pinned commit.
+ */
+function pinFor(
+  manifest: ProvenanceManifest,
+  hostRelativePath: string,
+  referenceSha256: string | null,
+): WorkflowPin {
+  if (manifest.state === 'absent') {
+    return { state: 'not-declared', commit: null, recordedSha256: null }
+  }
+  if (manifest.state === 'invalid') {
+    return { state: 'invalid', commit: null, recordedSha256: null }
+  }
+
+  const recordedSha256 = manifest.digests.get(hostRelativePath) ?? null
+  if (!recordedSha256) {
+    return { state: 'unlisted', commit: manifest.commit, recordedSha256: null }
+  }
+  return {
+    state: recordedSha256 === referenceSha256 ? 'intact' : 'behind',
+    commit: manifest.commit,
+    recordedSha256,
   }
 }
 
@@ -233,18 +275,29 @@ function compareArtifact(
   referencePath: string,
   resolve: PathResolver,
   provenance: WorkflowProvenance,
+  pin: WorkflowPin = { state: 'not-declared', commit: null, recordedSha256: null },
 ): WorkflowArtifactResult {
   const copy = readBytes(copyRoot, copyPath, resolve)
   const reference = coreRepoRoot
     ? readBytes(coreRepoRoot, referencePath, resolve)
     : null
+
+  // A declared pin only speaks for an artefact the host does NOT carry. When a
+  // copy is present the bytes are the observable fact and decide the state;
+  // when it is absent, a pin that names this artefact means the file is
+  // resolved at install time rather than missing.
+  const pinnedInPlaceOfCopy =
+    pin.state === 'intact' || pin.state === 'behind'
+
   const state: WorkflowArtifactResult['state'] = !coreRepoRoot || !reference
     ? 'unavailable'
-    : !copy
-      ? 'missing'
-      : copy.sha256 === reference.sha256
+    : copy
+      ? copy.sha256 === reference.sha256
         ? 'identical'
         : 'divergent'
+      : pinnedInPlaceOfCopy
+        ? 'pinned'
+        : 'missing'
 
   return {
     artifactId,
@@ -253,6 +306,7 @@ function compareArtifact(
     referenceSha256: reference?.sha256 ?? null,
     marker: markerFor(artifactId, copy?.bytes ?? null),
     provenance,
+    pin,
   }
 }
 
@@ -277,17 +331,19 @@ export function scanWorkflowHostArtifacts(
     resolve,
   )
   const artifacts: WorkflowArtifactResult[] = ARTIFACT_IDS.map((artifactId) => {
+    const hostPath = hostEntry.artifacts[artifactId]
+    const reference = coreRepoRoot
+      ? readBytes(coreRepoRoot, coreEntry.artifacts[artifactId], resolve)
+      : null
     return compareArtifact(
       artifactId,
       hostRepoRoot,
-      hostEntry.artifacts[artifactId],
+      hostPath,
       coreRepoRoot,
       coreEntry.artifacts[artifactId],
       resolve,
-      provenanceFor(
-        manifest,
-        hostEntry.artifacts[artifactId],
-      ),
+      provenanceFor(manifest, hostPath),
+      pinFor(manifest, hostPath, reference?.sha256 ?? null),
     )
   })
 

@@ -68,6 +68,9 @@ function stateTextClass(
     case 'identical':
     case 'valid':
     case 'present':
+    // A host that pins rather than vendors is conformant, not deficient. The
+    // file is absent from its tree by design and resolved at install time.
+    case 'pinned':
       return 'text-status-success'
     case 'behind':
     case 'ahead':
@@ -305,6 +308,16 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
                           <span className={`text-xs font-medium ${stateTextClass(artifact.state)}`}>
                             {capitalized(artifact.state)}
                           </span>
+                          {artifact.pin.state === 'behind' && (
+                            <span className="text-xs font-medium text-status-warning">
+                              Pinned behind core
+                            </span>
+                          )}
+                          {artifact.pin.state === 'unlisted' && (
+                            <span className="text-xs font-medium text-status-warning">
+                              Not in manifest
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <span className="text-text-tertiary">Unavailable</span>

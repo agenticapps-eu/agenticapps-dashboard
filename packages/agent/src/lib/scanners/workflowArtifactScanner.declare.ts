@@ -8,7 +8,33 @@ export type WorkflowArtifactState =
   | 'identical'
   | 'divergent'
   | 'missing'
+  | 'pinned'
   | 'unavailable'
+
+/**
+ * How a host distributes a shared artefact it does not vendor.
+ *
+ * - `intact`   the manifest's recorded digest equals core's CURRENT reference
+ * - `behind`   it does not — the host is pinned to something other than the
+ *              current reference. Deliberately not "wrong": a stale pin and a
+ *              dishonest one are indistinguishable without reading core at the
+ *              pinned commit, which needs git and is out of scope.
+ * - `unlisted` the manifest is valid but omits an artefact this host publishes
+ * - `invalid`  no `core_commit`, more than one, or not a full commit id
+ * - `not-declared` the host carries no manifest — it vendors, which is fine
+ */
+export type WorkflowPinState =
+  | 'intact'
+  | 'behind'
+  | 'unlisted'
+  | 'invalid'
+  | 'not-declared'
+
+export interface WorkflowPin {
+  state: WorkflowPinState
+  commit: string | null
+  recordedSha256: string | null
+}
 
 export type WorkflowMarkerState =
   | 'valid'
@@ -33,6 +59,7 @@ export interface WorkflowArtifactResult {
   referenceSha256: string | null
   marker: WorkflowVersionMarker
   provenance: WorkflowProvenance
+  pin: WorkflowPin
 }
 
 export interface WorkflowHostArtifactSummary {

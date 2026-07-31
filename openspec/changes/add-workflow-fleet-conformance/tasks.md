@@ -38,19 +38,28 @@ Added after `claude-workflow` adopted ADR-0047 and deleted its vendored copies.
 Every item below is unimplemented — the scanner currently reports the reference
 host as absent for two artefacts it deliberately no longer carries.
 
-- [ ] Parse a host's pin manifest: `core_repo`, `core_commit`, and one `file=… sha256=…` entry per line (TDD)
-- [ ] Test: a `core_commit` that is not a full commit identifier is a pin-integrity finding, not a pass
-- [ ] Test: entries spanning more than one commit is a pin-integrity finding
-- [ ] Verify each recorded digest against the core reference bytes the scanner already reads
-- [ ] Test: a self-consistent manifest whose digest does not match the reference reports the mismatched file, and internal consistency does not raise the result
-- [ ] Test: an artefact the host publishes but the manifest omits is a pin-integrity finding
-- [ ] Report a pinned artefact as `pinned` with its commit, never as absent/missing/divergent
-- [ ] Test: `claude-workflow` — no `bin/openspec-change-gate.sh`, valid pin — reads as conformant, not missing
-- [ ] Test: a vendoring host raises no finding for the absence of a pin
-- [ ] Test: `pi`/`opencode` carrying gate 1.3.1 against core 2.0.0 still read as divergent
-- [ ] Treat a pin manifest as the provenance record for the files it covers
-- [ ] Extend the wire schema with the pinned state and its findings; validate on the way out
-- [ ] Render the pinned state in the artefact matrix so it is not mistaken for a gap
+- [x] Parse a host's pin manifest: `core_repo`, `core_commit`, and one `file=… sha256=…` entry per line (TDD)
+- [x] Test: a `core_commit` that is not a full commit identifier is a pin-integrity finding, not a pass
+- [x] Test: entries spanning more than one commit is a pin-integrity finding
+- [x] Verify each recorded digest against the core reference bytes the scanner already reads
+- [x] Test: a self-consistent manifest whose digest does not match the reference reports the mismatched file, and internal consistency does not raise the result
+- [x] Test: an artefact the host publishes but the manifest omits is a pin-integrity finding
+- [x] Report a pinned artefact as `pinned` with its commit, never as absent/missing/divergent
+- [x] Test: `claude-workflow` — no `bin/openspec-change-gate.sh`, valid pin — reads as conformant, not missing
+- [x] Test: a vendoring host raises no finding for the absence of a pin
+- [x] Test: `pi`/`opencode` carrying gate 1.3.1 against core 2.0.0 still read as divergent
+- [x] Treat a pin manifest as the provenance record for the files it covers
+- [x] Extend the wire schema with the pinned state and its findings; validate on the way out
+- [x] Render the pinned state in the artefact matrix so it is not mistaken for a gap
+  - Evidence: scanned against the live repos after implementation —
+    `claude-workflow` change-gate and reviewer-cli read `pinned` / `pin=intact @6cd3b9c`
+    (both were `missing` before); its two harnesses read `identical` **and**
+    `pin=intact`, so a host that vendors some artefacts while pinning others is
+    reported correctly on both. `pi-agentic-apps-workflow` stays `divergent` /
+    `not-declared` on all four. Agent 1279 passed, SPA 1123 passed, shared 319
+    passed, `pnpm lint` 0 errors, `pnpm -r typecheck` clean. The real-repo probe
+    was deleted rather than committed: it depends on sibling checkouts and would
+    fail anywhere else.
 
 ## 3. Workflow endpoint
 
