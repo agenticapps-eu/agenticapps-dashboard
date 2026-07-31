@@ -149,8 +149,25 @@ host as absent for two artefacts it deliberately no longer carries.
   - Evidence: semver search finds no measured workflow version in the workflow schemas or requirements; the sole delta-spec hit is the fixed OpenSpec CLI compatibility note for `1.6.0`.
 - [x] Design critique on `/workflow` at 1440×900, artifact committed
   - Evidence: `DESIGN-CRITIQUE.md`, commit `a5dda92`, records 91/100.
-- [ ] Two-stage review
-  - Blocked: stage 2 is approved, but the post-implementation Codex reviewer cannot run before the account usage ceiling resets on 2026-08-03 12:19.
+- [x] Two-stage review — **stage 2 approved; the extra Codex pass closed as not required**
+  - Stage 2 (`superpowers:requesting-code-review`) is approved. The item stayed
+    open only for a *post-implementation Codex reviewer*, which the account
+    usage ceiling blocked until 2026-08-03 12:19. Closed 2026-07-31 by decision,
+    for two reasons that are not the advisory-reviews change:
+    1. **It was never specified.** This repo's two stages are gstack `/review`
+       and `superpowers:requesting-code-review` (CLAUDE.md, core spec §07). A
+       third vendor pass was local practice, not a requirement of either.
+    2. **The gate it guards has already been passed.** The implementation merged
+       as `d8f557b` (#85) with CI green. A review specified as "before merging"
+       cannot be satisfied after the merge; waiting until 2026-08-03 would review
+       code that shipped three days earlier.
+  - Recorded honestly rather than ticked: **no Codex review of this diff exists,
+    and none is coming.** If one is wanted later it is a fresh pass against
+    `d8f557b`, not a discharge of this item.
+  - Note this is NOT justified by gate 2.0.0. That made the *pre-code plan*
+    review advisory (line 5 above, approved by Gemini and OpenCode). The
+    post-implementation code review is a different gate against a different
+    failure and remains in force for future changes.
 
 ## Out of scope
 
