@@ -57,6 +57,11 @@ and remove it after the run.
 - **THEN** it refuses to start
 - **AND** it prints an actionable error naming the file and the `chmod 600` remedy.
 
+#### Scenario: Snapshot files stay private under a permissive umask
+- **WHEN** a daily coverage snapshot is appended under a umask that would widen the mode
+- **THEN** the file is written at mode `0600` and the directory tree remains `0700`
+- **AND** the mode is explicitly re-applied rather than assumed from creation.
+
 #### Scenario: Daemon-owned result files stay private
 - **WHEN** a coverage snapshot or workflow harness result is written under a permissive umask
 - **THEN** the file is mode `0600` and its directory tree remains `0700`
@@ -66,6 +71,11 @@ and remove it after the run.
 - **WHEN** a harness completes, fails, times out, or exceeds a bound
 - **THEN** its fresh scratch child is removed
 - **AND** no arbitrary harness-created file remains beside daemon credentials.
+
+#### Scenario: Symlink escape from the snapshot directory is refused
+- **WHEN** the snapshot directory path resolves through a symlink pointing outside `~/.agenticapps/dashboard/`
+- **THEN** the daemon detects this via a realpath check performed once at boot
+- **AND** refuses to write snapshots there.
 
 #### Scenario: Symlink escape from a daemon-owned tree is refused
 - **WHEN** a daemon-owned result or scratch path resolves through a symlink outside `~/.agenticapps/dashboard/`
