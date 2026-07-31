@@ -80,11 +80,17 @@ check carries remedy text until the detail surface defines it (section 10).
 
 ## 4. Tier-A deriver: `spec` · AGE-458 — **needs `add-openspec-project-reader`**
 
-- [ ] Consume the existing reader; no directory traversal in this deriver (TDD)
-- [ ] Map: no `openspec/` → `never` + hint; 0 open → `ok`; N open → `warn` with count and task ratios; read error → `fail`
+- [x] Consume the existing reader; no directory traversal in this deriver (TDD)
+- [x] Map: no `openspec/` → `never` + hint; 0 open → `ok`; N open → `warn` with count and task ratios; read error → `fail`
 - [ ] For no `openspec/`, render a host-specific remedy naming the installed workflow-update command and migration 0032's OpenSpec initialisation; no generic migration-only hint
-- [ ] Test: an unmigrated repo yields `never`, and no phase-tree fallback is consulted
-- [ ] Confirm by grep that this deriver contains no `openspec/` path literal of its own
+
+The remedy line waits on section 3: naming *the installed* workflow-update
+command requires host detection, which does not exist yet. The absent-slot
+summary currently says the workflow update installs the slot without naming a
+host's command, which is the generic hint this task exists to replace — so it
+stays open rather than being ticked against a placeholder.
+- [x] Test: an unmigrated repo yields `never`, and no phase-tree fallback is consulted
+- [x] Confirm by grep that this deriver contains no `openspec/` path literal of its own
 
 ## 5. Tier-A deriver: `coverage` · AGE-460
 
