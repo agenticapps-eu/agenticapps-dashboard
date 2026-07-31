@@ -88,6 +88,27 @@ claims. A self-consistent manifest whose digests do not match the reference is a
 finding, and it is a *better* finding than the missing-file one it replaces,
 because it catches a stale pin — the real failure mode of this model.
 
+**What the digest check can and cannot say — found during `/opsx:apply`.** Two
+facts about the real manifest bound this, and the first draft of the requirement
+got both wrong:
+
+The manifest's entry keys are not paths in core. `claude-workflow` records
+`file=bin/openspec-change-gate.sh`, and **core has no such file** — its copy
+lives at `reference-implementations/openspec-change-gate/openspec-change-gate.sh`.
+The recorded digest `4ad996cb…` matches that file exactly. So the keys name what
+the host publishes, and only the digest ties the entry to core. Comparison keys
+on artefact identity in the daemon-side mapping; matching manifest paths against
+core's tree would report a finding on every entry.
+
+And "matches the bytes at that commit" is not checkable here. The pin names
+`6cd3b9c` while core sits at `6c0e3fe`; reading the historical object needs git,
+which the provenance requirement forbids in the same breath. So the comparison is
+against core's *current* reference, and a mismatch means the host is **behind**,
+not that the manifest lies. Those two are indistinguishable without the
+historical read, and the requirement now says so rather than overclaiming. It is
+the weaker statement and the true one — the same trade this change's proposal
+already made when three reviewers rejected the byte-identical-working-tree claim.
+
 Vendoring is not deprecated here. Three hosts still vendor, and two of them
 (`pi`, `opencode`) carry gate 1.3.1 against core's 2.0.0, which is a true
 divergence finding and must keep reading as one. Scoring a vendoring host as

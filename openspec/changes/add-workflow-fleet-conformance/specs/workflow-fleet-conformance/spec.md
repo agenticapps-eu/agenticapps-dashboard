@@ -141,13 +141,27 @@ divergent artefact.
 Pin integrity means all of: the manifest is present and parseable; it names a
 core repository and a `core_commit` that parses as a full commit identifier;
 **one** commit covers every entry; every artefact the host publishes appears as
-an entry; and each recorded digest matches the bytes of the core reference at
-that commit. Any of those failing is a finding against that host, reported with
-the specific clause that failed rather than as a generic divergence.
+an entry; and each recorded digest equals the digest of the core reference bytes
+the scanner already reads. Any of those failing is a finding against that host,
+reported with the specific clause that failed rather than as a generic
+divergence.
 
-A pin SHALL NOT be trusted on its own assertion. The recorded digest is checked
-against the reference bytes the scanner already reads; a manifest whose digests
-are self-consistent but do not match the reference is a finding, not a pass.
+A pin SHALL NOT be trusted on its own assertion — a manifest is a claim in
+exactly the way a version marker is a claim. But the comparison SHALL be made
+against core's **current** reference bytes, not against bytes at the pinned
+commit: resolving a historical object would require spawning git, which the
+provenance requirement above forbids.
+
+That bounds what a digest mismatch may be reported as. It means the host is
+pinned to something other than core's current reference — it is **behind**,
+the same signal a divergent vendored copy gives. It SHALL NOT be reported as a
+dishonest or corrupt manifest, because a stale pin and a wrong pin are
+indistinguishable without the historical read this change does not perform.
+
+The manifest's entry keys SHALL NOT be assumed to be paths within the core
+repository. They name what the host publishes, and a key may not resolve in core
+at all. Digest comparison is therefore keyed on the artefact identity in the
+daemon-side mapping, never on matching the manifest's path against core's tree.
 
 Vendoring remains a fully conformant model scored exactly as before. This
 requirement adds a second model; it does not deprecate the first, and a host that
@@ -159,9 +173,15 @@ vendors SHALL NOT be reported as deficient for not pinning.
 - **AND** it is not reported as absent, missing, or divergent.
 
 #### Scenario: A pin is verified against the reference, not believed
-- **WHEN** a manifest records a digest for an artefact that does not match the core reference bytes at the named commit
-- **THEN** the artefact is reported as a pin-integrity finding naming the mismatched file
-- **AND** the manifest's internal consistency does not raise the result.
+- **WHEN** a manifest records a digest for an artefact that does not equal the digest of core's current reference bytes
+- **THEN** the artefact is reported as pinned behind the current reference, naming the mismatched artefact
+- **AND** the manifest's internal consistency does not raise the result
+- **AND** it is not reported as a dishonest manifest, which this change cannot distinguish.
+
+#### Scenario: A manifest key that does not resolve in core is not a finding
+- **WHEN** a manifest entry names a path that does not exist in the core repository but records the digest of the artefact's core reference
+- **THEN** the pin is reported as intact for that artefact
+- **AND** the unresolvable key does not itself produce a finding, because manifest keys name what the host publishes rather than paths in core.
 
 #### Scenario: A partial manifest is a finding
 - **WHEN** a host publishes an artefact that its manifest does not list

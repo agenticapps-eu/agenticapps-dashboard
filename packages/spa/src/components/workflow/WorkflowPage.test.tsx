@@ -36,6 +36,7 @@ function artifact(artifactId: WorkflowArtifact['artifactId']): WorkflowArtifact 
         artifactId === 'change-gate' ? '1.2.2' : artifactId === 'reviewer-cli' ? '1.0.0' : null,
     },
     provenance: { state: 'absent', commit: null },
+    pin: { state: 'not-declared', commit: null, recordedSha256: null },
   }
 }
 
@@ -261,6 +262,63 @@ describe('WorkflowPage', () => {
 
     expect(screen.getByText('change-gate · 1.2.2 · Divergent')).toBeTruthy()
     expect(screen.getByText('observability · Missing')).toBeTruthy()
+  })
+
+  it('reads a pinning host as conformant, not as a gap', () => {
+    const fixture = data()
+    const gate = fixture.hosts[0]!.artifacts.find(
+      ({ artifactId }) => artifactId === 'change-gate',
+    )!
+    gate.state = 'pinned'
+    gate.sha256 = null
+    gate.pin = {
+      state: 'intact',
+      commit: '6cd3b9c40eb409ab1b256e3b9e8d50c7268538ab',
+      recordedSha256: 'a'.repeat(64),
+    }
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: fixture,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+
+    const pinned = screen.getByText('Pinned')
+    expect(pinned).toBeTruthy()
+    expect(pinned.className).toContain('text-status-success')
+    expect(screen.queryByText('Pinned behind core')).toBeNull()
+  })
+
+  it('surfaces a pin that is behind core and one the manifest omits', () => {
+    const fixture = data()
+    const [gate, reviewer] = fixture.hosts[0]!.artifacts
+    gate!.state = 'pinned'
+    gate!.pin = {
+      state: 'behind',
+      commit: '6cd3b9c40eb409ab1b256e3b9e8d50c7268538ab',
+      recordedSha256: 'b'.repeat(64),
+    }
+    reviewer!.state = 'missing'
+    reviewer!.pin = {
+      state: 'unlisted',
+      commit: '6cd3b9c40eb409ab1b256e3b9e8d50c7268538ab',
+      recordedSha256: null,
+    }
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: fixture,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+
+    expect(screen.getByText('Pinned behind core')).toBeTruthy()
+    expect(screen.getByText('Not in manifest')).toBeTruthy()
   })
 
   it('keeps both measured findings visible without a filter or interaction', () => {

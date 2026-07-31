@@ -44,7 +44,13 @@ const WorkflowArtifactIdSchema = z.enum([
 const WorkflowArtifactSchema = z
   .object({
     artifactId: WorkflowArtifactIdSchema,
-    state: z.enum(['identical', 'divergent', 'missing', 'unavailable']),
+    state: z.enum([
+      'identical',
+      'divergent',
+      'missing',
+      'pinned',
+      'unavailable',
+    ]),
     sha256: Sha256Schema.nullable(),
     referenceSha256: Sha256Schema.nullable(),
     marker: z
@@ -57,6 +63,23 @@ const WorkflowArtifactSchema = z
       .object({
         state: z.enum(['valid', 'absent', 'invalid']),
         commit: CommitSchema.nullable(),
+      })
+      .strict(),
+    // How a host distributes an artefact it does not vendor. `behind` means the
+    // recorded digest differs from core's CURRENT reference — the host is
+    // pinned to something else — and deliberately not that the manifest lies,
+    // which cannot be established without reading core at the pinned commit.
+    pin: z
+      .object({
+        state: z.enum([
+          'intact',
+          'behind',
+          'unlisted',
+          'invalid',
+          'not-declared',
+        ]),
+        commit: CommitSchema.nullable(),
+        recordedSha256: Sha256Schema.nullable(),
       })
       .strict(),
   })
