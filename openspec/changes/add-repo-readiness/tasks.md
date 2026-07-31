@@ -88,10 +88,10 @@ check carries remedy text until the detail surface defines it (section 10).
 
 ## 5. Tier-A deriver: `coverage` · AGE-460
 
-- [ ] Read the configured repo-relative coverage path, default `coverage/coverage-summary.json`, field `total.lines.pct` (TDD)
-- [ ] Threshold is bounded 0–100; map ≥threshold `ok`, max(0, threshold−5) to threshold `warn`, lower `fail`
-- [ ] Missing file → `never`; unreadable/unparsable/schema-invalid → error-bearing `fail` before freshness; only a parsed numeric result can become `stale`
-- [ ] Add `json-summary` to this repo's own vitest coverage reporters so the fleet has one real data point
+- [x] Read the configured repo-relative coverage path, default `coverage/coverage-summary.json`, field `total.lines.pct` (TDD)
+- [x] Threshold is bounded 0–100; map ≥threshold `ok`, max(0, threshold−5) to threshold `warn`, lower `fail`
+- [x] Missing file → `never`; unreadable/unparsable/schema-invalid → error-bearing `fail` before freshness; only a parsed numeric result can become `stale`
+- [x] Add `json-summary` to this repo's own vitest coverage reporters so the fleet has one real data point
 
 ## 6. Tier-B reader and precedence · AGE-461
 
