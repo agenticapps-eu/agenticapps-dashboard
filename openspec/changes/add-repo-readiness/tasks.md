@@ -45,18 +45,23 @@ property no schema can hold, not because they were skipped:
 
 ## 2. Tier-A derivers: review checks and `stale` · AGE-459
 
-- [ ] Shared review deriver parameterised by the disjoint exact patterns in the spec (TDD)
-- [ ] Search OpenSpec and legacy layouts; OpenSpec match wins; archived changes count
-- [ ] Parse passing/failed verdict and open-blocker metadata; artifact presence alone never passes
-- [ ] Select the latest candidate by UTC committer time/path, then apply `stale` by commit ancestry; timestamps are display/selection metadata, never the freshness relation
-- [ ] Default production-code set is tracked and unignored-untracked paths except docs/planning/OpenSpec/root markdown and the configured coverage artifact
-- [ ] Relevant dirty or unignored-untracked production changes make evidence stale; uncommitted evidence is current only with no such production change
+- [x] Shared review deriver parameterised by the disjoint exact patterns in the spec (TDD)
+- [x] Search OpenSpec and legacy layouts; OpenSpec match wins; archived changes count
+- [x] Parse passing/failed verdict and open-blocker metadata; artifact presence alone never passes
+- [x] Select the latest candidate by UTC committer time/path, then apply `stale` by commit ancestry; timestamps are display/selection metadata, never the freshness relation
+- [x] Default production-code set is tracked and unignored-untracked paths except docs/planning/OpenSpec/root markdown and the configured coverage artifact
+- [x] Relevant dirty or unignored-untracked production changes make evidence stale; uncommitted evidence is current only with no such production change
 - [ ] Return effective production include/ignore patterns as trusted declared context; reject a configured scope that becomes empty when the default scope finds production paths
-- [ ] Fixture: no artifact → `never`
-- [ ] Fixture: fresh artifact → `ok`
-- [ ] Fixture: artifact older than last code commit → `stale`
-- [ ] Fixture: artifact older than HEAD but newer than last *code* commit → stays `ok`
+- [x] Fixture: no artifact → `never`
+- [x] Fixture: fresh artifact → `ok`
+- [x] Fixture: artifact older than last code commit → `stale`
+- [x] Fixture: artifact older than HEAD but newer than last *code* commit → stays `ok`
 - [ ] `pen-test`: no tier-A signal, always `never`, remedy text names no tool
+
+`scopeCollapses` and `derivePenTest` ship, but two lines stay open because the
+surface that consumes them does not exist yet: nothing reads
+`.agenticapps/readiness.json` to reject a collapsed scope (section 6), and no
+check carries remedy text until the detail surface defines it (section 10).
 
 ## 3. Tier-A deriver: `workflow` · AGE-457
 

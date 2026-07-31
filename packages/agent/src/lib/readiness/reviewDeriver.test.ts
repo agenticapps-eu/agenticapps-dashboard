@@ -46,7 +46,9 @@ async function derive(
   checkId: ReviewCheckId,
   configured?: { include?: string[]; ignore?: string[] },
 ) {
-  const scope = resolveProductionScope({ coveragePath: COVERAGE_PATH, configured })
+  const scope = configured
+    ? resolveProductionScope({ coveragePath: COVERAGE_PATH, configured })
+    : resolveProductionScope({ coveragePath: COVERAGE_PATH })
   const facts = await readGitFacts(repo)
   return deriveReview({ root: repo, checkId, scope, facts, now: NOW })
 }
