@@ -51,6 +51,49 @@ construction, and nothing would detect the moment that stopped being true.
 A row that reads "missing" across all four hosts while everything else reads
 green is exactly the kind of quiet finding this page exists to produce.
 
+## 4b. Pinning is a third model, and §4's argument now cuts the other way
+
+§4 above says the fleet is *"correct by coincidence rather than by
+construction"* — byte identity holds, but nothing records why it should keep
+holding. On 2026-07-31 `claude-workflow` supplied exactly the construction §4
+asked for, and it did so by removing the thing this plan measures.
+
+ADR-0047 replaced the vendored copies with a pin: `tools/core-vendor.manifest`
+names one `core_commit` and a `sha256` per file, `bin/resolve-core-artifact.sh`
+turns that into verified bytes, and `install.sh` publishes those. The copies in
+`bin/` are gone. The reasoning recorded upstream is that the runtime never read
+them — the project hook resolves `~/.agenticapps/bin` first — so they existed
+only to feed the installer, and they drifted: on 2026-07-28 the gate shipped
+1.2.2 → 1.3.0 → 1.3.1 → 1.4.0 in a single day, twelve mechanical re-vendor PRs
+across four repos.
+
+**Rejected: treat the absence as a missing artefact.** It is what the scanner
+does today, and it inverts the surface's meaning — the host with the strongest
+provenance story scores worst, and a reader who trusts the page would "fix" it by
+re-vendoring, which is the drift mechanism ADR-0047 removed.
+
+**Rejected: treat it as explained divergence under §8.** §8 is right and stays:
+an ADR does not make older or patched bytes current. But this is not older bytes.
+There are no local bytes at all, and the installer publishes the reference bytes
+at a named commit. §8 governs a *copy that differs*; this is *no copy, resolved
+on demand*. Collapsing the two would make §8 mean "any upstream decision we
+disagree with", which is not what it says.
+
+**Chosen: a third state, verified rather than believed.** Pin integrity is the
+comparison — one commit covering every entry, every published artefact listed,
+every digest matching the reference bytes the scanner already reads. That last
+clause is the load-bearing one: a manifest is a claim in exactly the way a
+version header is a claim, and §3 exists because this surface does not accept
+claims. A self-consistent manifest whose digests do not match the reference is a
+finding, and it is a *better* finding than the missing-file one it replaces,
+because it catches a stale pin — the real failure mode of this model.
+
+Vendoring is not deprecated here. Three hosts still vendor, and two of them
+(`pi`, `opencode`) carry gate 1.3.1 against core's 2.0.0, which is a true
+divergence finding and must keep reading as one. Scoring a vendoring host as
+deficient for not having migrated would be this dashboard asserting a fleet
+policy it does not own, against a migration nobody has scheduled.
+
 ## 5. The harness execution decision
 
 **Rejected: run the harness on page load.** It builds fixture repos and stubs a

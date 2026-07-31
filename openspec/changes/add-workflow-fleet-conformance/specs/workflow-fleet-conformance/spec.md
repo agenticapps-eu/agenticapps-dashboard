@@ -128,6 +128,56 @@ evidence of conformance.
 - **THEN** the change gate, the reviewer CLI, and their conformance harnesses are each compared against the core reference
 - **AND** each carries its own result.
 
+### Requirement: A Pinned Artefact Is A Distribution Model, Not A Missing One
+
+A host MAY distribute a shared artefact by **pinning** rather than by vendoring:
+declaring, in a manifest it owns, one core commit and an expected digest per
+file, and resolving those bytes at install time instead of carrying a copy. The
+scanner SHALL recognise a declared pin and score that artefact on **pin
+integrity** instead of on local byte identity. Under a valid pin, the absence of
+the artefact from the host's own tree SHALL NOT be reported as a missing or
+divergent artefact.
+
+Pin integrity means all of: the manifest is present and parseable; it names a
+core repository and a `core_commit` that parses as a full commit identifier;
+**one** commit covers every entry; every artefact the host publishes appears as
+an entry; and each recorded digest matches the bytes of the core reference at
+that commit. Any of those failing is a finding against that host, reported with
+the specific clause that failed rather than as a generic divergence.
+
+A pin SHALL NOT be trusted on its own assertion. The recorded digest is checked
+against the reference bytes the scanner already reads; a manifest whose digests
+are self-consistent but do not match the reference is a finding, not a pass.
+
+Vendoring remains a fully conformant model scored exactly as before. This
+requirement adds a second model; it does not deprecate the first, and a host that
+vendors SHALL NOT be reported as deficient for not pinning.
+
+#### Scenario: A pinning host is not reported as missing its artefacts
+- **WHEN** a host declares a valid pin for an artefact and does not carry that artefact in its own tree
+- **THEN** the artefact is reported as pinned, with the pinned commit identified
+- **AND** it is not reported as absent, missing, or divergent.
+
+#### Scenario: A pin is verified against the reference, not believed
+- **WHEN** a manifest records a digest for an artefact that does not match the core reference bytes at the named commit
+- **THEN** the artefact is reported as a pin-integrity finding naming the mismatched file
+- **AND** the manifest's internal consistency does not raise the result.
+
+#### Scenario: A partial manifest is a finding
+- **WHEN** a host publishes an artefact that its manifest does not list
+- **THEN** the omission is reported as a pin-integrity finding
+- **AND** the entries that are present do not compensate for the one that is absent.
+
+#### Scenario: Pinning is distinct from explained divergence
+- **WHEN** a pinning host is compared against a host carrying an older or locally patched copy with an ADR explaining it
+- **THEN** the pinned host reads as conformant while the patched host reads as divergent
+- **AND** the two are not collapsed into one state, because a pin resolves the current reference bytes whereas an explanation does not change older bytes.
+
+#### Scenario: Vendoring is not penalised
+- **WHEN** a host distributes an artefact as a byte-identical vendored copy
+- **THEN** it is reported as conformant on byte identity as before
+- **AND** no finding is raised for the absence of a pin.
+
 ### Requirement: Missing Vendor Provenance Is Reported
 
 Where a host's shared artefact does not record the core commit it was vendored
@@ -139,6 +189,11 @@ finding. This change verifies recorded provenance presence and syntax only; it
 MUST NOT spawn git or claim that the commit exists or that historical bytes
 match.
 
+A pin manifest **is** a provenance record for every artefact it covers: it names
+the core commit those bytes came from, per file. The scanner SHALL read it as
+such and MUST NOT report a pinned artefact as unprovenanced merely because the
+commit is recorded in the manifest rather than in a header inside the file.
+
 #### Scenario: Identical but unprovenanced is visible
 - **WHEN** a host's artefact is byte-identical to the reference but records no core commit
 - **THEN** the identity result is reported as conformant
@@ -148,6 +203,11 @@ match.
 - **WHEN** no host records vendor provenance for an artefact
 - **THEN** the row reports absence for all of them
 - **AND** the surface does not suppress a finding for being fleet-wide.
+
+#### Scenario: A manifest satisfies provenance for the files it covers
+- **WHEN** a host records an artefact's core commit in a pin manifest rather than in a header inside the artefact
+- **THEN** provenance is reported as present for that artefact
+- **AND** the location of the record does not make a recorded provenance count as absent.
 
 #### Scenario: A provenance claim is syntactically valid
 - **WHEN** an artifact records a core commit

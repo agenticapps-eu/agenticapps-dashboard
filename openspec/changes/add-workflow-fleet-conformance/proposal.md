@@ -11,14 +11,26 @@ A measurement on 2026-07-26 found two things that no surface would have shown:
 - **All four hosts claim the same `implements_spec` in their primary skill, and
   three of the four are dragging laggard skills behind it.** A single number per
   host hides this completely. Only one host is drift-free.
-- **No host records a vendor header naming the core commit its shared artefacts
-  came from,** although a host spec requires it. The artefacts happen to be
-  byte-identical to the core reference right now, so the fleet is green — but the
-  evidence chain that would prove it stays green is missing.
+- **No host recorded a vendor header naming the core commit its shared artefacts
+  came from,** although a host spec requires it. The artefacts happened to be
+  byte-identical to the core reference, so the fleet was green — but the
+  evidence chain that would prove it stays green was missing.
 
 The second finding matters because "byte-identical today" and "provably vendored"
 are different guarantees, and the failure they guard against — a host that
 hand-merges instead of vendoring — has occurred before.
+
+**That second finding has since been fixed upstream, in a way this change did not
+anticipate.** On 2026-07-31 `claude-workflow` stopped vendoring the shared
+artefacts altogether (ADR-0047, its PR #109): `bin/openspec-change-gate.sh` and
+`bin/reviewer-cli.sh` were deleted, and `install.sh` now resolves them from
+`tools/core-vendor.manifest` — one `core_commit` plus a `sha256` per file —
+at install time. That is a stronger guarantee than the vendor header this change
+asked for, and the plan as first written scores it as the weakest possible
+result: the reference host reads as *missing* two artefacts it deliberately no
+longer carries. A conformance surface whose worst score lands on the host that
+solved the problem is measuring the wrong thing, so the delta gains a third state
+alongside vendored and absent.
 
 This change adds a surface that would have shown both without anyone looking for
 them.
@@ -35,6 +47,13 @@ Linear: AGE-467, AGE-468, AGE-469. Design basis:
 2. **A version matrix** with two blocks: spec conformance (primary skill, the
    range across all skills, named laggards) and shared artefacts (byte identity,
    vendor-header presence, machine-wide install).
+2b. **Pin recognition.** A host that declares a pin manifest instead of vendoring
+   is scored on pin integrity — one commit covering every entry, every published
+   artefact listed, every recorded digest matching the reference bytes — and is
+   not reported as missing the files it deliberately does not carry. The pin is
+   verified against the reference, never taken on its own assertion. Vendoring
+   remains fully conformant and is scored exactly as before; a vendoring host is
+   not reported as deficient for not pinning.
 3. **An on-demand conformance harness runner** with an aged, content-invalidated
    cache.
 4. **A scoped second execution exception** in the security spine, because item 3
