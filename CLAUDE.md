@@ -89,7 +89,7 @@ A multi-project pipeline dashboard: a static SPA on Cloudflare Pages plus one
 local daemon that reads each registered project's files and git history. No
 project data leaves the machine.
 
-**Product behaviour is specified in `openspec/specs/`, not here.** Twelve
+**Product behaviour is specified in `openspec/specs/`, not here.** Thirteen
 capabilities; read the one you are touching before you touch it:
 
 | Capability | Covers |
@@ -102,6 +102,7 @@ capabilities; read the one you are touching before you touch it:
 | [`skills-and-linting`](openspec/specs/skills-and-linting/spec.md) | Skill inventory, AgentLinter, cross-repo drift |
 | [`fleet-coverage`](openspec/specs/fleet-coverage/spec.md) | Coverage matrix, freshness states, history and trends |
 | [`fleet-conformance`](openspec/specs/fleet-conformance/spec.md) | Conformance scoring, tiers, trend chart, path-drift panel |
+| [`workflow-fleet-conformance`](openspec/specs/workflow-fleet-conformance/spec.md) | Whether the five workflow repos agree with core: spec versions, per-skill drift, shared-artefact byte identity, pinned vs vendored distribution, the bounded harness runner |
 | [`code-intelligence`](openspec/specs/code-intelligence/spec.md) | Understand Anything analysis status, commands, and knowledge-graph viewer (GitNexus removed from the dashboard) |
 | [`optional-integrations`](openspec/specs/optional-integrations/spec.md) | Sentry / Linear / Infisical, and the works-without-them contract |
 | [`help-docs`](openspec/specs/help-docs/spec.md) | The in-product `/help` documentation system |
