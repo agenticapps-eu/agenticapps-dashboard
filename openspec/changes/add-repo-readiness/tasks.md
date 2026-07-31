@@ -65,18 +65,24 @@ check carries remedy text until the detail surface defines it (section 10).
 
 ## 3. Tier-A deriver: `workflow` · AGE-457
 
-- [ ] Host detection from the present host directory (TDD)
-- [ ] Per-host resolution: repo-scoped, machine-global, and unpinnable strategies
+- [x] Host detection from the present host directory (TDD)
+- [x] Per-host resolution: repo-scoped, machine-global, and unpinnable strategies
 - [ ] Resolve host-repo paths through the existing family-roots helper in `packages/agent/src/lib/paths.ts`
-- [ ] Status mapping: match → `ok`; skill version trails → `warn`; `implements_spec` trails → `fail`; no artifact → `never`; unpinnable host → `na` + reason
-- [ ] Machine-global hosts carry both values; result marks the global one as not repo-specific
-- [ ] Set `at`/evidence from the repo-scoped workflow-version/scaffolder metadata commit (or scan time when uncommitted); machine-global context never replaces it
-- [ ] Never persist/export machine-global workflow values as repo-owned evidence
-- [ ] Resolve machine-global skill paths only through the host-specific named scanner roots with canonical/symlink containment and size bounds
-- [ ] `summary` states the frontmatter-comparison limitation and the absence of a migration ledger
-- [ ] Fixed fixtures cover global-trails → `fail`, scaffolder-only-trails → `warn`, both-match → `ok`, and unpinnable-host → `na`
-- [ ] Fixtures cover unknown host, malformed version artifact, unavailable authorised root, and unsupported layout as per-check errors while the repo/fleet response survives
-- [ ] Compact and detail results label machine-global context as applying to every project for that host
+- [x] Status mapping: match → `ok`; skill version trails → `warn`; `implements_spec` trails → `fail`; no artifact → `never`; unpinnable host → `na` + reason
+- [x] Machine-global hosts carry both values; result marks the global one as not repo-specific
+- [x] Set `at`/evidence from the repo-scoped workflow-version/scaffolder metadata commit (or scan time when uncommitted); machine-global context never replaces it
+- [x] Never persist/export machine-global workflow values as repo-owned evidence
+- [x] Resolve machine-global skill paths only through the host-specific named scanner roots with canonical/symlink containment and size bounds
+- [x] `summary` states the frontmatter-comparison limitation and the absence of a migration ledger
+- [x] Fixed fixtures cover global-trails → `fail`, scaffolder-only-trails → `warn`, both-match → `ok`, and unpinnable-host → `na`
+- [x] Fixtures cover unknown host, malformed version artifact, unavailable authorised root, and unsupported layout as per-check errors while the repo/fleet response survives
+- [x] Compact and detail results label machine-global context as applying to every project for that host
+
+The one open line is wiring, not resolution: the deriver takes each host repo's
+root and each machine-global skills root as inputs and reads both through the
+scanner resolver, so containment already holds. Computing those roots from the
+family-roots helper belongs to the orchestrator in section 7, which does not
+exist yet.
 
 ## 4. Tier-A deriver: `spec` · AGE-458 — **needs `add-openspec-project-reader`**
 

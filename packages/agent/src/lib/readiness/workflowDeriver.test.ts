@@ -135,6 +135,12 @@ describe('deriveWorkflow — a repo-scoped host', () => {
     expect((await derive()).status).toBe('fail')
   })
 
+  it('reports fail, not warn, when the version and implements_spec both trail', async () => {
+    installClaude('3.1.0', '0.9.0')
+    commit([CLAUDE_SKILL], 'workflow', '2026-02-01T00:00:00Z')
+    expect((await derive()).status).toBe('fail')
+  })
+
   it('reports never when the host marker is present but no artifact is', async () => {
     mkdirSync(join(repo, '.claude', 'skills'), { recursive: true })
 
@@ -195,6 +201,12 @@ describe('deriveWorkflow — a machine-global host', () => {
     installCodex('1.1.0', '1.2.0', '1.0.0')
     commit([STAMP], 'workflow', '2026-02-01T00:00:00Z')
     expect((await derive()).status).toBe('warn')
+  })
+
+  it('reports fail, not warn, when the scaffolder and the machine-global spec both trail', async () => {
+    installCodex('1.1.0', '1.2.0', '0.9.0')
+    commit([STAMP], 'workflow', '2026-02-01T00:00:00Z')
+    expect((await derive()).status).toBe('fail')
   })
 
   it('timestamps from the repo-scoped stamp, never from the machine-global skill', async () => {
@@ -271,6 +283,18 @@ describe('deriveWorkflow — hosts that cannot be pinned or read', () => {
     put(
       join(repo, '.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md'),
       skill('3.2.0', '1.0.0', 'some-other-skill'),
+    )
+
+    const result = await derive()
+    expect(result.status).toBe('fail')
+    expect(result.error?.code).toBeTruthy()
+  })
+
+  it('refuses a machine-global skill larger than the read bound', async () => {
+    put(join(repo, '.codex', 'workflow-version.txt'), '1.2.0\n')
+    put(
+      join(machine, 'codex', 'skills', 'agentic-apps-workflow', 'SKILL.md'),
+      `${skill('1.2.0', '1.0.0')}${'padding\n'.repeat(200_000)}`,
     )
 
     const result = await derive()
