@@ -134,8 +134,15 @@ lifecycle, hooks, rituals, and red-flag tables are in
 
 - **Planning is a spec change.** Work starts with `/opsx:propose`, not with an
   edit. The §18 change-gate blocks code edits while a change is open until
-  `openspec validate --all` is green and `REVIEWS.md` carries ≥2 other-vendor
-  reviewers. That is the gate working, not a bug.
+  `openspec validate --all` is green. That is the only blocking clause — a
+  blocked edit means a broken spec delta, not a missing review.
+- **Reviews are reported, never enforced** (change-gate **2.0.0**, 2026-07-31).
+  An absent, thin, stale or REQUEST-CHANGES `REVIEWS.md` prints a `NOTE` and
+  lets the edit through, at `PreToolUse`, at `git commit`, and in `--ci` alike.
+  `MIN_REVIEWERS` (1) and `PREFERRED_REVIEWERS` (2) set what is reported.
+  Two other-vendor reviewers remain this repo's target on a spec delta of any
+  size: nothing will stop you skipping them, which is exactly why skipping them
+  has to be a decision you record rather than a step you forget.
 - Workflow commitment ritual is mandatory at the start of any implementing session.
 - TDD applies to every panel, every daemon route, and the bootstrap config
   (CI workflow, pnpm config) — not just feature code.

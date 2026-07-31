@@ -32,6 +32,26 @@ is security-sensitive and gates on its own review.
   - Evidence: the integration branch is based on GitNexus-removal release `82a3804`; `WorkflowMachineRootId`, `WORKFLOW_MACHINE_ROOTS`, and `scanWorkflowFleet` enumerate only the AgenticApps binary plus four host skill roots, with no GitNexus root. Production-source search has zero `.gitnexus` scanner/root references, and the integrated focused suites pass 133 tests.
 - [x] Highest migration per host, labelled as offered rather than applied
 
+## 2b. Scanner: pinned artefacts · added 2026-07-31
+
+Added after `claude-workflow` adopted ADR-0047 and deleted its vendored copies.
+Every item below is unimplemented — the scanner currently reports the reference
+host as absent for two artefacts it deliberately no longer carries.
+
+- [ ] Parse a host's pin manifest: `core_repo`, `core_commit`, and one `file=… sha256=…` entry per line (TDD)
+- [ ] Test: a `core_commit` that is not a full commit identifier is a pin-integrity finding, not a pass
+- [ ] Test: entries spanning more than one commit is a pin-integrity finding
+- [ ] Verify each recorded digest against the core reference bytes the scanner already reads
+- [ ] Test: a self-consistent manifest whose digest does not match the reference reports the mismatched file, and internal consistency does not raise the result
+- [ ] Test: an artefact the host publishes but the manifest omits is a pin-integrity finding
+- [ ] Report a pinned artefact as `pinned` with its commit, never as absent/missing/divergent
+- [ ] Test: `claude-workflow` — no `bin/openspec-change-gate.sh`, valid pin — reads as conformant, not missing
+- [ ] Test: a vendoring host raises no finding for the absence of a pin
+- [ ] Test: `pi`/`opencode` carrying gate 1.3.1 against core 2.0.0 still read as divergent
+- [ ] Treat a pin manifest as the provenance record for the files it covers
+- [ ] Extend the wire schema with the pinned state and its findings; validate on the way out
+- [ ] Render the pinned state in the artefact matrix so it is not mistaken for a gap
+
 ## 3. Workflow endpoint
 
 - [x] `GET /api/v2/workflow` returning the matrix (TDD)
