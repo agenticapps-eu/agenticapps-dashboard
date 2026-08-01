@@ -156,6 +156,18 @@ const workflowRoute = createRoute({
 }).lazy(() => import('./routes/workflow.lazy.js').then((m) => m.Route))
 
 /**
+ * fleetRoute — /fleet, the readiness fleet (add-repo-readiness §9).
+ *
+ * Mounted alongside the v1 routes rather than at `/`, which still belongs to
+ * MultiProjectHome. `retire-v1-surfaces` owns repointing the legacy routes at
+ * the fleet, and it does that in one commit so the cutover reverts as one.
+ */
+const fleetRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/fleet',
+}).lazy(() => import('./routes/fleet.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -201,6 +213,7 @@ const routeTree = rootRoute.addChildren([
     conformanceRoute, // Phase 12 D-12-01 — /observability/conformance under _appshell
     codeIntelligenceRoute, // Phase 14 D-14-06 — /code-intelligence under _appshell
     workflowRoute,
+    fleetRoute, // add-repo-readiness §9 — /fleet under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

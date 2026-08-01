@@ -164,7 +164,7 @@ function ReadinessCell({
       role="figure"
       aria-label={disclosure}
       title={disclosure}
-      className={`flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'px-1.5 py-1'} ${presentation.bg} ${presentation.text}`}
+      className={`flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'justify-center px-1.5 py-1'} ${presentation.bg} ${presentation.text}`}
     >
       <Shape size={full ? 16 : 14} aria-hidden="true" />
       {full && (
@@ -192,7 +192,15 @@ export function ReadinessIndicator({
     <div
       role="group"
       aria-label={`Readiness for ${repoName}`}
-      className={`flex items-center ${variant === 'full' ? 'flex-wrap gap-2' : 'gap-1'}`}
+      className={
+        variant === 'full'
+          ? 'flex flex-wrap items-center gap-2'
+          : // Six equal columns so a table can put a header above each cell.
+            // The strip fills its column and divides it the same way the header
+            // row does, which is what keeps label k over cell k without either
+            // side stating a width.
+            'grid grid-cols-6 items-center gap-1'
+      }
     >
       {checks.map((check) => (
         <ReadinessCell key={check.id} check={check} variant={variant} />
