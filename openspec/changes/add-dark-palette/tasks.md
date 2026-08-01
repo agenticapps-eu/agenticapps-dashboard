@@ -49,7 +49,7 @@ Each pair lands as a `test(RED):` commit followed by `feat(GREEN):` or `fix(GREE
 - [x] 7.1 Boot the dev server; screenshot a representative route in dark and light at 1440×900 — found and fixed a cascade-order bug the suite could not see
 - [x] 7.2 Verify `/settings` now visibly restyles, including its own native radios, and that the choice survives a reload
 - [x] 7.3 Verify the help docs render dark prose on a dark ground
-- [ ] 7.4 `impeccable:critique` at 1440×900 in dark, composite ≥ 80, artifact committed
+- [x] 7.4 `impeccable:critique` at 1440×900 in dark, composite ≥ 80, artifact committed — 88, PASS, with coverage and isolation caveats recorded
 - [ ] 7.5 Fix value-level findings from the critique; file structural ones
 
 ## 8. Close the change
