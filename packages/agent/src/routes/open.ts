@@ -31,6 +31,7 @@ import { z } from 'zod'
 import type { Context } from 'hono'
 
 import { DEV_ORIGIN, PROD_ORIGIN } from '../constants.js'
+import { agentError } from '../lib/logging.js'
 import { resolveAllowed } from '../lib/paths.js'
 import { readRegistry } from '../lib/registry.js'
 import type { Env } from '../server/app.js'
@@ -102,6 +103,20 @@ openRoute.post(
       shell: false,
       detached: true,
       stdio: 'ignore',
+    })
+    // `spawn` reports a failure to start asynchronously, by emitting 'error' —
+    // a missing binary, an EDITOR that is not executable, or a `cwd` that no
+    // longer exists because the registered root drifted. An EventEmitter with
+    // no listener for 'error' rethrows, and here that is an uncaught exception
+    // in the daemon.
+    //
+    // A daemon installed under launchd has a far thinner PATH than the login
+    // shell that set EDITOR, so "resolves in my terminal, not in the service"
+    // is the ordinary case rather than the exotic one. This request has already
+    // answered 200 by then — the spec requires answering before the outcome is
+    // known — so there is nobody left to tell, and it is logged and dropped.
+    child.once('error', (err: Error) => {
+      agentError(`editor spawn failed requestId=${requestId(c)} ${String(err)}`)
     })
     // Nothing is read back from it and nothing waits on it. Without this the
     // editor's lifetime becomes the daemon's.

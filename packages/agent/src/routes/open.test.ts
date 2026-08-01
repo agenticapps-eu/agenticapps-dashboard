@@ -26,7 +26,9 @@ import { EventEmitter } from 'node:events'
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-const spawnMock = vi.hoisted(() => vi.fn(() => ({ unref: vi.fn(), on: vi.fn() })))
+const spawnMock = vi.hoisted(() =>
+  vi.fn(() => ({ unref: vi.fn(), on: vi.fn(), once: vi.fn() })),
+)
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
   return { ...actual, spawn: spawnMock }
