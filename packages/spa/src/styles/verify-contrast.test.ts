@@ -50,17 +50,29 @@ const WHITE = '#FFFFFF'
 /**
  * Return the body of a CSS block by its opening selector, matching braces so a
  * nested rule cannot truncate it early.
+ *
+ * Comments are blanked before the search rather than searched through. The
+ * first literal `.dark` in tokens.css is prose, 22 lines above the rule it
+ * describes; a plain indexOf lands there and only reaches the real block
+ * because no `{` happens to sit in between. Add one — a comment mentioning
+ * `.dark { }` — and every dark assertion silently re-parses the light palette
+ * and passes. A test that reports 82 green assertions about a palette it never
+ * read is worse than no test, so this failure mode is closed rather than
+ * documented. Blanking (not deleting) keeps every offset intact.
  */
 function blockBody(css: string, selector: string): string {
-  const start = css.indexOf(selector)
+  const searchable = css.replace(/\/\*[\s\S]*?\*\//g, (c) => ' '.repeat(c.length))
+  const start = searchable.indexOf(selector)
   if (start === -1) throw new Error(`no ${selector} block in tokens.css`)
-  const open = css.indexOf('{', start)
+  const open = searchable.indexOf('{', start)
   if (open === -1) throw new Error(`${selector} has no opening brace`)
   let depth = 0
-  for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++
-    else if (css[i] === '}') {
+  for (let i = open; i < searchable.length; i++) {
+    if (searchable[i] === '{') depth++
+    else if (searchable[i] === '}') {
       depth--
+      // Slice the ORIGINAL: declarations() strips comments itself, and the
+      // offsets match because blanking preserved every length.
       if (depth === 0) return css.slice(open + 1, i)
     }
   }
@@ -217,6 +229,18 @@ describe.each(APPEARANCES.map((a) => [a.name, a] as const))(
       }
     })
 
+    // `border-subtle` is a border token, but UnderstandCopyPill uses it as the
+    // hover ground under a text label — the one place a border token carries
+    // text. It is asserted here rather than added to SURFACES because nothing
+    // else renders on it, and widening SURFACES would assert 30 pairings that
+    // never occur (D-5). text-secondary measured 4.494 here in light — short of
+    // the floor by 0.006 — which is why the pill raises its label on hover.
+    it(`text-primary clears ${BODY_TEXT}:1 on border-subtle`, () => {
+      expect(
+        contrastRatio(appear.colour('text-primary'), appear.colour('border-subtle')),
+      ).toBeGreaterThanOrEqual(BODY_TEXT)
+    })
+
     describe('text on tinted and filled surfaces', () => {
       it(`accent clears ${BODY_TEXT}:1 on accent-bg`, () => {
         expect(
@@ -311,6 +335,14 @@ describe('appearance completeness', () => {
   // a dark page. Caught in the browser, not by the assertion above, which is
   // why source order is asserted rather than assumed.
   it('orders .dark after :root so equal-specificity rules resolve to dark', () => {
-    expect(tokensCss.indexOf('.dark')).toBeGreaterThan(tokensCss.indexOf(':root'))
+    // Match the RULES, not the first mention. tokensCss discusses `.dark` in
+    // prose well above the block, so a raw indexOf compares a comment against a
+    // rule — it fails on a harmless sentence, and would equally be satisfied by
+    // one while the real blocks were the wrong way round.
+    const ruleAt = (sel: string): number =>
+      tokensCss
+        .replace(/\/\*[\s\S]*?\*\//g, (c) => ' '.repeat(c.length))
+        .search(new RegExp(`(^|\\n)\\s*${sel.replace('.', '\\.')}\\s*\\{`))
+    expect(ruleAt('.dark')).toBeGreaterThan(ruleAt(':root'))
   })
 })

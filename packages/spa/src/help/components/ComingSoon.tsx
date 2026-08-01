@@ -39,7 +39,7 @@ export function ComingSoon({ title, section }: ComingSoonProps): React.JSX.Eleme
         </p>
         <Link
           to={fallbackPath}
-          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-card-bg hover:bg-accent-hover"
+          className="inline-flex items-center gap-2 rounded-md bg-accent-bg-strong px-4 py-2 text-sm font-medium text-white hover:bg-accent-bg-strong-hover"
         >
           <ArrowLeft size={14} />
           Back to {section} overview

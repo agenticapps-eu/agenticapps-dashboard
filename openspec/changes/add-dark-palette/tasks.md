@@ -55,7 +55,80 @@ Each pair lands as a `test(RED):` commit followed by `feat(GREEN):` or `fix(GREE
 ## 8. Close the change
 
 - [x] 8.1 `openspec validate --all` green — 18/18
-- [ ] 8.2 Two-stage review: gstack `/review`, then `superpowers:requesting-code-review` in an independent context
+- [x] 8.2 Two-stage review: gstack `/review`, then `superpowers:requesting-code-review` in an independent context
+
+### 8.2 disposition — the independent code review
+
+gstack `/review` was unavailable in this environment (blocked before dispatch), so
+stage one did not run; stage two ran as specified, in an independent context with
+crafted rather than inherited context. The reviewer mutation-tested the guards in a
+throwaway worktree instead of trusting them — it confirmed the completeness guard,
+the cascade-order guard and `fillRole` all fail when what they guard is broken, and
+independently recomputed all 164 pairings with its own luminance implementation
+(zero divergence). It returned one Critical, four Important and six Minor.
+
+Verified and fixed:
+
+- [x] 8.2a **The change made a first-paint flash visible in the default appearance**
+      (Critical). `initTheme()` runs only after the module graph evaluates, behind a
+      render-blocking `global.css` whose `@theme` values are the light palette — so a
+      dark user painted warm paper and light UA scrollbars, then snapped to ink. The
+      comment at `theme.ts:66` ordered JS, not paint. Invisible while both appearances
+      were light; this change is what makes it visible, so it is this change's to fix.
+      `index.html` now resolves the appearance in an inline pre-paint script, and
+      `theme-flash.test.ts` parses both files so the duplicated key, default and
+      `system` branch cannot drift.
+- [x] 8.2b **Five filled controls still used the foreground token as their fill.**
+      `CoverageToolbar:46`, `SkillDriftToolbar:57`, `CoverageEmptyState:39,57`,
+      `ComingSoon:42` — all `bg-accent text-card-bg`. Not a contrast failure
+      (`text-card-bg` inverts with the appearance: 6.42 light, 5.93 dark) but a visible
+      one: in dark the selected chip in `CoverageToolbar` stayed `#A98BF0` while the
+      identical chip in `HomeToolbar` became `#7C51DB`, and `SkillDriftToolbar`'s own
+      comment claimed parity with a component it no longer matched. Swapped, comment
+      corrected, and `FOREGROUND_AS_FILL` widened to `text-white|text-card-bg|text-app-bg`
+      so the gap that hid them is closed — the guard only fired on `text-white` before.
+- [x] 8.2c **A measured failure the widened matrix still missed.**
+      `UnderstandCopyPill:84` puts `text-secondary` on `border-subtle` on hover —
+      4.494:1 in light, short of the 4.5 floor by 0.006 at 12px `font-medium`. The one
+      place a border token carries text. The pill now raises its label on hover
+      (`hover:text-text-primary`, 14.22 light / 11.96 dark), matching `ThemeChip`, and
+      the pairing is asserted. Pre-existing, not a regression — but exactly the class
+      of hole this change exists to close.
+- [x] 8.2d **The block parser anchored on a comment.** `blockBody` used a raw
+      `indexOf`; the first literal `.dark` in `tokens.css` is prose 22 lines above the
+      rule, and only reached the real block because no `{` sat in between. Demonstrated:
+      inject a comment containing `.dark { }` and every dark assertion silently
+      re-parses the light palette and passes. Comments are now blanked (length-preserving)
+      before both the search and the brace match. The ordering guard had the same
+      weakness and now matches the rule, not the first mention. Re-verified by mutation:
+      decoy comment ignored, genuine inversion still caught.
+
+Answered, not actioned:
+
+- [x] 8.2e **The pairing matrix is still hand-maintained** (both rounds). Accepted, as
+      in 8.3f. `border-subtle` was added as a single assertion rather than a fourth
+      entry in `SURFACES`, because nothing else renders on it and widening `SURFACES`
+      would assert ~30 pairings that never occur — the D-5 principle, applied to the
+      fix as well as the original.
+- [x] 8.2f **The dormant `applyTheme`/`system`/`matchMedia` path becomes load-bearing.**
+      Correct, and now doubly so: the inline script duplicates that logic. Covered at the
+      seam by `theme-flash.test.ts` rather than by an activation test; a real
+      `prefers-color-scheme` integration test needs a browser and is not attempted here.
+- [x] 8.2g **Stated counts drift** (both rounds). The proposal's "eighteen call sites"
+      double-counted the two destructive buttons; `tokens.css` still said "74 per
+      appearance" against a real 82. Both corrected, and the count in `tokens.css` is
+      now deliberately unquoted rather than re-stated — it moved three times while this
+      change was open.
+- [x] 8.2h **`HelpLayout.dark.test.tsx` duplicates a router mock for one assertion**
+      (Minor 8). Fair against Simplicity First. Left as is: it is existing committed
+      work, folding it into the sibling file is not required by any finding, and
+      rewriting a passing test to save a file is the kind of adjacent change §3 of
+      CLAUDE.md rules out.
+- [x] 8.2i **Focus-ring and disabled-state floors** (Minor 10, and gemini in round one).
+      Unchanged from 8.3g — out of scope, worth its own change.
+- [x] 8.2j **Merge hazard: the branch forked at `88691f7`, before `4ad3e5b` (#88).**
+      A squash of `4ad3e5b..HEAD` would resurrect the deleted `design-shotgun-gate.sh`.
+      Actioned at 8.5 by rebasing onto `origin/main` before opening the PR.
 - [x] 8.3 Re-run `run-plan-review.sh` and confirm the three REQUEST-CHANGES verdicts are addressed or answered in writing
 
 ### 8.3 disposition — the second review round

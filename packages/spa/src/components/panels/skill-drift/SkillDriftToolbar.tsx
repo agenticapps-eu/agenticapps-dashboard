@@ -7,7 +7,7 @@
  * Mirrors Phase 10 CoverageToolbar pattern:
  * - 200ms debounce on search input (setTimeout cleared on each keystroke)
  * - URL sync via TanStack Router useNavigate
- * - Same chip visual treatment as CoverageToolbar (bg-accent for selected)
+ * - Same chip visual treatment as CoverageToolbar (bg-accent-bg-strong for selected)
  *
  * URL contract (PD-11-03):
  *   ?scope=family (or no param) → 'family' scope
@@ -54,7 +54,7 @@ export interface SkillDriftToolbarProps {
 }
 
 const CHIP_SELECTED =
-  'bg-accent text-card-bg border border-accent px-3 py-1.5 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
+  'bg-accent-bg-strong text-white border border-accent px-3 py-1.5 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 const CHIP_UNSELECTED =
   'bg-card-bg text-text-secondary border border-divider-soft px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'

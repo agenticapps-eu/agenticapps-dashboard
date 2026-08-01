@@ -4,6 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AgenticApps Dashboard — alpha</title>
+    <!--
+      Resolve the appearance before the first paint, not before createRoot().
+
+      initTheme() in main.tsx runs only once the module graph — Inter, the
+      router, every panel — has evaluated, and global.css is render-blocking
+      ahead of it. Its @theme values are the LIGHT palette, so a dark user
+      painted warm paper and light scrollbars, then snapped to ink. That was
+      invisible while both appearances were light; shipping a real .dark block
+      is what makes it visible, so it is this change's to fix.
+
+      Kept in sync with lib/theme.ts by theme-flash.test.ts, which parses this
+      file: same storage key, same 'dark' default (D-02), same 'system' branch.
+    -->
+    <script>
+      (function () {
+        try {
+          var c = localStorage.getItem('agentic-dashboard:theme')
+          if (c !== 'light' && c !== 'system') c = 'dark'
+          if (
+            c === 'dark' ||
+            (c === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          ) {
+            document.documentElement.classList.add('dark')
+          }
+        } catch (e) {
+          /* Private-mode localStorage throws; fall through to the light paint
+             the stylesheet gives us rather than blocking the render. */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

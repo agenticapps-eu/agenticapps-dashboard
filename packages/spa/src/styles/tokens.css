@@ -140,7 +140,9 @@
  *   apart, and dark has more room to separate them.
  *
  * Every value below is asserted by verify-contrast.test.ts against the pairings
- * that actually occur in packages/spa/src — 74 per appearance.
+ * that actually occur in packages/spa/src. The count is deliberately not quoted
+ * here: it moved three times while this change was open, and a stale number in
+ * a comment is how the last one got out of step with the code.
  */
 .dark {
   color-scheme: dark;

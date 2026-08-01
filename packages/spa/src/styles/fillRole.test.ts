@@ -49,15 +49,23 @@ const FOREGROUND_AS_FILL =
   /\b(?:hover:|focus:|active:|group-hover:)?bg-(?:accent|accent-hover|status-error|status-warning|status-success|status-info)(?![\w/-])/
 
 /**
+ * Text colours that do not follow the fill. `text-white` is fixed outright;
+ * `text-card-bg` and `text-app-bg` invert with the appearance, which makes them
+ * legible in both but does not make the fill correct — a control painted with
+ * the foreground token is a different purple from the twelve painted with the
+ * fill token, and in dark that divergence is plainly visible side by side.
+ */
+const FIXED_ROLE_TEXT = /\btext-(?:white|card-bg|app-bg)(?![\w/-])/
+
+/**
  * A class list is any quoted string long enough to hold several utilities.
  *
  * Scope, stated plainly because it bounds what the assertion is worth: this
  * matches one quoted string at a time, so it catches a pairing a component
- * wrote adjacently and not one assembled across strings —
- * `clsx('text-white', active && 'bg-accent')` would slip through. That
- * composition is not an available pattern here: cn()/clsx/CVA are banned by
- * D-5.1-10 and every call site builds className from adjacent literals or a
- * ternary of whole class lists, both of which this sees.
+ * wrote adjacently and not one split across two concatenated literals. cn()/
+ * clsx/CVA are banned by D-5.1-10, which removes the usual way that happens,
+ * but array-join composition is used here (`ManualPairForm.tsx:225`) and a
+ * determined split would evade this. The check is a floor, not a proof.
  *
  * Widening to file scope was tried and reverted — it flags `SidebarSubItem`,
  * where `bg-status-success` is a status dot carrying no text and the file's
@@ -69,13 +77,13 @@ const CLASS_STRINGS = /(['"`])((?:[^'"`\\\n]|\\.){8,}?)\1/g
 describe('fill and foreground roles stay separate', () => {
   const files = walk(SRC_DIR)
 
-  it('no component places white text on a foreground-role token', () => {
+  it('no component places fixed-role text on a foreground-role token', () => {
     const offenders: { file: string; classes: string }[] = []
     for (const file of files) {
       const source = readFileSync(file, 'utf8')
       for (const [, , classes] of source.matchAll(CLASS_STRINGS)) {
         const value = classes as string
-        if (!value.includes('text-white')) continue
+        if (!FIXED_ROLE_TEXT.test(value)) continue
         if (!FOREGROUND_AS_FILL.test(value)) continue
         offenders.push({
           file: relative(SRC_DIR, file),
