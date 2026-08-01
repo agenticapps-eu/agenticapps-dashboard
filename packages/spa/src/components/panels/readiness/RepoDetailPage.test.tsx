@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { fireEvent, render, screen, cleanup, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CHECK_IDS,
@@ -19,19 +19,28 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 vi.mock('../../../lib/readinessQueries.js', () => ({
   useFleet: vi.fn(),
   useRepoDetail: vi.fn(),
+  useEvidence: vi.fn(),
 }))
 
 import { ApiError } from '../../../lib/api.js'
-import { useRepoDetail } from '../../../lib/readinessQueries.js'
+import { useEvidence, useRepoDetail } from '../../../lib/readinessQueries.js'
 
 import { CHECK_LABELS } from './ReadinessIndicator.js'
 import { RepoDetailPage } from './RepoDetailPage.js'
 
 const mockUseRepoDetail = vi.mocked(useRepoDetail)
+const mockUseEvidence = vi.mocked(useEvidence)
 
 afterEach(cleanup)
 beforeEach(() => {
   routerState.params = { repoId: 'dashboard' }
+  mockUseEvidence.mockReturnValue({
+    data: undefined,
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    error: null,
+  } as unknown as ReturnType<typeof useEvidence>)
 })
 
 function detail(over: Partial<RepoDetail> = {}): RepoDetail {
@@ -101,6 +110,25 @@ function neverDetail(): RepoDetail {
     checks,
     notice: null,
   }
+}
+
+const EVIDENCE_PATH = 'openspec/specs/repo-readiness/spec.md'
+
+/** A repo whose first check was derived from a file, and its second declared. */
+function withEvidence(): RepoDetail {
+  const base = detail()
+  const checks = base.checks.map((check, index) =>
+    index === 0
+      ? {
+          ...check,
+          source: 'derived' as const,
+          evidence: { path: EVIDENCE_PATH, commit: 'a'.repeat(40) },
+        }
+      : index === 1
+        ? { ...check, source: 'declared' as const }
+        : check,
+  ) as unknown as RepoDetail['checks']
+  return { ...base, checks }
 }
 
 function loaded(repo: RepoDetail): void {
@@ -218,19 +246,7 @@ describe('RepoDetailPage evidence blocks', () => {
   })
 
   it('names where a derived value came from, and names the readiness file for a declared one', () => {
-    const base = detail()
-    const checks = base.checks.map((check, index) =>
-      index === 0
-        ? {
-            ...check,
-            source: 'derived' as const,
-            evidence: { path: 'openspec/specs/repo-readiness/spec.md', commit: 'a'.repeat(40) },
-          }
-        : index === 1
-          ? { ...check, source: 'declared' as const }
-          : check,
-    ) as unknown as RepoDetail['checks']
-    loaded({ ...base, checks })
+    loaded(withEvidence())
     render(<RepoDetailPage />)
 
     expect(
@@ -262,6 +278,45 @@ describe('RepoDetailPage evidence blocks', () => {
     )
     expect(sentences.filter((text) => text !== '')).toHaveLength(CHECK_IDS.length)
     expect(new Set(sentences).size).toBe(CHECK_IDS.length)
+  })
+
+  it('offers the evidence file as a control, closed until asked', () => {
+    loaded(withEvidence())
+    render(<RepoDetailPage />)
+
+    const control = within(block('workflow')).getByRole('button', {
+      name: /openspec\/specs\/repo-readiness\/spec\.md/,
+    })
+    expect(control).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('shows the file through the read route once the control is opened', () => {
+    mockUseEvidence.mockReturnValue({
+      data: { content: 'the evidence body', mtime: '2026-07-30T09:15:00.000Z', sha256: 'f'.repeat(64) },
+      isPending: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    } as unknown as ReturnType<typeof useEvidence>)
+    loaded(withEvidence())
+    render(<RepoDetailPage />)
+
+    const control = within(block('workflow')).getByRole('button', {
+      name: /openspec\/specs\/repo-readiness\/spec\.md/,
+    })
+    fireEvent.click(control)
+
+    expect(control).toHaveAttribute('aria-expanded', 'true')
+    expect(within(block('workflow')).getByText(/the evidence body/)).toBeInTheDocument()
+  })
+
+  it('offers no control where there is no evidence to open', () => {
+    loaded(neverDetail())
+    render(<RepoDetailPage />)
+
+    for (const id of CHECK_IDS) {
+      expect(within(block(id)).queryAllByRole('button')).toHaveLength(0)
+    }
   })
 
   it('keeps all six on one scrollable page — no tab, dialog, or drawer', () => {
