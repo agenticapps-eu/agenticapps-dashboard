@@ -16,8 +16,10 @@
  * a client, but hashing means an accidental exposure would leak nothing.
  */
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { lstat, readFile, stat } from 'node:fs/promises'
+import { basename, join } from 'node:path'
+
+import { resolveAllowedNamed } from '../paths.js'
 
 import { runGit } from './gitFacts.js'
 import { READINESS_FILE_PATH } from './readinessFile.js'
@@ -36,14 +38,43 @@ function hash(parts: readonly string[]): string {
   return digest.digest('hex')
 }
 
-/** The file's content hash, or a marker distinguishing absent from unreadable. */
-function fileIdentity(path: string): string {
+/** No key input is worth reading more of a file than this. */
+const MAX_IDENTITY_BYTES = 512 * 1024
+
+/**
+ * The file's content hash, or a marker distinguishing absent from refused.
+ *
+ * The path is resolved through the daemon's contained-read primitive before it
+ * is opened, exactly as the sibling reader in `readinessFile.ts` does. Hashing
+ * a file is not a harmless read: the hash keys the memo, cache invalidation is
+ * observable through `generatedAt`, and a candidate symlinked out of the repo
+ * would turn that into a change oracle on a file the policy forbids opening.
+ *
+ * A refusal is its own identity value, so declining to follow an escaping
+ * symlink still reads differently from finding no file at all.
+ */
+async function fileIdentity(path: string, root: string): Promise<string> {
+  let absolute: string
   try {
-    return createHash('sha256').update(readFileSync(path)).digest('hex')
-  } catch (err) {
-    return (err as NodeJS.ErrnoException).code === 'ENOENT'
-      ? 'absent'
-      : 'unreadable'
+    await lstat(path)
+  } catch {
+    return 'absent'
+  }
+  try {
+    absolute = await resolveAllowedNamed(path, {
+      roots: [root],
+      allowedNames: [basename(path)],
+    })
+  } catch {
+    return 'refused'
+  }
+
+  try {
+    const info = await stat(absolute)
+    if (info.size > MAX_IDENTITY_BYTES) return 'oversized'
+    return createHash('sha256').update(await readFile(absolute)).digest('hex')
+  } catch {
+    return 'unreadable'
   }
 }
 
@@ -52,17 +83,19 @@ function fileIdentity(path: string): string {
  * signature because the fleet is served in that order, so a reorder changes the
  * response even when membership does not.
  */
-export function fleetSignature(
+export async function fleetSignature(
   entries: readonly RegistryIdentity[],
   machineSkillRoots: Readonly<Record<string, string>>,
-): string {
+): Promise<string> {
   const registry = entries.flatMap((entry) => [entry.id, entry.root])
-  const machine = Object.keys(machineSkillRoots)
-    .sort()
-    .flatMap((host) => [
-      host,
-      fileIdentity(join(machineSkillRoots[host]!, SKILL_RELATIVE_PATH)),
-    ])
+  const hosts = Object.keys(machineSkillRoots).sort()
+  const identities = await Promise.all(
+    hosts.map((host) => {
+      const root = machineSkillRoots[host]!
+      return fileIdentity(join(root, SKILL_RELATIVE_PATH), root)
+    }),
+  )
+  const machine = hosts.flatMap((host, index) => [host, identities[index]!])
   return hash(['registry', ...registry, 'machine', ...machine])
 }
 
@@ -92,6 +125,6 @@ export async function repoFingerprint(
     'status',
     status.ok ? status.stdout : `unavailable:${status.exitCode}`,
     'readiness',
-    fileIdentity(join(root, READINESS_FILE_PATH)),
+    await fileIdentity(join(root, READINESS_FILE_PATH), root),
   ])
 }

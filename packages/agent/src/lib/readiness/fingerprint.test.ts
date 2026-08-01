@@ -49,14 +49,15 @@ function signature(
     entries?: { id: string; root: string }[]
     machineRoots?: Record<string, string>
   } = {},
-): string {
+): Promise<string> {
   return fleetSignature(
     over.entries ?? [{ id: 'a', root: repo }],
     over.machineRoots ?? { codex: join(machine, 'codex', 'skills') },
   )
 }
 
-const fingerprint = (context = signature()) => repoFingerprint(repo, context)
+const fingerprint = async (context = signature()) =>
+  repoFingerprint(repo, await context)
 
 function writeMachineSkill(body: string): void {
   const path = join(
@@ -171,7 +172,7 @@ describe('repoFingerprint', () => {
   it('survives a directory that is not a git work tree', async () => {
     const bare = join(sandbox, 'not-a-repo')
     mkdirSync(bare)
-    await expect(repoFingerprint(bare, signature())).resolves.toEqual(
+    await expect(repoFingerprint(bare, await signature())).resolves.toEqual(
       expect.any(String),
     )
   })
@@ -183,9 +184,52 @@ describe('repoFingerprint', () => {
     mkdirSync(join(two, '.agenticapps'), { recursive: true })
     writeFileSync(join(one, '.agenticapps', 'readiness.json'), '{"a":1}')
     writeFileSync(join(two, '.agenticapps', 'readiness.json'), '{"a":2}')
-    expect(await repoFingerprint(one, signature())).not.toBe(
-      await repoFingerprint(two, signature()),
+    const context = await signature()
+    expect(await repoFingerprint(one, context)).not.toBe(
+      await repoFingerprint(two, context),
     )
+  })
+
+  /**
+   * These use non-git directories deliberately. Inside a git repo, adding a
+   * readiness file also moves the status component, so the key changes whatever
+   * the contained read decides — which hides what the read itself returned.
+   * With no git, every other component is constant and the read is the only
+   * thing under test.
+   */
+  describe('the contained read, isolated from git status', () => {
+    function bare(name: string): string {
+      const root = join(sandbox, name)
+      mkdirSync(join(root, '.agenticapps'), { recursive: true })
+      return root
+    }
+
+    it('distinguishes a refused symlink from an absent file', async () => {
+      const absent = join(sandbox, 'no-file')
+      mkdirSync(absent, { recursive: true })
+      const escaping = bare('escaping')
+      const secret = join(sandbox, 'secret.txt')
+      writeFileSync(secret, 'x\n')
+      symlinkSync(secret, join(escaping, '.agenticapps', 'readiness.json'))
+      const context = await signature()
+
+      expect(await repoFingerprint(escaping, context)).not.toBe(
+        await repoFingerprint(absent, context),
+      )
+    })
+
+    it('does not hash a readiness file past the read bound', async () => {
+      const one = bare('big-one')
+      const two = bare('big-two')
+      writeFileSync(join(one, '.agenticapps', 'readiness.json'), 'a'.repeat(600 * 1024))
+      writeFileSync(join(two, '.agenticapps', 'readiness.json'), 'b'.repeat(600 * 1024))
+      const context = await signature()
+
+      // Two different oversized files read alike because neither was opened.
+      expect(await repoFingerprint(one, context)).toBe(
+        await repoFingerprint(two, context),
+      )
+    })
   })
 
   it('changes when the fleet signature changes', async () => {
@@ -199,43 +243,66 @@ describe('repoFingerprint', () => {
 })
 
 describe('fleetSignature', () => {
-  it('changes when a repo joins the registry', () => {
-    expect(signature({ entries: [{ id: 'a', root: repo }] })).not.toBe(
-      signature({ entries: [{ id: 'a', root: repo }, { id: 'b', root: '/b' }] }),
+  it('changes when a repo joins the registry', async () => {
+    expect(await signature({ entries: [{ id: 'a', root: repo }] })).not.toBe(
+      await signature({
+        entries: [{ id: 'a', root: repo }, { id: 'b', root: '/b' }],
+      }),
     )
   })
 
-  it('changes when a registered root is repointed', () => {
-    expect(signature({ entries: [{ id: 'a', root: '/one' }] })).not.toBe(
-      signature({ entries: [{ id: 'a', root: '/two' }] }),
+  it('changes when a registered root is repointed', async () => {
+    expect(await signature({ entries: [{ id: 'a', root: '/one' }] })).not.toBe(
+      await signature({ entries: [{ id: 'a', root: '/two' }] }),
     )
   })
 
-  it('changes when registry order changes — the fleet is served in that order', () => {
+  it('changes when registry order changes — the fleet is served in that order', async () => {
     const a = { id: 'a', root: '/a' }
     const b = { id: 'b', root: '/b' }
-    expect(signature({ entries: [a, b] })).not.toBe(signature({ entries: [b, a] }))
+    expect(await signature({ entries: [a, b] })).not.toBe(
+      await signature({ entries: [b, a] }),
+    )
   })
 
-  it('changes when a machine-global skill changes', () => {
-    const before = signature()
+  it('changes when a machine-global skill changes', async () => {
+    const before = await signature()
     writeMachineSkill('version: 2.0.0\n')
-    expect(signature()).not.toBe(before)
+    expect(await signature()).not.toBe(before)
   })
 
-  it('changes when a machine-global skill disappears', () => {
-    const before = signature()
+  it('changes when a machine-global skill disappears', async () => {
+    const before = await signature()
     rmSync(join(machine, 'codex'), { recursive: true, force: true })
-    expect(signature()).not.toBe(before)
+    expect(await signature()).not.toBe(before)
   })
 
-  it('tolerates a machine root that does not exist', () => {
-    expect(() =>
+  it('tolerates a machine root that does not exist', async () => {
+    await expect(
       signature({ machineRoots: { codex: join(sandbox, 'nowhere') } }),
-    ).not.toThrow()
+    ).resolves.toEqual(expect.any(String))
   })
 
-  it('carries no machine path into the signature it returns', () => {
-    expect(signature()).not.toContain(sandbox)
+  it('carries no machine path into the signature it returns', async () => {
+    expect(await signature()).not.toContain(sandbox)
+  })
+
+  /**
+   * The machine-global skill is read through the same contained primitive as
+   * the readiness file. These roots are named policy rather than request input,
+   * but the file inside one can still be a symlink out of it.
+   */
+  it('never opens a machine skill that resolves outside its root', async () => {
+    const secret = join(sandbox, 'outside-the-root.md')
+    writeFileSync(secret, 'first\n')
+    const linked = join(sandbox, 'linked', 'agentic-apps-workflow')
+    mkdirSync(linked, { recursive: true })
+    symlinkSync(secret, join(linked, 'SKILL.md'))
+    const roots = { codex: join(sandbox, 'linked') }
+
+    const before = await signature({ machineRoots: roots })
+    writeFileSync(secret, 'second — the daemon must not notice this\n')
+
+    expect(await signature({ machineRoots: roots })).toBe(before)
   })
 })

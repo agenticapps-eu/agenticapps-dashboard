@@ -283,7 +283,7 @@ function registryEntries(
 function signatureFor(
   entries: readonly { id: string; root: string }[],
   opts: ReadinessScanOptions,
-): string {
+): Promise<string> {
   const sources = workflowSources(opts)
   return fleetSignature(
     entries,
@@ -295,7 +295,7 @@ export async function readFleet(
   opts: ReadinessScanOptions = {},
 ): Promise<FleetResponse> {
   const entries = registryEntries(opts)
-  const fleet = signatureFor(entries, opts)
+  const fleet = await signatureFor(entries, opts)
 
   const settled = await Promise.allSettled(
     entries.map((entry) => snapshotFor(entry, fleet, opts)),
@@ -347,7 +347,7 @@ async function detailFor(
 
   const snapshot = await snapshotFor(
     entry,
-    signatureFor(entries, opts),
+    await signatureFor(entries, opts),
     opts,
     force,
   )
