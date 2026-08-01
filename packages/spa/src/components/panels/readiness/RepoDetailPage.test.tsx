@@ -119,10 +119,15 @@ describe('RepoDetailPage header', () => {
     loaded(detail())
     render(<RepoDetailPage />)
 
-    expect(
-      screen.getByRole('heading', { name: 'agenticapps-dashboard' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/2026-07-30 09:15 UTC/)).toBeInTheDocument()
+    const name = screen.getByRole('heading', { name: 'agenticapps-dashboard' })
+    expect(name).toBeInTheDocument()
+
+    // Scoped to the header: the six blocks state their own observation times,
+    // and a repo whose checks all ran at the last commit renders this same
+    // string seven times.
+    const header = name.closest('header')
+    expect(header).not.toBeNull()
+    expect(within(header as HTMLElement).getByText(/2026-07-30 09:15 UTC/)).toBeInTheDocument()
   })
 
   it('shows the six checks in the full variant, labelled and unlinked', () => {

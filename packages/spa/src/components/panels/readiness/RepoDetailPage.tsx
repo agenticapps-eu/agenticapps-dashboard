@@ -12,7 +12,7 @@
  * - NO cn()/clsx/CVA — inline className strings only
  * - NO hex literals — token names only
  */
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
 import type { RepoDetail } from '@agenticapps/dashboard-shared'
@@ -21,7 +21,17 @@ import { ApiError } from '../../../lib/api.js'
 import { useRepoDetail } from '../../../lib/readinessQueries.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 
-import { ReadinessIndicator } from './ReadinessIndicator.js'
+import {
+  CHECK_LABELS,
+  ReadinessIndicator,
+  STATUS_PRESENTATION,
+} from './ReadinessIndicator.js'
+
+/** One detail result — the summary shape plus the remedy the detail wire adds. */
+type DetailCheck = RepoDetail['checks'][number]
+
+/** Where a declared value comes from. Named once so the copy cannot drift. */
+const READINESS_FILE = '.agenticapps/readiness.json'
 
 /**
  * UTC to the minute, the same rendering the cells use. Every time in this
@@ -92,6 +102,83 @@ function DetailHeader({ repo }: { repo: RepoDetail }): ReactElement {
   )
 }
 
+/**
+ * A missing fact, rendered as itself. Its own element rather than punctuation
+ * inside a sentence, so "there is no timestamp" is as readable as a timestamp.
+ */
+function EmDash(): ReactElement {
+  return <span className="text-text-tertiary">—</span>
+}
+
+function Fact({ term, children }: { term: string; children: ReactNode }): ReactElement {
+  return (
+    <div className="flex gap-3 text-sm">
+      <dt className="w-24 shrink-0 text-text-tertiary">{term}</dt>
+      <dd className="min-w-0 break-words text-text-secondary">{children}</dd>
+    </div>
+  )
+}
+
+/**
+ * One check, as one block on the page. Anchored at the check id because that is
+ * the hash `ReadinessIndicator` links to — a fleet cell selects this element,
+ * not just this route.
+ *
+ * Provenance is two rows rather than one sentence: whether the value was
+ * derived or declared is a different fact from which file it came out of, and
+ * a derived check that has never run has the first without the second. Saying
+ * "derived from —" would read as a path that failed to load rather than a
+ * check that has not happened.
+ */
+function CheckBlock({ check }: { check: DetailCheck }): ReactElement {
+  const presentation = STATUS_PRESENTATION[check.status]
+  const Shape = presentation.icon
+  const headingId = `${check.id}-heading`
+  // An evaluation error explains the status better than a summary can; a
+  // summary is what `na` and `warn` are required to keep visible.
+  const why = check.error?.message ?? (check.summary.trim() || null)
+
+  return (
+    <section
+      id={check.id}
+      aria-labelledby={headingId}
+      className="scroll-mt-6 rounded-card bg-card-bg p-6 shadow-card"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 id={headingId} className="text-lg font-semibold text-text-primary">
+          {CHECK_LABELS[check.id]}
+        </h2>
+        <span
+          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${presentation.bg} ${presentation.text}`}
+        >
+          <Shape size={14} aria-hidden="true" />
+          {presentation.word}
+        </span>
+      </div>
+
+      {why !== null && <p className="mt-3 text-sm text-text-secondary">{why}</p>}
+
+      <dl className="mt-4 flex flex-col gap-1.5">
+        <Fact term="Observed">
+          {check.at === null ? <EmDash /> : formatCommitTime(check.at)}
+        </Fact>
+        <Fact term="Provenance">
+          {check.source === 'declared' ? `Declared in ${READINESS_FILE}` : 'Derived'}
+        </Fact>
+        <Fact term="Evidence">
+          {check.evidence === null ? (
+            <EmDash />
+          ) : (
+            <code className="font-mono text-xs">{check.evidence.path}</code>
+          )}
+        </Fact>
+      </dl>
+
+      <p className="mt-4 text-sm text-text-primary">{check.remedy}</p>
+    </section>
+  )
+}
+
 export function RepoDetailPage(): ReactElement {
   const { repoId } = useParams({ strict: false }) as { repoId: string }
   const detail = useRepoDetail(repoId)
@@ -139,6 +226,9 @@ export function RepoDetailPage(): ReactElement {
   return (
     <main className="flex flex-col gap-6">
       <DetailHeader repo={detail.data.repo} />
+      {detail.data.repo.checks.map((check) => (
+        <CheckBlock key={check.id} check={check} />
+      ))}
     </main>
   )
 }
