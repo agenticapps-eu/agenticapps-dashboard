@@ -20,20 +20,34 @@ vi.mock('../../../lib/readinessQueries.js', () => ({
   useFleet: vi.fn(),
   useRepoDetail: vi.fn(),
   useEvidence: vi.fn(),
+  useRescanRepo: vi.fn(),
+  useOpenInEditor: vi.fn(),
 }))
 
 import { ApiError } from '../../../lib/api.js'
-import { useEvidence, useRepoDetail } from '../../../lib/readinessQueries.js'
+import {
+  useEvidence,
+  useOpenInEditor,
+  useRepoDetail,
+  useRescanRepo,
+} from '../../../lib/readinessQueries.js'
 
 import { CHECK_LABELS } from './ReadinessIndicator.js'
 import { RepoDetailPage } from './RepoDetailPage.js'
 
 const mockUseRepoDetail = vi.mocked(useRepoDetail)
 const mockUseEvidence = vi.mocked(useEvidence)
+const mockUseRescanRepo = vi.mocked(useRescanRepo)
+const mockUseOpenInEditor = vi.mocked(useOpenInEditor)
+
+const rescan = vi.fn()
+const openInEditor = vi.fn()
 
 afterEach(cleanup)
 beforeEach(() => {
   routerState.params = { repoId: 'dashboard' }
+  rescan.mockClear()
+  openInEditor.mockClear()
   mockUseEvidence.mockReturnValue({
     data: undefined,
     isPending: false,
@@ -41,6 +55,18 @@ beforeEach(() => {
     isError: false,
     error: null,
   } as unknown as ReturnType<typeof useEvidence>)
+  mockUseRescanRepo.mockReturnValue({
+    mutate: rescan,
+    isPending: false,
+    isError: false,
+    error: null,
+  } as unknown as ReturnType<typeof useRescanRepo>)
+  mockUseOpenInEditor.mockReturnValue({
+    mutate: openInEditor,
+    isPending: false,
+    isError: false,
+    error: null,
+  } as unknown as ReturnType<typeof useOpenInEditor>)
 })
 
 function detail(over: Partial<RepoDetail> = {}): RepoDetail {
@@ -203,6 +229,56 @@ describe('RepoDetailPage header', () => {
     render(<RepoDetailPage />)
 
     expect(screen.getByText(/not registered/i)).toBeInTheDocument()
+  })
+})
+
+describe('RepoDetailPage header actions', () => {
+  function header(): HTMLElement {
+    const el = screen
+      .getByRole('heading', { name: 'agenticapps-dashboard' })
+      .closest('header')
+    if (el === null) throw new Error('no header')
+    return el as HTMLElement
+  }
+
+  it('offers to rescan, and asks the daemon when it is used', () => {
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    fireEvent.click(within(header()).getByRole('button', { name: /rescan/i }))
+
+    expect(rescan).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers to open the repo in the editor', () => {
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    fireEvent.click(within(header()).getByRole('button', { name: /open in editor/i }))
+
+    expect(openInEditor).toHaveBeenCalledTimes(1)
+  })
+
+  it('says when the reading was taken, so a cached answer is tellable from a fresh one', () => {
+    // The design critique's strongest finding on the fleet: `generatedAt` was
+    // on the wire and rendered nowhere. The same field is on this response.
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    expect(within(header()).getByText(/2026-07-31 00:00 UTC/)).toBeInTheDocument()
+  })
+
+  it('says an editor is not configured rather than failing silently', () => {
+    mockUseOpenInEditor.mockReturnValue({
+      mutate: openInEditor,
+      isPending: false,
+      isError: true,
+      error: new ApiError(409, 'req-2', 'HTTP 409', 'editor_not_configured'),
+    } as unknown as ReturnType<typeof useOpenInEditor>)
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    expect(within(header()).getByText(/EDITOR/)).toBeInTheDocument()
   })
 })
 

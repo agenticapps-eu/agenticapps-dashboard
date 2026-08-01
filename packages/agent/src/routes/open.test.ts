@@ -133,6 +133,40 @@ describe('POST /api/projects/:id/open', () => {
     expect(options.cwd).toBe(realpathSync(root))
   })
 
+  it('opens the repo itself when no path is named', async () => {
+    // What "open in editor" means on a repo detail header. The project root is
+    // not under the read allow-list and never will be — that list bounds what
+    // the daemon will read out and hand to a browser, and opening an editor
+    // reads nothing and returns nothing. The registry is what bounds this: the
+    // only roots nameable here are ones the user registered.
+    const root = makeProject()
+    const id = await register(root)
+    const app = createApp({ registryFile })
+
+    const res = await app.request(`http://127.0.0.1:5193/api/projects/${id}/open`, {
+      method: 'POST',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+
+    expect(res.status).toBe(200)
+    const [command, args] = spawnMock.mock.calls[0] as unknown as [string, string[]]
+    expect(command).toBe('/usr/local/bin/my-editor')
+    expect(args).toEqual([realpathSync(root)])
+  })
+
+  it('still refuses a named path outside the allow-list', async () => {
+    // Omitting the path opens the root; naming one keeps every restriction the
+    // read route applies. The two must not blur into "any path under the root".
+    const root = makeProject()
+    const id = await register(root)
+
+    const res = await open(id, 'README.md')
+
+    expect(res.status).toBe(422)
+    expect(spawnMock).not.toHaveBeenCalled()
+  })
+
   it('refuses a path the read route would refuse, and spawns nothing', async () => {
     const root = makeProject()
     const id = await register(root)
