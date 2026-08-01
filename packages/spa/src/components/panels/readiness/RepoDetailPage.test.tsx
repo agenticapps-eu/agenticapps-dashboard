@@ -408,6 +408,29 @@ describe('RepoDetailPage evidence blocks', () => {
     expect(within(coverage).queryAllByRole('button')).toHaveLength(0)
   })
 
+  it('does not claim to know why a file would not open', () => {
+    // `isReadableProjectPath` cannot see existence, file mode or symlink
+    // containment, so an offered control can still fail — a directory, a
+    // deleted file, a symlink out of the repo. Naming one of those causes is
+    // guessing, and it will be the wrong guess most of the time.
+    mockUseEvidence.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isFetching: false,
+      isError: true,
+      error: new ApiError(422, 'req-3', 'HTTP 422', 'path_not_allowed'),
+    } as unknown as ReturnType<typeof useEvidence>)
+    loaded(withEvidence())
+    render(<RepoDetailPage />)
+
+    fireEvent.click(
+      within(block('workflow')).getByRole('button', { name: /spec\.md/ }),
+    )
+
+    expect(within(block('workflow')).queryByText(/may have moved/i)).not.toBeInTheDocument()
+    expect(within(block('workflow')).getByText(/could not read/i)).toBeInTheDocument()
+  })
+
   it('offers no control where there is no evidence to open', () => {
     loaded(neverDetail())
     render(<RepoDetailPage />)

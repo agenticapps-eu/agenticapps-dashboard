@@ -308,9 +308,11 @@ function Evidence({ repoId, path }: { repoId: string; path: string }): ReactElem
           {file.isPending ? (
             <p className="text-xs text-text-tertiary">Reading {path}…</p>
           ) : file.isError || !file.data ? (
-            <p className="text-xs text-status-error">
-              Could not read {path}. It may have moved since the check ran.
-            </p>
+            // Stated without a cause. The offer is made on the path's shape
+            // alone, so a failure here can be a directory, a deleted file, or
+            // a symlink out of the repo — naming one would be a guess, and
+            // usually the wrong one.
+            <p className="text-xs text-status-error">Could not read {path}.</p>
           ) : (
             <pre className="max-h-80 overflow-auto rounded-md bg-app-bg p-3 font-mono text-xs whitespace-pre-wrap text-text-secondary">
               {file.data.content}

@@ -38,7 +38,9 @@ export function isReadableProjectPath(path: string): boolean {
   if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
     return false
   }
-  // A file inside one of the three, never one of the three themselves — the
-  // route serves regular files, and a bare directory name is not one.
+  // Something *inside* one of the three, never one of the three themselves.
+  // Note what this does NOT do: `openspec/changes` is a directory and passes
+  // here, because a path's shape does not say whether it names a file. Only
+  // the top-level three are excluded by the length check.
   return segments.length > 1 && ALLOWED_SUBDIRS.some((dir) => segments[0] === dir)
 }
