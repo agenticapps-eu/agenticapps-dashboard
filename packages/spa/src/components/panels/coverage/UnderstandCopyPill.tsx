@@ -81,7 +81,7 @@ export function UnderstandCopyPill({
             )
           }}
           aria-label={`Copy understand command for ${repo} to clipboard`}
-          className="min-h-11 md:min-h-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary bg-card-bg-hover hover:bg-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-11 md:min-h-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary bg-card-bg-hover hover:bg-border-subtle hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Copy size={12} aria-hidden="true" />
           /understand

@@ -36,7 +36,7 @@ export function RepairBanner(): React.JSX.Element | null {
         type="button"
         onClick={onRepair}
         aria-label="Re-pair (open onboarding)"
-        className="rounded-md border border-accent px-3 py-1 text-sm font-semibold text-accent hover:bg-accent hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+        className="rounded-md border border-accent px-3 py-1 text-sm font-semibold text-accent hover:bg-accent-bg-strong hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
       >
         Re-pair
       </button>

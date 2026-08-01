@@ -27,7 +27,13 @@ A single place to see, from any device, what every AgenticApps project's pipelin
 
 ## Brand & tone
 
-- Warm paper aesthetic. Light theme primary. Calm. Confident.
+- Warm ink aesthetic, dark appearance primary; warm paper is the light
+  alternative. Calm. Confident. The two are one identity at different
+  luminances, not two themes: surfaces carry the same purple cast in both, so the
+  accent belongs to the palette rather than sitting on top of it. Corrected
+  2026-08-01 — this file said "light theme primary" while
+  `openspec/specs/design-system/spec.md` required a dark default, and the code
+  followed the spec.
 - Cloudflare dashboard–inspired sidebar shell (Phase 5.1 design); minimal chrome; content density without crowding.
 - Reads like an instrument panel, not a marketing landing page. No emoji, no celebratory motion, no "you crushed it!" copy.
 - Honest data: when something is missing, say "never compiled" / "not installed" / "no skill installed" not "0%".
@@ -36,7 +42,7 @@ A single place to see, from any device, what every AgenticApps project's pipelin
 ## Anti-references (what we are NOT)
 
 - **Not Pilot Shell.** They ship per-project, gradient-heavy, SaaS-cream UI. We ship cross-project, calm, instrument-panel UI.
-- **Not Vercel / Netlify dashboards.** No dark glassmorphism. No accent gradients. No big-number-on-card hero metrics.
+- **Not Vercel / Netlify dashboards.** No glassmorphism, no accent gradients, no big-number-on-card hero metrics. This one is about *their* dark treatment, not about dark itself — depth here comes from a surface step and an edge highlight, never from blur or glow.
 - **Not Datadog / Grafana.** No dense data-viz dashboards with 12 charts per row. Coverage is a matrix, not a graph.
 - **Not Linear / Notion.** No command-palette-as-primary-nav. Sidebar is the primary nav.
 - **Not generic AI-generated dashboards** — no purple gradients, no "Recently active" hero card, no identical 3×N card grids.

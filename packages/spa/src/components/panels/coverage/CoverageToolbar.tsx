@@ -43,7 +43,7 @@ const CHIPS: Array<{ key: ChipKey; label: string }> = [
 ]
 
 const CHIP_SELECTED =
-  'min-h-11 md:min-h-0 bg-accent text-card-bg border border-accent px-3 py-1.5 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
+  'min-h-11 md:min-h-0 bg-accent-bg-strong text-white border border-accent px-3 py-1.5 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 const CHIP_UNSELECTED =
   'min-h-11 md:min-h-0 bg-card-bg text-text-secondary border border-divider-soft px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'

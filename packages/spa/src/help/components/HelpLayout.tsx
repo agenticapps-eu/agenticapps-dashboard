@@ -193,18 +193,19 @@ export function HelpLayout(): React.JSX.Element {
         {/* Main content */}
         <main className="flex-1 px-4 py-8 md:px-12 md:py-12 max-w-3xl">
           {/*
-            v1.0 ships warm-paper prose only — `dark:prose-invert` is REMOVED
-            because the dashboard's theme system (lib/theme.ts) defaults to
-            `dark` mode (D-02 default) and adds the `dark` class to
-            <html>, which made every prose h1/h2/p render WHITE on the
-            warm-paper bg. (Phase 7 CONTEXT.md assumed v1.0 ships "no
-            .dark{} block, dark:prose-invert is dormant" — but the theme
-            class is present app-wide, so the modifier did fire.) Dark-mode
-            prose styling is deferred to v1.1 per the original D-7-12
-            decision; for v1.0 the docs site renders light prose regardless
-            of dashboard theme. Rule 1 fix (auto-fix bug — T10 evidence).
+            `dark:prose-invert` is REQUIRED, and was correctly absent until
+            2026-08-01. The typography plugin's prose-slate is not driven by our
+            tokens, so it does not follow the palette. Phase 7 removed the
+            modifier because lib/theme.ts puts the `dark` class on <html> by
+            default (D-02) while tokens.css had no .dark block — inverted prose
+            rendered white on warm paper.
+
+            Adding the dark palette inverts that bug rather than fixing it: with
+            dark surfaces and no modifier, the docs render dark prose on a dark
+            ground. The modifier and the palette have to travel together, and now
+            they do. HelpLayout.dark.test.tsx fails if it is removed again.
           */}
-          <article className="prose prose-slate max-w-none">
+          <article className="prose prose-slate dark:prose-invert max-w-none">
             <Outlet />
           </article>
         </main>

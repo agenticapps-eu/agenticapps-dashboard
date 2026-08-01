@@ -36,7 +36,7 @@ export function CoverageEmptyState({
             <button
               type="button"
               onClick={onClearFilters}
-              className="mt-2 inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-card-bg hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="mt-2 inline-flex items-center gap-2 rounded-md bg-accent-bg-strong px-3 py-2 text-sm font-semibold text-white hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Clear filters
             </button>
@@ -54,7 +54,7 @@ export function CoverageEmptyState({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-2 inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-card-bg hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="mt-2 inline-flex items-center gap-2 rounded-md bg-accent-bg-strong px-3 py-2 text-sm font-semibold text-white hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <RefreshCw size={14} aria-hidden="true" />
               Retry

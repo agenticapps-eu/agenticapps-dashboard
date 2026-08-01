@@ -114,10 +114,10 @@ export function CoverageCell({
         role="figure"
         aria-label={ariaLabel}
         title={reason}
-        className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 bg-text-tertiary/10 text-text-tertiary"
+        className="flex flex-col items-center gap-0.5 rounded-md px-2 py-1 bg-text-tertiary/10 text-text-secondary"
       >
         <HelpCircle size={14} aria-hidden="true" />
-        <span className="text-xs text-text-tertiary whitespace-nowrap">scan failed</span>
+        <span className="text-xs text-text-secondary whitespace-nowrap">scan failed</span>
       </figure>
     )
   }

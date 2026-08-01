@@ -377,7 +377,7 @@ export function RegisterModal({
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
-                    className="bg-accent text-white border border-accent text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="bg-accent-bg-strong text-white border border-accent text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {tag}
                   </button>
@@ -434,7 +434,7 @@ export function RegisterModal({
                 type="button"
                 onClick={() => void handleConfirm()}
                 disabled={confirm.isPending || refreshing}
-                className="bg-accent text-white px-4 py-2 text-sm font-semibold rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-accent-bg-strong text-white px-4 py-2 text-sm font-semibold rounded-md hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {confirm.isPending || refreshing ? 'Registering…' : 'Confirm registration'}
               </button>
@@ -475,7 +475,7 @@ export function RegisterModal({
               <button
                 type="button"
                 disabled
-                className="bg-accent text-white px-4 py-2 text-sm font-semibold rounded-md opacity-50 cursor-not-allowed"
+                className="bg-accent-bg-strong text-white px-4 py-2 text-sm font-semibold rounded-md opacity-50 cursor-not-allowed"
               >
                 Confirm registration
               </button>
@@ -514,7 +514,7 @@ export function RegisterModal({
                     })
                     onClose()
                   }}
-                  className="bg-accent text-white px-3 py-2 text-sm font-semibold rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="bg-accent-bg-strong text-white px-3 py-2 text-sm font-semibold rounded-md hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Open project
                 </button>
@@ -549,7 +549,7 @@ export function RegisterModal({
                 setDirtyDiscardOpen(false)
                 onClose()
               }}
-              className="bg-status-error text-white text-sm px-3 py-2 rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="bg-status-error-strong text-white text-sm px-3 py-2 rounded-md hover:bg-status-error-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Discard
             </button>
