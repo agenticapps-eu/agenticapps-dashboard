@@ -5,7 +5,9 @@ import {
   CheckIdSchema,
   CheckResultSchema,
   CheckStatusSchema,
+  FleetResponseSchema,
   ReadinessFileSchema,
+  RepoDetailResponseSchema,
   RepoDetailSchema,
   RepoRelativePathSchema,
   RepoSummarySchema,
@@ -333,6 +335,83 @@ describe('RepoDetailSchema', () => {
     })
     expect(
       RepoDetailSchema.safeParse(detail({ checks: checks as never })).success,
+    ).toBe(false)
+  })
+})
+
+describe('FleetResponseSchema', () => {
+  it('accepts a generated fleet of summaries', () => {
+    expect(
+      FleetResponseSchema.safeParse({
+        generatedAt: 1_754_000_000_000,
+        repos: [repo(), repo({ id: 'other', name: 'other' })],
+      }).success,
+    ).toBe(true)
+  })
+
+  it('accepts an empty fleet', () => {
+    expect(
+      FleetResponseSchema.safeParse({ generatedAt: 1_754_000_000_000, repos: [] })
+        .success,
+    ).toBe(true)
+  })
+
+  it('requires generatedAt', () => {
+    expect(FleetResponseSchema.safeParse({ repos: [] }).success).toBe(false)
+  })
+
+  it('rejects an unknown top-level field', () => {
+    expect(
+      FleetResponseSchema.safeParse({
+        generatedAt: 1_754_000_000_000,
+        repos: [],
+        count: 0,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects a repo carrying a remedy — the fleet is the summary shape', () => {
+    expect(
+      FleetResponseSchema.safeParse({
+        generatedAt: 1_754_000_000_000,
+        repos: [detail()],
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe('RepoDetailResponseSchema', () => {
+  it('accepts a generated detail', () => {
+    expect(
+      RepoDetailResponseSchema.safeParse({
+        generatedAt: 1_754_000_000_000,
+        repo: detail(),
+      }).success,
+    ).toBe(true)
+  })
+
+  it('requires generatedAt', () => {
+    expect(RepoDetailResponseSchema.safeParse({ repo: detail() }).success).toBe(
+      false,
+    )
+  })
+
+  it('rejects a summary without remedies', () => {
+    expect(
+      RepoDetailResponseSchema.safeParse({
+        generatedAt: 1_754_000_000_000,
+        repo: repo(),
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects an unknown top-level field', () => {
+    expect(
+      RepoDetailResponseSchema.safeParse({
+        generatedAt: 1_754_000_000_000,
+        repo: detail(),
+        stale: false,
+      }).success,
     ).toBe(false)
   })
 })
