@@ -31,8 +31,10 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
+import { CHECK_STATUSES } from '@agenticapps/dashboard-shared'
 
 import { contrastRatio, hexToRgb } from '../lib/contrast.js'
+import { STATUS_PRESENTATION } from '../components/panels/readiness/ReadinessIndicator.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const tokensCss = readFileSync(resolve(__dirname, './tokens.css'), 'utf-8')
@@ -277,6 +279,44 @@ describe.each(APPEARANCES.map((a) => [a.name, a] as const))(
             expect(
               contrastRatio(appear.colour(fill), appear.colour(surface)),
             ).toBeGreaterThanOrEqual(NON_TEXT)
+          })
+        }
+      }
+    })
+
+    /**
+     * The readiness cells, read out of the component's own map rather than
+     * restated here. Six statuses share four pairings, and every one of them is
+     * a tint of a token under text — the shape this file exists to catch.
+     *
+     * Driving the loop from `STATUS_PRESENTATION` is the point. The pairings it
+     * currently uses are each asserted above by other names, so copying them
+     * into a list would assert nothing new and would keep passing after the
+     * component moved off them. This fails when the component changes, which is
+     * the only moment the question is live.
+     */
+    describe('readiness cells', () => {
+      for (const status of CHECK_STATUSES) {
+        const { bg, text } = STATUS_PRESENTATION[status]
+        const [bgToken, alpha] = bg.replace(/^bg-/, '').split('/')
+        const textToken = text.replace(/^text-/, '')
+
+        it(`${status} declares a tinted background, not an opaque fill`, () => {
+          expect(alpha).toBeDefined()
+        })
+
+        for (const surface of SURFACES) {
+          it(`${status} clears ${BODY_TEXT}:1 — ${text} on ${bg} over ${surface}`, () => {
+            expect(
+              contrastRatio(
+                appear.colour(textToken),
+                tint(
+                  appear.colour(bgToken as string),
+                  appear.colour(surface),
+                  Number(alpha) / 100,
+                ),
+              ),
+            ).toBeGreaterThanOrEqual(BODY_TEXT)
           })
         }
       }
