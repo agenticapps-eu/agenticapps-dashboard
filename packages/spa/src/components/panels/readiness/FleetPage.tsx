@@ -22,6 +22,7 @@
  * - NO shadcn aliases
  */
 import type { ReactElement } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { CHECK_IDS, type RepoSummary } from '@agenticapps/dashboard-shared'
 
@@ -32,6 +33,14 @@ import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
 
 import { CHECK_LABELS, ReadinessIndicator } from './ReadinessIndicator.js'
+import { FleetToolbar } from './FleetToolbar.js'
+import {
+  matchesFleetFilters,
+  parseFleetFilters,
+  serialiseFleetFilters,
+  type FleetFilters,
+  type FleetSearch,
+} from './fleetFilters.js'
 
 /**
  * The date of the last change, in UTC. Every time in this feature is a git
@@ -191,8 +200,41 @@ function NoReposState(): ReactElement {
   )
 }
 
+/**
+ * Filters can empty the table too, and an empty table says "the fleet is
+ * clear" — the same misreading the empty-registry state exists to prevent. It
+ * has a different cause and so a different sentence.
+ */
+function NoMatchesState(): ReactElement {
+  return (
+    <div className="rounded-card bg-card-bg p-6 shadow-card">
+      <EmptyState
+        icon={<ShieldCheck size={24} className="text-text-tertiary" />}
+        title="No repositories match these filters."
+        body="Every registered repository was excluded by the current selection."
+      />
+    </div>
+  )
+}
+
 export function FleetPage(): ReactElement {
   const fleet = useFleet()
+  const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as FleetSearch
+  const filters = parseFleetFilters(search)
+
+  // `useNavigate()` without a `from` infers the root route, whose search type is
+  // empty, so a concrete search object does not type-check against it. The
+  // /coverage page casts for the same reason; the shape is guaranteed by
+  // `serialiseFleetFilters` and by the route's own `validateSearch`.
+  const nav = navigate as unknown as (opts: {
+    search: FleetSearch
+    replace: boolean
+  }) => void
+
+  const applyFilters = (next: FleetFilters): void => {
+    nav({ search: serialiseFleetFilters(next), replace: true })
+  }
 
   let content: ReactElement
   if (fleet.error?.message.startsWith('schema_drift:')) {
@@ -214,8 +256,14 @@ export function FleetPage(): ReactElement {
   } else if (fleet.data.repos.length === 0) {
     content = <NoReposState />
   } else {
-    content = <FleetTable repos={fleet.data.repos} />
+    const visible = fleet.data.repos.filter((repo) => matchesFleetFilters(repo, filters))
+    content =
+      visible.length === 0 ? <NoMatchesState /> : <FleetTable repos={visible} />
   }
+
+  // Nothing to filter is not the same as filtering to nothing: the toolbar
+  // stays out of the way until there is a fleet for it to narrow.
+  const filterable = fleet.data !== undefined && fleet.data.repos.length > 0
 
   return (
     <main className="flex flex-col gap-6">
@@ -224,6 +272,7 @@ export function FleetPage(): ReactElement {
         helper="Six checks per repository. Count the cells — there is no combined score."
         sticky={true}
       />
+      {filterable && <FleetToolbar filters={filters} onChange={applyFilters} />}
       {content}
     </main>
   )

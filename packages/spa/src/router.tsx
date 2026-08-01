@@ -40,6 +40,18 @@ const CoverageSearchSchema = z.object({
 })
 
 /**
+ * FleetSearchSchema validates the optional /fleet?family=&status=&q= params.
+ * Comma-joined, like /coverage's. Unknown values inside a list are dropped by
+ * `parseFleetFilters` rather than rejected here: a hand-edited URL should
+ * narrow to something sensible instead of blanking the page.
+ */
+const FleetSearchSchema = z.object({
+  family: z.string().optional(),
+  status: z.string().optional(),
+  q: z.string().optional(),
+})
+
+/**
  * Exported so a unit test can verify it never re-throws on a non-VALIDATE_SEARCH
  * error (WR-02). Pitfall 8: validateSearch errors arrive here with
  * `error.routerCode === 'VALIDATE_SEARCH'` and render <MalformedPairUrl/>;
@@ -165,6 +177,8 @@ const workflowRoute = createRoute({
 const fleetRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,
   path: '/fleet',
+  validateSearch: zodValidator(FleetSearchSchema),
+  errorComponent: pairErrorComponent,
 }).lazy(() => import('./routes/fleet.lazy.js').then((m) => m.Route))
 
 /**
