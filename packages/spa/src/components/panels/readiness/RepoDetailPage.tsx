@@ -15,7 +15,7 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { AlertTriangle, ChevronRight } from 'lucide-react'
-import type { RepoDetail } from '@agenticapps/dashboard-shared'
+import { isReadableProjectPath, type RepoDetail } from '@agenticapps/dashboard-shared'
 
 import { ApiError } from '../../../lib/api.js'
 import { useEvidence, useRepoDetail } from '../../../lib/readinessQueries.js'
@@ -174,8 +174,14 @@ function CheckBlock({
         <Fact term="Evidence">
           {check.evidence === null ? (
             <EmDash />
-          ) : (
+          ) : isReadableProjectPath(check.evidence.path) ? (
             <Evidence repoId={repoId} path={check.evidence.path} />
+          ) : (
+            // Named, not offered. The read route serves `.planning`, `.claude`
+            // and `openspec` only, and a control over anything else would
+            // promise a file the daemon answers with 422 — the coverage
+            // artifact and most declared paths land here.
+            <code className="font-mono text-xs">{check.evidence.path}</code>
           )}
         </Fact>
       </dl>

@@ -82,7 +82,11 @@ export type {
   ReadinessFile,
   ReadinessDeclaration,
 } from './schemas/readiness.js'
-export { ReadResponseSchema } from './schemas/read.js'
+export {
+  ALLOWED_SUBDIRS,
+  isReadableProjectPath,
+  ReadResponseSchema,
+} from './schemas/read.js'
 export type { ReadResponse } from './schemas/read.js'
 export { GitResponseSchema } from './schemas/git.js'
 export type { GitResponse } from './schemas/git.js'
