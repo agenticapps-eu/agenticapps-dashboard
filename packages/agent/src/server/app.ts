@@ -14,6 +14,7 @@ import { adminRoute } from '../routes/admin.js'
 import { registryRoute } from '../routes/registry.js'
 import { authRoute } from '../routes/auth.js'
 import { readRoute } from '../routes/read.js'
+import { openRoute } from '../routes/open.js'
 import { gitRoute } from '../routes/git.js'
 import { commitmentRoute } from '../routes/commitment.js'
 import { disciplineRoute } from '../routes/discipline.js'
@@ -178,6 +179,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/registry', registryRoute)
   app.route('/api/auth', authRoute)
   app.route('/api/projects', readRoute)
+  app.route('/api/projects', openRoute) // AGE-466: POST /:id/open, the editor exception
   app.route('/api/projects', gitRoute)
   app.route('/api/projects', overviewRoute)
   app.route('/api/projects', openspecRoute)

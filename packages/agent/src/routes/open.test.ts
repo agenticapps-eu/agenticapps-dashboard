@@ -12,7 +12,14 @@
  * uses — so this introduces no new filesystem reach, only a new reason to use
  * the existing one.
  */
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync } from 'node:fs'
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  readdirSync,
+  realpathSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -120,7 +127,10 @@ describe('POST /api/projects/:id/open', () => {
 
     const options = (spawnMock.mock.calls[0] as unknown as [string, string[], Record<string, unknown>])[2]
     expect(options.shell).toBe(false)
-    expect(options.cwd).toBe(root)
+    // The registry stores the canonical root, which on macOS means /private/var
+    // where mkdtemp handed back /var. Comparing against the raw temp path would
+    // be testing the symlink, not the working directory.
+    expect(options.cwd).toBe(realpathSync(root))
   })
 
   it('refuses a path the read route would refuse, and spawns nothing', async () => {
@@ -161,7 +171,7 @@ describe('POST /api/projects/:id/open', () => {
     const res = await open(id, 'openspec/changes/a-change/REVIEWS.md')
 
     expect(res.status).toBe(409)
-    expect((await res.json()).error).toBe('editor_not_configured')
+    expect(((await res.json()) as { error: string }).error).toBe('editor_not_configured')
     expect(spawnMock).not.toHaveBeenCalled()
   })
 
@@ -175,7 +185,7 @@ describe('POST /api/projects/:id/open', () => {
     const res = await open(id, 'openspec/changes/a-change/REVIEWS.md')
 
     expect(res.status).toBe(409)
-    expect((await res.json()).error).toBe('editor_not_supported')
+    expect(((await res.json()) as { error: string }).error).toBe('editor_not_supported')
     expect(spawnMock).not.toHaveBeenCalled()
   })
 
