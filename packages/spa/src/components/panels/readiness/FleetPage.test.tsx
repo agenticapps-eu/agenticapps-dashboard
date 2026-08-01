@@ -1,5 +1,5 @@
-import { render, screen, cleanup, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, cleanup, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CHECK_IDS,
   computeReady,
@@ -7,9 +7,24 @@ import {
   type CheckResult,
   type CheckStatus,
   type FleetResponse,
+  type RepoFamily,
   type RepoSummary,
 } from '@agenticapps/dashboard-shared'
 
+/** The filter state lives in the URL, as it does on /coverage (COV-06). */
+const routerState = vi.hoisted(() => ({
+  search: {} as { family?: string; status?: string; q?: string },
+  navigate: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return {
+    ...actual,
+    useNavigate: () => routerState.navigate,
+    useSearch: () => routerState.search,
+  }
+})
 vi.mock('../../../lib/readinessQueries.js', () => ({ useFleet: vi.fn() }))
 
 import { useFleet } from '../../../lib/readinessQueries.js'
@@ -20,6 +35,11 @@ import { FleetPage } from './FleetPage.js'
 const mockUseFleet = vi.mocked(useFleet)
 
 afterEach(cleanup)
+
+beforeEach(() => {
+  routerState.search = {}
+  routerState.navigate = vi.fn()
+})
 
 function result(id: CheckId, status: CheckStatus): CheckResult {
   const timeless = status === 'never' || status === 'na'
@@ -40,6 +60,7 @@ function repo(
   id: string,
   over: {
     name?: string
+    family?: RepoFamily
     statuses?: Partial<Record<CheckId, CheckStatus>>
     lastCommitAt?: number | null
     notice?: RepoSummary['notice']
@@ -52,7 +73,7 @@ function repo(
   return {
     id,
     name: over.name ?? id,
-    family: 'agenticapps',
+    family: over.family ?? 'agenticapps',
     ready: computeReady(checks),
     lastCommitAt:
       over.lastCommitAt === undefined ? Date.UTC(2026, 6, 30, 9, 15) : over.lastCommitAt,
@@ -203,6 +224,75 @@ describe('FleetPage', () => {
         /declarations\[0\]\.observedAt is not an RFC 3339 time/,
       ),
     ).toBeInTheDocument()
+  })
+
+  it('narrows the row set by family without splitting it into sections', () => {
+    // Family is a filter, not a grouping level: grouping spends vertical space
+    // separating exactly the repos someone wants to compare side by side
+    // (design.md §5).
+    routerState.search = { family: 'factiv' }
+    fleet([
+      repo('dashboard', { family: 'agenticapps' }),
+      repo('cparx', { family: 'factiv' }),
+      repo('fx-signal-agent', { family: 'factiv' }),
+    ])
+    render(<FleetPage />)
+
+    expect(rows()).toHaveLength(2)
+    expect(screen.getAllByRole('table')).toHaveLength(1)
+    expect(screen.queryByRole('rowgroup', { name: /factiv/i })).not.toBeInTheDocument()
+  })
+
+  it('shows only rows satisfying every applied filter', () => {
+    routerState.search = { family: 'agenticapps', status: 'fail', q: 'dash' }
+    fleet([
+      // Right family, right status, right name.
+      repo('dashboard', { family: 'agenticapps', statuses: { coverage: 'fail' } }),
+      // Right family and status, wrong name.
+      repo('agentlinter', { family: 'agenticapps', statuses: { coverage: 'fail' } }),
+      // Right name and status, wrong family.
+      repo('dash-factiv', { family: 'factiv', statuses: { coverage: 'fail' } }),
+      // Right family and name, nothing failing.
+      repo('dashboard-docs', { family: 'agenticapps' }),
+    ])
+    render(<FleetPage />)
+
+    const names = rows().map((row) => within(row).getAllByRole('cell')[0]?.textContent)
+    expect(names).toEqual(['dashboard'])
+  })
+
+  it('treats several selections within one filter as alternatives', () => {
+    routerState.search = { status: 'stale,never' }
+    fleet([
+      repo('stale-one', { statuses: { 'security-review': 'stale' } }),
+      repo('never-one', { statuses: { 'pen-test': 'never' } }),
+      repo('warned-one', { statuses: { 'pen-test': 'warn' } }),
+    ])
+    render(<FleetPage />)
+
+    expect(rows()).toHaveLength(2)
+  })
+
+  it('puts a chosen filter in the URL so the view can be shared', () => {
+    fleet([repo('dashboard', { family: 'agenticapps' })])
+    render(<FleetPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'factiv' }))
+
+    expect(routerState.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: expect.objectContaining({ family: 'factiv' }) }),
+    )
+  })
+
+  it('says the filters matched nothing rather than showing a clear fleet', () => {
+    // An empty table under active filters reads as "every repo is fine", which
+    // is the same failure the empty-registry rule exists to prevent.
+    routerState.search = { q: 'nothing-matches-this' }
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.getByText(/no repositories match/i)).toBeInTheDocument()
+    expect(screen.queryByText(/agentic-dashboard register/)).not.toBeInTheDocument()
   })
 
   it('leads to onboarding rather than an empty table when nothing is registered', () => {
