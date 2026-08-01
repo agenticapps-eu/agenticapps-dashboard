@@ -1,6 +1,6 @@
 import React from 'react'
-import { render, screen, cleanup } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   CHECK_IDS,
   CHECK_STATUSES,
@@ -9,13 +9,47 @@ import {
   type CheckStatus,
 } from '@agenticapps/dashboard-shared'
 
+/**
+ * `Link` is rendered as an anchor whose href is composed from exactly the
+ * props the component passes, so asserting the href asserts the destination
+ * the component asked for rather than TanStack's own path building.
+ */
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return {
+    ...actual,
+    Link: ({
+      to,
+      params,
+      hash,
+      children,
+      ...rest
+    }: {
+      to: string
+      params?: { repoId?: string }
+      hash?: string
+      children: React.ReactNode
+    } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+      <a
+        href={`${to.replace('$repoId', params?.repoId ?? '')}${hash === undefined ? '' : `#${hash}`}`}
+        {...rest}
+      >
+        {children}
+      </a>
+    ),
+  }
+})
+
 import {
   ReadinessIndicator,
   STATUS_PRESENTATION,
   CHECK_LABELS,
 } from './ReadinessIndicator.js'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 /**
  * A wire-shaped result. `never` and `na` carry no observed time and no evidence
@@ -265,5 +299,90 @@ describe('ReadinessIndicator', () => {
       <ReadinessIndicator checks={sixChecks()} repoName="dashboard" variant="compact" />,
     )
     expect(screen.getByRole('group').getAttribute('aria-label')).toContain('dashboard')
+  })
+
+  describe('given a repoId, each cell selects its own check', () => {
+    it('links to the repo detail positioned at that check', () => {
+      render(
+        <ReadinessIndicator
+          checks={sixChecks()}
+          repoName="dashboard"
+          repoId="dashboard"
+          variant="compact"
+        />,
+      )
+
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(CHECK_IDS.length)
+      CHECK_IDS.forEach((id, index) => {
+        expect(links[index]?.getAttribute('href')).toBe(`/repos/dashboard#${id}`)
+      })
+    })
+
+    it('keeps the whole disclosure as the control name', () => {
+      render(
+        <ReadinessIndicator
+          checks={[result('coverage', 'warn', { value: 76, threshold: 80 })]}
+          repoName="dashboard"
+          repoId="dashboard"
+        />,
+      )
+
+      const name = screen.getByRole('link').getAttribute('aria-label') ?? ''
+      expect(name).toContain(CHECK_LABELS.coverage)
+      expect(name).toContain(STATUS_PRESENTATION.warn.word)
+      expect(name).toContain('76 of 80')
+    })
+
+    it('drops the native title in favour of a tooltip that opens on focus', () => {
+      // A native title never reaches a sighted keyboard user. It was the right
+      // trade while the cell could not be focused; a control has no such excuse.
+      vi.useFakeTimers()
+      render(
+        <ReadinessIndicator
+          checks={[result('coverage', 'ok')]}
+          repoName="dashboard"
+          repoId="dashboard"
+        />,
+      )
+
+      const link = screen.getByRole('link')
+      expect(link.getAttribute('title')).toBeNull()
+
+      const panel = screen.getByRole('tooltip')
+      expect(panel.className).toContain('opacity-0')
+      act(() => { fireEvent.focus(link) })
+      act(() => { vi.advanceTimersByTime(100) })
+      expect(panel.className).toContain('opacity-100')
+      expect(panel.textContent).toContain(CHECK_LABELS.coverage)
+    })
+
+    it('adds no tab stop beyond the six controls themselves', () => {
+      render(
+        <ReadinessIndicator
+          checks={sixChecks()}
+          repoName="dashboard"
+          repoId="dashboard"
+          variant="compact"
+        />,
+      )
+
+      expect(document.querySelectorAll('[tabindex="0"]')).toHaveLength(0)
+    })
+
+    it('stays a plain figure with a title when no repoId is given', () => {
+      // The detail header renders the same six checks; linking each of them to
+      // the page they are already on would be noise.
+      render(
+        <ReadinessIndicator
+          checks={[result('coverage', 'ok')]}
+          repoName="dashboard"
+          variant="full"
+        />,
+      )
+
+      expect(screen.queryByRole('link')).not.toBeInTheDocument()
+      expect(screen.getByRole('figure').getAttribute('title')).not.toBeNull()
+    })
   })
 })
