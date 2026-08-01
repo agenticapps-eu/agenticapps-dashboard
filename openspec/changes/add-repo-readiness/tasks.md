@@ -312,12 +312,73 @@ looking like they had. The four that remain are the four that mean work.
 
 ## 10. Repo detail surface · AGE-466
 
-- [ ] Route `/repos/:id`; header with identity, last commit, full-variant indicator, open-in-editor and rescan (TDD)
-- [ ] Six blocks, fixed order, one scrollable page, no tabs/modals/drawers
-- [ ] Each block: status in words + timestamp, provenance, evidence link through the existing read route
-- [ ] Render em dash for null time/evidence; never invent a timestamp or path
-- [ ] Render boolean readiness and any unusable-file notice in the detail header
-- [ ] Test: every check has a non-empty remedy text; a six-times-`never` repo shows six usable sentences
+- [x] Route `/repos/:id`; header with identity, last commit, full-variant indicator, open-in-editor and rescan (TDD)
+- [x] Six blocks, fixed order, one scrollable page, no tabs/modals/drawers
+- [x] Each block: status in words + timestamp, provenance, evidence link through the existing read route
+- [x] Render em dash for null time/evidence; never invent a timestamp or path
+- [x] Render boolean readiness and any unusable-file notice in the detail header
+- [x] Test: every check has a non-empty remedy text; a six-times-`never` repo shows six usable sentences
+
+### 10.1 The editor route did not exist and was built here
+
+§10's first task line asks for open-in-editor. `filesystem-access-policy` has
+enumerated `POST /api/projects/{id}/open` as one of four permitted
+process-creation surfaces since long before this change, but the daemon had
+never implemented it — the only occurrence in the tree was a test asserting the
+string appears in a config document.
+
+Surfaced before any code was written, because it widens the change: this
+SECURITY.md enumerated three endpoints and no spawn, and its two other-vendor
+reviewers signed off on that set. The user chose to build it inside §10 rather
+than defer it to its own change, accepting that `REVIEWS.md` predates it. A
+second `/cso` pass covers it, and the gap is recorded in SECURITY.md rather
+than left implicit.
+
+### 10.2 Evidence is a control, not a hyperlink
+
+The spec says evidence is linked "through the existing project read route". The
+daemon authenticates with a bearer header, so an `<a href>` cannot reach that
+route at all, and a token in the query string would write itself into browser
+history and every log in between. The affordance therefore fetches through
+`apiFetch` and renders the file in place.
+
+Both spec obligations still hold — the file arrives through the existing read
+route, and no new filesystem access path appears — and opening in place keeps
+the page the single scrollable surface §10 requires instead of adding a drawer.
+
+### 10.3 Evidence outside the read allow-list is named, not offered
+
+`resolveAllowed` accepts `.planning`, `.claude` and `openspec` only. Evidence
+paths are not confined to those: the coverage check defaults to
+`coverage/coverage-summary.json`, workflow artefacts include
+`bin/openspec-change-gate.sh`, and a declared path from a repo's readiness file
+can be anywhere. Offering a control over those would promise a file the daemon
+answers with 422.
+
+The spec settles which side gives: evidence links use "repo-relative paths
+already accepted by that read route". So the path is still shown; only the offer
+to open it is withheld. `ALLOWED_SUBDIRS` moved to shared so both sides read one
+definition, with the daemon importing it back — `resolveAllowed` remains the
+only enforcement point, and an exact-equality test pins the list against
+frontend-motivated widening.
+
+### 10.4 An omitted path opens the repo root
+
+"Open in editor" on a repo detail means opening the repo, and the project root
+is not under the read allow-list. It is not being added to it: that list bounds
+what the daemon reads out and hands to a browser, and this route returns no
+bytes. What bounds the root is the registry, which holds only paths the user
+registered. A path that *is* named keeps every restriction the read route
+applies, and both directions are asserted so they cannot blur into "any path
+under the root".
+
+### 10.5 `generatedAt` renders once, in the header
+
+Carried from §9's design critique, which found the field on the wire and
+rendered nowhere on the fleet. The same field is on `RepoDetailResponse`. It
+belongs to the header because it describes the reading, not any one check — and
+the block-level guard against a check borrowing it for an observation that never
+happened is asserted separately.
 
 ## 11. Verify
 
