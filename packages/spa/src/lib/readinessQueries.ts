@@ -1,4 +1,11 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from '@tanstack/react-query'
+import { z } from 'zod'
 import {
   FleetResponseSchema,
   ReadResponseSchema,
@@ -11,6 +18,12 @@ import {
 import { apiFetch } from './api.js'
 
 export const FLEET_QUERY_KEY = ['readiness', 'fleet'] as const
+
+/**
+ * All the open route returns. It answers once the spawn is issued and has
+ * nothing to report about the editor, so there is nothing else to parse.
+ */
+const OpenAcceptedSchema = z.object({ ok: z.literal(true), requestId: z.string() })
 
 /**
  * Read the readiness fleet. The response arrives in registry order and is sorted
@@ -88,5 +101,55 @@ export function useEvidence(
     staleTime: 5_000,
     retry: false,
     refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Rescan one repo. The POST deliberately bypasses the daemon's five-second
+ * memo, which is the whole reason the button exists — a reader who has just
+ * changed something on disk should not have to wait out a cache they cannot
+ * see. The fresh detail comes back in the response, so it is written straight
+ * into the cache rather than triggering a second round trip, and the fleet is
+ * invalidated because this repo's row there is now behind.
+ */
+export function useRescanRepo(repoId: string): UseMutationResult<RepoDetailResponse, Error, void> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const result = await apiFetch(
+        `/api/v2/repos/${encodeURIComponent(repoId)}/rescan`,
+        RepoDetailResponseSchema,
+        { method: 'POST' },
+      )
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    onSuccess: (fresh) => {
+      queryClient.setQueryData(['readiness', 'repo', repoId], fresh)
+      void queryClient.invalidateQueries({ queryKey: FLEET_QUERY_KEY })
+    },
+  })
+}
+
+/**
+ * Open this repo in the user's editor. No path: the daemon reads
+ * `$EDITOR` and spawns it against the registered project root.
+ *
+ * Nothing is invalidated afterwards. The daemon returns as soon as the spawn is
+ * issued and never learns what the editor does, so treating this as a reason to
+ * refetch readiness would be inventing a causal link the daemon itself refuses
+ * to claim.
+ */
+export function useOpenInEditor(repoId: string): UseMutationResult<unknown, Error, void> {
+  return useMutation({
+    mutationFn: async () => {
+      const result = await apiFetch(
+        `/api/projects/${encodeURIComponent(repoId)}/open`,
+        OpenAcceptedSchema,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+      )
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
   })
 }

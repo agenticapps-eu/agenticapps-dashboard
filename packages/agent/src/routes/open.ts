@@ -35,7 +35,16 @@ import { resolveAllowed } from '../lib/paths.js'
 import { readRegistry } from '../lib/registry.js'
 import type { Env } from '../server/app.js'
 
-const OpenBodySchema = z.object({ path: z.string().min(1) })
+/**
+ * An omitted path means the project root — what "open in editor" means on a
+ * repo detail header. The root is not under the read allow-list and is not
+ * being added to it: that list bounds what the daemon reads out and hands to a
+ * browser, and this route reads nothing and returns nothing. What bounds the
+ * root is the registry, which holds only paths the user registered.
+ *
+ * A path that IS named keeps every restriction the read route applies.
+ */
+const OpenBodySchema = z.object({ path: z.string().min(1).optional() })
 
 function requestId(c: Context): string {
   return (c.get('requestId') as string | undefined) ?? 'unknown'
@@ -82,8 +91,11 @@ openRoute.post(
     }
 
     // Throws PathViolation → errorHandler → 422 path_not_allowed, exactly as on
-    // the read route.
-    const real = await resolveAllowed(project.root, relPath)
+    // the read route. The root itself is already canonical — the registry
+    // realpath'd it at registration — so it needs no resolution, only the
+    // absence of a path to name it.
+    const real =
+      relPath === undefined ? project.root : await resolveAllowed(project.root, relPath)
 
     const child = spawn(editor, [real], {
       cwd: project.root,

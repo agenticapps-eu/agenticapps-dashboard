@@ -14,11 +14,16 @@
  */
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { AlertTriangle, ChevronRight } from 'lucide-react'
+import { AlertTriangle, ChevronRight, PenLine, RefreshCw } from 'lucide-react'
 import { isReadableProjectPath, type RepoDetail } from '@agenticapps/dashboard-shared'
 
 import { ApiError } from '../../../lib/api.js'
-import { useEvidence, useRepoDetail } from '../../../lib/readinessQueries.js'
+import {
+  useEvidence,
+  useOpenInEditor,
+  useRepoDetail,
+  useRescanRepo,
+} from '../../../lib/readinessQueries.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 
 import {
@@ -74,21 +79,101 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
   )
 }
 
-function DetailHeader({ repo }: { repo: RepoDetail }): ReactElement {
+const ACTION_CLASS =
+  'flex items-center gap-1.5 rounded-md border border-border-subtle px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-app-bg hover:text-text-primary disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
+
+/**
+ * Why an editor action can fail, said in the reader's terms. `$EDITOR` is the
+ * user's own shell configuration, so the fix is theirs and naming the variable
+ * is the whole instruction.
+ */
+function editorProblem(error: Error | null): string | null {
+  if (!(error instanceof ApiError)) return error === null ? null : 'Could not open the editor.'
+  if (error.code === 'editor_not_configured') {
+    return 'No EDITOR is set on the machine running the daemon. Set it and try again.'
+  }
+  if (error.code === 'editor_not_supported') {
+    return 'EDITOR carries arguments. The daemon runs it without a shell, so set EDITOR to the program alone.'
+  }
+  return 'Could not open the editor.'
+}
+
+function DetailHeader({
+  repo,
+  generatedAt,
+}: {
+  repo: RepoDetail
+  generatedAt: number
+}): ReactElement {
+  const rescan = useRescanRepo(repo.id)
+  const openInEditor = useOpenInEditor(repo.id)
+  const editorError = openInEditor.isError ? editorProblem(openInEditor.error) : null
+
   return (
     <header className="flex flex-col gap-4 rounded-card bg-card-bg p-6 shadow-card">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h1 className="text-2xl font-semibold text-text-primary">{repo.name}</h1>
-        <span className="text-sm text-text-tertiary">{repo.family}</span>
-        <span className="text-sm text-text-secondary">
-          Last change {formatCommitTime(repo.lastCommitAt)}
-        </span>
-        {repo.ready ? (
-          <span className="text-sm font-medium text-status-success">Ready</span>
-        ) : (
-          <span className="text-sm text-text-secondary">Not ready</span>
-        )}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h1 className="text-2xl font-semibold text-text-primary">{repo.name}</h1>
+          <span className="text-sm text-text-tertiary">{repo.family}</span>
+          <span className="text-sm text-text-secondary">
+            Last change {formatCommitTime(repo.lastCommitAt)}
+          </span>
+          {repo.ready ? (
+            <span className="text-sm font-medium text-status-success">Ready</span>
+          ) : (
+            <span className="text-sm text-text-secondary">Not ready</span>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openInEditor.mutate()}
+            disabled={openInEditor.isPending}
+            className={ACTION_CLASS}
+          >
+            <PenLine size={14} aria-hidden="true" />
+            Open in editor
+          </button>
+          <button
+            type="button"
+            onClick={() => rescan.mutate()}
+            disabled={rescan.isPending}
+            className={ACTION_CLASS}
+          >
+            <RefreshCw
+              size={14}
+              aria-hidden="true"
+              className={rescan.isPending ? 'animate-spin' : undefined}
+            />
+            {rescan.isPending ? 'Rescanning…' : 'Rescan'}
+          </button>
+        </div>
       </div>
+
+      {/*
+        When the reading was taken, not when it was served. The daemon replays a
+        memoised response with its original time, so this is what tells a fresh
+        answer from a cached one — and it is the only place on the page entitled
+        to show it.
+      */}
+      <p className="text-xs text-text-tertiary">
+        Readiness as of {formatCommitTime(generatedAt)}
+      </p>
+
+      {editorError !== null && (
+        <p role="status" className="flex items-start gap-2 text-sm text-status-error">
+          <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <span>{editorError}</span>
+        </p>
+      )}
+
+      {rescan.isError && (
+        <p role="status" className="flex items-start gap-2 text-sm text-status-error">
+          <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <span>Could not rescan this repository. The reading below is the previous one.</span>
+        </p>
+      )}
 
       {repo.notice !== null && (
         <p className="flex items-start gap-2 text-sm text-status-warning">
@@ -283,7 +368,7 @@ export function RepoDetailPage(): ReactElement {
 
   return (
     <main className="flex flex-col gap-6">
-      <DetailHeader repo={detail.data.repo} />
+      <DetailHeader repo={detail.data.repo} generatedAt={detail.data.generatedAt} />
       {detail.data.repo.checks.map((check) => (
         <CheckBlock key={check.id} check={check} repoId={detail.data.repo.id} />
       ))}
