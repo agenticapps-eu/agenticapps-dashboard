@@ -84,16 +84,24 @@ function property(selector: string, name: string): string | undefined {
   return m ? (m[1] as string).trim() : undefined
 }
 
+/**
+ * Which tokens depend on the ground they render against. Radii, fonts and the
+ * type scale live in @theme too but mean the same thing in every appearance, so
+ * requiring each appearance to restate them would be noise, not safety.
+ */
+const APPEARANCE_SCOPED = /^--(color|shadow)-/
+
 interface Appearance {
   readonly name: string
-  /** every appearance-scoped declaration, for the completeness assertion */
+  /** the appearance-scoped declarations, for the completeness assertion */
   readonly all: Map<string, string>
   /** colour tokens by short name, e.g. 'app-bg' */
   readonly colour: (name: string) => string
 }
 
 function appearance(name: string, selector: string): Appearance {
-  const all = declarations(blockBody(tokensCss, selector))
+  const every = declarations(blockBody(tokensCss, selector))
+  const all = new Map([...every].filter(([k]) => APPEARANCE_SCOPED.test(k)))
   return {
     name,
     all,

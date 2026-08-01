@@ -40,20 +40,43 @@
   --color-text-secondary:  #6B6478;
   --color-text-tertiary:   #706B85;
 
-  /* Accent — purple, used sparingly */
-  --color-accent:           #6B46C1;
-  --color-accent-hover:     #5B3BA8;
-  --color-accent-bg:        #F2EBFA;
-  --color-accent-bg-strong: #6B46C1;
+  /* Accent — purple, used sparingly.
+   *
+   * Two roles, deliberately two tokens. `accent` is a FOREGROUND: text, icons,
+   * rings, borders (36 text-accent + 95 ring-accent + 8 border-accent usages).
+   * `accent-bg-strong` is a FILL that carries white text — SidebarItem's active
+   * pill, every primary button. A foreground on a dark ground must be light; a
+   * fill under white text must be dark. Light satisfies both with one value by
+   * coincidence; dark cannot, so the roles are separated here rather than
+   * discovered at 2.75:1 in the dark appearance.
+   */
+  --color-accent:                 #6B46C1;
+  --color-accent-hover:           #5B3BA8;
+  --color-accent-bg:              #F2EBFA;
+  --color-accent-bg-strong:       #6B46C1;
+  --color-accent-bg-strong-hover: #5B3BA8;
 
   /* Borders */
   --color-border-subtle: #E8E5E0;
 
-  /* Status — semantic colors, used in panel data not chrome */
-  --color-status-success: #2E7D5B;
-  --color-status-warning: #C2802B;
-  --color-status-error:   #B53D3D;
-  --color-status-info:    #5B6FA8;
+  /* Status — semantic colors, used in panel data not chrome.
+   * `status-error-strong` is the fill role, as accent-bg-strong is for accent.
+   */
+  /* success/warning history — both failed the body-text floor on the surfaces
+   * they are drawn on, unnoticed because the old assertion covered neither
+   * status colours nor tinted surfaces:
+   *   status-success #2E7D5B → 4.09:1 on its own 10% tint (CoverageDriftBadge,
+   *                            SkillHealth and 5 more use bg-status-success/10)
+   *   status-warning #C2802B → 3.03:1 on plain sidebar-bg, 4.29:1 on its tint
+   * Both corrected 2026-08-01; hue held (154° and 34°), luminance lowered until
+   * the tightest real pairing cleared 4.5.
+   */
+  --color-status-success:            #2A7354;
+  --color-status-warning:            #8F5D18;
+  --color-status-error:              #B53D3D;
+  --color-status-error-strong:       #B53D3D;
+  --color-status-error-strong-hover: #8F2F2F;
+  --color-status-info:               #5B6FA8;
 
   /* Card material */
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
@@ -79,7 +102,81 @@
  * (single-row PageHeader without children); Coverage's title+toolbar PageHeader publishes ~110px
  * once the ResizeObserver fires.
  */
+/* ── Dark appearance ────────────────────────────────────────────────────────
+ *
+ * The product has defaulted to dark since D-02 (lib/theme.ts) and rendered
+ * light in every theme, because this block did not exist. applyTheme() puts
+ * `.dark` on <html>, and every colour utility Tailwind emits resolves through
+ * var(--color-*), so redefining the properties here repaints the app.
+ *
+ * "Warm ink": surfaces keep a faint purple cast, inverting the warm-paper
+ * identity rather than replacing it with a neutral slate, so the accent sits
+ * inside the palette instead of on top of it.
+ *
+ * Two things differ from a naive inversion, both forced by measurement:
+ *
+ *   Fills lighten on hover here and darken in light. Both floors bind at once —
+ *   white on the fill >= 4.5, and the fill >= 3.0 against the page so the
+ *   control's edge reads. On a dark ground a darker hover loses page separation
+ *   (measured 2.61-2.99), so it has to go the other way. The window is narrow:
+ *   a white-legible fill reaches at most ~3.74:1 against app-bg.
+ *
+ *   The secondary/tertiary tier gap is ~1.155 here against ~1.111 in light.
+ *   The requirement is that the tiers stay apart, not that they stay equally
+ *   apart, and dark has more room to separate them.
+ *
+ * Every value below is asserted by verify-contrast.test.ts against the pairings
+ * that actually occur in packages/spa/src — 74 per appearance.
+ */
+.dark {
+  color-scheme: dark;
+
+  /* Backgrounds — warm ink */
+  --color-app-bg:        #1A1721;
+  --color-sidebar-bg:    #151219;
+  --color-card-bg:       #221E2B;
+  --color-card-bg-hover: #2A2534;
+
+  /* Text
+   *
+   * Contrast against --color-app-bg (#1A1721):   --color-card-bg (#221E2B):
+   *   --color-text-primary    →  ~15.81:1            ~14.58:1   (WCAG AAA)
+   *   --color-text-secondary  →   ~7.95:1             ~7.33:1
+   *   --color-text-tertiary   →   ~6.88:1             ~6.34:1
+   */
+  --color-text-primary:   #F4F1F8;
+  --color-text-secondary: #B3AAC2;
+  --color-text-tertiary:  #A69EB5;
+
+  /* Accent — foreground role, then fill role (see the light block above) */
+  --color-accent:                 #A98BF0;
+  --color-accent-hover:           #BEA6F7;
+  --color-accent-bg:              #2B2340;
+  --color-accent-bg-strong:       #7C51DB;
+  --color-accent-bg-strong-hover: #8459E6;
+
+  /* Borders */
+  --color-border-subtle: #332D3E;
+
+  /* Status */
+  --color-status-success:            #5FBF8E;
+  --color-status-warning:            #D9A441;
+  --color-status-error:              #EA8181;
+  --color-status-error-strong:       #BC4545;
+  --color-status-error-strong-hover: #C24B4B;
+  --color-status-info:               #8FA3D9;
+
+  /* Card material — a 4% black shadow is invisible on ink, so separation comes
+   * from the app-bg → card-bg surface step with the shadow reinforcing it. */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
 :root {
+  /* Declared so UA-rendered chrome follows the appearance: scrollbars, and the
+   * native radio inputs in ThemeToggle itself. Without it the appearance
+   * control visibly fails to restyle its own controls. */
+  color-scheme: light;
+
   --ph-h: 56px;
   --z-base:    0;
   --z-sticky:  10;
