@@ -51,17 +51,19 @@ artifact and the readiness file), and an expired pen-test declaration ages to
 - [x] Fixture: fresh artifact → `ok`
 - [x] Fixture: artifact older than last code commit → `stale`
 - [x] Fixture: artifact older than HEAD but newer than last *code* commit → stays `ok`
-- [ ] `pen-test`: no tier-A signal, always `never`, remedy text names no tool
+- [x] `pen-test`: no tier-A signal, always `never`, remedy text names no tool
 
-The remedy line stays open until section 10 defines remedy text; the derived
-pen-test result itself ships, names no tool, and always reports `never`. The
+Closed in section 7, earlier than planned: the detail wire shape requires a
+non-empty remedy on every result, so the text had to exist before the endpoint
+could answer. `remedy.ts` routes every pen-test state through the readiness file
+and names no tool, asserted against a denylist across all six statuses. The
 collapsed-scope rejection closed with the assembler in section 6.
 
 ## 3. Tier-A deriver: `workflow` · AGE-457
 
 - [x] Host detection from the present host directory (TDD)
 - [x] Per-host resolution: repo-scoped, machine-global, and unpinnable strategies
-- [ ] Resolve host-repo paths through the existing family-roots helper in `packages/agent/src/lib/paths.ts`
+- [x] Resolve host-repo paths through the existing family-roots helper in `packages/agent/src/lib/paths.ts`
 - [x] Status mapping: match → `ok`; skill version trails → `warn`; `implements_spec` trails → `fail`; no artifact → `never`; unpinnable host → `na` + reason
 - [x] Machine-global hosts carry both values; result marks the global one as not repo-specific
 - [x] Set `at`/evidence from the repo-scoped workflow-version/scaffolder metadata commit (or scan time when uncommitted); machine-global context never replaces it
@@ -72,23 +74,33 @@ collapsed-scope rejection closed with the assembler in section 6.
 - [x] Fixtures cover unknown host, malformed version artifact, unavailable authorised root, and unsupported layout as per-check errors while the repo/fleet response survives
 - [x] Compact and detail results label machine-global context as applying to every project for that host
 
-The one open line is wiring, not resolution: the deriver takes each host repo's
-root and each machine-global skills root as inputs and reads both through the
-scanner resolver, so containment already holds. Computing those roots from the
-family-roots helper belongs to the orchestrator in section 7, which does not
-exist yet.
+Closed in section 7. The deriver still takes each host repo's root and each
+machine-global skills root as inputs and reads both through the scanner
+resolver, so containment was never in question; what was missing was the caller
+that computes them. `service.ts` now derives the host repos from the family root
+and the machine-global roots from `workflowScan`'s named-roots policy
+(`defaultMachineRoots`, exported for this), so neither is ever supplied by a
+request or by a repo's own readiness file.
 
 ## 4. Tier-A deriver: `spec` · AGE-458 — **needs `add-openspec-project-reader`**
 
 - [x] Consume the existing reader; no directory traversal in this deriver (TDD)
 - [x] Map: no `openspec/` → `never` + hint; 0 open → `ok`; N open → `warn` with count and task ratios; read error → `fail`
-- [ ] For no `openspec/`, render a host-specific remedy naming the installed workflow-update command and migration 0032's OpenSpec initialisation; no generic migration-only hint
+- [x] For no `openspec/`, render a host-specific remedy naming the installed workflow-update command and migration 0032's OpenSpec initialisation; no generic migration-only hint
 
-The remedy line waits on section 3: naming *the installed* workflow-update
-command requires host detection, which does not exist yet. The absent-slot
-summary currently says the workflow update installs the slot without naming a
-host's command, which is the generic hint this task exists to replace — so it
-stays open rather than being ticked against a placeholder.
+Closed in section 7, once host detection existed to hang it on.
+`workflowDeriver` now exports `detectHostId`, the orchestrator threads the
+detected host into `remedyFor`, and the unmigrated-spec remedy names that host's
+own command — `/update-agenticapps-workflow` on claude,
+`$update-codex-agenticapps-workflow` on codex,
+`$update-opencode-agenticapps-workflow` on opencode,
+`/update-pi-agenticapps-workflow` on pi — together with migration 0032's OpenSpec
+initialisation. With no host detected it names no command at all rather than
+guessing one, which would be a wrong instruction rather than a vague one.
+
+The deriver's own absent-slot *summary* still carries the generic wording. That
+is the summary, not the remedy: this task's obligation is on the remedy text,
+and the spec scenario it cites is about what the remedy says.
 - [x] Test: an unmigrated repo yields `never`, and no phase-tree fallback is consulted
 - [x] Confirm by grep that this deriver contains no `openspec/` path literal of its own
 
@@ -112,15 +124,30 @@ stays open rather than being ticked against a placeholder.
 
 ## 7. Daemon endpoints · AGE-462
 
-- [ ] `GET /api/v2/fleet`, `GET /api/v2/repos/:id`, `POST /api/v2/repos/:id/rescan` in the existing Hono app (TDD)
-- [ ] Settled-per-repo and settled-per-check composition — the orchestrator never throws
-- [ ] Responses pass through the existing outbound schema-validation wrapper
-- [ ] Routes inherit bearer auth and CORS lock, accept no cookie-only path, and unknown repo ids return 404
-- [ ] 5-second maximum memo keyed by registry membership, HEAD, relevant dirty/untracked state, readiness file, and machine-global workflow identity
-- [ ] Concurrent rescans for one repo coalesce into one computation
-- [ ] Keep readiness and machine-global workflow data memory-only; redact absolute paths, usernames, and credentials
-- [ ] Registry order preserved; no server-side sort
-- [ ] Subprocess test: three fixture repos (complete, empty, broken readiness file) all come back
+- [x] `GET /api/v2/fleet`, `GET /api/v2/repos/:id`, `POST /api/v2/repos/:id/rescan` in the existing Hono app (TDD)
+- [x] Settled-per-repo and settled-per-check composition — the orchestrator never throws
+- [x] Responses pass through the existing outbound schema-validation wrapper
+- [x] Routes inherit bearer auth and CORS lock, accept no cookie-only path, and unknown repo ids return 404
+- [x] 5-second maximum memo keyed by registry membership, HEAD, relevant dirty/untracked state, readiness file, and machine-global workflow identity
+- [x] Concurrent rescans for one repo coalesce into one computation
+- [x] Keep readiness and machine-global workflow data memory-only; redact absolute paths, usernames, and credentials
+- [x] Registry order preserved; no server-side sort
+- [x] Subprocess test: three fixture repos (complete, empty, broken readiness file) all come back
+
+Two notes on how these were satisfied. The memo folds in the **whole**
+dirty/untracked set rather than the production subset the freshness rules use:
+narrowing it needs the readiness file parsed first to learn the configured
+scope, and over-invalidating errs in the safe direction. And `generatedAt` on
+the fleet is the **oldest** snapshot's stamp, not the moment the response was
+assembled — with a per-repo memo the repos have different ages, and the response
+must not claim a currency its replayed parts do not have.
+
+Redaction is enforced by the shared schema rather than by a scrubbing pass here:
+error and notice text is `SanitisedTextSchema`, so a leaked absolute path fails
+outbound validation as `schema_drift` instead of reaching the client. Remedy
+text is deliberately exempt (`RemedySchema`) because two hosts spell their
+update command with a leading slash; its own tests apply the sanitiser rule to
+everything but those four commands.
 
 ## 8. Readiness indicator component · AGE-464
 

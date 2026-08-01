@@ -155,3 +155,23 @@ membership, repo id, HEAD, relevant dirty/untracked state, readiness-file identi
 machine-global workflow identity. Concurrent rescans for the same repo coalesce;
 an unknown repo is a 404. This keeps a rescan deterministic without spawning
 work or turning the cache into persisted state.
+
+Two refinements were settled while implementing it (section 7).
+
+**The key folds in the whole dirty/untracked set, not the production subset.**
+Narrowing it to the paths the freshness rules care about would mean parsing the
+readiness file first, to learn the configured production scope, before deciding
+whether the cached result may be replayed — which is most of the work the cache
+exists to avoid. Over-invalidating costs a recomputation when someone edits a
+doc; under-invalidating serves a reading taken before the user's last commit.
+Only one of those is a correctness failure, so the key errs toward the other.
+
+**The fleet is dated by its oldest snapshot.** The memo is per repo, so within
+one fleet response some repos are freshly computed and others are replayed. The
+envelope carries a single `generatedAt`, and the spec is explicit that it means
+the time the snapshot was computed and not the time a cached response happened
+to be served. Taking the minimum keeps that promise for every repo in the
+response: it may understate the freshness of the newest repo, but it never
+overstates the freshness of the oldest. The alternative — stamping the assembly
+time — would make every response claim to be current, which is precisely the
+reading the spec rules out.
