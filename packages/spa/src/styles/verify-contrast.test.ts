@@ -275,6 +275,16 @@ describe('appearance completeness', () => {
     }
   })
 
+  // A black drop shadow over a near-black ground casts nothing — there is
+  // nothing darker to cast onto. Depth on a dark ground comes from light
+  // catching the upper edge, so the dark elevation carries an inset highlight
+  // rather than a larger black blur. Asserted because the failure is invisible:
+  // the token still exists, still parses, and simply does nothing.
+  it('gives the dark appearance an elevation that is not a pure black drop shadow', () => {
+    const dark = APPEARANCES.find((a) => a.name === 'dark') as Appearance
+    expect(dark.all.get('--shadow-card')).toMatch(/inset/)
+  })
+
   // Without color-scheme, UA-rendered chrome — scrollbars, and the native radio
   // inputs in ThemeToggle itself — stays light-styled in dark, so the appearance
   // control visibly fails to restyle its own controls.

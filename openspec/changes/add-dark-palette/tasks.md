@@ -50,7 +50,7 @@ Each pair lands as a `test(RED):` commit followed by `feat(GREEN):` or `fix(GREE
 - [x] 7.2 Verify `/settings` now visibly restyles, including its own native radios, and that the choice survives a reload
 - [x] 7.3 Verify the help docs render dark prose on a dark ground
 - [x] 7.4 `impeccable:critique` at 1440×900 in dark, composite ≥ 80, artifact committed — 88, PASS, with coverage and isolation caveats recorded
-- [ ] 7.5 Fix value-level findings from the critique; file structural ones
+- [x] 7.5 Fix value-level findings from the critique; file structural ones — inert dark shadow replaced with an inset edge highlight; PRODUCT.md's appearance-of-record corrected; /help stubs and settings dead space filed as pre-existing
 
 ## 8. Close the change
 
