@@ -310,6 +310,28 @@ describe('RepoDetailPage evidence blocks', () => {
     expect(within(block('workflow')).getByText(/the evidence body/)).toBeInTheDocument()
   })
 
+  it('names evidence the read route will not serve, but does not offer to open it', () => {
+    // The coverage check's default evidence path. The read route allows
+    // `.planning`, `.claude` and `openspec` only, so a control here would
+    // promise a file the daemon answers with 422 — the spec's "paths already
+    // accepted by that read route" is the constraint being honoured.
+    const base = detail()
+    const checks = base.checks.map((check) =>
+      check.id === 'coverage'
+        ? {
+            ...check,
+            evidence: { path: 'coverage/coverage-summary.json', commit: 'b'.repeat(40) },
+          }
+        : check,
+    ) as unknown as RepoDetail['checks']
+    loaded({ ...base, checks })
+    render(<RepoDetailPage />)
+
+    const coverage = block('coverage')
+    expect(within(coverage).getByText(/coverage\/coverage-summary\.json/)).toBeInTheDocument()
+    expect(within(coverage).queryAllByRole('button')).toHaveLength(0)
+  })
+
   it('offers no control where there is no evidence to open', () => {
     loaded(neverDetail())
     render(<RepoDetailPage />)
