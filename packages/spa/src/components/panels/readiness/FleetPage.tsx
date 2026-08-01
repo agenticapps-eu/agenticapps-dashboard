@@ -35,6 +35,8 @@ import { PageHeader } from '../../ui/PageHeader.js'
 import { CHECK_LABELS, ReadinessIndicator } from './ReadinessIndicator.js'
 import { FleetToolbar } from './FleetToolbar.js'
 import {
+  EMPTY_FILTERS,
+  hasActiveFilters,
   matchesFleetFilters,
   parseFleetFilters,
   serialiseFleetFilters,
@@ -54,6 +56,18 @@ import {
 function formatLastChange(at: number | null): string {
   if (at === null) return '—'
   return new Date(at).toISOString().slice(0, 10)
+}
+
+/**
+ * When the readings were computed, to the minute, in UTC.
+ *
+ * The daemon dates a fleet response by its OLDEST per-repo snapshot rather than
+ * by assembly time (design.md §8), so this number never overstates how current
+ * the response is. Rendering it is the whole point of that decision: without it
+ * a replayed memo and a fresh scan look identical.
+ */
+function formatGeneratedAt(at: number): string {
+  return `${new Date(at).toISOString().slice(0, 16).replace('T', ' ')} UTC`
 }
 
 function LoadingState(): ReactElement {
@@ -244,6 +258,12 @@ function NoReposState(): ReactElement {
  * clear" — the same misreading the empty-registry state exists to prevent. It
  * has a different cause and so a different sentence.
  */
+/**
+ * No action of its own. The toolbar is keyed off the registry being non-empty,
+ * not off the visible rows, so it and its "Clear filters" button are still
+ * directly above this — and two identical exits a few pixels apart is worse
+ * than one.
+ */
 function NoMatchesState(): ReactElement {
   return (
     <div className="rounded-card bg-card-bg p-6 shadow-card">
@@ -279,6 +299,9 @@ export function FleetPage(): ReactElement {
     void navigate({ to: '/repos/$repoId', params: { repoId } })
   }
 
+  const all = fleet.data?.repos ?? []
+  const visible = all.filter((repo) => matchesFleetFilters(repo, filters))
+
   let content: ReactElement
   if (fleet.error?.message.startsWith('schema_drift:')) {
     content = (
@@ -299,7 +322,6 @@ export function FleetPage(): ReactElement {
   } else if (fleet.data.repos.length === 0) {
     content = <NoReposState />
   } else {
-    const visible = fleet.data.repos.filter((repo) => matchesFleetFilters(repo, filters))
     content =
       visible.length === 0 ? (
         <NoMatchesState />
@@ -319,7 +341,30 @@ export function FleetPage(): ReactElement {
         helper="Six checks per repository. Count the cells — there is no combined score."
         sticky={true}
       />
-      {filterable && <FleetToolbar filters={filters} onChange={applyFilters} />}
+      {filterable && (
+        <div className="flex flex-col gap-3">
+          <FleetToolbar filters={filters} onChange={applyFilters} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-tertiary">
+            <span>
+              {hasActiveFilters(filters)
+                ? `${visible.length} of ${all.length} repositories`
+                : `${all.length} repositories`}
+            </span>
+            {fleet.data !== undefined && (
+              <span>Readings computed {formatGeneratedAt(fleet.data.generatedAt)}</span>
+            )}
+            {hasActiveFilters(filters) && (
+              <button
+                type="button"
+                onClick={() => applyFilters(EMPTY_FILTERS)}
+                className="rounded-md px-2 py-1 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {content}
     </main>
   )

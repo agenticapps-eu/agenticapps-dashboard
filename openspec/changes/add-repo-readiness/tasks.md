@@ -236,9 +236,28 @@ costs the distinction §3 exists to preserve.
 - [x] Test: no coverage data renders as absence, never `0 %`
 - [x] Empty registry leads to onboarding, not an empty table
 - [x] Render the boolean readiness and any unusable-file notice in fleet rows
-- [ ] No horizontal scrolling at 1440 px
-- [ ] 1440 px snapshot in both appearances, carried from §8.1
-- [ ] `impeccable:critique` at the ≥ 80 composite floor, carried from §8.1
+- [x] No horizontal scrolling at 1440 px — measured, `scrollWidth === clientWidth === 1440`
+- [x] 1440 px snapshot in both appearances, carried from §8.1
+- [x] `impeccable:critique` at the ≥ 80 composite floor, carried from §8.1 — 70 → **85**
+
+### 9.5 The critique found three real gaps, and one it did not
+
+`artifacts/CRITIQUE-fleet-2026-08-01.md` records the run. Composite was **70**
+before it, under the ≥ 80 floor, and **85** after acting on it — the gate did
+work rather than rubber-stamping.
+
+The finding worth carrying forward: **`generatedAt` was on the wire and never
+rendered.** The daemon dates a fleet response by its oldest per-repo memo rather
+than by assembly time, precisely so the number cannot overstate freshness
+(design.md §8), and the only client dropped it — which reproduces the "every
+response claims to be current" reading §8 exists to rule out. §10 should check
+the same field on the detail response before assuming it is displayed.
+
+Two deviations are recorded in the artifact rather than hidden: the two
+assessments were run sequentially in one context instead of in isolated
+sub-agents, because this session was instructed not to spawn agents, so the
+anchoring the reference guards against is present; and the browser-overlay half
+could not run because the installed CLI has no `live` subcommand.
 
 ### 9.1 The fleet mounts at `/fleet`, not at `/`
 
