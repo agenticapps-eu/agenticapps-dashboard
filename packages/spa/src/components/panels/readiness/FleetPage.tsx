@@ -117,7 +117,7 @@ function FleetRow({
       onClick={() => onOpen(repo.id)}
       className="cursor-pointer border-t border-border-subtle hover:bg-card-bg-hover"
     >
-      <td className="px-3 py-2 align-top">
+      <td className="px-3 py-2 align-middle">
         <Link
           to="/repos/$repoId"
           params={{ repoId: repo.id }}
@@ -136,12 +136,17 @@ function FleetRow({
           </span>
         )}
       </td>
-      <td className="px-3 py-2 align-top whitespace-nowrap">
+      <td className="px-3 py-2 align-middle whitespace-nowrap">
         <ReadyVerdict ready={repo.ready} />
       </td>
+      {/*
+        No horizontal padding: the grid inside divides this cell into the same
+        six fractions the header row divides into, so any padding here shifts
+        every cell out from under its own label.
+      */}
       <td
         colSpan={CHECK_IDS.length}
-        className="px-3 py-2 align-top"
+        className="py-2 align-middle"
         onClick={(event) => event.stopPropagation()}
       >
         <ReadinessIndicator
@@ -151,7 +156,7 @@ function FleetRow({
           variant="compact"
         />
       </td>
-      <td className="px-3 py-2 align-top text-sm text-text-secondary whitespace-nowrap">
+      <td className="px-3 py-2 align-middle text-sm text-text-secondary whitespace-nowrap">
         {formatLastChange(repo.lastCommitAt)}
       </td>
     </tr>

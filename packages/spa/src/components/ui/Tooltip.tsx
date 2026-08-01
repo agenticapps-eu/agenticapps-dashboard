@@ -125,14 +125,18 @@ export function Tooltip({
   // (NVDA, VoiceOver) to announce the description on every focus regardless of
   // the visual 100ms open delay (Phase 11.2 stage-1 /review cross-model finding).
   return (
-    <span className="relative inline-block">
+    <span className={interactiveChild ? 'relative block' : 'relative inline-block'}>
       <span
         ref={triggerRef}
         {...(interactiveChild ? {} : { tabIndex: 0 })}
         {...(open ? { 'aria-describedby': tooltipId } : {})}
         className={
           interactiveChild
-            ? 'inline-block'
+            ? // Block, so the wrapped control fills the slot it was placed in
+              // rather than shrinking to its content and leaving most of the
+              // slot dead. A 14 px glyph in a table column is a small enough
+              // target already.
+              'block'
             : 'border-b border-dotted border-text-tertiary cursor-default'
         }
         onMouseEnter={scheduleOpen}
