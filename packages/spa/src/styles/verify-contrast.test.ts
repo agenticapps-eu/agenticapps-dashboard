@@ -282,4 +282,13 @@ describe('appearance completeness', () => {
     expect(property(':root', 'color-scheme')).toBe('light')
     expect(property('.dark', 'color-scheme')).toBe('dark')
   })
+
+  // `:root` and `.dark` are both specificity (0,1,0), so whichever is written
+  // last wins. Declaring both is not enough — with `.dark` first, `:root`
+  // overrides it and the browser renders light-scheme scrollbars and radios on
+  // a dark page. Caught in the browser, not by the assertion above, which is
+  // why source order is asserted rather than assumed.
+  it('orders .dark after :root so equal-specificity rules resolve to dark', () => {
+    expect(tokensCss.indexOf('.dark')).toBeGreaterThan(tokensCss.indexOf(':root'))
+  })
 })

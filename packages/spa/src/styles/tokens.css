@@ -102,6 +102,20 @@
  * (single-row PageHeader without children); Coverage's title+toolbar PageHeader publishes ~110px
  * once the ResizeObserver fires.
  */
+:root {
+  /* Declared so UA-rendered chrome follows the appearance: scrollbars, and the
+   * native radio inputs in ThemeToggle itself. Without it the appearance
+   * control visibly fails to restyle its own controls. */
+  color-scheme: light;
+
+  --ph-h: 56px;
+  --z-base:    0;
+  --z-sticky:  10;
+  --z-overlay: 100;
+  --z-modal:   1000;
+  --z-toast:   2000;
+}
+
 /* ── Dark appearance ────────────────────────────────────────────────────────
  *
  * The product has defaulted to dark since D-02 (lib/theme.ts) and rendered
@@ -169,18 +183,4 @@
   /* Card material — a 4% black shadow is invisible on ink, so separation comes
    * from the app-bg → card-bg surface step with the shadow reinforcing it. */
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
-}
-
-:root {
-  /* Declared so UA-rendered chrome follows the appearance: scrollbars, and the
-   * native radio inputs in ThemeToggle itself. Without it the appearance
-   * control visibly fails to restyle its own controls. */
-  color-scheme: light;
-
-  --ph-h: 56px;
-  --z-base:    0;
-  --z-sticky:  10;
-  --z-overlay: 100;
-  --z-modal:   1000;
-  --z-toast:   2000;
 }
