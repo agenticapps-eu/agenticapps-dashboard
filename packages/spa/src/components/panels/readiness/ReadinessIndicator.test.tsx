@@ -130,13 +130,91 @@ describe('ReadinessIndicator', () => {
     render(
       <ReadinessIndicator checks={checks} repoName="dashboard" variant="full" />,
     )
-    expect(screen.getByText('87.4')).toBeTruthy()
+    expect(screen.getByText('87.4 of 80')).toBeTruthy()
     cleanup()
 
     render(
       <ReadinessIndicator checks={checks} repoName="dashboard" variant="compact" />,
     )
-    expect(screen.queryByText('87.4')).toBeNull()
+    expect(screen.queryByText('87.4 of 80')).toBeNull()
+  })
+
+  it('reads a value against its threshold, since the threshold is why it is green', () => {
+    render(
+      <ReadinessIndicator
+        checks={[result('coverage', 'warn', { value: 76, threshold: 80 })]}
+        repoName="dashboard"
+        variant="full"
+      />,
+    )
+    expect(screen.getByText('76 of 80')).toBeTruthy()
+  })
+
+  it('renders a value with no threshold on its own', () => {
+    render(
+      <ReadinessIndicator
+        checks={[result('spec', 'warn', { value: 3 })]}
+        repoName="dashboard"
+        variant="full"
+      />,
+    )
+    expect(screen.getByText('3')).toBeTruthy()
+  })
+
+  /**
+   * `aria-label` REPLACES an element's visible text for assistive tech. A value
+   * rendered in the cell but left out of the label is a number a screen-reader
+   * user cannot reach at all — and in the compact variant, the label is the only
+   * place it could ever appear.
+   */
+  it.each(['compact', 'full'] as const)(
+    'puts the value in the accessible name too — %s',
+    (variant) => {
+      render(
+        <ReadinessIndicator
+          checks={[result('coverage', 'ok', { value: 87.4, threshold: 80 })]}
+          repoName="dashboard"
+          variant={variant}
+        />,
+      )
+      expect(screen.getByRole('figure').getAttribute('aria-label')).toContain(
+        '87.4 of 80',
+      )
+    },
+  )
+
+  /**
+   * spec.md — "Not-applicable states its reason": the UI renders that reason
+   * "rather than an unexplained grey cell". The schema forces the daemon to
+   * supply it, so dropping it here would waste a fact it was made to carry.
+   */
+  it('renders the not-applicable reason rather than an unexplained grey cell', () => {
+    render(
+      <ReadinessIndicator
+        checks={[result('workflow', 'na')]}
+        repoName="dashboard"
+        variant="compact"
+      />,
+    )
+    expect(screen.getByRole('figure').getAttribute('aria-label')).toContain(
+      'this host cannot pin a version',
+    )
+  })
+
+  /** spec.md — "every warning and not-applicable reason remains visible". */
+  it('keeps a warning reason visible', () => {
+    render(
+      <ReadinessIndicator
+        checks={[
+          result('spec', 'warn', { summary: '3 changes open, 7 of 12 tasks done' }),
+        ]}
+        repoName="dashboard"
+        variant="compact"
+      />,
+    )
+    expect(screen.getByRole('figure').getAttribute('aria-label')).toContain(
+      '3 changes open, 7 of 12 tasks done',
+    )
   })
 
   it('discloses the check name, the status in words, the time and the provenance', () => {
@@ -173,7 +251,10 @@ describe('ReadinessIndicator', () => {
     )
 
     const disclosure = screen.getByRole('figure').getAttribute('aria-label') ?? ''
-    expect(disclosure).toContain('—')
+    // The em dash must be in the TIME's position. A bare toContain('—') would
+    // also be satisfied by the separator `disclose` emits unconditionally, and
+    // would keep passing if the timestamp were dropped entirely.
+    expect(disclosure).toContain(', —,')
     // Nothing resembling a rendered timestamp may stand in for the absent one.
     expect(disclosure).not.toMatch(/\d{4}-\d{2}-\d{2}/)
     expect(disclosure).not.toContain('UTC')

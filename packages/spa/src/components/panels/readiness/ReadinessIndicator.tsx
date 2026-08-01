@@ -116,9 +116,34 @@ function formatObservedAt(at: number | null): string {
   return `${new Date(at).toISOString().slice(0, 16).replace('T', ' ')} UTC`
 }
 
+/**
+ * The value, read against the threshold that decided its status where there is
+ * one. A bare `76` says nothing about why the cell is amber; `76 of 80` says it
+ * outright, and the threshold is already on the wire for exactly this reason.
+ */
+function formatValue(check: CheckResult): string | null {
+  if (check.value === null) return null
+  if (check.threshold === null) return `${check.value}`
+  return `${check.value} of ${check.threshold}`
+}
+
+/**
+ * What the cell says when inspected. `aria-label` REPLACES the visible text for
+ * assistive tech rather than adding to it, so anything rendered in the cell has
+ * to appear here too or it becomes unreachable — and in the compact variant
+ * this is the only place the value appears at all.
+ *
+ * The summary is carried for the same reason the schema forces the daemon to
+ * supply one: spec.md requires `na` to render its reason "rather than an
+ * unexplained grey cell", and warnings to keep their reason visible.
+ */
 function disclose(check: CheckResult): string {
   const { word } = STATUS_PRESENTATION[check.status]
-  return `${CHECK_LABELS[check.id]} — ${word}, ${formatObservedAt(check.at)}, ${check.source}`
+  const value = formatValue(check)
+  const head = `${CHECK_LABELS[check.id]} — ${word}`
+  const body = `${value === null ? '' : `${value}, `}${formatObservedAt(check.at)}, ${check.source}`
+  const reason = check.summary.trim()
+  return `${head}, ${body}${reason === '' ? '' : ` — ${reason}`}`
 }
 
 function ReadinessCell({
@@ -131,6 +156,7 @@ function ReadinessCell({
   const presentation = STATUS_PRESENTATION[check.status]
   const Shape = presentation.icon
   const disclosure = disclose(check)
+  const value = formatValue(check)
   const full = variant === 'full'
 
   return (
@@ -146,9 +172,9 @@ function ReadinessCell({
           <span className="text-xs whitespace-nowrap">
             {CHECK_LABELS[check.id]}
           </span>
-          {check.value !== null && (
+          {value !== null && (
             <span className="text-xs text-text-secondary whitespace-nowrap">
-              {check.value}
+              {value}
             </span>
           )}
         </>

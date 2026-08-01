@@ -116,6 +116,30 @@ describe('CheckResultSchema', () => {
     ).toBe(false)
   })
 
+  /**
+   * `at` is fed from a git committer time, and a repo with a corrupt commit
+   * date can carry one past the range `Date` can represent. Every surface that
+   * renders a time calls `new Date(at).toISOString()`, which throws a
+   * RangeError beyond +275760-09-13 — during render, with no error boundary
+   * anywhere in the SPA. One bad commit in one registered repo would blank the
+   * whole fleet route, which inverts the settled-per-repo degradation this
+   * feature is built on. The bound belongs here, where it protects every
+   * consumer, rather than in each component that formats a date.
+   */
+  it('rejects an observed time beyond the range a Date can represent', () => {
+    const MAX_DATE_MS = 8_640_000_000_000_000
+    expect(
+      CheckResultSchema.safeParse(
+        result('coverage', { status: 'ok', at: MAX_DATE_MS }),
+      ).success,
+    ).toBe(true)
+    expect(
+      CheckResultSchema.safeParse(
+        result('coverage', { status: 'ok', at: MAX_DATE_MS + 1 }),
+      ).success,
+    ).toBe(false)
+  })
+
   it('accepts an ok result carrying a value, threshold and evidence', () => {
     const parsed = CheckResultSchema.safeParse(
       result('coverage', {

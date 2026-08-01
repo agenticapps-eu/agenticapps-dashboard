@@ -171,6 +171,35 @@ Both are therefore carried into §9 rather than skipped, and §9 is not complete
 until the fleet route has been snapshotted at 1440 px and critiqued at the ≥ 80
 composite floor with the readiness cells visible in both appearances.
 
+Stage-two review added two more §9 obligations:
+
+- **The cell's disclosure must stop being a `title` when the cell becomes a
+  control.** Today the cell is non-interactive and follows `CoverageCell`'s
+  `aria-label` + `title` precedent, which reaches assistive tech and pointer
+  users but not a sighted keyboard user — acceptable while nothing is focusable.
+  The spec requires selecting a cell to open the detail at that check, so §9
+  turns it into a control, and a focusable control carrying a native `title` is
+  exactly what `ui/Tooltip.tsx` exists to replace: it opens on focus, closes on
+  Escape, and portals out of the containing block, all three of which a cell
+  inside a `table-fixed` row will need.
+- **§9 must supply the column headers.** The compact variant is six unlabelled
+  14 px glyphs; check identity lives only in the accessible name. That is right
+  for a one-row-per-repo table, but it means the table owes the labels, and the
+  component deliberately does not.
+
+### 8.3 Carried into §11 (Verify): `force` is dropped on a coalesced rescan
+
+Found by stage-two review, pre-existing in §7 and deliberately not fixed here —
+it is a different section's code and a fix belongs with a test that names the
+behaviour, not bundled into §8.
+
+`snapshotFor` returns an in-flight promise before it consults `force`. A forced
+`rescanRepo` that arrives while an *unforced* `readFleet`/`readRepo` is still in
+flight therefore joins the unforced computation and can be answered from the
+memo — so a rescan the user explicitly asked for may silently return the cached
+snapshot. The §7 tests do not cover a forced rescan racing an unforced read;
+both callers in the coalescing test are forced, which is why it went unnoticed.
+
 ### 8.2 Colour answers "is something wrong?", not "does this block?"
 
 The six statuses share four colour pairings; shape is what separates all six.

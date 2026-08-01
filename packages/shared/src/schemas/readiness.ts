@@ -85,7 +85,15 @@ const SanitisedTextSchema = z
 
 const Rfc3339Schema = z.string().datetime({ offset: true })
 const CommitShaSchema = z.string().regex(/^[0-9a-f]{40}$/)
-const EpochMsSchema = z.number().int().nonnegative()
+/**
+ * A UTC instant in milliseconds, bounded by what `Date` can actually represent.
+ * `at` and `lastCommitAt` are fed from git committer times, and a repo carrying
+ * a corrupt commit date can exceed that range — at which point every surface
+ * that formats the value throws a RangeError mid-render. Rejecting it here
+ * keeps one bad commit in one repo from taking down a whole fleet response.
+ */
+const MAX_DATE_MS = 8_640_000_000_000_000
+const EpochMsSchema = z.number().int().nonnegative().max(MAX_DATE_MS)
 
 const EvidenceSchema = z
   .object({

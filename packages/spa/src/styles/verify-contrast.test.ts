@@ -318,6 +318,29 @@ describe.each(APPEARANCES.map((a) => [a.name, a] as const))(
               ),
             ).toBeGreaterThanOrEqual(BODY_TEXT)
           })
+
+          /**
+           * The full variant renders the check's value in `text-secondary` on
+           * the SAME status tint, which is a second pairing the cell introduces
+           * and the loop above does not reach — it only ever checks a status
+           * colour against its own tint.
+           *
+           * It is the tightest pairing in the palette: `status-error/10` over
+           * `sidebar-bg` measures 4.551:1 in light, 0.051 above the floor.
+           * Nothing would have caught a status token darkening past it.
+           */
+          it(`${status}'s value clears ${BODY_TEXT}:1 — text-secondary on ${bg} over ${surface}`, () => {
+            expect(
+              contrastRatio(
+                appear.colour('text-secondary'),
+                tint(
+                  appear.colour(bgToken as string),
+                  appear.colour(surface),
+                  Number(alpha) / 100,
+                ),
+              ),
+            ).toBeGreaterThanOrEqual(BODY_TEXT)
+          })
         }
       }
     })
