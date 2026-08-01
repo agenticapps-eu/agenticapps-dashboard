@@ -1,3 +1,4 @@
+import React from 'react'
 import { fireEvent, render, screen, cleanup, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -23,6 +24,25 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useNavigate: () => routerState.navigate,
     useSearch: () => routerState.search,
+    Link: ({
+      to,
+      params,
+      hash,
+      children,
+      ...rest
+    }: {
+      to: string
+      params?: { repoId?: string }
+      hash?: string
+      children: React.ReactNode
+    } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+      <a
+        href={`${to.replace('$repoId', params?.repoId ?? '')}${hash === undefined ? '' : `#${hash}`}`}
+        {...rest}
+      >
+        {children}
+      </a>
+    ),
   }
 })
 vi.mock('../../../lib/readinessQueries.js', () => ({ useFleet: vi.fn() }))
@@ -224,6 +244,51 @@ describe('FleetPage', () => {
         /declarations\[0\]\.observedAt is not an RFC 3339 time/,
       ),
     ).toBeInTheDocument()
+  })
+
+  it('opens the repo detail from the name', () => {
+    fleet([repo('dashboard', { name: 'agenticapps-dashboard' })])
+    render(<FleetPage />)
+
+    expect(
+      screen.getByRole('link', { name: 'agenticapps-dashboard' }).getAttribute('href'),
+    ).toBe('/repos/dashboard')
+  })
+
+  it('opens the detail at the selected check from a cell', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const cells = within(row as HTMLElement).getAllByRole('link')
+    // The name link comes first; the six check cells follow, in fixed order.
+    expect(cells.slice(1).map((cell) => cell.getAttribute('href'))).toEqual(
+      CHECK_IDS.map((id) => `/repos/dashboard#${id}`),
+    )
+  })
+
+  it('opens the detail when the row itself is selected', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    fireEvent.click(rows()[0] as HTMLElement)
+
+    expect(routerState.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/repos/$repoId', params: { repoId: 'dashboard' } }),
+    )
+  })
+
+  it('does not also open the repo when a check cell is selected', () => {
+    // The cell carries a more specific destination than the row it sits in. If
+    // the row handler ran too, the more specific one would be overwritten by
+    // the less specific one and every cell would land at the top of the page.
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    const cell = within(rows()[0] as HTMLElement).getAllByRole('link')[1]
+    fireEvent.click(cell as HTMLElement)
+
+    expect(routerState.navigate).not.toHaveBeenCalled()
   })
 
   it('narrows the row set by family without splitting it into sections', () => {
