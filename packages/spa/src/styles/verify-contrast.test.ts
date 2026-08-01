@@ -173,7 +173,19 @@ const FILLS = [
 ] as const
 
 /** The resting fills must also be visible against the page behind them. */
-const RESTING_FILLS = ['accent-bg-strong', 'status-error-strong'] as const
+/**
+ * The opaque surfaces a filled control actually sits on, verified by grep:
+ * modals and cards (`card-bg`), toolbars and routes (`app-bg`), and the sidebar
+ * active pill (`sidebar-bg`). `card-bg-hover` is deliberately absent — no filled
+ * control renders on a hovered card, and asserting it would move a value for a
+ * rendering that never happens (D-5).
+ *
+ * Every fill is checked, resting and hover alike. A hover fill that darkened
+ * until the control's edge vanished into the page would otherwise pass CI:
+ * hover fills were previously checked only for white legibility, which a
+ * too-dark fill satisfies trivially.
+ */
+const FILL_SURFACES = ['app-bg', 'card-bg', 'sidebar-bg'] as const
 
 describe.each(APPEARANCES.map((a) => [a.name, a] as const))(
   'contrast floors — %s appearance',
@@ -235,8 +247,8 @@ describe.each(APPEARANCES.map((a) => [a.name, a] as const))(
         })
       }
 
-      for (const fill of RESTING_FILLS) {
-        for (const surface of ['app-bg', 'card-bg'] as const) {
+      for (const fill of FILLS) {
+        for (const surface of FILL_SURFACES) {
           it(`${fill} clears ${NON_TEXT}:1 against ${surface} so the control edge reads`, () => {
             expect(
               contrastRatio(appear.colour(fill), appear.colour(surface)),

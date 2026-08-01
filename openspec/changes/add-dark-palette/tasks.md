@@ -54,8 +54,57 @@ Each pair lands as a `test(RED):` commit followed by `feat(GREEN):` or `fix(GREE
 
 ## 8. Close the change
 
-- [ ] 8.1 `openspec validate --all` green
+- [x] 8.1 `openspec validate --all` green — 18/18
 - [ ] 8.2 Two-stage review: gstack `/review`, then `superpowers:requesting-code-review` in an independent context
-- [ ] 8.3 Re-run `run-plan-review.sh` and confirm the three REQUEST-CHANGES verdicts are addressed or answered in writing
+- [x] 8.3 Re-run `run-plan-review.sh` and confirm the three REQUEST-CHANGES verdicts are addressed or answered in writing
+
+### 8.3 disposition — the second review round
+
+The first round's command was wrong: `--implementing-host claude` is not a flag,
+and `REVIEWERS=("$@")` took it as the reviewer list, so both entries were skipped
+silently (`claude` as SELF, `--implementing-host` as a missing executable) and
+`REVIEWS.md` was left untouched. Re-run as `run-plan-review.sh add-dark-palette`;
+three reviewers returned against the revised artifacts, all REQUEST-CHANGES.
+
+Verified and fixed:
+
+- [x] 8.3a **Hover fills were never held to the 3.0 non-text floor** (codex, opencode).
+      Only `RESTING_FILLS` were, and only against `app-bg`/`card-bg`; the sidebar
+      active pill — the canonical fill — sat on an unasserted `sidebar-bg`. Now all
+      four fills are checked against all three surfaces they actually render on.
+      Measured: dark 3.15–4.02, light 5.26–8.03. `card-bg-hover` is excluded because
+      no filled control renders on a hovered card (2.87 there, a pairing that does
+      not occur). +16 assertions, 148 → 169.
+- [x] 8.3b **D-6 documented a decision that did not ship** (codex, opencode). design.md
+      said the chip "moves to `bg-card-bg-hover`"; the code kept the tint and raised
+      the label. The shipped choice is now the chosen one and the neutral surface is
+      recorded as the rejected alternative, with the 1.05:1 measurement that rejected it.
+- [x] 8.3c **"Four shipping light values are corrected" — only two exist** (codex,
+      opencode). Factual error in the proposal; corrected to two.
+- [x] 8.3d **`global.css:5` still said the dark variant "does nothing without a `.dark{}`
+      block"** (opencode) — the very sentence the proposal quotes as motivation, false
+      as of this change. Corrected.
+
+Answered, not actioned:
+
+- [x] 8.3e **`fillRole.test.ts` same-string evasion** (opencode). Real, but the named
+      evasion — `clsx('text-white', active && 'bg-accent')` — is not an available
+      pattern: cn()/clsx/CVA are banned by D-5.1-10. A file-scope widening was
+      implemented and reverted: it flags `SidebarSubItem`, where `bg-status-success`
+      is a status dot carrying no text. The limitation and the reverted attempt are
+      now recorded in the test's own doc comment rather than left implied.
+- [x] 8.3f **Pairing-matrix drift is unguarded** (codex, opencode). True and accepted:
+      the matrix is grep-verified by hand, so a new pairing is unasserted until someone
+      adds it. Automating usage→matrix reconciliation is a larger change than this one
+      and is not attempted here.
+- [x] 8.3g **Focus-ring and disabled-state contrast floors** (gemini, opencode minor).
+      Out of scope — this change defines a palette, not the focus and disabled systems.
+      Rings measure ~5.9:1 in dark today; unguarded, and worth its own change.
+- [x] 8.3h **`color-scheme` is asserted separately, not in the key-set check** (codex,
+      opencode). Accurate reading of the mechanism. The scenario holds for the two
+      appearances that exist; a canonical scope for future appearance-dependent
+      namespaces is deferred rather than invented now.
+- [x] 8.3i **`color-mix` fallback needs a supported-browser baseline** (codex). Already
+      recorded in design.md Risks as accepted; no baseline contract is added here.
 - [ ] 8.4 Fold the `design-system` delta into `openspec/specs/design-system/spec.md` and archive
 - [ ] 8.5 Open the PR; note that `feat/repo-readiness-vocabulary` rebases onto this before §8 resumes

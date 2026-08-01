@@ -2,7 +2,7 @@
 @plugin "@tailwindcss/typography";
 @import "./tokens.css";
 
-/* Preserved for future Phase 6 dark-mode tokens — does nothing without a .dark{} block. */
+/* Resolves against the .dark{} block in tokens.css, which ships a full appearance. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 html, body, #root { height: 100%; }

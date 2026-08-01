@@ -97,15 +97,24 @@ Every foreground × background combination would over-constrain: `status-info` h
 surface anywhere in the SPA, and forcing it to clear a tint it never renders on would move a
 value for no reason. The matrix is built from pairings verified by grep — plain surfaces,
 self-tints at the alphas actually used (`/10`, `/8`), `accent` on `accent-bg`, and white on each
-fill. 74 pairings per appearance, 148 total.
+fill. Each fill is additionally checked against every opaque surface it renders on — `app-bg`,
+`card-bg`, `sidebar-bg` — at the 3.0 non-text floor, resting and hover alike, so a hover fill
+cannot darken until the control's edge vanishes. 169 assertions across both appearances.
 
-### D-6 · The `na` chip moves off its own tint rather than moving a text tier
+### D-6 · The `na` chip raises its label rather than moving a text tier
 
 `CoverageCell` renders `bg-text-tertiary/10 text-text-tertiary`, which measures 4.17–4.48 in
 light. A 10% tint of a colour under that same colour is inherently ~4:1 unless the colour is
 saturated; the status colours clear it only because they are.
 
-**Chosen:** the chip moves to `bg-card-bg-hover` (4.86 light, 5.79 dark).
+**Chosen:** the chip keeps `bg-text-tertiary/10` and raises its label one tier to
+`text-text-secondary` (`CoverageCell.tsx:117,120`).
+
+**Alternative rejected — move the chip to `bg-card-bg-hover`** (4.86 light, 5.79 dark). This was
+the original choice and it is what earlier drafts of this document and the proposal described;
+it is not what shipped. Flattening the chip onto a neutral surface drops it to 1.05:1 against
+the card it sits on, so the chip stops reading as a chip — the tint is what distinguishes it,
+and the measurement that mattered was the one against the card, not the one against the label.
 
 **Alternative rejected — darken light `text-tertiary`.** It carries a documented tuning history
 and a deliberate ~1.11 tier gap below `text-secondary`; darkening it to satisfy one chip would

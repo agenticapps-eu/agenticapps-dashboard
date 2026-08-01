@@ -48,7 +48,22 @@ function walk(dir: string): string[] {
 const FOREGROUND_AS_FILL =
   /\b(?:hover:|focus:|active:|group-hover:)?bg-(?:accent|accent-hover|status-error|status-warning|status-success|status-info)(?![\w/-])/
 
-/** A class list is any quoted string long enough to hold several utilities. */
+/**
+ * A class list is any quoted string long enough to hold several utilities.
+ *
+ * Scope, stated plainly because it bounds what the assertion is worth: this
+ * matches one quoted string at a time, so it catches a pairing a component
+ * wrote adjacently and not one assembled across strings —
+ * `clsx('text-white', active && 'bg-accent')` would slip through. That
+ * composition is not an available pattern here: cn()/clsx/CVA are banned by
+ * D-5.1-10 and every call site builds className from adjacent literals or a
+ * ternary of whole class lists, both of which this sees.
+ *
+ * Widening to file scope was tried and reverted — it flags `SidebarSubItem`,
+ * where `bg-status-success` is a status dot carrying no text and the file's
+ * `text-white` sits on `bg-accent-bg-strong` two branches away. A check that
+ * cannot tell a dot from a fill costs more than the case it would catch.
+ */
 const CLASS_STRINGS = /(['"`])((?:[^'"`\\\n]|\\.){8,}?)\1/g
 
 describe('fill and foreground roles stay separate', () => {

@@ -29,15 +29,16 @@ several more in the dark palette had they not been caught in review.
   `--color-status-error-strong-hover`. A colour that must read *as text on a page* and a colour
   that must sit *behind white text* pull in opposite directions; light satisfies both by
   coincidence, dark cannot.
-- **Four shipping light values are corrected** to clear floors they fail today:
+- **Two shipping light values are corrected** to clear floors they fail today:
   `status-warning` `#C2802B → #8F5D18`, `status-success` `#2E7D5B → #2A7354`.
 - **Eighteen component call sites change class**, all mechanical: twelve `bg-accent text-white`
   fills move to `bg-accent-bg-strong`, two destructive buttons move to
   `bg-status-error-strong`, two `hover:bg-red-700` (a Tailwind default red that never followed
-  the palette) are replaced, one `CoverageCell` chip moves off a self-tint onto a neutral
-  surface, and `HelpLayout` regains `dark:prose-invert`.
-- `verify-contrast.test.ts` grows from 6 assertions to **148** — every pairing that occurs in
-  the SPA, in both appearances — plus a token-set completeness assertion.
+  the palette) are replaced, one `CoverageCell` chip keeps its tint and raises its label a
+  tier, and `HelpLayout` regains `dark:prose-invert`.
+- `verify-contrast.test.ts` grows from 6 assertions to **169** — every pairing that occurs in
+  the SPA, in both appearances, resting and hover fills alike — plus a token-set completeness
+  assertion.
 
 ## Capabilities
 
