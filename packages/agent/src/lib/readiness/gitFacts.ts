@@ -29,13 +29,18 @@ export interface GitFacts {
   changed: string[]
 }
 
-interface GitResult {
+export interface GitResult {
   ok: boolean
   stdout: string
   exitCode: number
 }
 
-async function git(root: string, args: string[]): Promise<GitResult> {
+/**
+ * Exported as `runGit` for the cache fingerprint, which asks this repo two
+ * further read-only questions and must inherit the same hardening — argv array,
+ * fixed timeout, no shell, non-zero exit as data — rather than restate it.
+ */
+export async function runGit(root: string, args: string[]): Promise<GitResult> {
   try {
     const result = await execa('git', ['-c', 'core.quotePath=false', ...args], {
       cwd: root,
@@ -53,7 +58,7 @@ async function git(root: string, args: string[]): Promise<GitResult> {
 const splitNul = (raw: string): string[] => raw.split('\0').filter(Boolean)
 
 export async function readGitFacts(root: string): Promise<GitFacts> {
-  const listed = await git(root, [
+  const listed = await runGit(root, [
     'ls-files',
     '-z',
     '--cached',
@@ -62,7 +67,7 @@ export async function readGitFacts(root: string): Promise<GitFacts> {
   ])
   if (!listed.ok) return { available: false, files: [], changed: [] }
 
-  const status = await git(root, [
+  const status = await runGit(root, [
     'status',
     '--porcelain=v1',
     '-z',
@@ -102,7 +107,7 @@ export async function lastCommitTouching(
   root: string,
   pathspecs: readonly string[],
 ): Promise<CommitStamp | null> {
-  const result = await git(root, [
+  const result = await runGit(root, [
     'log',
     '-1',
     '--format=%H\t%ct',
@@ -131,7 +136,7 @@ export async function commitTimesFor(
   dirs: readonly string[],
 ): Promise<Map<string, CommitStamp>> {
   const times = new Map<string, CommitStamp>()
-  const result = await git(root, [
+  const result = await runGit(root, [
     'log',
     // %x01 marks a commit header, so a header is never mistaken for a path.
     '--format=%x01%H\t%ct',
@@ -161,6 +166,6 @@ export async function isAncestor(
   ancestor: string,
   descendant: string,
 ): Promise<boolean> {
-  const result = await git(root, ['merge-base', '--is-ancestor', ancestor, descendant])
+  const result = await runGit(root, ['merge-base', '--is-ancestor', ancestor, descendant])
   return result.exitCode === 0
 }

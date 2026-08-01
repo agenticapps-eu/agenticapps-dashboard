@@ -128,6 +128,17 @@ describe('repoFingerprint', () => {
     expect(await fingerprint()).not.toBe(before)
   })
 
+  /**
+   * An unreadable readiness file raises a notice; an absent one does not. The
+   * key has to tell them apart or the memo would replay the wrong one of the
+   * two across the transition.
+   */
+  it('distinguishes an unreadable readiness file from an absent one', async () => {
+    const absent = await fingerprint()
+    mkdirSync(join(repo, '.agenticapps', 'readiness.json'), { recursive: true })
+    expect(await fingerprint()).not.toBe(absent)
+  })
+
   it('survives a directory that is not a git work tree', async () => {
     const bare = join(sandbox, 'not-a-repo')
     mkdirSync(bare)
