@@ -151,12 +151,52 @@ everything but those four commands.
 
 ## 8. Readiness indicator component · AGE-464
 
-- [ ] Six cells, fixed positions, compact and full variants (TDD)
-- [ ] Each status distinguishable by shape as well as colour
-- [ ] Value rendered in-cell where one exists
-- [ ] Per-cell disclosure: check name, status in words, timestamp, provenance
-- [ ] Test: all six states; contrast test against tokens green in light **and** dark
-- [ ] Snapshot at 1440 px
+- [x] Six cells, fixed positions, compact and full variants (TDD)
+- [x] Each status distinguishable by shape as well as colour
+- [x] Value rendered in-cell where one exists
+- [x] Per-cell disclosure: check name, status in words, timestamp, provenance
+- [x] Test: all six states; contrast test against tokens green in light **and** dark
+- [ ] Snapshot at 1440 px — **deferred to §9**, see 8.1
+
+### 8.1 The snapshot and the critique wait for a route
+
+`ReadinessIndicator` is not mounted anywhere yet; §9 and §10 are what put it on
+a surface. A 1440 px snapshot taken now would have to render it through a
+harness route built for the screenshot and deleted afterwards, which measures
+the harness rather than the product. The same applies to the `impeccable:critique`
+run CLAUDE.md requires of every frontend-touching change: it runs *against
+affected routes*, and this change affects none until the fleet surface exists.
+
+Both are therefore carried into §9 rather than skipped, and §9 is not complete
+until the fleet route has been snapshotted at 1440 px and critiqued at the ≥ 80
+composite floor with the readiness cells visible in both appearances.
+
+### 8.2 Colour answers "is something wrong?", not "does this block?"
+
+The six statuses share four colour pairings; shape is what separates all six.
+The colour channel had two defensible readings and the choice is recorded here
+because §9 and §10 inherit it.
+
+**Chosen:** `ok` green, `warn` and `stale` amber, `fail` red, `never` and `na`
+neutral grey.
+
+**Rejected: colour tracks the readiness predicate** — `fail`, `stale` and
+`never` all red, because all three block `ready`. It is the more literal reading
+of design.md §2, and it was rejected because design.md §3 is equally explicit
+that `never` is not `fail`: an unrun check is a gap in process, not a defect in
+the product. `pen-test` is expected to sit at `never` across the entire fleet at
+launch, so this mapping paints every repo substantially red on day one — the
+"makes every young repo look broken" failure the six-value vocabulary was
+introduced to avoid.
+
+**Rejected: `stale` gets its own colour** (`status-info`). Aged evidence is
+arguably its own category, but blue reads as informational and understates that
+`stale` blocks readiness, and it would add the one tinted `status-info` pairing
+this palette has so far avoided asserting.
+
+Blocking-ness is carried by the boolean `ready`, which is computed from the six
+results. It does not need to be re-encoded in the colour, and encoding it there
+costs the distinction §3 exists to preserve.
 
 ## 9. Fleet surface · AGE-465
 
