@@ -42,6 +42,7 @@ function repo(
     name?: string
     statuses?: Partial<Record<CheckId, CheckStatus>>
     lastCommitAt?: number | null
+    notice?: RepoSummary['notice']
   } = {},
 ): RepoSummary {
   const checks = CHECK_IDS.map((checkId) =>
@@ -56,7 +57,7 @@ function repo(
     lastCommitAt:
       over.lastCommitAt === undefined ? Date.UTC(2026, 6, 30, 9, 15) : over.lastCommitAt,
     checks,
-    notice: null,
+    notice: over.notice ?? null,
   }
 }
 
@@ -154,6 +155,76 @@ describe('FleetPage', () => {
 
     expect(screen.getByLabelText('Loading fleet readiness')).toBeInTheDocument()
     expect(screen.queryAllByRole('row')).toHaveLength(0)
+  })
+
+  it('renders a repo with no coverage data as absence, never as zero', () => {
+    // A coverage check that has never run carries a null value. Rendering that
+    // as `0 %` would turn "we do not know" into the worst possible measurement,
+    // and a repo that simply has not been measured would sort and read as the
+    // one in the most trouble.
+    fleet([repo('unmeasured', { statuses: { coverage: 'never' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const text = (row as HTMLElement).textContent ?? ''
+    expect(text).not.toMatch(/\d\s*%/)
+    expect(text).not.toMatch(/\b0\b/)
+    expect(
+      within(row as HTMLElement).getByRole('figure', { name: /Coverage — never run/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('states readiness in words on every row', () => {
+    fleet([
+      repo('all-clear'),
+      repo('blocked', { statuses: { 'pen-test': 'never' } }),
+    ])
+    render(<FleetPage />)
+
+    const [first, second] = rows()
+    expect(within(second as HTMLElement).getByText('Ready')).toBeInTheDocument()
+    expect(within(first as HTMLElement).getByText('Not ready')).toBeInTheDocument()
+  })
+
+  it('shows the notice when a readiness file could not be used', () => {
+    fleet([
+      repo('bad-file', {
+        notice: {
+          code: 'readiness-file-invalid',
+          message: 'declarations[0].observedAt is not an RFC 3339 time',
+        },
+      }),
+    ])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    expect(
+      within(row as HTMLElement).getByText(
+        /declarations\[0\]\.observedAt is not an RFC 3339 time/,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('leads to onboarding rather than an empty table when nothing is registered', () => {
+    fleet([])
+    render(<FleetPage />)
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.getByText(/agentic-dashboard register/)).toBeInTheDocument()
+  })
+
+  it('names the drifting field when the response does not match the schema', () => {
+    mockUseFleet.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new Error('schema_drift:repos.0.checks.5.status'),
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useFleet>)
+    render(<FleetPage />)
+
+    expect(screen.getByText('Schema drift detected')).toBeInTheDocument()
+    expect(screen.getByText('repos.0.checks.5.status')).toBeInTheDocument()
   })
 
   it('offers a retry when the fleet cannot be read', () => {

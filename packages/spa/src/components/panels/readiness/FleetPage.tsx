@@ -22,10 +22,13 @@
  * - NO shadcn aliases
  */
 import type { ReactElement } from 'react'
+import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { CHECK_IDS, type RepoSummary } from '@agenticapps/dashboard-shared'
 
 import { useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
+import { SchemaDriftState } from '../../SchemaDriftState.js'
+import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
 
 import { CHECK_LABELS, ReadinessIndicator } from './ReadinessIndicator.js'
@@ -67,7 +70,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="mt-4 rounded-md bg-accent-bg-strong px-3 py-2 text-sm font-semibold text-white hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
       >
         Retry
       </button>
@@ -75,14 +78,43 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
   )
 }
 
+/**
+ * Readiness in words, so the verdict does not depend on reading a colour.
+ *
+ * "Not ready" is stated in the ordinary secondary text colour rather than in
+ * red. Pen-test sits at `never` across the whole fleet until it is declared, so
+ * at launch this reads false for almost every repo; painting each of those rows
+ * red would say something about the repos that is not true, and it is the same
+ * mistake §8.2 rejected for the cells. The six cells carry what is actually
+ * wrong — this column only says whether anything is.
+ */
+function ReadyVerdict({ ready }: { ready: boolean }): ReactElement {
+  return ready ? (
+    <span className="text-sm font-medium text-status-success">Ready</span>
+  ) : (
+    <span className="text-sm text-text-secondary">Not ready</span>
+  )
+}
+
 function FleetRow({ repo }: { repo: RepoSummary }): ReactElement {
   return (
     <tr className="border-t border-border-subtle">
-      <td className="px-3 py-2 text-sm text-text-primary truncate">{repo.name}</td>
-      <td colSpan={CHECK_IDS.length} className="px-3 py-2">
+      <td className="px-3 py-2 align-top">
+        <span className="block truncate text-sm text-text-primary">{repo.name}</span>
+        {repo.notice !== null && (
+          <span className="mt-1 flex items-start gap-1 text-xs text-status-warning">
+            <AlertTriangle size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <span>{repo.notice.message}</span>
+          </span>
+        )}
+      </td>
+      <td className="px-3 py-2 align-top whitespace-nowrap">
+        <ReadyVerdict ready={repo.ready} />
+      </td>
+      <td colSpan={CHECK_IDS.length} className="px-3 py-2 align-top">
         <ReadinessIndicator checks={repo.checks} repoName={repo.name} variant="compact" />
       </td>
-      <td className="px-3 py-2 text-sm text-text-secondary whitespace-nowrap">
+      <td className="px-3 py-2 align-top text-sm text-text-secondary whitespace-nowrap">
         {formatLastChange(repo.lastCommitAt)}
       </td>
     </tr>
@@ -102,6 +134,12 @@ function FleetTable({ repos }: { repos: readonly RepoSummary[] }): ReactElement 
               className="w-56 px-3 py-2 text-left text-xs font-medium text-text-tertiary"
             >
               Repository
+            </th>
+            <th
+              scope="col"
+              className="w-28 px-3 py-2 text-left text-xs font-medium text-text-tertiary"
+            >
+              Readiness
             </th>
             {CHECK_IDS.map((id) => (
               <th
@@ -130,14 +168,51 @@ function FleetTable({ repos }: { repos: readonly RepoSummary[] }): ReactElement 
   )
 }
 
+/**
+ * Nothing registered is not the same as nothing to show. An empty table would
+ * state that the fleet is clear; this states that the fleet is empty, and says
+ * how to change that.
+ */
+function NoReposState(): ReactElement {
+  return (
+    <div className="rounded-card bg-card-bg p-6 shadow-card">
+      <EmptyState
+        icon={<ShieldCheck size={24} className="text-text-tertiary" />}
+        title="No repositories registered yet."
+        body={
+          <>
+            Readiness is read from repositories on this machine. Run{' '}
+            <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>{' '}
+            to add one.
+          </>
+        }
+      />
+    </div>
+  )
+}
+
 export function FleetPage(): ReactElement {
   const fleet = useFleet()
 
   let content: ReactElement
-  if (fleet.isPending) {
+  if (fleet.error?.message.startsWith('schema_drift:')) {
+    content = (
+      <SchemaDriftState
+        firstIssue={{
+          path: fleet.error.message.slice('schema_drift:'.length),
+          expected: 'see schema',
+          got: 'mismatch',
+        }}
+        fullIssues={[]}
+        onRetry={() => void fleet.refetch()}
+      />
+    )
+  } else if (fleet.isPending) {
     content = <LoadingState />
   } else if (fleet.isError || !fleet.data) {
     content = <ErrorState onRetry={() => void fleet.refetch()} />
+  } else if (fleet.data.repos.length === 0) {
+    content = <NoReposState />
   } else {
     content = <FleetTable repos={fleet.data.repos} />
   }
