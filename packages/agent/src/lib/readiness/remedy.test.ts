@@ -22,11 +22,35 @@ describe('remedyFor', () => {
     }
   })
 
-  it('never renders a machine path', () => {
+  /**
+   * The shared sanitiser rejects any leading-slash token, which is why remedy
+   * text is typed as RemedySchema and not SanitisedTextSchema: two hosts spell
+   * their update command with a leading slash, and the spec requires the remedy
+   * to name it. Those four commands are the whole exemption — strip them and
+   * the sanitiser rule must still hold, so a real machine path cannot hide
+   * behind it.
+   */
+  it('never renders a machine path, the four host commands excepted', () => {
+    const commands = Object.values(HOST_UPDATE_COMMANDS)
+    for (const { id, status } of EVERY_CELL) {
+      for (const host of [...HOSTS, null]) {
+        const stripped = commands.reduce(
+          (text, command) => text.split(command).join('the update command'),
+          remedyFor(id, status, host),
+        )
+        expect(
+          /(^|[\s"'`([<])(\/|[A-Za-z]:[\\/])/.test(stripped),
+          `${id}/${status}/${host}`,
+        ).toBe(false)
+      }
+    }
+  })
+
+  it('never names a home or user directory', () => {
     for (const { id, status } of EVERY_CELL) {
       for (const host of [...HOSTS, null]) {
         expect(
-          /(^|[\s"'`([<])(\/|[A-Za-z]:[\\/])/.test(remedyFor(id, status, host)),
+          /\/Users\/|\/home\/|~\/|Sourcecode/.test(remedyFor(id, status, host)),
           `${id}/${status}/${host}`,
         ).toBe(false)
       }
@@ -40,6 +64,12 @@ describe('remedyFor', () => {
           '.agenticapps/readiness.json',
         )
       }
+    })
+
+    it('tells an expired declaration to renew, not to start', () => {
+      const expired = remedyFor('pen-test', 'stale', 'claude')
+      expect(expired).not.toBe(remedyFor('pen-test', 'never', 'claude'))
+      expect(expired).toContain('expired')
     })
 
     it('names no tool in any state', () => {
