@@ -12,13 +12,13 @@
  * - NO cn()/clsx/CVA — inline className strings only
  * - NO hex literals — token names only
  */
-import type { ReactElement, ReactNode } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import type { RepoDetail } from '@agenticapps/dashboard-shared'
 
 import { ApiError } from '../../../lib/api.js'
-import { useRepoDetail } from '../../../lib/readinessQueries.js'
+import { useEvidence, useRepoDetail } from '../../../lib/readinessQueries.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 
 import {
@@ -130,7 +130,13 @@ function Fact({ term, children }: { term: string; children: ReactNode }): ReactE
  * "derived from —" would read as a path that failed to load rather than a
  * check that has not happened.
  */
-function CheckBlock({ check }: { check: DetailCheck }): ReactElement {
+function CheckBlock({
+  check,
+  repoId,
+}: {
+  check: DetailCheck
+  repoId: string
+}): ReactElement {
   const presentation = STATUS_PRESENTATION[check.status]
   const Shape = presentation.icon
   const headingId = `${check.id}-heading`
@@ -169,13 +175,59 @@ function CheckBlock({ check }: { check: DetailCheck }): ReactElement {
           {check.evidence === null ? (
             <EmDash />
           ) : (
-            <code className="font-mono text-xs">{check.evidence.path}</code>
+            <Evidence repoId={repoId} path={check.evidence.path} />
           )}
         </Fact>
       </dl>
 
       <p className="mt-4 text-sm text-text-primary">{check.remedy}</p>
     </section>
+  )
+}
+
+/**
+ * The evidence file, opened in place. A control rather than a hyperlink because
+ * the daemon authenticates with a bearer header: an `<a href>` cannot carry
+ * one, and a token in the query string would write itself into browser history
+ * and every log between here and the daemon. Opening it in place also keeps the
+ * page the single scrollable surface the spec asks for.
+ */
+function Evidence({ repoId, path }: { repoId: string; path: string }): ReactElement {
+  const [open, setOpen] = useState(false)
+  const file = useEvidence(repoId, path, open)
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
+        className="flex items-center gap-1.5 rounded-md font-mono text-xs text-accent underline decoration-dotted underline-offset-2 hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+      >
+        <ChevronRight
+          size={12}
+          aria-hidden="true"
+          className={open ? 'rotate-90 transition-transform' : 'transition-transform'}
+        />
+        {path}
+      </button>
+
+      {open && (
+        <div className="mt-2">
+          {file.isPending ? (
+            <p className="text-xs text-text-tertiary">Reading {path}…</p>
+          ) : file.isError || !file.data ? (
+            <p className="text-xs text-status-error">
+              Could not read {path}. It may have moved since the check ran.
+            </p>
+          ) : (
+            <pre className="max-h-80 overflow-auto rounded-md bg-app-bg p-3 font-mono text-xs whitespace-pre-wrap text-text-secondary">
+              {file.data.content}
+            </pre>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -227,7 +279,7 @@ export function RepoDetailPage(): ReactElement {
     <main className="flex flex-col gap-6">
       <DetailHeader repo={detail.data.repo} />
       {detail.data.repo.checks.map((check) => (
-        <CheckBlock key={check.id} check={check} />
+        <CheckBlock key={check.id} check={check} repoId={detail.data.repo.id} />
       ))}
     </main>
   )

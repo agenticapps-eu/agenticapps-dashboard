@@ -1,8 +1,10 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import {
   FleetResponseSchema,
+  ReadResponseSchema,
   RepoDetailResponseSchema,
   type FleetResponse,
+  type ReadResponse,
   type RepoDetailResponse,
 } from '@agenticapps/dashboard-shared'
 
@@ -52,6 +54,37 @@ export function useRepoDetail(repoId: string): UseQueryResult<RepoDetailResponse
       if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
       return result.data
     },
+    staleTime: 5_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Read one evidence file through the existing project read route. Nothing new
+ * is reachable through this: the route is the one the dashboard has always had,
+ * the repo identifier is the registry id the readiness response already carries,
+ * and the path is a repo-relative one the daemon itself produced and validated.
+ *
+ * Deliberately lazy. A detail page renders six blocks, and reading every
+ * evidence file on mount would turn one page view into six file reads the
+ * reader never asked for — so `enabled` is the disclosure's open state, and a
+ * check without evidence never has a path to read.
+ */
+export function useEvidence(
+  repoId: string,
+  path: string | null,
+  enabled: boolean,
+): UseQueryResult<ReadResponse, Error> {
+  return useQuery({
+    queryKey: ['readiness', 'evidence', repoId, path] as const,
+    queryFn: async () => {
+      const url = `/api/projects/${encodeURIComponent(repoId)}/read?path=${encodeURIComponent(path ?? '')}`
+      const result = await apiFetch(url, ReadResponseSchema)
+      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      return result.data
+    },
+    enabled: enabled && path !== null,
     staleTime: 5_000,
     retry: false,
     refetchOnWindowFocus: false,
