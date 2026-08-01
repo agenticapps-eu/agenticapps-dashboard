@@ -142,7 +142,7 @@ describe('FleetPage', () => {
     expect(
       within(
         cells.getByRole('group', { name: 'Readiness for agenticapps-dashboard' }),
-      ).getAllByRole('figure'),
+      ).getAllByRole('link'),
     ).toHaveLength(CHECK_IDS.length)
     expect(cells.getByText('2026-07-30')).toBeInTheDocument()
   })
@@ -211,7 +211,7 @@ describe('FleetPage', () => {
     expect(text).not.toMatch(/\d\s*%/)
     expect(text).not.toMatch(/\b0\b/)
     expect(
-      within(row as HTMLElement).getByRole('figure', { name: /Coverage — never run/ }),
+      within(row as HTMLElement).getByRole('link', { name: /Coverage — never run/ }),
     ).toBeInTheDocument()
   })
 

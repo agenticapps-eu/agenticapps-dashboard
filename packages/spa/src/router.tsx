@@ -182,6 +182,20 @@ const fleetRoute = createRoute({
 }).lazy(() => import('./routes/fleet.lazy.js').then((m) => m.Route))
 
 /**
+ * repoDetailRoute — /repos/$repoId, where a fleet row or cell lands. A cell
+ * carries the check id as the hash, so the detail can position itself at the
+ * block that was selected.
+ *
+ * An unregistered identifier is answered by the daemon as a 404 from the
+ * registry alone, so nothing here needs to validate the id: it is never joined
+ * to a path on either side.
+ */
+const repoDetailRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/repos/$repoId',
+}).lazy(() => import('./routes/repos.$repoId.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -228,6 +242,7 @@ const routeTree = rootRoute.addChildren([
     codeIntelligenceRoute, // Phase 14 D-14-06 — /code-intelligence under _appshell
     workflowRoute,
     fleetRoute, // add-repo-readiness §9 — /fleet under _appshell
+    repoDetailRoute, // add-repo-readiness §9/§10 — /repos/$repoId under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

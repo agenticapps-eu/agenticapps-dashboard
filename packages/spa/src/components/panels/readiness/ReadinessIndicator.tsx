@@ -22,6 +22,7 @@
  * - NO shadcn aliases
  */
 import React from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   AlertTriangle,
   Check,
@@ -38,6 +39,8 @@ import {
   type CheckStatus,
 } from '@agenticapps/dashboard-shared'
 
+import { Tooltip } from '../../ui/Tooltip.js'
+
 export type ReadinessVariant = 'compact' | 'full'
 
 export interface ReadinessIndicatorProps {
@@ -45,6 +48,12 @@ export interface ReadinessIndicatorProps {
   checks: readonly CheckResult[]
   /** Names the group so two rows in a list are tellable apart. */
   repoName: string
+  /**
+   * The repo to open when a cell is selected. Given one, every cell becomes a
+   * link to that repo's detail positioned at its own check; without one the
+   * cells stay non-interactive, which is what the detail header wants.
+   */
+  repoId?: string
   variant?: ReadinessVariant
 }
 
@@ -149,9 +158,11 @@ function disclose(check: CheckResult): string {
 function ReadinessCell({
   check,
   variant,
+  repoId,
 }: {
   check: CheckResult
   variant: ReadinessVariant
+  repoId: string | undefined
 }): React.JSX.Element {
   const presentation = STATUS_PRESENTATION[check.status]
   const Shape = presentation.icon
@@ -159,13 +170,9 @@ function ReadinessCell({
   const value = formatValue(check)
   const full = variant === 'full'
 
-  return (
-    <figure
-      role="figure"
-      aria-label={disclosure}
-      title={disclosure}
-      className={`flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'justify-center px-1.5 py-1'} ${presentation.bg} ${presentation.text}`}
-    >
+  const surface = `flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'justify-center px-1.5 py-1'} ${presentation.bg} ${presentation.text}`
+  const body = (
+    <>
       <Shape size={full ? 16 : 14} aria-hidden="true" />
       {full && (
         <>
@@ -179,13 +186,43 @@ function ReadinessCell({
           )}
         </>
       )}
-    </figure>
+    </>
+  )
+
+  // No repo to open means no control: the detail header renders these same six
+  // checks, and linking each of them to the page they are already on would be
+  // noise. There the pointer-only `title` is still the right trade, because
+  // nothing is focusable to reach in the first place.
+  if (repoId === undefined) {
+    return (
+      <figure role="figure" aria-label={disclosure} title={disclosure} className={surface}>
+        {body}
+      </figure>
+    )
+  }
+
+  // The hash is the check id, which is what positions the detail at this block.
+  // The disclosure moves from `title` to the tooltip: a title never reaches a
+  // sighted keyboard user, and now there is one to reach.
+  return (
+    <Tooltip content={disclosure} interactiveChild={true}>
+      <Link
+        to="/repos/$repoId"
+        params={{ repoId }}
+        hash={check.id}
+        aria-label={disclosure}
+        className={`${surface} focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-app-bg`}
+      >
+        {body}
+      </Link>
+    </Tooltip>
   )
 }
 
 export function ReadinessIndicator({
   checks,
   repoName,
+  repoId,
   variant = 'compact',
 }: ReadinessIndicatorProps): React.JSX.Element {
   return (
@@ -203,7 +240,7 @@ export function ReadinessIndicator({
       }
     >
       {checks.map((check) => (
-        <ReadinessCell key={check.id} check={check} variant={variant} />
+        <ReadinessCell key={check.id} check={check} variant={variant} repoId={repoId} />
       ))}
     </div>
   )

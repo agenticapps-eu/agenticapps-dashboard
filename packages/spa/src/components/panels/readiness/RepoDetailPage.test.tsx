@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CHECK_IDS,
   computeReady,
-  type CheckId,
   type CheckStatus,
   type RepoDetail,
   type RepoDetailResponse,

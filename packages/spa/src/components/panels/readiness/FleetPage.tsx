@@ -22,7 +22,7 @@
  * - NO shadcn aliases
  */
 import type { ReactElement } from 'react'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { CHECK_IDS, type RepoSummary } from '@agenticapps/dashboard-shared'
 
@@ -105,11 +105,30 @@ function ReadyVerdict({ ready }: { ready: boolean }): ReactElement {
   )
 }
 
-function FleetRow({ repo }: { repo: RepoSummary }): ReactElement {
+function FleetRow({
+  repo,
+  onOpen,
+}: {
+  repo: RepoSummary
+  onOpen: (repoId: string) => void
+}): ReactElement {
   return (
-    <tr className="border-t border-border-subtle">
+    <tr
+      onClick={() => onOpen(repo.id)}
+      className="cursor-pointer border-t border-border-subtle hover:bg-card-bg-hover"
+    >
       <td className="px-3 py-2 align-top">
-        <span className="block truncate text-sm text-text-primary">{repo.name}</span>
+        <Link
+          to="/repos/$repoId"
+          params={{ repoId: repo.id }}
+          // The cells inside this row carry a more specific destination. Left
+          // to bubble, the row's handler would run second and overwrite it, so
+          // every cell would land at the top of the page instead of its check.
+          onClick={(event) => event.stopPropagation()}
+          className="block truncate text-sm text-text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          {repo.name}
+        </Link>
         {repo.notice !== null && (
           <span className="mt-1 flex items-start gap-1 text-xs text-status-warning">
             <AlertTriangle size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
@@ -120,8 +139,17 @@ function FleetRow({ repo }: { repo: RepoSummary }): ReactElement {
       <td className="px-3 py-2 align-top whitespace-nowrap">
         <ReadyVerdict ready={repo.ready} />
       </td>
-      <td colSpan={CHECK_IDS.length} className="px-3 py-2 align-top">
-        <ReadinessIndicator checks={repo.checks} repoName={repo.name} variant="compact" />
+      <td
+        colSpan={CHECK_IDS.length}
+        className="px-3 py-2 align-top"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <ReadinessIndicator
+          checks={repo.checks}
+          repoName={repo.name}
+          repoId={repo.id}
+          variant="compact"
+        />
       </td>
       <td className="px-3 py-2 align-top text-sm text-text-secondary whitespace-nowrap">
         {formatLastChange(repo.lastCommitAt)}
@@ -130,7 +158,13 @@ function FleetRow({ repo }: { repo: RepoSummary }): ReactElement {
   )
 }
 
-function FleetTable({ repos }: { repos: readonly RepoSummary[] }): ReactElement {
+function FleetTable({
+  repos,
+  onOpen,
+}: {
+  repos: readonly RepoSummary[]
+  onOpen: (repoId: string) => void
+}): ReactElement {
   const ordered = [...repos].sort(compareRepoSeverity)
 
   return (
@@ -169,7 +203,7 @@ function FleetTable({ repos }: { repos: readonly RepoSummary[] }): ReactElement 
         </thead>
         <tbody>
           {ordered.map((repo) => (
-            <FleetRow key={repo.id} repo={repo} />
+            <FleetRow key={repo.id} repo={repo} onOpen={onOpen} />
           ))}
         </tbody>
       </table>
@@ -236,6 +270,10 @@ export function FleetPage(): ReactElement {
     nav({ search: serialiseFleetFilters(next), replace: true })
   }
 
+  const openRepo = (repoId: string): void => {
+    void navigate({ to: '/repos/$repoId', params: { repoId } })
+  }
+
   let content: ReactElement
   if (fleet.error?.message.startsWith('schema_drift:')) {
     content = (
@@ -258,7 +296,11 @@ export function FleetPage(): ReactElement {
   } else {
     const visible = fleet.data.repos.filter((repo) => matchesFleetFilters(repo, filters))
     content =
-      visible.length === 0 ? <NoMatchesState /> : <FleetTable repos={visible} />
+      visible.length === 0 ? (
+        <NoMatchesState />
+      ) : (
+        <FleetTable repos={visible} onOpen={openRepo} />
+      )
   }
 
   // Nothing to filter is not the same as filtering to nothing: the toolbar
