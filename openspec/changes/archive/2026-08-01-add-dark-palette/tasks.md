@@ -179,5 +179,5 @@ Answered, not actioned:
       namespaces is deferred rather than invented now.
 - [x] 8.3i **`color-mix` fallback needs a supported-browser baseline** (codex). Already
       recorded in design.md Risks as accepted; no baseline contract is added here.
-- [ ] 8.4 Fold the `design-system` delta into `openspec/specs/design-system/spec.md` and archive
+- [x] 8.4 Fold the `design-system` delta into `openspec/specs/design-system/spec.md` and archive — 2 requirements added, 1 modified; archived as `2026-08-01-add-dark-palette`
 - [ ] 8.5 Open the PR; note that `feat/repo-readiness-vocabulary` rebases onto this before §8 resumes
