@@ -26,7 +26,12 @@ import type { WorkflowScanOptions } from './workflowScan.declare.js'
 
 type MachineRootPaths = Record<WorkflowMachineRootId, string>
 
-function defaultMachineRoots(): MachineRootPaths {
+/**
+ * The named machine-global roots. Exported so readiness resolves its
+ * machine-global workflow state through this one policy rather than naming the
+ * same directories a second time.
+ */
+export function defaultMachineRoots(): MachineRootPaths {
   const home = homedir()
   const codexHome = process.env.CODEX_HOME || join(home, '.codex')
   const opencodeConfig = process.env.OPENCODE_CONFIG_DIR || join(home, '.config', 'opencode')

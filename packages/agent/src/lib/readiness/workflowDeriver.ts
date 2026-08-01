@@ -152,6 +152,14 @@ export async function deriveWorkflow(opts: DeriveWorkflowOptions): Promise<Deriv
     : machineGlobal(host, shipped, opts)
 }
 
+/**
+ * Which host this repo is on, for callers that need the identity rather than
+ * the check — the remedy text names that host's own update command.
+ */
+export function detectHostId(root: string): ReadinessHostId | null {
+  return detectHost(root)?.id ?? null
+}
+
 function detectHost(root: string): HostDefinition | null {
   const present = HOSTS.filter((host) => existsSync(join(root, host.marker)))
   if (present.length === 0) return null

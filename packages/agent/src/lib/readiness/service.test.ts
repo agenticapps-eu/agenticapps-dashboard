@@ -291,6 +291,28 @@ describe('readRepo', () => {
     }
   })
 
+  it('wires each remedy to its own check rather than one placeholder', async () => {
+    const detail = await readRepo('a', options())
+    const remedies = detail!.repo.checks.map((check) => check.remedy)
+
+    expect(new Set(remedies).size).toBe(6)
+    expect(
+      detail!.repo.checks.find((check) => check.id === 'pen-test')!.remedy,
+    ).toContain('.agenticapps/readiness.json')
+  })
+
+  it('names the detected host in the remedy it renders', async () => {
+    const root = join(family, 'claude-repo')
+    mkdirSync(join(root, '.claude'), { recursive: true })
+    registry([{ id: 'c', root }])
+
+    const detail = await readRepo('c', options())
+
+    expect(detail!.repo.checks.find((check) => check.id === 'spec')!.remedy).toContain(
+      '/update-agenticapps-workflow',
+    )
+  })
+
   it('returns null for an unknown id', async () => {
     expect(await readRepo('nobody', options())).toBeNull()
   })
@@ -348,12 +370,11 @@ describe('rescanRepo', () => {
 
 describe('the workflow check wiring', () => {
   /** The host repos come from the family root, never from a caller-supplied path. */
+  const skill = (version: string, implementsSpec: string): string =>
+    `---\nname: agentic-apps-workflow\nversion: ${version}\nimplements_spec: ${implementsSpec}\ndescription: x\n---\n\nbody\n`
+
   function shipClaudeHost(version: string, implementsSpec: string): void {
-    write(
-      join(family, 'claude-workflow'),
-      join('skill', 'SKILL.md'),
-      `---\nversion: ${version}\nimplements_spec: ${implementsSpec}\n---\n`,
-    )
+    write(join(family, 'claude-workflow'), join('skill', 'SKILL.md'), skill(version, implementsSpec))
   }
 
   it('resolves the host repo from the family root', async () => {
@@ -361,7 +382,7 @@ describe('the workflow check wiring', () => {
     write(
       root,
       join('.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md'),
-      '---\nversion: 1.0.0\nimplements_spec: 1.0.0\n---\n',
+      skill('1.0.0', '1.0.0'),
     )
     git(root, ['add', '.'])
     git(root, ['commit', '-m', 'workflow'])
