@@ -63,6 +63,8 @@ export {
   RepoRelativePathSchema,
   RepoSummarySchema,
   RepoDetailSchema,
+  FleetResponseSchema,
+  RepoDetailResponseSchema,
   ReadinessFileSchema,
   computeReady,
 } from './schemas/readiness.js'
@@ -75,6 +77,8 @@ export type {
   RepoFamily,
   RepoSummary,
   RepoDetail,
+  FleetResponse,
+  RepoDetailResponse,
   ReadinessFile,
   ReadinessDeclaration,
 } from './schemas/readiness.js'

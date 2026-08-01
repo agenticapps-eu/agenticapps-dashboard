@@ -268,6 +268,28 @@ export const RepoDetailSchema = repoObject(DetailChecksSchema).superRefine(
 )
 export type RepoDetail = z.infer<typeof RepoDetailSchema>
 
+/**
+ * `generatedAt` is when the snapshot was computed, not when it was served. A
+ * response replayed from the memo repeats the original time, so a client can
+ * tell a fresh reading from a cached one instead of seeing every response claim
+ * to be current.
+ */
+export const FleetResponseSchema = z
+  .object({
+    generatedAt: EpochMsSchema,
+    repos: z.array(RepoSummarySchema),
+  })
+  .strict()
+export type FleetResponse = z.infer<typeof FleetResponseSchema>
+
+export const RepoDetailResponseSchema = z
+  .object({
+    generatedAt: EpochMsSchema,
+    repo: RepoDetailSchema,
+  })
+  .strict()
+export type RepoDetailResponse = z.infer<typeof RepoDetailResponseSchema>
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tier B — <repo>/.agenticapps/readiness.json
 // ─────────────────────────────────────────────────────────────────────────────
