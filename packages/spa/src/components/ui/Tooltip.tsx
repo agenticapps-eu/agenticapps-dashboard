@@ -31,6 +31,19 @@ import { createPortal } from 'react-dom'
 export interface TooltipProps {
   content: string
   children: React.ReactNode
+  /**
+   * Set when the child is already a focusable control. The wrapper then adds
+   * neither a tab stop nor the dotted underline, because both belong to a
+   * trigger that would otherwise have no way to receive focus.
+   *
+   * Without it, wrapping a control puts a second tab stop in front of every
+   * one: a six-check readiness row would cost twelve tab stops instead of six,
+   * which is a worse keyboard path than the native `title` this replaces.
+   * The open/close handlers are unaffected — React's focus and keydown events
+   * bubble, so the child's focus still opens the panel and Escape still closes
+   * it (add-repo-readiness §8.1).
+   */
+  interactiveChild?: boolean
 }
 
 interface Coords {
@@ -38,7 +51,11 @@ interface Coords {
   left: number
 }
 
-export function Tooltip({ content, children }: TooltipProps): React.JSX.Element {
+export function Tooltip({
+  content,
+  children,
+  interactiveChild = false,
+}: TooltipProps): React.JSX.Element {
   const tooltipId = useId()
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState<Coords | null>(null)
@@ -111,9 +128,13 @@ export function Tooltip({ content, children }: TooltipProps): React.JSX.Element 
     <span className="relative inline-block">
       <span
         ref={triggerRef}
-        tabIndex={0}
+        {...(interactiveChild ? {} : { tabIndex: 0 })}
         {...(open ? { 'aria-describedby': tooltipId } : {})}
-        className="border-b border-dotted border-text-tertiary cursor-default"
+        className={
+          interactiveChild
+            ? 'inline-block'
+            : 'border-b border-dotted border-text-tertiary cursor-default'
+        }
         onMouseEnter={scheduleOpen}
         onMouseLeave={closeNow}
         onFocus={scheduleOpen}

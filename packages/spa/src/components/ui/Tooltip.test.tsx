@@ -242,6 +242,42 @@ describe('Tooltip primitive', () => {
     expect(panel.className).toContain('opacity-0')
   })
 
+  describe('interactiveChild — the child is already focusable', () => {
+    it('adds no tab stop and no decoration of its own', () => {
+      // Wrapping a control in the default trigger would put a second tab stop
+      // in front of every one of them. On a six-check readiness row that is
+      // twelve tab stops where there should be six, which makes the keyboard
+      // path worse than the native title it was brought in to replace.
+      render(
+        <Tooltip content="Coverage — passing" interactiveChild={true}>
+          <a href="/repos/dashboard">cell</a>
+        </Tooltip>,
+      )
+
+      expect(document.querySelectorAll('span[tabindex="0"]')).toHaveLength(0)
+      const link = screen.getByRole('link', { name: 'cell' })
+      expect(link.closest('span')?.className ?? '').not.toContain('border-dotted')
+    })
+
+    it('still opens on the child gaining focus and closes on Escape', () => {
+      vi.useFakeTimers()
+      render(
+        <Tooltip content="Coverage — passing" interactiveChild={true}>
+          <a href="/repos/dashboard">cell</a>
+        </Tooltip>,
+      )
+      const link = screen.getByRole('link', { name: 'cell' })
+      const panel = screen.getByRole('tooltip')
+
+      act(() => { fireEvent.focus(link) })
+      act(() => { vi.advanceTimersByTime(100) })
+      expect(panel.className).toContain('opacity-100')
+
+      act(() => { fireEvent.keyDown(link, { key: 'Escape' }) })
+      expect(panel.className).toContain('opacity-0')
+    })
+  })
+
   it('clears the open timer on unmount (no setState after unmount)', () => {
     vi.useFakeTimers()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
