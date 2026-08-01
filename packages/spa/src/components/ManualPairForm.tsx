@@ -225,7 +225,7 @@ export function ManualPairForm() {
           className={[
             'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg',
             canSubmit && status.kind !== 'submitting'
-              ? 'bg-accent text-white hover:bg-accent-hover'
+              ? 'bg-accent-bg-strong text-white hover:bg-accent-bg-strong-hover'
               : 'cursor-not-allowed bg-card-bg-hover text-text-tertiary opacity-50',
           ].join(' ')}
         >

@@ -37,7 +37,7 @@ export function AppShellV2(): React.JSX.Element {
       >
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-accent-bg-strong focus:px-3 focus:py-2 focus:text-white"
           style={{ zIndex: 'var(--z-overlay)' }}
         >
           Skip to main content

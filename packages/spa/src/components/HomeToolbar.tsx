@@ -18,7 +18,7 @@ export interface HomeToolbarProps {
 const FIXED_CHIPS = ['all', 'active', 'client', 'internal'] as const
 
 const CHIP_SELECTED =
-  'bg-accent text-white border border-accent px-3 py-2 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
+  'bg-accent-bg-strong text-white border border-accent px-3 py-2 rounded-md text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'
 
 const CHIP_UNSELECTED =
   'bg-card-bg text-text-primary border border-border-subtle px-3 py-2 rounded-md text-sm font-semibold hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg'

@@ -212,14 +212,22 @@ describe.each(APPEARANCES.map((a) => [a.name, a] as const))(
         ).toBeGreaterThanOrEqual(BODY_TEXT)
       })
 
-      // CoverageCell's not-applicable chip sits on a neutral surface rather than
-      // a tint of its own text colour, which is inherently ~4:1 for a
-      // desaturated tier.
-      it(`text-tertiary clears ${BODY_TEXT}:1 on the card-bg-hover chip surface`, () => {
-        expect(
-          contrastRatio(appear.colour('text-tertiary'), appear.colour('card-bg-hover')),
-        ).toBeGreaterThanOrEqual(BODY_TEXT)
-      })
+      // CoverageCell's "scan failed" chip is drawn as bg-text-tertiary/10, and
+      // labels itself one tier up. A 10% tint of a colour under that same colour
+      // is inherently ~4:1 unless the colour is saturated — the status colours
+      // clear it only because they are — so tertiary-on-tertiary/10 measured
+      // 4.17 in light. Raising the label rather than flattening the chip keeps it
+      // legible without making it invisible against the card (1.05:1).
+      for (const surface of SURFACES) {
+        it(`text-secondary clears ${BODY_TEXT}:1 on text-tertiary/10 over ${surface}`, () => {
+          expect(
+            contrastRatio(
+              appear.colour('text-secondary'),
+              tint(appear.colour('text-tertiary'), appear.colour(surface), 0.1),
+            ),
+          ).toBeGreaterThanOrEqual(BODY_TEXT)
+        })
+      }
 
       for (const fill of FILLS) {
         it(`white clears ${BODY_TEXT}:1 on ${fill}`, () => {

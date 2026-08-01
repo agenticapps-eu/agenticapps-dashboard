@@ -86,7 +86,7 @@ export function RenameDialog({ isOpen, item, onClose }: RenameDialogProps): Reac
           type="button"
           onClick={() => void handleSave()}
           disabled={rename.isPending}
-          className="bg-accent text-white text-sm px-3 py-2 rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-accent-bg-strong text-white text-sm px-3 py-2 rounded-md hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {rename.isPending ? 'Saving…' : 'Save'}
         </button>
@@ -178,7 +178,7 @@ export function EditTagsDialog({
             aria-pressed={tags.includes(t)}
             className={
               tags.includes(t)
-                ? 'bg-accent text-white border border-accent text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+                ? 'bg-accent-bg-strong text-white border border-accent text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
                 : 'bg-card-bg-hover border border-border-subtle text-text-primary text-sm px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
             }
           >
@@ -212,7 +212,7 @@ export function EditTagsDialog({
           type="button"
           onClick={() => void handleSave()}
           disabled={setTagsMutation.isPending}
-          className="bg-accent text-white text-sm px-3 py-2 rounded-md hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-accent-bg-strong text-white text-sm px-3 py-2 rounded-md hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {setTagsMutation.isPending ? 'Saving…' : 'Save'}
         </button>

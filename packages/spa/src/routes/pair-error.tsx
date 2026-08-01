@@ -29,7 +29,7 @@ export function RouteError({ error, reset }: { error: unknown; reset?: () => voi
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+              className="inline-flex items-center gap-2 rounded-md bg-accent-bg-strong px-4 py-2 text-sm font-semibold text-white hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
             >
               Try again
             </button>

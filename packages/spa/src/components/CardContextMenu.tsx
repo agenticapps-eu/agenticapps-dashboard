@@ -171,7 +171,7 @@ export function CardContextMenu({
             </button>
             <button
               type="button"
-              className="bg-status-error text-white text-sm px-3 py-2 rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="bg-status-error-strong text-white text-sm px-3 py-2 rounded-md hover:bg-status-error-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               onClick={() => {
                 unregister.mutate()
                 onClose()
