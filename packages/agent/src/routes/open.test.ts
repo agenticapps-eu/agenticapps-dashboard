@@ -19,6 +19,7 @@ import {
   rmSync,
   readdirSync,
   realpathSync,
+  chmodSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -212,18 +213,45 @@ describe('POST /api/projects/:id/open', () => {
     expect(spawnMock).not.toHaveBeenCalled()
   })
 
-  it('refuses an EDITOR carrying arguments instead of splitting it', async () => {
-    // Splitting `EDITOR` into argv is how a spawn boundary starts accepting
-    // arguments it did not choose. The daemon passes exactly one: the path.
-    process.env.EDITOR = 'code -w --user-data-dir /tmp'
+  it('honours an EDITOR that carries arguments, path last', async () => {
+    // `EDITOR="zed --wait"` and `EDITOR="code -w"` are the common shapes, so
+    // refusing them refused nearly everyone. Splitting is safe for the reason
+    // that mattered all along: `shell: false` means no token here is ever
+    // interpreted, and $EDITOR is the operator's own environment.
+    process.env.EDITOR = 'zed --wait'
     const root = makeProject()
     const id = await register(root)
 
     const res = await open(id, 'openspec/changes/a-change/REVIEWS.md')
 
-    expect(res.status).toBe(409)
-    expect(((await res.json()) as { error: string }).error).toBe('editor_not_supported')
-    expect(spawnMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    const [command, args] = spawnMock.mock.calls[0] as unknown as [string, string[]]
+    expect(command).toBe('zed')
+    expect(args).toHaveLength(2)
+    expect(args[0]).toBe('--wait')
+    expect(args[1]).toContain('REVIEWS.md')
+  })
+
+  it('treats an executable whose own path contains spaces as the program', async () => {
+    // macOS is this product's platform, where
+    // `/Applications/Visual Studio Code.app/.../code` is one program with zero
+    // arguments. Splitting it on whitespace would look for a binary called
+    // "/Applications/Visual".
+    const dir = mkdtempSync(join(tmpdir(), 'editor dir-'))
+    cleanups.push(() => rmSync(dir, { recursive: true, force: true }))
+    const editorPath = join(dir, 'my editor')
+    writeFileSync(editorPath, '#!/bin/sh\n')
+    chmodSync(editorPath, 0o755)
+    process.env.EDITOR = editorPath
+
+    const root = makeProject()
+    const id = await register(root)
+    const res = await open(id, 'openspec/changes/a-change/REVIEWS.md')
+
+    expect(res.status).toBe(200)
+    const [command, args] = spawnMock.mock.calls[0] as unknown as [string, string[]]
+    expect(command).toBe(editorPath)
+    expect(args).toHaveLength(1)
   })
 
   it('requires a bearer token', async () => {

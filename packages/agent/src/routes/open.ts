@@ -14,16 +14,18 @@
  * - The path is resolved by `resolveAllowed`, the same primitive the read route
  *   uses. No new filesystem reach is introduced; a path this route will open is
  *   a path the read route would already have served.
- * - `$EDITOR` names a program, and is never split into argv. A configured
- *   `EDITOR="code -w"` is refused rather than parsed, because splitting is how
- *   a spawn boundary starts passing arguments it did not choose. The daemon
- *   passes exactly one argument: the resolved path.
+ * - `$EDITOR` is read as a command line and the resolved path is appended last.
+ *   See `splitEditor` for why splitting is safe and for the one shape it has to
+ *   handle specially.
  * - No shell. `shell: false` is explicit rather than relied upon as a default,
- *   because the whole safety of the argv discipline above rests on it.
+ *   because the whole safety of the argv discipline rests on it: it is what
+ *   makes an `$EDITOR` token a literal argument rather than something the
+ *   system interprets.
  * - The daemon does not wait. It answers 200 once the spawn is issued and
  *   unrefs the child, so a long-lived editor cannot hold the process open.
  */
 import { spawn } from 'node:child_process'
+import { statSync, accessSync, constants as fsConstants } from 'node:fs'
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
@@ -49,6 +51,36 @@ const OpenBodySchema = z.object({ path: z.string().min(1).optional() })
 
 function requestId(c: Context): string {
   return (c.get('requestId') as string | undefined) ?? 'unknown'
+}
+
+/**
+ * `$EDITOR` as argv. It is a command line by convention, not a bare program —
+ * `zed --wait`, `code -w` and `subl -n` are the ordinary shapes, and refusing
+ * them refuses nearly everyone.
+ *
+ * Splitting is safe here for the reason that mattered all along: `shell: false`
+ * means no token produced by this function is ever interpreted — no globbing,
+ * no substitution, no operators — and `$EDITOR` is the operator's own
+ * environment, which is trusted input by the same rule that trusts a CLI flag.
+ *
+ * The one shape whitespace-splitting gets wrong is a program whose *path*
+ * contains a space, which on macOS is not exotic:
+ * `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` is one
+ * program with no arguments. So an `$EDITOR` that names an executable file
+ * outright is taken whole, and only what is left is split.
+ */
+function splitEditor(editor: string): [string, ...string[]] {
+  try {
+    if (statSync(editor).isFile()) {
+      accessSync(editor, fsConstants.X_OK)
+      return [editor]
+    }
+  } catch {
+    // Not a path to an executable file — a bare name resolved through PATH, or
+    // a command line. Both are handled by splitting.
+  }
+  const [program, ...rest] = editor.split(/\s+/)
+  return [program as string, ...rest]
 }
 
 export const openRoute = new Hono<Env>()
@@ -87,9 +119,7 @@ openRoute.post(
     if (editor === '') {
       return c.json({ ok: false, error: 'editor_not_configured', requestId: requestId(c) }, 409)
     }
-    if (/\s/.test(editor)) {
-      return c.json({ ok: false, error: 'editor_not_supported', requestId: requestId(c) }, 409)
-    }
+    const [program, ...leadingArgs] = splitEditor(editor)
 
     // Throws PathViolation → errorHandler → 422 path_not_allowed, exactly as on
     // the read route. The root itself is already canonical — the registry
@@ -98,7 +128,7 @@ openRoute.post(
     const real =
       relPath === undefined ? project.root : await resolveAllowed(project.root, relPath)
 
-    const child = spawn(editor, [real], {
+    const child = spawn(program, [...leadingArgs, real], {
       cwd: project.root,
       shell: false,
       detached: true,

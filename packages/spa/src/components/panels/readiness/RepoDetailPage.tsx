@@ -92,9 +92,6 @@ function editorProblem(error: Error | null): string | null {
   if (error.code === 'editor_not_configured') {
     return 'No EDITOR is set on the machine running the daemon. Set it and try again.'
   }
-  if (error.code === 'editor_not_supported') {
-    return 'EDITOR carries arguments. The daemon runs it without a shell, so set EDITOR to the program alone.'
-  }
   return 'Could not open the editor.'
 }
 
