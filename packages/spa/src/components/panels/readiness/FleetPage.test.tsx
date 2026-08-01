@@ -360,6 +360,58 @@ describe('FleetPage', () => {
     expect(screen.queryByText(/agentic-dashboard register/)).not.toBeInTheDocument()
   })
 
+  it('says when the readings were computed', () => {
+    // `generatedAt` means the time the snapshot was COMPUTED, not the time it
+    // was served — the daemon takes the oldest of its per-repo memos precisely
+    // so this number can be trusted. Never rendering it throws that away and
+    // leaves every reading looking equally current.
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.getByText(/2026-07-31 12:00 UTC/)).toBeInTheDocument()
+  })
+
+  it('says how much of the fleet the filters are hiding', () => {
+    routerState.search = { family: 'factiv' }
+    fleet([
+      repo('dashboard', { family: 'agenticapps' }),
+      repo('cparx', { family: 'factiv' }),
+      repo('fx-signal-agent', { family: 'factiv' }),
+    ])
+    render(<FleetPage />)
+
+    expect(screen.getByText(/2 of 3/)).toBeInTheDocument()
+  })
+
+  it('offers one way out of every filter at once', () => {
+    routerState.search = { family: 'factiv', status: 'fail', q: 'dash' }
+    fleet([repo('dashboard', { family: 'agenticapps' })])
+    render(<FleetPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: /clear filters/i }))
+
+    expect(routerState.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: {} }),
+    )
+  })
+
+  it('keeps the way out reachable when the filters match nothing', () => {
+    // This is where an exit matters most: the table is gone, so the rows that
+    // would otherwise show the filters are doing something cannot.
+    routerState.search = { q: 'nothing-matches-this' }
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument()
+  })
+
+  it('does not offer to clear filters that are not applied', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument()
+  })
+
   it('leads to onboarding rather than an empty table when nothing is registered', () => {
     fleet([])
     render(<FleetPage />)
