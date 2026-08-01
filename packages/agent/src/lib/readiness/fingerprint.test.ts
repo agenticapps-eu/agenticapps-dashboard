@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -136,6 +136,35 @@ describe('repoFingerprint', () => {
   it('distinguishes an unreadable readiness file from an absent one', async () => {
     const absent = await fingerprint()
     mkdirSync(join(repo, '.agenticapps', 'readiness.json'), { recursive: true })
+    expect(await fingerprint()).not.toBe(absent)
+  })
+
+  /**
+   * The sibling reader resolves this path through the daemon's contained-read
+   * primitive before opening it. The fingerprint must too: a readiness file
+   * symlinked out of the repo would otherwise be read in full on every scan,
+   * and its hash controls cache invalidation, which `generatedAt` makes
+   * observable — a change oracle on a file the policy forbids opening.
+   */
+  it('never opens a readiness file that resolves outside the repo', async () => {
+    const secret = join(sandbox, 'outside-the-repo.txt')
+    writeFileSync(secret, 'first\n')
+    mkdirSync(join(repo, '.agenticapps'), { recursive: true })
+    symlinkSync(secret, join(repo, '.agenticapps', 'readiness.json'))
+
+    const before = await fingerprint()
+    writeFileSync(secret, 'second — the daemon must not notice this\n')
+
+    expect(await fingerprint()).toBe(before)
+  })
+
+  it('still distinguishes an escaping symlink from an absent file', async () => {
+    const absent = await fingerprint()
+    const secret = join(sandbox, 'outside-the-repo.txt')
+    writeFileSync(secret, 'x\n')
+    mkdirSync(join(repo, '.agenticapps'), { recursive: true })
+    symlinkSync(secret, join(repo, '.agenticapps', 'readiness.json'))
+
     expect(await fingerprint()).not.toBe(absent)
   })
 
