@@ -229,14 +229,67 @@ costs the distinction §3 exists to preserve.
 
 ## 9. Fleet surface · AGE-465
 
-- [ ] Route `/`, one row per repo, name + six checks + last-change time (TDD)
-- [ ] Row selection opens detail; cell selection opens detail at that check
-- [ ] Combinable filters; family as filter, not grouping
-- [ ] Sort descending by evaluation errors, non-error `fail`, `stale`, `never`, `warn`, then UTC committer time with null last; stable repo id asc
-- [ ] Test: no coverage data renders as absence, never `0 %`
-- [ ] Empty registry leads to onboarding, not an empty table
-- [ ] Render the boolean readiness and any unusable-file notice in fleet rows
+- [x] Route `/fleet` (see §9.1), one row per repo, name + six checks + last-change time (TDD)
+- [x] Row selection opens detail; cell selection opens detail at that check
+- [x] Combinable filters; family as filter, not grouping
+- [x] Sort descending by evaluation errors, non-error `fail`, `stale`, `never`, `warn`, then UTC committer time with null last; stable repo id asc
+- [x] Test: no coverage data renders as absence, never `0 %`
+- [x] Empty registry leads to onboarding, not an empty table
+- [x] Render the boolean readiness and any unusable-file notice in fleet rows
 - [ ] No horizontal scrolling at 1440 px
+- [ ] 1440 px snapshot in both appearances, carried from §8.1
+- [ ] `impeccable:critique` at the ≥ 80 composite floor, carried from §8.1
+
+### 9.1 The fleet mounts at `/fleet`, not at `/`
+
+The task line above originally said `/`. The same file puts "do NOT retire any
+v1 surface here" out of scope, and `/` is `MultiProjectHome` — a v1 surface. The
+two lines cannot both be honoured.
+
+`/fleet` is additive and follows the precedent set one change earlier:
+`add-workflow-fleet-conformance` mounted `/workflow` beside the v1 routes rather
+than displacing anything. `retire-v1-surfaces` §1 already owns the migration
+manifest that repoints the four retired legacy routes at the fleet, and it does
+that in **one commit** so the cutover reverts as one — taking `/` here would
+split that rollback across two changes.
+
+Confirmed with the user before any code was written.
+
+### 9.2 §10's route and header landed in §9
+
+§9's rows and cells must open `/repos/$repoId`. A TanStack `Link` does not
+typecheck against an unregistered route, and shipping links to a 404 is not an
+option, so the route had to exist before §9 could close. The user chose to move
+§10's first task line into §9 rather than leave §9 at seven of eight lines and
+critique a table whose rows do not open anything.
+
+Landed here: the route, `useRepoDetail`, and the header — identity, family, last
+commit, the boolean, any notice, and the full-variant indicator.
+
+Still §10: the six evidence blocks, per-check remedies, evidence links through
+the existing read route, open-in-editor, and rescan. §10's first line is
+therefore already partly discharged; what remains of it is the two actions.
+
+### 9.3 `Tooltip` gained an opt-out rather than being used as-is
+
+§8.1 said the cell's disclosure should stop being a native `title` once the cell
+became a control, and named `ui/Tooltip` as the replacement. Used as written it
+would have made the keyboard path worse: the trigger carries its own
+`tabIndex={0}` and dotted underline, which are right for the column headers it
+was built for and wrong in front of something already focusable. A six-check row
+would have cost twelve tab stops instead of six.
+
+`interactiveChild` says the child can already be focused, so the wrapper adds
+neither the tab stop nor the decoration. Open and close are untouched — React's
+focus and keydown events bubble — and there is a test that pins exactly that,
+which passed before the prop existed. That is the point of it: the prop must not
+cost the behaviour it is wrapping.
+
+### 9.4 The status filter omits `ok` and `na`
+
+Four chips, not six. A list of repos with at least one passing check is every
+repo, and the same holds for `na`; those two chips would narrow nothing while
+looking like they had. The four that remain are the four that mean work.
 
 ## 10. Repo detail surface · AGE-466
 
