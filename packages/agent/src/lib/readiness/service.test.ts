@@ -362,9 +362,19 @@ describe('rescanRepo', () => {
       rescanRepo('a', options({ now: NOW + 3_000 })),
     ])
 
-    // Two computations would stamp two different times; one stamps the first.
+    // Two computations would stamp two different times, so one shared time is
+    // the evidence that only one ran. The times are deliberately 3s apart:
+    // with equal times this assertion would also hold for two computations and
+    // would detect nothing.
     expect(second!.generatedAt).toBe(first!.generatedAt)
-    expect(first!.generatedAt).toBe(NOW)
+
+    // WHICH of the two it is, is not part of the contract. `detailFor` awaits
+    // `signatureFor` before `snapshotFor` registers the in-flight entry, so the
+    // two callers interleave at that await and either may install it — this
+    // asserted `NOW` and flaked on roughly one run in three. Both callers are
+    // concurrent by definition, so either stamp is honest; what must never
+    // happen is a third time, which would mean a recomputation nobody asked for.
+    expect([NOW, NOW + 3_000]).toContain(first!.generatedAt)
   })
 })
 
