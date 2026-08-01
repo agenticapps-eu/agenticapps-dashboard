@@ -22,6 +22,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { EventEmitter } from 'node:events'
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
@@ -236,6 +237,27 @@ describe('POST /api/projects/:id/open', () => {
 
     expect(res.status).toBe(401)
     expect(spawnMock).not.toHaveBeenCalled()
+  })
+
+  it('survives an editor that cannot be spawned', async () => {
+    // `spawn` reports ENOENT asynchronously, by emitting 'error' on the child.
+    // An EventEmitter with no 'error' listener rethrows, which here means an
+    // uncaught exception in the daemon — so a user whose EDITOR names a binary
+    // that is not on the daemon's PATH takes the daemon down by clicking a
+    // button. The response has already gone out by then, so the client sees a
+    // 200 and the daemon dies behind it.
+    const child = new EventEmitter() as EventEmitter & { unref: () => void }
+    child.unref = vi.fn()
+    spawnMock.mockReturnValueOnce(child as unknown as ReturnType<typeof spawnMock>)
+
+    const root = makeProject()
+    const id = await register(root)
+    const res = await open(id, 'openspec/changes/a-change/REVIEWS.md')
+
+    expect(res.status).toBe(200)
+    expect(() =>
+      child.emit('error', Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' })),
+    ).not.toThrow()
   })
 
   it('leaves the project tree exactly as it found it', async () => {
