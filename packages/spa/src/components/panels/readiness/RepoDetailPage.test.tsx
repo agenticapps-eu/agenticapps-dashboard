@@ -242,8 +242,10 @@ describe('RepoDetailPage evidence blocks', () => {
 
     for (const id of CHECK_IDS) {
       expect(within(block(id)).getAllByText('—').length).toBeGreaterThan(0)
+      // Scoped to the block on purpose. The header is entitled to say when the
+      // snapshot was taken; a check block is not entitled to borrow it.
+      expect(within(block(id)).queryByText(/2026-07-31/)).not.toBeInTheDocument()
     }
-    expect(screen.queryByText(/2026-07-31/)).not.toBeInTheDocument()
   })
 
   it('gives a repo where nothing has ever run six usable sentences', () => {
