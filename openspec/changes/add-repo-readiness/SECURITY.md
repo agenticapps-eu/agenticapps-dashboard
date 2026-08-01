@@ -124,9 +124,27 @@ finding above.
   concurrency to one computation per repo. Excluded as DoS under the standing
   filter rules.
 
+## Remediation
+
+Finding 1 and its variant were fixed in `fix(GREEN): route the fingerprint's
+reads through the contained primitive`, under the same RED→GREEN discipline as
+the rest of the section: the RED commit pins that a readiness file symlinked out
+of the repo is never opened, and that refusing to follow it still reads
+differently from finding no file at all. `fileIdentity` now resolves through
+`resolveAllowedNamed` and applies a 512 KB bound before reading, and the
+machine-global `SKILL.md` read goes through the same path.
+
+Fixing it surfaced two test defects worth recording, both closed in the same
+commit. Making `fleetSignature` async left six of its assertions comparing two
+Promises with `.not.toBe` — trivially true, so those tests had gone vacuous. And
+the first two symlink tests were confounded by the git status component, which
+moves whenever a readiness file appears; they would have passed with the
+containment check removed. The isolated cases now run in non-git directories
+where the read is the only variable.
+
 ## Verdict
 
-PASS with one MEDIUM to fix before merge. Nothing in the trust boundary itself
+PASS. One MEDIUM was found and is fixed on this branch. Nothing in the trust boundary itself
 is weak: auth, CORS, the 404 path, and outbound validation are all asserted by
 test. The one real finding is a containment regression inside the new cache
 layer, and it is fixed by using the primitive the neighbouring module already
