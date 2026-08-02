@@ -17,6 +17,20 @@ export interface DerivedCheck {
   error: { code: string; message: string } | null
 }
 
+/**
+ * A deriver that can only ever report `never`, for a check the daemon has no
+ * signal to observe. This is the structural constraint behind
+ * `ADVISORY_WHEN_UNDECLARED`: a member of that set must be unable to return any
+ * other status, and the compiler is what establishes it. A test cannot — a
+ * deriver returning `never` today and something else on a branch not taken
+ * satisfies any finite number of calls while violating the requirement.
+ *
+ * Giving such a check a real signal means widening its return type here, which
+ * is the point at which its membership of the advisory set must be revisited —
+ * `UNDERIVABLE_DERIVERS` is what makes that a build failure rather than a note.
+ */
+export type UnderivableCheck = Omit<DerivedCheck, 'status'> & { status: 'never' }
+
 /** Longest summary the wire shape accepts; derivers clamp rather than overflow. */
 export const MAX_SUMMARY = 600
 
