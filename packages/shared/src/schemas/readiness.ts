@@ -232,20 +232,53 @@ const DetailChecksSchema = z.tuple([
 ])
 
 /**
+ * Checks the daemon cannot derive any signal for. Their deriver reports `never`
+ * unconditionally, so that `never` records the absence of anything to observe
+ * rather than an observation — which is why it does not block while undeclared.
+ *
+ * This is deliberately data and not a branch in `computeReady`: a second
+ * declared-only check joins by being listed. Membership is constrained, not
+ * conventional — a member's deriver must be typed so `never` is the only status
+ * it can return, and `derivePenTest`'s return type is that constraint. Sampling
+ * a deriver's behaviour could not establish the property, because a conditional
+ * branch satisfies any finite number of calls.
+ */
+export const ADVISORY_WHEN_UNDECLARED: readonly CheckId[] = ['pen-test']
+
+/**
  * Readiness is a boolean over the six results, never a score. `fail`, `stale`,
  * `never` and any evaluation error block; `warn` is a visible, non-blocking
- * caveat; `na` is excluded, and a wholly not-applicable repo is not ready
+ * caveat; `na` is excluded, and a repo with nothing applicable is not ready
  * rather than vacuously so.
+ *
+ * A derived `never` on an advisory check is exempt from blocking — without it
+ * the verdict is a constant, since nothing derives a pen test and `never` would
+ * block every repo forever.
+ *
+ * `notice` is required rather than optional because omitting it is the one way
+ * to get this wrong. When a readiness file is unusable every declaration is
+ * discarded and all six checks fall back to derived values carrying no error,
+ * so an advisory check's result is byte-identical to the same check in a repo
+ * with no readiness file at all. Without the notice, a repo could reach ready by
+ * making its own declarations unreadable: a declared blocking status would
+ * vanish with the file and the exemption would excuse what replaced it.
  */
 export function computeReady(
-  checks: readonly Pick<CheckResult, 'status' | 'error'>[],
+  checks: readonly Pick<CheckResult, 'id' | 'status' | 'source' | 'error'>[],
+  notice: ReadinessNotice | null,
 ): boolean {
+  const exempt = (check: Pick<CheckResult, 'id' | 'status' | 'source'>) =>
+    check.status === 'never' &&
+    check.source === 'derived' &&
+    ADVISORY_WHEN_UNDECLARED.includes(check.id) &&
+    notice === null
+
   const blocked = checks.some(
     (check) =>
       check.error !== null ||
       check.status === 'fail' ||
       check.status === 'stale' ||
-      check.status === 'never',
+      (check.status === 'never' && !exempt(check)),
   )
   if (blocked) return false
   return checks.some((check) => check.status === 'ok' || check.status === 'warn')
@@ -285,11 +318,23 @@ function repoObject<T extends z.ZodTypeAny>(checksSchema: T) {
     .strict()
 }
 
+/**
+ * The outbound check that `ready` follows from the response. It must be given
+ * the same inputs the predicate was given — including `notice`, which is a
+ * sibling of `ready` and `checks` on this very object. Recomputing from the
+ * results alone would reject exactly the responses the unusable-file suspension
+ * exists to produce, so the daemon would fail validation on its own correct
+ * output.
+ */
 function refineReady(
-  value: { ready: boolean; checks: readonly Pick<CheckResult, 'status' | 'error'>[] },
+  value: {
+    ready: boolean
+    checks: readonly Pick<CheckResult, 'id' | 'status' | 'source' | 'error'>[]
+    notice: ReadinessNotice | null
+  },
   ctx: z.RefinementCtx,
 ): void {
-  if (value.ready !== computeReady(value.checks)) {
+  if (value.ready !== computeReady(value.checks, value.notice)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['ready'],

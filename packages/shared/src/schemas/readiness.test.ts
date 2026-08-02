@@ -618,6 +618,19 @@ describe('computeReady — the advisory exemption', () => {
     expect(computeReady(checks, unusable)).toBe(false)
   })
 
+  it('does not exempt a declared never on the advisory check', () => {
+    // Unreachable through the tier-B schema today, which restricts a declared
+    // pen-test to ok/warn/fail. Pinned at the predicate anyway: the exemption's
+    // stated contract is that it covers a *derived* never, and this clause is
+    // what keeps an explicit "never tested" assertion blocking if that
+    // vocabulary is ever widened. Without it the predicate passes every other
+    // test in this file.
+    const checks = withAdvisory(
+      result(CHECK_IDS[ADVISORY]!, { source: 'declared' }),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
   it('is not ready when nothing is applicable and the only other result is exempt', () => {
     const checks = CHECK_IDS.map((id, i) =>
       i === ADVISORY ? result(id) : na(id),
