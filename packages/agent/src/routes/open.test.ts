@@ -131,6 +131,14 @@ describe('POST /api/projects/:id/open', () => {
 
     const options = (spawnMock.mock.calls[0] as unknown as [string, string[], Record<string, unknown>])[2]
     expect(options.shell).toBe(false)
+    // `filesystem-access-policy` names termination as one of the five things
+    // the daemon guarantees at the spawn boundary. Deleting either of these
+    // used to leave every test in this file green, while the editor's lifetime
+    // silently became the daemon's.
+    expect(options.detached).toBe(true)
+    expect(options.stdio).toBe('ignore')
+    const child = spawnMock.mock.results[0]?.value as { unref: ReturnType<typeof vi.fn> }
+    expect(child.unref).toHaveBeenCalledTimes(1)
     // The registry stores the canonical root, which on macOS means /private/var
     // where mkdtemp handed back /var. Comparing against the raw temp path would
     // be testing the symlink, not the working directory.

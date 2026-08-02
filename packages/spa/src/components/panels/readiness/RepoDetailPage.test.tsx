@@ -10,11 +10,15 @@ import {
   type RepoDetailResponse,
 } from '@agenticapps/dashboard-shared'
 
-const routerState = vi.hoisted(() => ({ params: { repoId: 'dashboard' } }))
+const routerState = vi.hoisted(() => ({ params: { repoId: 'dashboard' }, hash: '' }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
-  return { ...actual, useParams: () => routerState.params }
+  return {
+    ...actual,
+    useParams: () => routerState.params,
+    useLocation: () => ({ hash: routerState.hash }),
+  }
 })
 vi.mock('../../../lib/readinessQueries.js', () => ({
   useFleet: vi.fn(),
@@ -46,7 +50,9 @@ const openInEditor = vi.fn()
 afterEach(cleanup)
 beforeEach(() => {
   routerState.params = { repoId: 'dashboard' }
+  routerState.hash = ''
   rescan.mockClear()
+  mockUseEvidence.mockClear()
   openInEditor.mockClear()
   mockUseEvidence.mockReturnValue({
     data: undefined,
@@ -312,6 +318,46 @@ describe('RepoDetailPage evidence blocks', () => {
     }
   })
 
+  it('brings the hashed block into view once the data it is made of arrives', () => {
+    // The router scrolls to a hash on the route's first commit. At that moment
+    // this page is rendering its loading skeleton — the query has not resolved
+    // and there is no element with that id yet — so `getElementById` returns
+    // null and nothing retries. A fleet cell landed on the top of the page
+    // every time, from /fleet and from a cold URL alike, while the code comment
+    // claimed it "selects this element, not just this route".
+    routerState.hash = 'coverage'
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.instances[0]).toBe(block('coverage'))
+  })
+
+  it('moves keyboard focus to the hashed block, not just the viewport', () => {
+    routerState.hash = 'coverage'
+    Element.prototype.scrollIntoView = vi.fn()
+
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    // Without this the next Tab resumes from the top of the document, which
+    // for a keyboard user means the link they followed did nothing.
+    expect(document.activeElement).toBe(block('coverage'))
+  })
+
+  it('leaves the page where it is when no check was named', () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
   it('states each status in words with the time it was observed', () => {
     loaded(detail())
     render(<RepoDetailPage />)
@@ -329,6 +375,20 @@ describe('RepoDetailPage evidence blocks', () => {
       within(block('workflow')).getByText(/openspec\/specs\/repo-readiness\/spec\.md/),
     ).toBeInTheDocument()
     expect(within(block('spec')).getByText(/readiness\.json/)).toBeInTheDocument()
+  })
+
+  it('says what a derived check was derived from even when it produced no file', () => {
+    // The spec scenario is "it states whether the value was derived, naming the
+    // path it came from, or declared in the repo's readiness file". A derived
+    // check with no evidence used to render the bare word "Derived" and an em
+    // dash — naming nothing. That is not an edge case: the spec check returns
+    // no evidence for both `ok` and `warn`, which is every healthy repo, and
+    // the same holds for the workflow, review and coverage derivers.
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    const spec = block('spec')
+    expect(within(spec).getByText(/derived by the daemon from this repo/i)).toBeInTheDocument()
   })
 
   it('renders an em dash rather than inventing a timestamp or a path', () => {
@@ -364,6 +424,40 @@ describe('RepoDetailPage evidence blocks', () => {
       name: /openspec\/specs\/repo-readiness\/spec\.md/,
     })
     expect(control).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('asks for the check its own evidence names, under the daemon-supplied id, and not before', () => {
+    // The seam itself. Until this existed, hardcoding the path inside the
+    // component left all 20 tests green — so nothing connected the rendered
+    // control to the check it belongs to. That connection is the spec sentence
+    // "evidence links SHALL use only validated repo identifiers and
+    // repo-relative paths already accepted by that read route".
+    loaded(withEvidence())
+    render(<RepoDetailPage />)
+
+    // Closed on arrival: six blocks eagerly reading six files would turn one
+    // page view into six reads nobody asked for.
+    expect(mockUseEvidence).toHaveBeenCalledWith('dashboard', EVIDENCE_PATH, false)
+    expect(
+      mockUseEvidence.mock.calls.some(([, , enabled]) => enabled === true),
+    ).toBe(false)
+
+    fireEvent.click(
+      within(block('workflow')).getByRole('button', { name: /spec\.md/ }),
+    )
+
+    expect(mockUseEvidence).toHaveBeenCalledWith('dashboard', EVIDENCE_PATH, true)
+  })
+
+  it('identifies the repo by what the daemon returned, not by the URL', () => {
+    // The route param is whatever is in the address bar; `repo.id` is the
+    // registry identifier the daemon itself echoed back. Only the second is a
+    // "validated repo identifier".
+    routerState.params = { repoId: 'whatever-the-url-said' }
+    loaded(withEvidence())
+    render(<RepoDetailPage />)
+
+    expect(mockUseEvidence).toHaveBeenCalledWith('dashboard', EVIDENCE_PATH, false)
   })
 
   it('shows the file through the read route once the control is opened', () => {
@@ -438,6 +532,39 @@ describe('RepoDetailPage evidence blocks', () => {
     for (const id of CHECK_IDS) {
       expect(within(block(id)).queryAllByRole('button')).toHaveLength(0)
     }
+  })
+
+  it('renders no landmark of its own — the shell already owns the one main', () => {
+    // AppShellV2 wraps every route in `<main id="main">`, so a second one here
+    // is invalid HTML, gives the page two main landmarks, and points the skip
+    // link at something that is no longer the content region.
+    loaded(detail())
+    const { container } = render(<RepoDetailPage />)
+
+    expect(container.querySelector('main')).toBeNull()
+  })
+
+  it('lets a keyboard user scroll a long evidence file', () => {
+    mockUseEvidence.mockReturnValue({
+      data: {
+        content: 'a very long file\n'.repeat(200),
+        mtime: '2026-07-30T09:15:00.000Z',
+        sha256: 'f'.repeat(64),
+      },
+      isPending: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    } as unknown as ReturnType<typeof useEvidence>)
+    loaded(withEvidence())
+    render(<RepoDetailPage />)
+
+    fireEvent.click(within(block('workflow')).getByRole('button', { name: /spec\.md/ }))
+
+    // The panel caps its height and scrolls. A scroll container that cannot be
+    // focused cannot be scrolled without a pointer.
+    const panel = within(block('workflow')).getByRole('region', { name: /spec\.md/ })
+    expect(panel).toHaveAttribute('tabindex', '0')
   })
 
   it('keeps all six on one scrollable page — no tab, dialog, or drawer', () => {

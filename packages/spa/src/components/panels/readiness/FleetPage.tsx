@@ -335,7 +335,7 @@ export function FleetPage(): ReactElement {
   const filterable = fleet.data !== undefined && fleet.data.repos.length > 0
 
   return (
-    <main className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Fleet readiness"
         helper="Six checks per repository. Count the cells — there is no combined score."
@@ -366,6 +366,6 @@ export function FleetPage(): ReactElement {
         </div>
       )}
       {content}
-    </main>
+    </div>
   )
 }

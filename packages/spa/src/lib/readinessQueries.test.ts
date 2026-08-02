@@ -16,8 +16,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { CHECK_IDS } from '@agenticapps/dashboard-shared'
 
-import { useEvidence } from './readinessQueries.js'
+import {
+  FLEET_QUERY_KEY,
+  useEvidence,
+  useOpenInEditor,
+  useRescanRepo,
+} from './readinessQueries.js'
 
 vi.mock('./pairing.js', () => ({
   getPairing: vi.fn(() => ({
@@ -54,6 +60,77 @@ function ok(body: unknown) {
 
 beforeEach(() => {
   mockFetch.mockReset()
+})
+
+describe('useOpenInEditor', () => {
+  it('posts to the open route with an empty body, naming no path', () => {
+    // No path means the project root, which is what "open in editor" on a repo
+    // detail means. The daemon distinguishes the two by the field's absence, so
+    // the body has to be an object and has to be empty.
+    mockFetch.mockReturnValue(ok({ ok: true, requestId: 'req-1' }))
+
+    const { result } = renderHook(() => useOpenInEditor('dashboard'), { wrapper })
+    result.current.mutate()
+
+    return waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled()
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(url).toContain('/api/projects/dashboard/open')
+      expect(init.method).toBe('POST')
+      expect(init.body).toBe('{}')
+    })
+  })
+})
+
+describe('useRescanRepo', () => {
+  it('writes the fresh reading straight into the cache and stales the fleet', async () => {
+    // The POST already returns the new detail, so refetching it would be a
+    // second round trip for something in hand — and it deliberately bypasses
+    // the daemon's memo, which is the whole reason the button exists. A wrong
+    // cache key here silently no-ops.
+    const fresh = {
+      generatedAt: Date.UTC(2026, 7, 1),
+      repo: {
+        id: 'dashboard',
+        name: 'agenticapps-dashboard',
+        family: 'agenticapps' as const,
+        ready: false,
+        lastCommitAt: null,
+        notice: null,
+        checks: CHECK_IDS.map((id) => ({
+          id,
+          status: 'never' as const,
+          source: 'derived' as const,
+          at: null,
+          value: null,
+          threshold: null,
+          summary: '',
+          evidence: null,
+          error: null,
+          remedy: 'Do the thing.',
+        })),
+      },
+    }
+    mockFetch.mockReturnValue(ok(fresh))
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    })
+    const wrap = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: qc }, children)
+    const invalidate = vi.spyOn(qc, 'invalidateQueries')
+
+    const { result } = renderHook(() => useRescanRepo('dashboard'), { wrapper: wrap })
+    result.current.mutate()
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/api/v2/repos/dashboard/rescan')
+    expect(init.method).toBe('POST')
+    expect(qc.getQueryData(['readiness', 'repo', 'dashboard'])).toEqual(fresh)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: FLEET_QUERY_KEY })
+  })
 })
 
 describe('useEvidence', () => {

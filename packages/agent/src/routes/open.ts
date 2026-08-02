@@ -47,7 +47,7 @@ import type { Env } from '../server/app.js'
  *
  * A path that IS named keeps every restriction the read route applies.
  */
-const OpenBodySchema = z.object({ path: z.string().min(1).optional() })
+const OpenBodySchema = z.object({ path: z.string().min(1).optional() }).strict()
 
 function requestId(c: Context): string {
   return (c.get('requestId') as string | undefined) ?? 'unknown'

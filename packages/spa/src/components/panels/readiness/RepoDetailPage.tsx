@@ -12,8 +12,8 @@
  * - NO cn()/clsx/CVA — inline className strings only
  * - NO hex literals — token names only
  */
-import { useState, type ReactElement, type ReactNode } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useLocation, useParams } from '@tanstack/react-router'
 import { AlertTriangle, ChevronRight, PenLine, RefreshCw } from 'lucide-react'
 import { isReadableProjectPath, type RepoDetail } from '@agenticapps/dashboard-shared'
 
@@ -158,19 +158,27 @@ function DetailHeader({
         Readiness as of {formatCommitTime(generatedAt)}
       </p>
 
-      {editorError !== null && (
-        <p role="status" className="flex items-start gap-2 text-sm text-status-error">
-          <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-          <span>{editorError}</span>
-        </p>
-      )}
-
-      {rescan.isError && (
-        <p role="status" className="flex items-start gap-2 text-sm text-status-error">
-          <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-          <span>Could not rescan this repository. The reading below is the previous one.</span>
-        </p>
-      )}
+      {/*
+        One live region, always mounted, whose *content* changes. A `role="status"`
+        inserted into the DOM together with its text is routinely not announced —
+        the region has to be there before the message arrives for the change to
+        be a change. These two messages are the only feedback either button gives
+        on failure, so silence here means the click appears to have done nothing.
+      */}
+      <div role="status" aria-live="polite" className="empty:hidden">
+        {editorError !== null && (
+          <p className="flex items-start gap-2 text-sm text-status-error">
+            <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <span>{editorError}</span>
+          </p>
+        )}
+        {rescan.isError && (
+          <p className="flex items-start gap-2 text-sm text-status-error">
+            <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <span>Could not rescan this repository. The reading below is the previous one.</span>
+          </p>
+        )}
+      </div>
 
       {repo.notice !== null && (
         <p className="flex items-start gap-2 text-sm text-status-warning">
@@ -230,7 +238,11 @@ function CheckBlock({
     <section
       id={check.id}
       aria-labelledby={headingId}
-      className="scroll-mt-6 rounded-card bg-card-bg p-6 shadow-card"
+      // Focusable, not tabbable: a fleet cell moves focus here so the reader's
+      // next Tab continues from the check they asked for, but the six blocks
+      // must not each become a tab stop of their own.
+      tabIndex={-1}
+      className="scroll-mt-6 rounded-card bg-card-bg p-6 shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
     >
       <div className="flex flex-wrap items-center gap-3">
         <h2 id={headingId} className="text-lg font-semibold text-text-primary">
@@ -251,7 +263,15 @@ function CheckBlock({
           {check.at === null ? <EmDash /> : formatCommitTime(check.at)}
         </Fact>
         <Fact term="Provenance">
-          {check.source === 'declared' ? `Declared in ${READINESS_FILE}` : 'Derived'}
+          {check.source === 'declared'
+            ? `Declared in ${READINESS_FILE}`
+            : check.evidence === null
+              ? // Named, not shrugged at. Several derivers legitimately produce
+                // no evidence file — the spec check has none for `ok` or
+                // `warn`, which is every healthy repo — and a bare "Derived"
+                // there answered "where did this come from?" with nothing.
+                'Derived by the daemon from this repo, with no single file behind it'
+              : 'Derived'}
         </Fact>
         <Fact term="Evidence">
           {check.evidence === null ? (
@@ -311,7 +331,16 @@ function Evidence({ repoId, path }: { repoId: string; path: string }): ReactElem
             // usually the wrong one.
             <p className="text-xs text-status-error">Could not read {path}.</p>
           ) : (
-            <pre className="max-h-80 overflow-auto rounded-md bg-app-bg p-3 font-mono text-xs whitespace-pre-wrap text-text-secondary">
+            // A capped, scrolling region. `tabIndex={0}` is what lets a
+            // keyboard user reach the rest of a file taller than the cap —
+            // without it the overflow is pointer-only. Named, so the focus
+            // stop announces which file it is scrolling.
+            <pre
+              role="region"
+              aria-label={path}
+              tabIndex={0}
+              className="max-h-80 overflow-auto rounded-md bg-app-bg p-3 font-mono text-xs whitespace-pre-wrap text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+            >
               {file.data.content}
             </pre>
           )}
@@ -321,13 +350,44 @@ function Evidence({ repoId, path }: { repoId: string; path: string }): ReactElem
   )
 }
 
+/**
+ * Land on the check the fleet cell named.
+ *
+ * The router does its own hash scrolling, but it does it once, on the route's
+ * first commit — at which point this page is still rendering its loading
+ * skeleton and no element carries that id yet. `getElementById` returns null,
+ * nothing retries, and the reader arrives at the top of the page having asked
+ * for one specific check. So the scroll has to happen when the data does.
+ *
+ * Focus moves too. Scrolling satisfies the eye; a keyboard user whose next Tab
+ * resumes from the top of the document has been sent nowhere. `tabIndex={-1}`
+ * on the block makes it a focus target without making it a tab stop.
+ */
+function useLandOnHashedCheck(ready: boolean): void {
+  const { hash } = useLocation()
+  const landed = useRef(false)
+
+  useEffect(() => {
+    if (!ready || landed.current) return
+    const id = hash.replace(/^#/, '')
+    if (id === '') return
+    const target = document.getElementById(id)
+    if (target === null) return
+
+    landed.current = true
+    target.scrollIntoView({ block: 'start' })
+    target.focus({ preventScroll: true })
+  }, [ready, hash])
+}
+
 export function RepoDetailPage(): ReactElement {
   const { repoId } = useParams({ strict: false }) as { repoId: string }
   const detail = useRepoDetail(repoId)
+  useLandOnHashedCheck(detail.data !== undefined)
 
   if (detail.error?.message.startsWith('schema_drift:')) {
     return (
-      <main>
+      <div>
         <SchemaDriftState
           firstIssue={{
             path: detail.error.message.slice('schema_drift:'.length),
@@ -337,40 +397,46 @@ export function RepoDetailPage(): ReactElement {
           fullIssues={[]}
           onRetry={() => void detail.refetch()}
         />
-      </main>
+      </div>
     )
   }
   if (detail.isPending) {
     return (
-      <main>
+      <div>
+        {/*
+          `aria-label` on a bare div is ignored — an element with no role has
+          nothing for the name to attach to. `role="status"` gives it one and
+          makes the wait announceable rather than silent.
+        */}
         <div
+          role="status"
           aria-label="Loading repository readiness"
           className="h-40 animate-pulse rounded-card bg-card-bg"
         />
-      </main>
+      </div>
     )
   }
   if (detail.error instanceof ApiError && detail.error.status === 404) {
     return (
-      <main>
+      <div>
         <NotRegisteredState repoId={repoId} />
-      </main>
+      </div>
     )
   }
   if (detail.isError || !detail.data) {
     return (
-      <main>
+      <div>
         <ErrorState onRetry={() => void detail.refetch()} />
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <DetailHeader repo={detail.data.repo} generatedAt={detail.data.generatedAt} />
       {detail.data.repo.checks.map((check) => (
         <CheckBlock key={check.id} check={check} repoId={detail.data.repo.id} />
       ))}
-    </main>
+    </div>
   )
 }
