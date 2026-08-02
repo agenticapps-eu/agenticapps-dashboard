@@ -422,6 +422,11 @@ describe('ReadinessIndicator', () => {
         />,
       )
 
+      // Six controls, and six is the whole tab cost of a row's checks. The
+      // assertion below alone would also pass if the component rendered nothing
+      // at all, so count the controls first — that is what §9.3 traded the
+      // Tooltip's own tabIndex away to protect.
+      expect(screen.getAllByRole('link')).toHaveLength(CHECK_IDS.length)
       expect(document.querySelectorAll('[tabindex="0"]')).toHaveLength(0)
     })
 

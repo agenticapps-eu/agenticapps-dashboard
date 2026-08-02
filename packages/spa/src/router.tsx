@@ -48,7 +48,12 @@ const CoverageSearchSchema = z.object({
 const FleetSearchSchema = z.object({
   family: z.string().optional(),
   status: z.string().optional(),
-  q: z.string().optional(),
+  // Coerced, because the router's default search parser JSON-parses values
+  // before this sees them: `/fleet?q=2024` arrives as the number 2024, a bare
+  // `z.string()` rejects it, and the route's error component then tells the
+  // reader their pair URL looks wrong — on the fleet page, over a search term.
+  // Searching for a year is not a malformed URL.
+  q: z.coerce.string().optional(),
 })
 
 /**

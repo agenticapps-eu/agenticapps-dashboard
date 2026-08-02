@@ -44,6 +44,11 @@ import {
   type FleetSearch,
 } from './fleetFilters.js'
 
+/** "1 repositories" is the sort of thing a reader trusts a little less for. */
+function plural(count: number): string {
+  return count === 1 ? 'repository' : 'repositories'
+}
+
 /**
  * The date of the last change, in UTC. Every time in this feature is a git
  * committer time, and rendering one of them locally would invite comparing it
@@ -170,7 +175,8 @@ function FleetRow({
           variant="compact"
         />
       </td>
-      <td className="px-3 py-2 align-middle text-sm text-text-secondary whitespace-nowrap">
+      {/* Right, to match its own header. They disagreed until now. */}
+      <td className="px-3 py-2 text-right align-middle text-sm text-text-secondary whitespace-nowrap">
         {formatLastChange(repo.lastCommitAt)}
       </td>
     </tr>
@@ -347,8 +353,8 @@ export function FleetPage(): ReactElement {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-tertiary">
             <span>
               {hasActiveFilters(filters)
-                ? `${visible.length} of ${all.length} repositories`
-                : `${all.length} repositories`}
+                ? `${visible.length} of ${all.length} ${plural(all.length)}`
+                : `${all.length} ${plural(all.length)}`}
             </span>
             {fleet.data !== undefined && (
               <span>Readings computed {formatGeneratedAt(fleet.data.generatedAt)}</span>
