@@ -77,10 +77,21 @@ as `ready` and the results, so this requires no new field on the wire.
 - **THEN** the repo is not ready
 - **AND** the individual blocking result remains the explanation.
 
+#### Scenario: A wholly not-applicable repo is not ready
+- **WHEN** all six checks report `na`
+- **THEN** the repo is not ready
+- **AND** no vacuous success is produced.
+
 #### Scenario: A repo with nothing applicable and nothing exempted is not ready
 - **WHEN** every derivable check reports `na` and the advisory check reports its exempt derived `never`
 - **THEN** the repo is not ready, because no check reported `ok` or `warn`
 - **AND** no vacuous success is produced by exempting the only non-`na` result.
+
+The two differ in reachability, and both are kept deliberately. The daemon cannot
+currently produce the first — `pen-test` derives a constant `never` and a declared
+`na` is invalid for that slot — but the predicate is a pure function over results
+and accepts it, so it remains its contract and is pinned. The second is the
+boundary the advisory exemption actually creates.
 
 #### Scenario: An undeclared advisory check does not block readiness
 - **WHEN** a repo's five derivable checks report `ok` and its advisory check reports a derived `never`
