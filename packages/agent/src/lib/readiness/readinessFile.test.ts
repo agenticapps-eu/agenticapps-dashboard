@@ -75,6 +75,48 @@ describe('readReadinessFile', () => {
     )
   })
 
+  // The bound applies to the cited artifact, not only to the readiness file.
+  // Without it an author could point the daemon at an arbitrarily large file and
+  // have it opened on every scan.
+  it('refuses evidence larger than the read bound', async () => {
+    put(declaredPenTest.evidence, 'x'.repeat(4 * 1024 * 1024 + 1))
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
+  })
+
+  // The blast radius is the file, not the entry: one unopenable citation
+  // discards every declaration in it, including declarations that were
+  // themselves fine. This is a known weakness rather than a design to preserve —
+  // see the change's Open Questions — but it is the shipped contract, and the
+  // readiness predicate's unusable-file guard depends on knowing it, so it is
+  // pinned rather than left implicit.
+  it('discards every declaration when one citation is unopenable', async () => {
+    const soundReview = {
+      id: 'code-review',
+      status: 'ok',
+      observedAt: '2026-07-01T09:00:00Z',
+      evidence: 'openspec/changes/one/REVIEW.md',
+      commit: 'c'.repeat(40),
+    }
+    put(soundReview.evidence, '# review\n')
+    // The pen-test citation is deliberately absent while this one is present.
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [soundReview, declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
+    // Not "the bad entry was dropped and the good one kept" — there is no
+    // partial acceptance, so the sound code-review declaration is lost too.
+    expect(outcome.kind === 'unusable' && 'file' in outcome).toBe(false)
+  })
+
   // `stat` succeeds on a directory, so "the path exists" is not the same claim
   // as "the evidence can be opened". A directory named like the report satisfied
   // the first and not the second.
