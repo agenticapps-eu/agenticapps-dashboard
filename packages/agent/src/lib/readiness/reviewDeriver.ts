@@ -12,7 +12,11 @@ import { readFile, stat } from 'node:fs/promises'
 
 import { resolveAllowed } from '../paths.js'
 
-import { clampSummary, type DerivedCheck } from './derivedCheck.js'
+import {
+  clampSummary,
+  type DerivedCheck,
+  type UnderivableCheck,
+} from './derivedCheck.js'
 import { stalenessReason } from './freshness.js'
 import { commitTimesFor, type CommitStamp, type GitFacts } from './gitFacts.js'
 import { type ProductionScope } from './productionScope.js'
@@ -333,7 +337,7 @@ function failure(
  * and tool-agnostic: which tool satisfies it is a mapping question that never
  * appears in the surface.
  */
-export function derivePenTest(): DerivedCheck {
+export function derivePenTest(): UnderivableCheck {
   return {
     status: 'never',
     at: null,

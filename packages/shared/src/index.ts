@@ -67,6 +67,7 @@ export {
   RepoDetailResponseSchema,
   ReadinessFileSchema,
   computeReady,
+  ADVISORY_WHEN_UNDECLARED,
 } from './schemas/readiness.js'
 export type {
   CheckId,

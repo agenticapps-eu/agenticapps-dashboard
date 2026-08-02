@@ -6,6 +6,19 @@ import type { CheckStatus } from '@agenticapps/dashboard-shared'
  * assembling a CheckResult is a merge rather than a translation — a translation
  * layer is where an invented timestamp or a dropped error would get in.
  */
+/**
+ * A deriver that can only ever report `never`, for a check the daemon has no
+ * signal to observe. This is the structural constraint behind
+ * `ADVISORY_WHEN_UNDECLARED`: a member of that set must be unable to return any
+ * other status, and the compiler is what establishes it. A test cannot — a
+ * deriver returning `never` today and something else on a branch not taken
+ * satisfies any finite number of calls while violating the requirement.
+ *
+ * Giving such a check a real signal means widening its return type here, which
+ * is the point at which its membership of the advisory set must be revisited.
+ */
+export type UnderivableCheck = Omit<DerivedCheck, 'status'> & { status: 'never' }
+
 export interface DerivedCheck {
   status: CheckStatus
   /** Epoch milliseconds, or null where there is nothing observed to timestamp. */

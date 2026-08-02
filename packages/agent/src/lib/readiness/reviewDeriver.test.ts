@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { readGitFacts } from './gitFacts.js'
 import { resolveProductionScope } from './productionScope.js'
+import { ADVISORY_WHEN_UNDECLARED, type CheckId } from '@agenticapps/dashboard-shared'
+
 import { derivePenTest, deriveReview, type ReviewCheckId } from './reviewDeriver.js'
 
 const COVERAGE_PATH = 'coverage/coverage-summary.json'
@@ -393,5 +395,26 @@ describe('derivePenTest', () => {
     expect(result.error).toBeNull()
     expect(result.summary).toMatch(/readiness file/i)
     expect(result.summary.toLowerCase()).not.toMatch(/burp|zap|nessus|metasploit|pentest-tools/)
+  })
+
+  /**
+   * The advisory exemption shrinks the readiness predicate, so membership of
+   * ADVISORY_WHEN_UNDECLARED has to be earned: a member must have no signal to
+   * observe. The guarantee is carried by `UnderivableCheck` — `derivePenTest`
+   * cannot compile while returning any status but `never` — and this test is
+   * the link between that type and the set.
+   *
+   * It cannot itself establish underivability. Calling a deriver proves nothing
+   * about a branch not taken, which is why the real constraint is the return
+   * type and this only pins that the set has not grown past what is constrained.
+   */
+  it('is the only check exempted from blocking while undeclared', () => {
+    expect([...ADVISORY_WHEN_UNDECLARED]).toEqual(['pen-test'])
+
+    // Widening this list means widening a deriver's return type first — the
+    // compiler refuses `derivePenTest` returning anything but `never`, so a new
+    // member has to be given the same treatment rather than just appended here.
+    const underivable: readonly CheckId[] = ['pen-test']
+    expect([...ADVISORY_WHEN_UNDECLARED].every((id) => underivable.includes(id))).toBe(true)
   })
 })
