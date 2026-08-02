@@ -4,11 +4,10 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ADVISORY_WHEN_UNDECLARED, type CheckId } from '@agenticapps/dashboard-shared'
 
 import { readGitFacts } from './gitFacts.js'
 import { resolveProductionScope } from './productionScope.js'
-import { ADVISORY_WHEN_UNDECLARED, type CheckId } from '@agenticapps/dashboard-shared'
-
 import { derivePenTest, deriveReview, type ReviewCheckId } from './reviewDeriver.js'
 
 const COVERAGE_PATH = 'coverage/coverage-summary.json'
