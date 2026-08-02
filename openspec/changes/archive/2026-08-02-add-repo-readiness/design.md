@@ -70,11 +70,18 @@ must descend from the last commit touching production code. Dirty or untracked
 production-code changes also make committed review evidence stale.
 
 The default production-code set is every tracked or unignored-untracked
-repo-relative path except `docs/**`, `.planning/**`, `openspec/**`, root-level
-`*.md`, and the configured coverage artifact. Repos may
-replace the included paths and extend the ignored paths in
+repo-relative path except `docs/**`, `.planning/**`, `openspec/**`,
+`.agenticapps/**`, root-level `*.md`, and the configured coverage artifact. Repos
+may replace the included paths and extend the ignored paths in
 `.agenticapps/readiness.json`. This explicit boundary is part of the requirement,
 not an implementation detail.
+
+`.agenticapps/**` was added to that list during implementation, and the reason is
+worth recording: without it, writing `.agenticapps/readiness.json` is itself an
+unignored production change, so the act of declaring a review would make that
+same declared review stale on the next scan. The exclusion is the same one the
+coverage artifact already had — evidence must not age itself — and it was simply
+missed when the list was first written.
 
 `na` exists so that "not applicable" is sayable with a reason, instead of being
 smuggled in as `ok`.
@@ -148,3 +155,23 @@ membership, repo id, HEAD, relevant dirty/untracked state, readiness-file identi
 machine-global workflow identity. Concurrent rescans for the same repo coalesce;
 an unknown repo is a 404. This keeps a rescan deterministic without spawning
 work or turning the cache into persisted state.
+
+Two refinements were settled while implementing it (section 7).
+
+**The key folds in the whole dirty/untracked set, not the production subset.**
+Narrowing it to the paths the freshness rules care about would mean parsing the
+readiness file first, to learn the configured production scope, before deciding
+whether the cached result may be replayed — which is most of the work the cache
+exists to avoid. Over-invalidating costs a recomputation when someone edits a
+doc; under-invalidating serves a reading taken before the user's last commit.
+Only one of those is a correctness failure, so the key errs toward the other.
+
+**The fleet is dated by its oldest snapshot.** The memo is per repo, so within
+one fleet response some repos are freshly computed and others are replayed. The
+envelope carries a single `generatedAt`, and the spec is explicit that it means
+the time the snapshot was computed and not the time a cached response happened
+to be served. Taking the minimum keeps that promise for every repo in the
+response: it may understate the freshness of the newest repo, but it never
+overstates the freshness of the oldest. The alternative — stamping the assembly
+time — would make every response claim to be current, which is precisely the
+reading the spec rules out.

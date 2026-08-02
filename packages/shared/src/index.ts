@@ -51,7 +51,42 @@ export type {
   OpenspecCapability,
   OpenspecArchivedChange,
 } from './schemas/openspec.js'
-export { ReadResponseSchema } from './schemas/read.js'
+export {
+  CHECK_IDS,
+  CHECK_STATUSES,
+  CheckIdSchema,
+  CheckStatusSchema,
+  CheckSourceSchema,
+  CheckResultSchema,
+  ReadinessNoticeSchema,
+  RepoFamilySchema,
+  RepoRelativePathSchema,
+  RepoSummarySchema,
+  RepoDetailSchema,
+  FleetResponseSchema,
+  RepoDetailResponseSchema,
+  ReadinessFileSchema,
+  computeReady,
+} from './schemas/readiness.js'
+export type {
+  CheckId,
+  CheckStatus,
+  CheckSource,
+  CheckResult,
+  ReadinessNotice,
+  RepoFamily,
+  RepoSummary,
+  RepoDetail,
+  FleetResponse,
+  RepoDetailResponse,
+  ReadinessFile,
+  ReadinessDeclaration,
+} from './schemas/readiness.js'
+export {
+  ALLOWED_SUBDIRS,
+  isReadableProjectPath,
+  ReadResponseSchema,
+} from './schemas/read.js'
 export type { ReadResponse } from './schemas/read.js'
 export { GitResponseSchema } from './schemas/git.js'
 export type { GitResponse } from './schemas/git.js'

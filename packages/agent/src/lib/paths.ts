@@ -2,8 +2,14 @@ import { realpath } from 'node:fs/promises'
 import { resolve, isAbsolute, sep, basename, join } from 'node:path'
 import { homedir } from 'node:os'
 
+import { ALLOWED_SUBDIRS } from '@agenticapps/dashboard-shared'
+
 /**
- * Top-level project directories readable through /api/projects/:id/read.
+ * Re-exported, not declared. The list itself now lives in shared so a client can
+ * tell what this route will accept before offering to open a file; this module
+ * remains the only place it is enforced.
+ *
+ * Why each entry stays:
  *
  * `.planning` stays after the GSD phase reader is retired and is load-bearing,
  * not residual. Two distinct readers keep it alive, and they read *different*
@@ -23,7 +29,7 @@ import { homedir } from 'node:os'
  * relocated GSD history would expose unrelated content, and that history is
  * archived under `openspec/changes/archive/` anyway.
  */
-export const ALLOWED_SUBDIRS = ['.planning', '.claude', 'openspec'] as const
+export { ALLOWED_SUBDIRS }
 
 export class PathViolation extends Error {
   constructor(message: string) {

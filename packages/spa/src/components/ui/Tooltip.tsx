@@ -31,6 +31,19 @@ import { createPortal } from 'react-dom'
 export interface TooltipProps {
   content: string
   children: React.ReactNode
+  /**
+   * Set when the child is already a focusable control. The wrapper then adds
+   * neither a tab stop nor the dotted underline, because both belong to a
+   * trigger that would otherwise have no way to receive focus.
+   *
+   * Without it, wrapping a control puts a second tab stop in front of every
+   * one: a six-check readiness row would cost twelve tab stops instead of six,
+   * which is a worse keyboard path than the native `title` this replaces.
+   * The open/close handlers are unaffected — React's focus and keydown events
+   * bubble, so the child's focus still opens the panel and Escape still closes
+   * it (add-repo-readiness §8.1).
+   */
+  interactiveChild?: boolean
 }
 
 interface Coords {
@@ -38,7 +51,11 @@ interface Coords {
   left: number
 }
 
-export function Tooltip({ content, children }: TooltipProps): React.JSX.Element {
+export function Tooltip({
+  content,
+  children,
+  interactiveChild = false,
+}: TooltipProps): React.JSX.Element {
   const tooltipId = useId()
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState<Coords | null>(null)
@@ -95,6 +112,13 @@ export function Tooltip({ content, children }: TooltipProps): React.JSX.Element 
     <span
       id={tooltipId}
       role="tooltip"
+      // Opacity hides this from eyes, not from a screen reader. The panel stays
+      // mounted for animation continuity, so without this it sits in the
+      // accessibility tree permanently — and §9 puts six of these on every
+      // fleet row, which on a 15-repo fleet is 90 orphaned sentences appended
+      // to document.body, each duplicating the aria-label of a link it is no
+      // longer beside.
+      aria-hidden={!open}
       className={panelClassName}
       style={coords ? { top: coords.top, left: coords.left } : undefined}
     >
@@ -108,12 +132,20 @@ export function Tooltip({ content, children }: TooltipProps): React.JSX.Element 
   // (NVDA, VoiceOver) to announce the description on every focus regardless of
   // the visual 100ms open delay (Phase 11.2 stage-1 /review cross-model finding).
   return (
-    <span className="relative inline-block">
+    <span className={interactiveChild ? 'relative block' : 'relative inline-block'}>
       <span
         ref={triggerRef}
-        tabIndex={0}
+        {...(interactiveChild ? {} : { tabIndex: 0 })}
         {...(open ? { 'aria-describedby': tooltipId } : {})}
-        className="border-b border-dotted border-text-tertiary cursor-default"
+        className={
+          interactiveChild
+            ? // Block, so the wrapped control fills the slot it was placed in
+              // rather than shrinking to its content and leaving most of the
+              // slot dead. A 14 px glyph in a table column is a small enough
+              // target already.
+              'block'
+            : 'border-b border-dotted border-text-tertiary cursor-default'
+        }
         onMouseEnter={scheduleOpen}
         onMouseLeave={closeNow}
         onFocus={scheduleOpen}

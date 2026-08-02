@@ -16,7 +16,7 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, Layers, TrendingUp, Network, Workflow } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban, Layers, ShieldCheck, TrendingUp, Network, Workflow } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
@@ -67,6 +67,15 @@ export function Sidebar(): React.JSX.Element {
             to="/workflow"
             icon={<Workflow size={16} aria-hidden="true" />}
             label="Workflow"
+          />
+          {/* Fleet readiness — add-repo-readiness §9. A peer of Workflow in
+              WORKSPACE, which is where the other v2 fleet surface already
+              sits. `/` still belongs to Projects until retire-v1-surfaces. */}
+          <SidebarItem
+            to="/fleet"
+            alsoActiveFor="/repos"
+            icon={<ShieldCheck size={16} aria-hidden="true" />}
+            label="Fleet readiness"
           />
         </SidebarSection>
 

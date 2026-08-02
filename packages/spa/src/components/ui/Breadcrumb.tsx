@@ -34,6 +34,17 @@ export function Breadcrumb(): React.JSX.Element {
     if (projectId) {
       crumbs.push({ label: projectId, to: `/projects/${projectId}` })
     }
+  } else if (path === '/fleet') {
+    crumbs[0] = { label: 'Fleet readiness', to: '/fleet' }
+  } else if (typeof path === 'string' && path.includes('/repos/')) {
+    // The repo detail is reachable only from the fleet, so the fleet is its
+    // ancestor — not "All Projects", which is a different surface listing
+    // different things. Without this the page said it was somewhere it was not
+    // and offered no way back, which is a dead end at the bottom of the one
+    // navigational promise the feature makes: cell, detail, back.
+    crumbs[0] = { label: 'Fleet readiness', to: '/fleet' }
+    const repoId = params?.repoId
+    if (repoId) crumbs.push({ label: repoId, to: `/repos/${repoId}` })
   } else if (path === '/settings') {
     crumbs[0] = { label: 'Settings', to: '/settings' }
   } else if (path === '/help') {

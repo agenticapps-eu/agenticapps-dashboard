@@ -62,4 +62,31 @@ describe('Breadcrumb', () => {
     render(<Breadcrumb />)
     expect(screen.getByText('Help')).toBeDefined()
   })
+
+  it('BC5: on "/fleet", the crumb is the fleet, not "All Projects"', () => {
+    mockUseMatches.mockReturnValue([
+      { id: '__root__', fullPath: '/', params: {} },
+      { id: '/fleet', fullPath: '/fleet', params: {} },
+    ])
+    render(<Breadcrumb />)
+    expect(screen.getByText('Fleet readiness')).toBeDefined()
+    expect(screen.queryByText('All Projects')).toBeNull()
+  })
+
+  it('BC6: on "/repos/:repoId", the crumb leads back to the fleet you came from', () => {
+    // The detail is reachable only from /fleet, and until this existed the
+    // chrome said "All Projects" there, highlighted no sidebar item, and
+    // offered no way back — a dead end at the bottom of the triage loop.
+    mockUseMatches.mockReturnValue([
+      { id: '__root__', fullPath: '/', params: {} },
+      { id: '/repos/$repoId', fullPath: '/repos/$repoId', params: { repoId: 'agenticapps-dashboard' } },
+    ])
+    render(<Breadcrumb />)
+
+    const back = screen.getByText('Fleet readiness').closest('a')
+    expect(back).not.toBeNull()
+    expect(back?.getAttribute('href')).toBe('/fleet')
+    expect(screen.getByText('agenticapps-dashboard')).toBeDefined()
+    expect(screen.queryByText('All Projects')).toBeNull()
+  })
 })

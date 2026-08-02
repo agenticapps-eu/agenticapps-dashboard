@@ -74,7 +74,18 @@ AGE-465, AGE-466. Design basis: `docs/spec/DASHBOARD-V2-SPEC.md` §4, §5.
 - **It does not pick a pen-test tool.** The slot is deliberately empty and
   generic. Which tool satisfies it is a mapping question and never appears in the
   UI.
-- **It adds no execution surface.** No deriver spawns a process.
+- **It adds no request-controlled execution.** No deriver runs a command built
+  from request input. The derivers do spawn `git` — `rev-parse`, `status`, and
+  `merge-base --is-ancestor` are how the mandated ancestry tests are performed —
+  through one shared `runGit` primitive: argv-array `execa`, no shell, a fixed
+  timeout, and non-zero exit treated as data. Every argv is a literal in the
+  deriver; the only variable is the working directory, which is a registered
+  repo root, not a request path. Separately, §10 added one genuine execution path,
+  `POST /api/projects/{id}/open`, which spawns `$EDITOR` on a registered project
+  root; it is enumerated in `SECURITY.md` and struck the original "no execution
+  path" non-goal on the record. The earlier wording of this bullet — "no deriver
+  spawns a process" — was false in both directions and is corrected here rather
+  than left to read as an invariant the code violates.
 - **It does not itself widen the filesystem allow-list — but it depends on a
   widening made elsewhere.** The `workflow` check reads the machine-global skill
   directories of the hosts that install skills machine-wide. Those paths lie

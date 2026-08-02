@@ -40,6 +40,23 @@ const CoverageSearchSchema = z.object({
 })
 
 /**
+ * FleetSearchSchema validates the optional /fleet?family=&status=&q= params.
+ * Comma-joined, like /coverage's. Unknown values inside a list are dropped by
+ * `parseFleetFilters` rather than rejected here: a hand-edited URL should
+ * narrow to something sensible instead of blanking the page.
+ */
+const FleetSearchSchema = z.object({
+  family: z.string().optional(),
+  status: z.string().optional(),
+  // Coerced, because the router's default search parser JSON-parses values
+  // before this sees them: `/fleet?q=2024` arrives as the number 2024, a bare
+  // `z.string()` rejects it, and the route's error component then tells the
+  // reader their pair URL looks wrong — on the fleet page, over a search term.
+  // Searching for a year is not a malformed URL.
+  q: z.coerce.string().optional(),
+})
+
+/**
  * Exported so a unit test can verify it never re-throws on a non-VALIDATE_SEARCH
  * error (WR-02). Pitfall 8: validateSearch errors arrive here with
  * `error.routerCode === 'VALIDATE_SEARCH'` and render <MalformedPairUrl/>;
@@ -156,6 +173,34 @@ const workflowRoute = createRoute({
 }).lazy(() => import('./routes/workflow.lazy.js').then((m) => m.Route))
 
 /**
+ * fleetRoute — /fleet, the readiness fleet (add-repo-readiness §9).
+ *
+ * Mounted alongside the v1 routes rather than at `/`, which still belongs to
+ * MultiProjectHome. `retire-v1-surfaces` owns repointing the legacy routes at
+ * the fleet, and it does that in one commit so the cutover reverts as one.
+ */
+const fleetRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/fleet',
+  validateSearch: zodValidator(FleetSearchSchema),
+  errorComponent: pairErrorComponent,
+}).lazy(() => import('./routes/fleet.lazy.js').then((m) => m.Route))
+
+/**
+ * repoDetailRoute — /repos/$repoId, where a fleet row or cell lands. A cell
+ * carries the check id as the hash, so the detail can position itself at the
+ * block that was selected.
+ *
+ * An unregistered identifier is answered by the daemon as a 404 from the
+ * registry alone, so nothing here needs to validate the id: it is never joined
+ * to a path on either side.
+ */
+const repoDetailRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/repos/$repoId',
+}).lazy(() => import('./routes/repos.$repoId.lazy.js').then((m) => m.Route))
+
+/**
  * _helpLayout — peer of _appshell at rootRoute (D-7-12). `/help/*` bypasses
  * AppShellV2 so the docs site owns its own chrome (sidebar + main).
  *
@@ -201,6 +246,8 @@ const routeTree = rootRoute.addChildren([
     conformanceRoute, // Phase 12 D-12-01 — /observability/conformance under _appshell
     codeIntelligenceRoute, // Phase 14 D-14-06 — /code-intelligence under _appshell
     workflowRoute,
+    fleetRoute, // add-repo-readiness §9 — /fleet under _appshell
+    repoDetailRoute, // add-repo-readiness §9/§10 — /repos/$repoId under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),
