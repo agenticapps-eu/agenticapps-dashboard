@@ -402,11 +402,11 @@ belongs with whoever revisits the table, not with a §10 that is closing.
 
 ## 11. Verify
 
-- [ ] `openspec validate --all` green
+- [x] `openspec validate --all` green
 - [ ] Fresh independent OpenSpec change review approves the revised artifacts before implementation
-- [ ] `pnpm lint` green; per-package tests green
-- [ ] Design critique on the two new surfaces at 1440×900, artifact committed
-- [ ] Two-stage review
+- [x] `pnpm lint` green; per-package tests green — 0 errors at the 207-warning baseline; spa 1511, agent 1536 (1 skipped), shared 422
+- [x] Design critique on the two new surfaces at 1440×900, artifact committed — `artifacts/CRITIQUE-detail-2026-08-02.md`, composite 75 → 85 against the ≥ 80 floor
+- [x] Two-stage review — Stage 1 `REVIEWS.md` (predates the editor route, disclosed); Stage 2 independent sub-agents over §9 and §10, findings acted on
 - [ ] **Release gate:** confirm `add-workflow-fleet-conformance` is archived. This change does not fold while it is not.
 
 ## Out of scope

@@ -270,7 +270,14 @@ function CheckBlock({
   const headingId = `${check.id}-heading`
   // An evaluation error explains the status better than a summary can; a
   // summary is what `na` and `warn` are required to keep visible.
-  const why = check.error?.message ?? (check.summary.trim() || null)
+  // An evaluation error is framed rather than dropped in raw. Deriver messages
+  // are fragments — "the artifact carries no frontmatter to read a verdict
+  // from" — and printed bare they read as a log line, in the one block whose
+  // status is already the most alarming, surrounded by full sentences.
+  const why =
+    check.error !== null
+      ? `Could not evaluate this check: ${check.error.message}`
+      : check.summary.trim() || null
 
   return (
     <section
