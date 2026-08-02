@@ -109,6 +109,24 @@ describe('GET /api/v2/fleet', () => {
     expect(readFleet).not.toHaveBeenCalled()
   })
 
+  // The read routes carry no explicit Origin check, unlike rescan below. CORS
+  // binds browsers, not curl, so a token-bearing client is served whatever it
+  // claims as its origin — the token is the boundary. Asserted because the spec
+  // scenario says so, and because a reader who saw only the 403 on rescan would
+  // reasonably assume the reads behave the same way.
+  it('serves a token-bearing read from an origin outside the allow-list', async () => {
+    const response = await createApp({ authFile }).request(
+      'http://127.0.0.1/api/v2/fleet',
+      { headers: { ...auth(), Origin: 'https://evil.example' } },
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Access-Control-Allow-Origin')).not.toBe(
+      'https://evil.example',
+    )
+    expect(readFleet).toHaveBeenCalled()
+  })
+
   it('returns schema_drift rather than a malformed body', async () => {
     vi.mocked(readFleet).mockResolvedValueOnce({ repos: 'not-a-list' } as never)
 

@@ -403,11 +403,72 @@ belongs with whoever revisits the table, not with a §10 that is closing.
 ## 11. Verify
 
 - [x] `openspec validate --all` green
-- [ ] Fresh independent OpenSpec change review approves the revised artifacts before implementation
-- [x] `pnpm lint` green; per-package tests green — 0 errors at the 207-warning baseline; spa 1511, agent 1536 (1 skipped), shared 422
+- [x] Fresh independent OpenSpec change review of the revised artifacts — **re-run 2026-08-02 on the post-§10 artifacts, and it did not approve.** See below.
+- [x] `pnpm lint` green; per-package tests green — 0 errors at the 207-warning baseline; spa 1511, agent 1537 (1 skipped), shared 422
 - [x] Design critique on the two new surfaces at 1440×900, artifact committed — `artifacts/CRITIQUE-detail-2026-08-02.md`, composite 75 → 85 against the ≥ 80 floor
 - [x] Two-stage review — Stage 1 `REVIEWS.md` (predates the editor route, disclosed); Stage 2 independent sub-agents over §9 and §10, findings acted on
-- [ ] **Release gate:** confirm `add-workflow-fleet-conformance` is archived. This change does not fold while it is not.
+- [x] **Release gate:** `add-workflow-fleet-conformance` is archived as
+  `openspec/changes/archive/2026-07-31-add-workflow-fleet-conformance`. Verified
+  2026-08-02. The change may fold.
+
+### The re-run review, and what was done about it
+
+`REVIEWS.md` was regenerated against the artifacts as they stand after §10, with
+`REVIEW_TIMEOUT=540` so the codex arm completes instead of being dropped as it
+was on 28 July. All three other-vendor reviewers returned **REQUEST-CHANGES**,
+where the 28 July round had two APPROVEs on a thinner change. The §18 gate
+reports rather than blocks, so this records the decision rather than being
+stopped by it.
+
+Three findings were confirmed against the code and **fixed on this branch**.
+All three were spec-text defects, not code defects — in each case the shipped
+behaviour was correct and the artifact described it wrongly, which matters
+precisely because archiving folds the delta into durable truth:
+
+1. **Cache-key scope** (codex and opencode, independently). The delta scoped
+   invalidation to dirty/untracked *production-code* state; `fingerprint.ts`
+   deliberately folds in the whole working-tree set and says why. The spec was
+   narrower than the code, which would have sanctioned a later "optimisation"
+   that reintroduced the staleness the design rejected. Delta corrected, with
+   the rationale moved into the requirement. The sibling omission — fleet
+   `generatedAt` being the oldest included snapshot, implemented at
+   `service.ts:312` and undefined in the delta — is fixed in the same paragraph.
+2. **`proposal.md` "It adds no execution surface. No deriver spawns a process."**
+   False in two directions: the derivers spawn `git` through `runGit`, and §10
+   added the `$EDITOR` route. It contradicted this change's own `SECURITY.md`,
+   which already counts one new execution path. Rewritten to claim what is
+   actually true — no *request-controlled* execution — and to name both spawns.
+3. **CORS described as an authorization boundary.** The delta said a request
+   "from a disallowed origin" is refused before repository data is read. That is
+   true of `rescan`, which checks `Origin` in the daemon and answers 403, and
+   false of the two read routes, which carry no such check and are served to any
+   token-bearing client. Both halves are now stated, because the interesting
+   property is the asymmetry: the middleware governs what a browser may read,
+   the explicit check governs what the daemon will do. A test now pins the read
+   half (`readiness.test.ts`), and it was confirmed to fail under a mutation
+   that adds the guard — the rescan half was already pinned.
+
+**Deferred, with reasons, to a follow-up change rather than fixed here.** None
+is a defect in shipped behaviour; each is a spec-completeness gap that wants a
+design decision rather than a wording fix, and taking them inside a closing
+change would reopen it:
+
+- Rescan's response shape is unspecified (invalidation and coalescing are
+  specified; what it returns is not). Real gap — clients cannot be written from
+  the spec alone.
+- No scenario for a declared entry whose evidence path is absent or unreadable.
+  Drop the entry, invalidate the file, or accept the claim are three different
+  trust properties and the delta picks none.
+- Declared-status vocabulary is unrestricted for `workflow`/`spec`/`coverage`
+  while `pen-test` is constrained. Probably deliberate; not written down as
+  deliberate.
+- codex's "the Tier-B schema is not specified" is **overstated** — the
+  requirement fixes field names, vocabularies and the *existence* of bounds;
+  only the numeric values live in the Zod schema. Recorded as reviewed and not
+  accepted.
+- gemini's submodule case, and its argument that the `workflow` fail/warn
+  polarity is inverted, are product judgements the design took deliberately.
+  Recorded, not silently flipped.
 
 ## Out of scope
 

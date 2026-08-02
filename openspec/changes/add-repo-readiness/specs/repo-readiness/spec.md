@@ -439,7 +439,10 @@ For derived committed evidence, `at` SHALL be the evidence commit's git
 committer timestamp; for declared evidence it SHALL be `observedAt`; for
 uncommitted evidence it SHALL be the scan time. `generatedAt` SHALL be the time
 the computed snapshot entered the cache, not the time a cached response happened
-to be served.
+to be served. A fleet response mixes freshly computed and replayed snapshots, so
+its `generatedAt` SHALL be the oldest `generatedAt` among the snapshots it
+includes. The envelope therefore never claims the fleet is fresher than its
+stalest repo.
 
 For the derived `workflow` check, repo-scoped workflow-version/scaffolder
 metadata is the evidence: `at` SHALL be the last commit touching that
@@ -467,15 +470,25 @@ unknown fields.
 
 The daemon SHALL expose authenticated, CORS-locked `GET /api/v2/fleet`, `GET
 /api/v2/repos/:id`, and `POST /api/v2/repos/:id/rescan` routes in the existing
-Hono app, with no cookie-auth alternative. Unknown repo identifiers SHALL return
-404. A failure in one deriver MUST NOT remove other checks from that repo's
+Hono app, with no cookie-auth alternative. The bearer token is the authorization
+boundary. The CORS allow-list governs what a browser will be permitted to read
+and SHALL NOT be relied on to refuse a non-browser client, so the two read
+routes SHALL serve a token-bearing request whatever its `Origin`. The
+state-changing rescan route SHALL additionally check `Origin` in the daemon and
+refuse a disallowed one with 403 before doing any work: the middleware governs
+what a browser may read, the explicit check governs what the daemon will do.
+Unknown repo identifiers SHALL return 404. A failure in one deriver MUST NOT remove other checks from that repo's
 result, and a failure for one repo MUST NOT remove other repos from the fleet
 result. Responses SHALL be validated against the shared schema before being sent
 and returned in registry order without server-side sorting.
 
 Computed readiness SHALL be cached for no more than five seconds and invalidated
-by relevant HEAD, dirty/untracked production-code state, readiness-file state,
-machine-global workflow state, or registry membership. Concurrent rescans for the same repo SHALL be
+by relevant HEAD, the entire dirty/untracked working-tree state, readiness-file
+state, machine-global workflow state, or registry membership. The invalidating
+set is deliberately wider than the production-code subset the freshness rules
+score: narrowing it would require parsing the readiness file to learn the
+configured scope before the cache could be consulted, and over-invalidating errs
+in the safe direction where under-invalidating does not. Concurrent rescans for the same repo SHALL be
 coalesced into one computation. Readiness data, including machine-global
 workflow state, SHALL remain in memory and MUST NOT be persisted or exported as
 repo-owned data.
@@ -501,9 +514,18 @@ repo-owned data.
 - **AND** an unknown repo returns 404 without reading a filesystem path from the request.
 
 #### Scenario: All routes inherit the trust boundary
-- **WHEN** a readiness route is requested without a valid bearer token or from a disallowed origin
+- **WHEN** a readiness route is requested without a valid bearer token
 - **THEN** it is refused before repository data is read
 - **AND** no cookie-only authentication path is accepted.
+
+#### Scenario: CORS does not stand in for authorization on the read routes
+- **WHEN** a readiness read route is requested with a valid bearer token and an origin outside the allow-list
+- **THEN** the response is served, because the origin allow-list binds browsers and not other clients
+- **AND** the allow-list still denies the response to a browser page on that origin.
+
+#### Scenario: The state-changing route checks the origin itself
+- **WHEN** rescan is requested with a valid bearer token and an origin outside the allow-list
+- **THEN** it is refused with 403 and no rescan is performed.
 
 #### Scenario: The server does not sort
 - **WHEN** the fleet endpoint returns
