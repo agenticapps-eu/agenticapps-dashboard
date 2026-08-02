@@ -17,6 +17,18 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+/**
+ * The panel, straight out of the DOM. It carries `aria-hidden` while closed —
+ * see "a closed panel is out of the accessibility tree" — so a role query finds
+ * nothing until it opens, and most of these tests want to hold it from the
+ * start.
+ */
+function panelEl(): HTMLElement {
+  const el = document.querySelector('[role="tooltip"]')
+  if (el === null) throw new Error('no tooltip panel in the DOM')
+  return el as HTMLElement
+}
+
 describe('Tooltip primitive', () => {
   it('renders trigger wrapping children with tabIndex=0', () => {
     render(<Tooltip content="hi">CLAUDE.md</Tooltip>)
@@ -32,18 +44,32 @@ describe('Tooltip primitive', () => {
 
   it('panel is hidden on initial render (opacity-0 pointer-events-none, not unmounted)', () => {
     render(<Tooltip content="Project AI instructions file.">CLAUDE.md</Tooltip>)
-    const panel = screen.getByRole('tooltip')
+    // Hidden from assistive tech, so it has to be reached through the DOM.
+    const panel = document.querySelector('[role="tooltip"]') as HTMLElement
     expect(panel).not.toBeNull()
     expect(panel.className).toContain('opacity-0')
     expect(panel.className).toContain('pointer-events-none')
     expect(panel.textContent).toBe('Project AI instructions file.')
   })
 
+  it('a closed panel is out of the accessibility tree, not merely transparent', () => {
+    // Opacity hides a thing from eyes, not from a screen reader. This was
+    // tolerable while Tooltip wrapped a few column headers; §9 puts six on
+    // every fleet row, so a 15-repo fleet appended 90 orphaned `role="tooltip"`
+    // sentences to the end of document.body — each one duplicating the
+    // aria-label of a link it is no longer next to.
+    render(<Tooltip content="Project AI instructions file.">CLAUDE.md</Tooltip>)
+
+    // getByRole excludes aria-hidden subtrees, which is exactly the question.
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    expect(document.querySelector('[role="tooltip"]')).not.toBeNull()
+  })
+
   it('aria-describedby is absent on initial render and set to panel id only when open (a11y: do not leak hidden tooltip text to screen readers)', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">label</Tooltip>)
     const trigger = screen.getByText('label').closest('span[tabindex="0"]')
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
     expect(trigger).not.toBeNull()
 
     // Closed: aria-describedby is absent so screen readers do not announce the
@@ -67,7 +93,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
 
     act(() => { fireEvent.mouseEnter(trigger) })
 
@@ -85,7 +111,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
 
     act(() => { fireEvent.focus(trigger) })
 
@@ -103,7 +129,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
 
     // Open the tooltip
     act(() => { fireEvent.mouseEnter(trigger) })
@@ -119,7 +145,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
 
     // Open the tooltip
     act(() => { fireEvent.mouseEnter(trigger) })
@@ -133,7 +159,7 @@ describe('Tooltip primitive', () => {
 
   it('tooltip panel uses tokens-only colors (no hex literals)', () => {
     render(<Tooltip content="hi">trigger</Tooltip>)
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
     expect(panel.className).toContain('bg-card-bg')
     expect(panel.className).toContain('border-border-subtle')
     expect(panel.className).toContain('text-text-primary')
@@ -143,7 +169,7 @@ describe('Tooltip primitive', () => {
   it('renders panel in document.body via portal (escapes table-fixed cell)', () => {
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
     // Panel is NOT a descendant of the trigger (it lives in the portal)
     expect(trigger.contains(panel)).toBe(false)
     // Panel IS mounted directly under document.body
@@ -152,7 +178,7 @@ describe('Tooltip primitive', () => {
 
   it('panel uses position: fixed (not absolute) so cell width does not constrain it', () => {
     render(<Tooltip content="hi">trigger</Tooltip>)
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
     expect(panel.className).toContain('fixed')
     expect(panel.className).not.toContain('absolute')
     expect(panel.className).toContain('max-w-xs')
@@ -162,7 +188,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]') as HTMLElement
-    const panel = screen.getByRole('tooltip') as HTMLElement
+    const panel = panelEl() as HTMLElement
     vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
       top: 100, bottom: 120, left: 50, right: 90, width: 40, height: 20,
       x: 50, y: 100, toJSON() { return {} },
@@ -180,7 +206,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]') as HTMLElement
-    const panel = screen.getByRole('tooltip') as HTMLElement
+    const panel = panelEl() as HTMLElement
 
     const rect = vi.spyOn(trigger, 'getBoundingClientRect')
     rect.mockReturnValue({
@@ -206,7 +232,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]') as HTMLElement
-    const panel = screen.getByRole('tooltip') as HTMLElement
+    const panel = panelEl() as HTMLElement
 
     const rect = vi.spyOn(trigger, 'getBoundingClientRect')
     rect.mockReturnValue({
@@ -232,7 +258,7 @@ describe('Tooltip primitive', () => {
     vi.useFakeTimers()
     render(<Tooltip content="hi">trigger</Tooltip>)
     const trigger = screen.getByText('trigger').closest('span[tabindex="0"]')!
-    const panel = screen.getByRole('tooltip')
+    const panel = panelEl()
 
     act(() => { fireEvent.focus(trigger) })
     act(() => { vi.advanceTimersByTime(110) })
@@ -267,7 +293,7 @@ describe('Tooltip primitive', () => {
         </Tooltip>,
       )
       const link = screen.getByRole('link', { name: 'cell' })
-      const panel = screen.getByRole('tooltip')
+      const panel = panelEl()
 
       act(() => { fireEvent.focus(link) })
       act(() => { vi.advanceTimersByTime(100) })

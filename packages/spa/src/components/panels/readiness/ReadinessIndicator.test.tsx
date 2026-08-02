@@ -127,9 +127,58 @@ describe('ReadinessIndicator', () => {
     expect(mixed).toHaveLength(CHECK_IDS.length)
   })
 
-  it('gives every status its own shape, so colour is never the only channel', () => {
+  it('gives every status its own shape in the lookup table', () => {
     const icons = new Set(CHECK_STATUSES.map((s) => STATUS_PRESENTATION[s].icon))
     expect(icons.size).toBe(CHECK_STATUSES.length)
+  })
+
+  it('renders a different shape per status, so colour is never the only channel', () => {
+    // The table above being distinct proves nothing about the DOM. Until this
+    // existed, replacing `const Shape = presentation.icon` with a hard-coded
+    // tick — every cell in the product identical regardless of status — left
+    // all 72 readiness tests green. spec.md requires a rendered status to be
+    // "distinguishable from the other five by shape alone", and that is a claim
+    // about what is on screen.
+    const shapes = new Set<string>()
+
+    for (const status of CHECK_STATUSES) {
+      cleanup()
+      const checks = CHECK_IDS.map((id) => result(id, status))
+      render(<ReadinessIndicator checks={checks} repoName="repo" />)
+
+      const svg = document.querySelector('[role="figure"] svg')
+      expect(svg).not.toBeNull()
+      // lucide stamps its own name on every icon: `lucide-check`, `lucide-clock`.
+      const name = Array.from((svg as SVGElement).classList).find((c) =>
+        c.startsWith('lucide-'),
+      )
+      expect(name, `no lucide class for status ${status}`).toBeDefined()
+      shapes.add(name as string)
+    }
+
+    expect(shapes.size).toBe(CHECK_STATUSES.length)
+  })
+
+  it('says when a cell failed to evaluate rather than failed on its merits', () => {
+    // readinessOrder.ts claims "a reader can reconstruct any pairwise result by
+    // counting cells". They could not: an evaluation error and a merits-based
+    // failure both render a red X reading "failing", while the comparator ranks
+    // the first strictly higher. Two repos each showing one red X could order
+    // differently for a reason no cell showed.
+    render(
+      <ReadinessIndicator
+        checks={[
+          result('spec', 'fail', {
+            error: { code: 'deriver-crashed', message: 'the spec deriver threw' },
+          }),
+        ]}
+        repoName="dashboard"
+      />,
+    )
+
+    const label = screen.getByRole('figure').getAttribute('aria-label') ?? ''
+    expect(label).toContain('the spec deriver threw')
+    expect(label).toMatch(/could not be evaluated|evaluation error/i)
   })
 
   it('gives every status its own words, so the disclosure never reads ambiguously', () => {
@@ -349,12 +398,18 @@ describe('ReadinessIndicator', () => {
       const link = screen.getByRole('link')
       expect(link.getAttribute('title')).toBeNull()
 
-      const panel = screen.getByRole('tooltip')
+      // Closed, the panel is aria-hidden and so out of the accessibility tree —
+      // reach it through the DOM until it opens.
+      const panel = document.querySelector('[role="tooltip"]') as HTMLElement
       expect(panel.className).toContain('opacity-0')
+      expect(screen.queryByRole('tooltip')).toBeNull()
+
       act(() => { fireEvent.focus(link) })
       act(() => { vi.advanceTimersByTime(100) })
       expect(panel.className).toContain('opacity-100')
       expect(panel.textContent).toContain(CHECK_LABELS.coverage)
+      // Open, it is announceable — one panel, not six.
+      expect(screen.getAllByRole('tooltip')).toHaveLength(1)
     })
 
     it('adds no tab stop beyond the six controls themselves', () => {

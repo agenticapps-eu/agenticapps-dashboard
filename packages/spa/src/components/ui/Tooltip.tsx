@@ -112,6 +112,13 @@ export function Tooltip({
     <span
       id={tooltipId}
       role="tooltip"
+      // Opacity hides this from eyes, not from a screen reader. The panel stays
+      // mounted for animation continuity, so without this it sits in the
+      // accessibility tree permanently — and §9 puts six of these on every
+      // fleet row, which on a 15-repo fleet is 90 orphaned sentences appended
+      // to document.body, each duplicating the aria-label of a link it is no
+      // longer beside.
+      aria-hidden={!open}
       className={panelClassName}
       style={coords ? { top: coords.top, left: coords.left } : undefined}
     >

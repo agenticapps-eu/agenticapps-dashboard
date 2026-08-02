@@ -24,10 +24,25 @@ type SeverityCounts = readonly [
 
 /**
  * An evaluation error is a strictly higher key than a failing check, and the
- * schema forces an error-bearing result to carry status `fail`. Counting it in
- * both buckets would score one cell twice and let a repo whose deriver crashed
- * outrank a repo with two genuine failures on the second key as well as the
- * first, so `fail` here means "failed on its merits".
+ * schema forces an error-bearing result to carry status `fail`. `fail` here
+ * therefore means "failed on its merits".
+ *
+ * Be honest about what the `continue` buys: **nothing observable today.** The
+ * `fails` key is only read when the `errors` key ties, and on a tie
+ * double-counting would add the same number to both sides — so no input can
+ * distinguish this from the version without it. An earlier comment here claimed
+ * it prevented a crashed deriver outranking two genuine failures; that is
+ * arithmetically impossible and the claim was wrong.
+ *
+ * It stays for two reasons that are real. spec.md requires it in those words
+ * ("it contributes to the evaluation-error count and is excluded from the
+ * ordinary `fail` count, so one result is never counted twice"), so the counts
+ * are meant to describe the world correctly whether or not the ordering
+ * notices. And it becomes observable the moment the schema stops forcing an
+ * error-bearing result to `fail`, which is exactly when nobody would think to
+ * look here.
+ *
+ * No test pins it, because no test can. Do not add one that pretends to.
  */
 function severityCounts(checks: readonly CheckResult[]): SeverityCounts {
   let errors = 0

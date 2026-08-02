@@ -149,9 +149,17 @@ function formatValue(check: CheckResult): string | null {
 function disclose(check: CheckResult): string {
   const { word } = STATUS_PRESENTATION[check.status]
   const value = formatValue(check)
-  const head = `${CHECK_LABELS[check.id]} — ${word}`
+  // An evaluation error is a strictly higher sort key than a merits-based
+  // failure, but the schema forces it to carry status `fail` — so without this
+  // the two render identically and read identically, while ordering
+  // differently. readinessOrder.ts promises "a reader can reconstruct any
+  // pairwise result by counting cells"; this is what makes that true.
+  const head =
+    check.error !== null
+      ? `${CHECK_LABELS[check.id]} — could not be evaluated`
+      : `${CHECK_LABELS[check.id]} — ${word}`
   const body = `${value === null ? '' : `${value}, `}${formatObservedAt(check.at)}, ${check.source}`
-  const reason = check.summary.trim()
+  const reason = check.error?.message ?? check.summary.trim()
   return `${head}, ${body}${reason === '' ? '' : ` — ${reason}`}`
 }
 

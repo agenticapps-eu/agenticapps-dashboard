@@ -85,10 +85,14 @@ describe('compareRepoSeverity', () => {
     expect(order([one, two])).toEqual(['two-errors', 'one-error'])
   })
 
-  it('excludes error-bearing results from the ordinary fail count', () => {
-    // Both repos have one `fail` status. One of them is an evaluation error,
-    // which is a strictly higher key — so it must not also count as a fail,
-    // or the two keys would double-count the same cell.
+  it('ranks a single evaluation error above any number of genuine failures', () => {
+    // This is what the first key actually guarantees, and it is what the
+    // previous version of this test proved — despite being named for the
+    // error/fail exclusion, which it never exercised.
+    //
+    // Nothing here can test that exclusion, and nothing anywhere can: the
+    // `fails` key is only consulted on an `errors` tie, where double-counting
+    // adds the same number to both sides. See the note in readinessOrder.ts.
     const evaluation = repo('evaluation-error', { errors: ['spec'] })
     const genuine = repo('two-real-fails', {
       statuses: { spec: 'fail', coverage: 'fail' },
