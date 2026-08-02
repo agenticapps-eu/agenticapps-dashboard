@@ -23,6 +23,14 @@ const declaredPenTest = {
   commit: 'b'.repeat(40),
 }
 
+/**
+ * A declaration is only usable if the evidence it cites is actually there, so
+ * every test that expects a usable file has to put the file on disk.
+ */
+function putEvidence(): void {
+  put(declaredPenTest.evidence, '# pen test\n')
+}
+
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), 'readiness-file-'))
 })
@@ -38,6 +46,7 @@ describe('readReadinessFile', () => {
   })
 
   it('parses a usable file', async () => {
+    putEvidence()
     put(
       READINESS_FILE_PATH,
       JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
@@ -48,7 +57,40 @@ describe('readReadinessFile', () => {
     expect(outcome.kind === 'usable' && outcome.file.checks?.[0]?.id).toBe('pen-test')
   })
 
+  // Tier B is trusted author input, and the thing that makes it auditable rather
+  // than merely asserted is that the evidence can be opened. A declaration
+  // citing a file that is not there is indistinguishable from a claim with
+  // nothing behind it, so it invalidates the file the same way any other
+  // malformed entry does.
+  it('refuses a declaration whose evidence file does not exist', async () => {
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
+    expect(outcome.kind === 'unusable' && outcome.notice.code).toBe(
+      'readiness-file-invalid',
+    )
+  })
+
+  it('refuses evidence that resolves outside the repository through a symlink', async () => {
+    const secret = join(dirname(repo), 'outside-evidence.md')
+    writeFileSync(secret, 'secret\n')
+    mkdirSync(join(repo, 'docs', 'security'), { recursive: true })
+    symlinkSync(secret, join(repo, declaredPenTest.evidence))
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
+  })
+
   it('discards an entry whose check id is unknown without discarding the file', async () => {
+    putEvidence()
     put(
       READINESS_FILE_PATH,
       JSON.stringify({

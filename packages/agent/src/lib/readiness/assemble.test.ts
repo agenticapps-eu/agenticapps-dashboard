@@ -71,8 +71,20 @@ function options(over: Partial<AssembleReadinessOptions> = {}): AssembleReadines
   }
 }
 
-const declare = (checks: unknown[], extra: Record<string, unknown> = {}) =>
+/**
+ * Writes the declaration file *and* any evidence it cites. A declaration whose
+ * evidence cannot be opened now invalidates the whole file, so a fixture that
+ * cited a path it never created was testing the unusable-file path while
+ * claiming to test precedence. Tests that mean to exercise missing evidence say
+ * so by not going through this helper.
+ */
+const declare = (checks: unknown[], extra: Record<string, unknown> = {}) => {
+  for (const check of checks) {
+    const cited = (check as { evidence?: unknown }).evidence
+    if (typeof cited === 'string' && cited !== '') write(cited)
+  }
   write(READINESS_FILE_PATH, JSON.stringify({ schemaVersion: 1, ...extra, checks }))
+}
 
 const byId = (checks: Awaited<ReturnType<typeof assembleReadiness>>['checks'], id: string) =>
   checks.find((check) => check.id === id)!
@@ -134,6 +146,36 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(byId(result.checks, 'pen-test').status).toBe('ok')
     expect(result.checks.filter((check) => check.source === 'derived')).toHaveLength(5)
     expect(result.notice).toBeNull()
+  })
+
+  // The same declaration, minus the file it cites. Nothing about the JSON has
+  // changed, so a reader who saw only the declaration would still read `ok` —
+  // which is why the citation has to be opened rather than trusted. `pen-test`
+  // is declared-only, so falling back to derived puts it at `never`: the repo
+  // goes from "passed a pen test" to "has never had one", and the notice says
+  // why rather than leaving the drop unexplained.
+  it('falls back to derived, with a notice, when declared evidence is not there', async () => {
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: 'docs/pen-test.md',
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    expect(byId(result.checks, 'pen-test').source).toBe('derived')
+    expect(byId(result.checks, 'pen-test').status).toBe('never')
+    expect(result.notice?.code).toBe('readiness-file-invalid')
   })
 
   it('lets a declaration override a worse derived value without a discrepancy warning', async () => {

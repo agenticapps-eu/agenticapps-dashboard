@@ -239,12 +239,33 @@ describe('CheckResultSchema', () => {
     ).toBe(false)
   })
 
+  // A UNC root is absolute and names a host's filesystem, but it carries no
+  // forward slash and no drive letter, so both earlier forms of this check
+  // walked past it.
+  it('rejects a UNC path', () => {
+    expect(
+      CheckResultSchema.safeParse(
+        result('coverage', {
+          status: 'fail',
+          summary: 'unreadable',
+          error: {
+            code: 'coverage-unreadable',
+            message: '\\\\server\\share\\secret.txt could not be read',
+          },
+        }),
+      ).success,
+    ).toBe(false)
+  })
+
   // The counterweight to widening that boundary: a false rejection fails the
   // whole outbound response and shows the schema-drift screen, so the symbolic
-  // root and a scheme-relative URL must both survive.
+  // root and a scheme-relative URL must both survive. A colon-adjacent *route*
+  // must too — it has the same shape as a colon-adjacent path, which is why the
+  // colon boundary asks for a filesystem root before refusing.
   it.each([
     ['a symbolic home root', 'the skill is missing from ~/.claude/skills'],
     ['a URL', 'see https://example.com/docs/readiness for the format'],
+    ['a colon-adjacent route', 'GET:/api/v2/fleet returned 500'],
   ])('accepts an error message carrying %s', (_label, message) => {
     expect(
       CheckResultSchema.safeParse(

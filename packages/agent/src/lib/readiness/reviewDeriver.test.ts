@@ -209,6 +209,28 @@ describe('deriveReview — verdicts', () => {
     expect(result.error?.code).toBeTruthy()
   })
 
+  // `Number.isFinite` accepted anything that coerced, and only `> 0` failed, so
+  // a count that is not a count at all read as "no blocking issues". A negative
+  // is the sharp case: it is nonsense, and it passed.
+  it.each([
+    ['a negative count', '-1'],
+    ['a fractional count', '1.5'],
+    ['an exponent', '1e2'],
+    ['a hex literal', '0x0'],
+  ])('carries an evaluation error for %s', async (_label, value) => {
+    const result = await withCodeReview(
+      `---\nverdict: PASS\nblocking_open: ${value}\n---\n`,
+    )
+    expect(result.status).toBe('fail')
+    expect(result.error?.code).toBeTruthy()
+  })
+
+  it('still accepts a plain zero', async () => {
+    const result = await withCodeReview('---\nverdict: PASS\nblocking_open: 0\n---\n')
+    expect(result.status).toBe('ok')
+    expect(result.error).toBeNull()
+  })
+
   it('accepts the legacy stage_2_verdict key for a code review', async () => {
     const result = await withCodeReview('---\nstage_2_verdict: APPROVE\nblocking_open: 0\n---\n')
     expect(result.status).toBe('ok')

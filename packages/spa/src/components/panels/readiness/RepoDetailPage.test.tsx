@@ -397,6 +397,27 @@ describe('RepoDetailPage evidence blocks', () => {
     expect(document.activeElement).toBe(block('pen-test'))
   })
 
+  // Back-navigation to the same route without a hash left the latch holding the
+  // id it landed on, so returning to that same check was a dead link.
+  it('lands on the same check again after the hash is cleared in between', () => {
+    routerState.hash = 'coverage'
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    loaded(detail())
+    const { rerender } = render(<RepoDetailPage />)
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+
+    routerState.hash = ''
+    rerender(<RepoDetailPage />)
+
+    routerState.hash = 'coverage'
+    rerender(<RepoDetailPage />)
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(2)
+    expect(scrollIntoView.mock.instances[1]).toBe(block('coverage'))
+  })
+
   it('leaves the page where it is when no check was named', () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView

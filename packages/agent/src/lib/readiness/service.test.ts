@@ -371,6 +371,21 @@ describe('rescanRepo', () => {
     expect(rescanned!.generatedAt).toBe(NOW + 2_000)
   })
 
+  // Coalescing keys on the repo id, but the id is a registry label — the thing
+  // actually scanned is the root behind it. When a repo is repointed while a
+  // computation for that id is in flight, the second request must not be handed
+  // the first one's answer about the old directory.
+  it('does not coalesce two rescans of the same id across a repointed root', async () => {
+    const moved = makeRepo('a-moved')
+
+    const first = rescanRepo('a', options({ now: NOW }))
+    registry([{ id: 'a', root: moved }, { id: 'b', root: makeRepo('b-kept') }])
+    const second = await rescanRepo('a', options({ now: NOW + 3_000 }))
+    await first
+
+    expect(second!.generatedAt).toBe(NOW + 3_000)
+  })
+
   it('coalesces concurrent rescans into one computation', async () => {
     const [first, second] = await Promise.all([
       rescanRepo('a', options({ now: NOW })),

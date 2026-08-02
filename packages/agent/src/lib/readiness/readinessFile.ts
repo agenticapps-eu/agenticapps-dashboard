@@ -14,7 +14,7 @@
  * does not know without losing its whole file.
  */
 import { lstat, readFile, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 import {
   ReadinessFileSchema,
@@ -26,6 +26,8 @@ import { resolveAllowedNamed } from '../paths.js'
 
 export const READINESS_FILE_PATH = '.agenticapps/readiness.json'
 const MAX_FILE_BYTES = 64 * 1024
+/** Evidence is prose or a report, not the 64 KB budget the declaration file gets. */
+const MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 
 export type ReadinessFileOutcome =
   | { kind: 'absent' }
@@ -108,5 +110,57 @@ export async function readReadinessFile(root: string): Promise<ReadinessFileOutc
       `${READINESS_FILE_PATH} does not match the readiness file schema`,
     )
   }
-  return { kind: 'usable', file: result.data }
+
+  return (await evidenceIsReadable(root, result.data)) ?? {
+    kind: 'usable',
+    file: result.data,
+  }
+}
+
+/**
+ * The schema checks the *shape* of an evidence path. It cannot check that the
+ * file is there, and a declaration whose evidence cannot be opened is a claim
+ * with nothing behind it — indistinguishable, to a reader, from one that is
+ * fully substantiated. Tier B is trusted author input precisely because it is
+ * auditable, so an unopenable citation is treated as a malformed entry and
+ * discards the whole file, exactly as an escaping path or a bad shape does.
+ *
+ * Containment goes through the same named-read primitive the coverage artifact
+ * uses, so a symlink out of the repository is refused before any bytes are read.
+ * The basename is passed as the allow-list because evidence is author-named.
+ *
+ * Returns an outcome when the file must be refused, and undefined when every
+ * cited path is present, contained and within the read bound.
+ */
+async function evidenceIsReadable(
+  root: string,
+  file: ReadinessFile,
+): Promise<ReadinessFileOutcome | undefined> {
+  for (const entry of file.checks ?? []) {
+    const cited = 'evidence' in entry ? entry.evidence : undefined
+    if (typeof cited !== 'string' || cited === '') continue
+
+    let absolute: string
+    try {
+      absolute = await resolveAllowedNamed(join(root, cited), {
+        roots: [root],
+        allowedNames: [basename(cited)],
+      })
+    } catch {
+      return unusable(
+        'readiness-file-invalid',
+        `${cited} does not resolve inside the repository`,
+      )
+    }
+
+    try {
+      const info = await stat(absolute)
+      if (info.size > MAX_EVIDENCE_BYTES) {
+        return unusable('readiness-file-invalid', `${cited} is larger than the read bound`)
+      }
+    } catch {
+      return unusable('readiness-file-invalid', `${cited} could not be read`)
+    }
+  }
+  return undefined
 }

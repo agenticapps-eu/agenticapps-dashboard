@@ -269,14 +269,18 @@ function evaluateVerdict(checkId: ReviewCheckId, text: string): Verdict {
         message: 'the artifact declares no blocking_open count',
       }
     }
-    const count = Number(raw)
-    if (!Number.isFinite(count)) {
+    // A count is a plain non-negative decimal integer, not "anything Number()
+    // will coerce". `Number.isFinite` waved through `-1`, `1.5`, `1e2` and
+    // `0x0`; because only `> 0` fails, every one of those read as "no blocking
+    // issues" — a malformed artifact silently passing the gate.
+    if (!/^\d+$/.test(raw)) {
       return {
         kind: 'error',
         code: 'review-blocking-count-malformed',
-        message: 'the blocking_open count is not a number',
+        message: 'the blocking_open count is not a whole number of findings',
       }
     }
+    const count = Number(raw)
     if (count > 0) {
       return { kind: 'fail', reason: `${count} open blocking finding${count === 1 ? '' : 's'}` }
     }

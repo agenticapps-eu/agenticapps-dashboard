@@ -411,7 +411,14 @@ function useLandOnHashedCheck(ready: boolean): void {
   useEffect(() => {
     if (!ready) return
     const id = hash.replace(/^#/, '')
-    if (id === '' || landed.current === id) return
+    // Clearing the latch when the hash goes away is what makes returning to the
+    // *same* check work — back-navigation to the hashless route otherwise left
+    // the latch holding that id, and the next link to it did nothing.
+    if (id === '') {
+      landed.current = null
+      return
+    }
+    if (landed.current === id) return
     const target = document.getElementById(id)
     if (target === null) return
 

@@ -217,6 +217,10 @@ async function computeSnapshot(
  * The snapshot for one repo: replayed while the memo holds, recomputed
  * otherwise, and shared with any computation already in flight for that repo —
  * which is what bounds concurrent rescans to one computation.
+ *
+ * "That repo" means the root and the fleet inputs, not the registry id alone.
+ * An id is a label the registry can repoint; joining on the label handed a
+ * caller an answer about the directory the repo used to live in.
  */
 function snapshotFor(
   entry: { id: string; name: string; root: string },
@@ -224,7 +228,10 @@ function snapshotFor(
   opts: ReadinessScanOptions,
   force = false,
 ): Promise<RepoSnapshot> {
-  const pending = inFlight.get(entry.id)
+  // NUL-separated because it cannot occur in an id or a path, so no two
+  // distinct triples can collide onto one key.
+  const key = [entry.id, entry.root, fleet].join('\0')
+  const pending = inFlight.get(key)
   // Join only a computation that is at least as forcing as this request. Two
   // rescans still coalesce, and a read still joins anything; what may not happen
   // is a rescan inheriting a read's permission to replay the cache.
@@ -252,10 +259,10 @@ function snapshotFor(
     .finally(() => {
       // Only the current owner clears the slot. Without this, the read we
       // chained behind would delete the record this call just installed.
-      if (inFlight.get(entry.id) === record) inFlight.delete(entry.id)
+      if (inFlight.get(key) === record) inFlight.delete(key)
     })
   const record: InFlight = { promise: computation, force }
-  inFlight.set(entry.id, record)
+  inFlight.set(key, record)
   return computation
 }
 
