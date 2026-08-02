@@ -29,6 +29,7 @@ import {
   type ReadinessNotice,
 } from '@agenticapps/dashboard-shared'
 
+import { READINESS_SCAN_TIMEOUT_MS } from '../../constants.js'
 import { makeCoverageResolver } from '../coverageResolver.js'
 import { getOpenspecBinary } from '../openspecCli.js'
 import { readOpenspecProject } from '../openspecReader.js'
@@ -67,6 +68,12 @@ export interface ReadinessScanOptions {
   sourcecodeRoot?: string
   /** Override the named machine-global skill roots (tests). */
   machineSkillRoots?: Partial<Record<ReadinessHostId, string>>
+  /**
+   * Override the per-repo scan bound (tests). Never supplied by a request — like
+   * every other override here it is an internal seam, so the bound cannot be
+   * widened or disabled by a client.
+   */
+  scanTimeoutMs?: number
 }
 
 /**
@@ -307,7 +314,7 @@ function toDetail(snapshot: RepoSnapshot): RepoDetail {
     ...toSummary(snapshot),
     checks: snapshot.checks.map((check) => ({
       ...check,
-      remedy: remedyFor(check.id, check.status, snapshot.host),
+      remedy: remedyFor(check.id, check.status, snapshot.host, check.source),
     })) as unknown as RepoDetail['checks'],
   }
 }
@@ -336,17 +343,56 @@ function signatureFor(
   return fleetSignature(entries, sources.machineSkillRoots)
 }
 
+/**
+ * The value if it arrives inside the bound, or `timeout` if it does not.
+ *
+ * This bounds *the wait*, not the work. A blocked `open` on a substituted FIFO
+ * cannot be cancelled from Node, so the underlying computation keeps running;
+ * what changes is that the endpoint stops waiting for it. Threading an
+ * `AbortSignal` down to every filesystem call would be the principled fix and
+ * belongs to the shared read primitive, which this deliberately does not touch.
+ *
+ * The timer is cleared on the settling path and `unref`ed, so a pending deadline
+ * can neither leak nor hold the process open at shutdown.
+ */
+const TIMED_OUT = Symbol('readiness-scan-timeout')
+
+function withinBound<T>(
+  work: Promise<T>,
+  opts: ReadinessScanOptions,
+): Promise<T | typeof TIMED_OUT> {
+  let timer: NodeJS.Timeout
+  const deadline = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(
+      () => resolve(TIMED_OUT),
+      opts.scanTimeoutMs ?? READINESS_SCAN_TIMEOUT_MS,
+    )
+    timer.unref?.()
+  })
+  return Promise.race([work, deadline]).finally(() => clearTimeout(timer))
+}
+
 export async function readFleet(
   opts: ReadinessScanOptions = {},
 ): Promise<FleetResponse> {
   const entries = registryEntries(opts)
-  const fleet = await signatureFor(entries, opts)
+  // Bounded too: the signature is computed before any repo is scanned, so a
+  // blocking read here withholds the response earlier than a stuck repo would.
+  // An unavailable signature is not fatal — it is a cache key, and a distinct
+  // placeholder simply means nothing replays from the previous key.
+  //
+  // The two bounds are sequential and cannot be overlapped, because every repo's
+  // cache key is derived from the signature. The endpoint's worst case is
+  // therefore two bounds rather than one — still bounded, which is the property
+  // that matters, but it is 30s and should not be read as 15s.
+  const signature = await withinBound(signatureFor(entries, opts), opts)
+  const fleet = signature === TIMED_OUT ? 'signature-unavailable' : signature
 
   const settled = await Promise.allSettled(
-    entries.map((entry) => snapshotFor(entry, fleet, opts)),
+    entries.map((entry) => withinBound(snapshotFor(entry, fleet, opts), opts)),
   )
   const snapshots = settled.flatMap((result, index) =>
-    result.status === 'fulfilled'
+    result.status === 'fulfilled' && result.value !== TIMED_OUT
       ? [result.value]
       : [unscannable(entries[index]!, opts)],
   )
@@ -379,6 +425,17 @@ function unscannable(
   }
 }
 
+/**
+ * Deliberately not bounded, unlike `readFleet`.
+ *
+ * The guarantee the bound exists to keep is that one repo cannot withhold *the
+ * fleet*. A request for a single repo that blocks affects only the caller who
+ * asked about that repo, and answering them "unscannable" after fifteen seconds
+ * would report a fact about the daemon's patience as a fact about their
+ * repository — worse for the one caller who actually wants to wait, and
+ * especially so on the rescan route, where the caller explicitly asked for the
+ * work to be done.
+ */
 async function detailFor(
   id: string,
   opts: ReadinessScanOptions,

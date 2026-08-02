@@ -81,6 +81,26 @@ describe('remedyFor', () => {
         }
       }
     })
+
+    // The two `never`s reach opposite verdicts, so they cannot share remedy
+    // text. Telling an author who has just declared "we have never tested" that
+    // the check does not block would send them hunting for a blocker that is
+    // the very check they are reading.
+    it('does not tell a declared never that it fails to block', () => {
+      const declared = remedyFor('pen-test', 'never', 'claude', 'declared')
+      const derived = remedyFor('pen-test', 'never', 'claude', 'derived')
+
+      expect(declared).not.toBe(derived)
+      expect(declared).toContain('blocks')
+      expect(declared).not.toContain('does not block')
+      expect(derived).toContain('does not block')
+    })
+
+    it('tells a declared na that the check is excluded, not that it is missing', () => {
+      const remedy = remedyFor('pen-test', 'na', 'claude', 'declared')
+      expect(remedy).toContain('excluded')
+      expect(remedy).not.toContain('does not block a ready verdict')
+    })
   })
 
   describe('the spec slot on an unmigrated repo', () => {

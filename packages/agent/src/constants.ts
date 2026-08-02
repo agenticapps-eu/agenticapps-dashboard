@@ -29,6 +29,19 @@ export type GitAllowedCmd = (typeof GIT_ALLOWED_CMDS)[number]
 export const OPENSPEC_SUBPROCESS_TIMEOUT_MS = 5_000
 export const OPENSPEC_MAX_OUTPUT_BYTES = 2 * 1024 * 1024 // 2 MiB of CLI JSON
 
+// repo-readiness — how long fleet assembly waits for one repo, or for the
+// fleet-wide signature, before reporting it unscannable and answering anyway.
+//
+// Every *subprocess* in a scan is already bounded at 5s, but no filesystem call
+// is: a substituted FIFO or a hung mount can make an `open` block forever, and
+// `Promise.allSettled` survives rejection, not a hang. Without this the whole
+// fleet response is withheld by one stuck repo.
+//
+// Deliberately larger than every subprocess bound above, so that a repo which is
+// merely slow — several bounded git calls plus the openspec CLI, in sequence —
+// is reported rather than cut off. A repo that exceeds this is genuinely stuck.
+export const READINESS_SCAN_TIMEOUT_MS = 15_000
+
 // D-14-02/D-14-03 — Understand viewer token secret storage (0600).
 export const VIEWER_TOKEN_FILE = join(CONFIG_DIR, 'viewer-token.json')
 

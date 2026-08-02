@@ -324,6 +324,65 @@ describe('ReadinessIndicator', () => {
     expect(cell.getAttribute('title')).toBe(disclosure)
   })
 
+  // A declared `never` and a derived `never` render the same shape and the same
+  // grey, and reach opposite verdicts. The advisory note is what tells them
+  // apart, and it is gated on provenance for exactly this reason: telling a
+  // reader that the check "does not block readiness" when the repo declared it —
+  // and is therefore not ready because of it — would send them looking for a
+  // blocker that is the very cell they are reading.
+  it('calls a derived never advisory and a declared never not', () => {
+    const { unmount } = render(
+      <ReadinessIndicator
+        checks={[result('pen-test', 'never')]}
+        repoName="dashboard"
+        variant="compact"
+      />,
+    )
+    expect(screen.getByRole('figure').getAttribute('aria-label')).toContain(
+      'does not block readiness',
+    )
+    unmount()
+
+    render(
+      <ReadinessIndicator
+        checks={[result('pen-test', 'never', { source: 'declared' })]}
+        repoName="dashboard"
+        variant="compact"
+      />,
+    )
+    const declared = screen.getByRole('figure').getAttribute('aria-label') ?? ''
+    expect(declared).not.toContain('does not block readiness')
+    expect(declared).toContain('declared')
+  })
+
+  // A refused declaration: `declared` provenance carrying an evaluation error.
+  // The combination is new — previously a rejected citation discarded the whole
+  // file, so every check fell back to `derived` — and it must route through the
+  // existing error path rather than reading as an ordinary merits-based failure.
+  it('renders a refused declaration as an evaluation error, not a plain fail', () => {
+    render(
+      <ReadinessIndicator
+        checks={[
+          result('code-review', 'fail', {
+            source: 'declared',
+            at: null,
+            error: {
+              code: 'evidence-unverifiable',
+              message: 'docs/review.md could not be read',
+            },
+          }),
+        ]}
+        repoName="dashboard"
+        variant="compact"
+      />,
+    )
+
+    const disclosure = screen.getByRole('figure').getAttribute('aria-label') ?? ''
+    expect(disclosure).toContain('could not be evaluated')
+    expect(disclosure).toContain('declared')
+    expect(disclosure).toContain('docs/review.md could not be read')
+  })
+
   it('renders an em dash for a missing time rather than inventing one', () => {
     render(
       <ReadinessIndicator

@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { CHECK_IDS, CheckResultSchema } from '@agenticapps/dashboard-shared'
+import { CHECK_IDS, CheckResultSchema, computeReady } from '@agenticapps/dashboard-shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { makeCoverageResolver } from '../coverageResolver.js'
@@ -150,11 +150,11 @@ describe('assembleReadiness — per-check precedence', () => {
 
   // The same declaration, minus the file it cites. Nothing about the JSON has
   // changed, so a reader who saw only the declaration would still read `ok` —
-  // which is why the citation has to be opened rather than trusted. `pen-test`
-  // is declared-only, so falling back to derived puts it at `never`: the repo
-  // goes from "passed a pen test" to "has never had one", and the notice says
-  // why rather than leaving the drop unexplained.
-  it('falls back to derived, with a notice, when declared evidence is not there', async () => {
+  // which is why the citation has to be opened rather than trusted. The refusal
+  // is reported on the check that made the claim, and does NOT fall back to the
+  // derived value: a refused declaration must not become indistinguishable from
+  // one that was never made.
+  it('refuses the citing check, with a notice, when declared evidence is not there', async () => {
     write(
       READINESS_FILE_PATH,
       JSON.stringify({
@@ -173,9 +173,87 @@ describe('assembleReadiness — per-check precedence', () => {
     )
 
     const result = await assembleReadiness(options())
-    expect(byId(result.checks, 'pen-test').source).toBe('derived')
-    expect(byId(result.checks, 'pen-test').status).toBe('never')
+    const penTest = byId(result.checks, 'pen-test')
+    expect(penTest.status).toBe('fail')
+    expect(penTest.source).toBe('declared')
+    expect(penTest.evidence).toBeNull()
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(penTest.error?.message).toContain('docs/pen-test.md')
     expect(result.notice?.code).toBe('readiness-file-invalid')
+  })
+
+  it('honours the other declarations when one citation is unopenable', async () => {
+    write('docs/review.md')
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'code-review',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            evidence: 'docs/review.md',
+            commit: 'c'.repeat(40),
+          },
+          { id: 'spec', status: 'ok', observedAt: '2026-07-01T09:00:00Z' },
+          // Cites nothing that exists.
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: 'docs/pen-test.md',
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    expect(byId(result.checks, 'spec').source).toBe('declared')
+    expect(byId(result.checks, 'spec').status).toBe('ok')
+    expect(byId(result.checks, 'code-review').source).toBe('declared')
+    expect(byId(result.checks, 'pen-test').error?.code).toBe('evidence-unverifiable')
+  })
+
+  // The hole this narrowing must not open. Dropping the entry and letting the
+  // check fall back to its derived value would put `pen-test` at a derived
+  // `never` — which is exactly the shape the advisory exemption excuses — so a
+  // repo could reach ready by deleting the evidence behind its own blocking
+  // declaration. `notice` is passed as null on purpose: the result has to block
+  // on its own, not by leaning on the repo-level notice.
+  it('cannot be made readier by deleting the evidence it declared', async () => {
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'fail',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: 'docs/pen-test.md',
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.status).not.toBe('never')
+    expect(penTest.error).not.toBeNull()
+    expect(result.ready).toBe(false)
+
+    // Self-sufficient: still blocking with the notice taken away, and still
+    // blocking when every other check is forced green.
+    const allElseOk = result.checks.map((check) =>
+      check.id === 'pen-test' ? check : { ...check, status: 'ok' as const, error: null },
+    )
+    expect(computeReady(allElseOk, null)).toBe(false)
   })
 
   it('lets a declaration override a worse derived value without a discrepancy warning', async () => {
@@ -195,6 +273,102 @@ describe('assembleReadiness — per-check precedence', () => {
     const result = await assembleReadiness(options())
     expect(result.notice?.code).toBe('readiness-file-unparsable')
     expect(result.checks.every((check) => check.source === 'derived')).toBe(true)
+  })
+
+  // Narrowing the citation radius must not narrow these. A malformation that puts
+  // the file's *structure* in question leaves no trustworthy entry boundary to
+  // blame, so it still discards everything.
+  it.each([
+    ['an unsupported version', JSON.stringify({ schemaVersion: 2 })],
+    ['unparsable JSON', '{ not json'],
+    [
+      'a malformed known entry',
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [{ id: 'spec', status: 'ok' }],
+      }),
+    ],
+    [
+      'an evidence path that escapes by its own shape',
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'code-review',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            evidence: '../elsewhere.md',
+            commit: 'c'.repeat(40),
+          },
+        ],
+      }),
+    ],
+  ])('still discards the whole file for %s', async (_label, body) => {
+    write(READINESS_FILE_PATH, body)
+
+    const result = await assembleReadiness(options())
+    expect(result.notice).not.toBeNull()
+    expect(result.checks.every((check) => check.source === 'derived')).toBe(true)
+  })
+
+  // Three different places a path violation can be caught, three different
+  // costs. The previous spec text claimed the first two behaved alike; they
+  // never did.
+  it('charges a bad configured coverage path to its own check, not to the file', async () => {
+    write('docs/review.md')
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        coverage: { path: 'coverage/nowhere.json' },
+        checks: [
+          {
+            id: 'code-review',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            evidence: 'docs/review.md',
+            commit: 'c'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    // The file stays usable and the sound declaration is honoured.
+    expect(byId(result.checks, 'code-review').source).toBe('declared')
+    expect(result.notice).toBeNull()
+  })
+
+  // `error.message` is validated by SanitisedTextSchema on the way out, and a
+  // colon followed by a filesystem-looking root is exactly the shape it refuses.
+  // A repo-relative path must survive that, or the daemon fails validation on its
+  // own correct output and the client gets the schema-drift screen.
+  it('produces a refusal message the outbound sanitiser accepts', async () => {
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'code-review',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            evidence: 'docs/notes:/Users/reviewer/report.md',
+            commit: 'c'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const review = byId(result.checks, 'code-review')
+    expect(review.error?.code).toBe('evidence-unverifiable')
+    // The whole result must round-trip the shared schema, message included.
+    expect(CheckResultSchema.safeParse(review).success).toBe(true)
+    // The path is dropped from the wire message but kept in the summary, which
+    // carries no sanitiser restriction and is where a reader looks for it.
+    expect(review.error?.message).not.toContain('/Users/')
+    expect(review.summary).toContain('docs/notes:/Users/reviewer/report.md')
   })
 
   it('discards an unknown check id and keeps the rest of the file', async () => {
@@ -239,6 +413,88 @@ describe('assembleReadiness — per-check precedence', () => {
 
     const result = await assembleReadiness(options())
     expect(result.ready).toBe(true)
+  })
+
+  // The honest declaration the slot previously had no vocabulary for. An author
+  // with no pen test could not say `never` (reserved for the absence of a
+  // declaration) and could not say `fail` (which asserts a test ran and demands
+  // an artifact for it), so the only option was silence — which does not block.
+  it('accepts a declared pen-test of never and blocks on it', async () => {
+    declare([{ id: 'pen-test', status: 'never' }])
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+    expect(penTest.status).toBe('never')
+    expect(penTest.source).toBe('declared')
+    expect(penTest.at).toBeNull()
+    expect(penTest.evidence).toBeNull()
+    expect(result.notice).toBeNull()
+    expect(result.ready).toBe(false)
+  })
+
+  // Same status, same shape, opposite verdict — the difference is `source`, and
+  // it is the whole point: "nobody has said" is advisory, "we have said no" is an
+  // assertion.
+  it('distinguishes a declared never from the derived never it replaces', async () => {
+    const undeclared = await assembleReadiness(options())
+    expect(byId(undeclared.checks, 'pen-test').status).toBe('never')
+    expect(byId(undeclared.checks, 'pen-test').source).toBe('derived')
+
+    declare([{ id: 'pen-test', status: 'never' }])
+    const declared = await assembleReadiness(options())
+    expect(byId(declared.checks, 'pen-test').status).toBe('never')
+    expect(byId(declared.checks, 'pen-test').source).toBe('declared')
+  })
+
+  it('accepts a declared pen-test of na and excludes it from the predicate', async () => {
+    declare([
+      {
+        id: 'pen-test',
+        status: 'na',
+        summary: 'this repo ships no network surface',
+      },
+    ])
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+    expect(penTest.status).toBe('na')
+    expect(penTest.source).toBe('declared')
+    expect(penTest.at).toBeNull()
+    expect(penTest.evidence).toBeNull()
+    expect(penTest.summary).toContain('no network surface')
+    expect(result.notice).toBeNull()
+  })
+
+  // Previously unreachable: `pen-test` derived a constant `never` and could not
+  // be declared `na`, so the predicate honoured this case as a pure-function
+  // contract that no repo could actually be in. The declared `na` makes it real.
+  it('is not ready when every check including pen-test is na', async () => {
+    declare([
+      { id: 'workflow', status: 'na', observedAt: '2026-07-01T09:00:00Z', summary: 'n/a' },
+      { id: 'spec', status: 'na', observedAt: '2026-07-01T09:00:00Z', summary: 'n/a' },
+      {
+        id: 'code-review',
+        status: 'na',
+        observedAt: '2026-07-01T09:00:00Z',
+        summary: 'n/a',
+        evidence: 'docs/review.md',
+        commit: 'c'.repeat(40),
+      },
+      {
+        id: 'security-review',
+        status: 'na',
+        observedAt: '2026-07-01T09:00:00Z',
+        summary: 'n/a',
+        evidence: 'docs/security.md',
+        commit: 'c'.repeat(40),
+      },
+      { id: 'pen-test', status: 'na', summary: 'no network surface' },
+      { id: 'coverage', status: 'na', observedAt: '2026-07-01T09:00:00Z', summary: 'n/a' },
+    ])
+
+    const result = await assembleReadiness(options())
+    expect(result.checks.every((check) => check.status === 'na')).toBe(true)
+    expect(result.ready).toBe(false)
   })
 
   it('renders a declared na without a timestamp or evidence, but with its reason', async () => {
