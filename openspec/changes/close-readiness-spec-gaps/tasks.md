@@ -326,8 +326,66 @@ until you have seen it fail.
 - [x] 7.1 `pnpm -r typecheck` clean
 - [x] 7.2 `pnpm lint` — 0 errors, warnings at or below the 207 baseline
 - [ ] 7.3 `impeccable:critique` on the fleet and repo-detail routes at 1440×900, composite ≥ 80, artifact committed
-- [ ] 7.4 `superpowers:requesting-code-review` in an independent context (Stage 2). `openspec validate` does not discharge it
-- [ ] 7.5 Triage that review the same way as 1.3
+- [x] 7.4 `superpowers:requesting-code-review` in an independent context (Stage 2) — general-purpose reviewer over `55f88f0..c6bce4f`
+- [x] 7.5 Triage: **11 findings, 10 fixed, 1 carried.** Recorded in 7.6
+
+### 7.6 Stage-2 review triage
+
+No Critical. The reviewer probed specifically for a wrong verdict and confirmed
+the predicate itself is sound — `computeReady`/`refineReady` cannot disagree, the
+suspension holds on both wire shapes, and each limit of the exemption has a
+non-vacuous test. What it found was missing enforcement *around* the predicate,
+and three of the findings were mine to own.
+
+**The process failure.** Tasks 2.6a-i and 2.6a-ii were marked `[x]` against tests
+that were never written. I bulk-marked the section with a script and did not
+check. The mutation those tasks existed to stop — `computeReady(value.checks,
+null)` inside `refineReady` — passed the entire suite while taking the whole
+fleet endpoint to a 500 for any repo with an unusable readiness file. Now written
+for both wire shapes and mutation-verified. This is the same shape as the defect
+the four plan rounds kept catching: a guard recorded as present that was not.
+
+**The accessibility finding, which was worse than reported.** The disclosure was
+an `aria-label` on a role-less `<span>` — a name-prohibited combination this repo
+already documents verbatim at `RepoDetailPage.tsx:479`. On probing, the
+accessible name computed to **empty**, meaning the original assertion had never
+been true of the shipped markup: the test passed because
+`dom-accessibility-api` applies `aria-label` without checking role prohibition.
+The qualification is now text inside the verdict, with a literal space so it does
+not read as "Ready(excludes pen test)".
+
+**The guard had a second door.** `lstat` failing with `EACCES`, `ELOOP` or
+`ENOTDIR` was swallowed into `{ kind: 'absent' }`, which raises no notice, which
+re-applies the advisory exemption. So `chmod 000 .agenticapps/` flipped a repo
+with a declared `pen-test: fail` from Not ready to Ready — the greener-repo hole,
+reopened through the one unreadability mode that did not produce a notice. Only
+`ENOENT`/`ENOTDIR` are absent now; mutation-checked.
+
+**The structural constraint was not structural.** The delta's scenario says "the
+build fails on that declaration", and it did not: `ADVISORY_WHEN_UNDECLARED` was
+typed `readonly CheckId[]`, so appending `'coverage'` compiled cleanly and only a
+behavioural test objected — precisely the substitution the requirement forbids,
+and the test's own comment asserted an invariant that did not hold. Fixed with
+`as const satisfies` plus `UNDERIVABLE_DERIVERS: Record<AdvisoryCheckId, () =>
+UnderivableCheck>`; appending now fails with TS2741, verified by mutation.
+
+**Minor, all taken:** the SPA no longer re-encodes set membership (both sides call
+`isAdvisoryCheck`, so the disclosure cannot name a different set than the verdict
+exempted, and the notice-clause dependency is stated); a tautological assertion
+removed; a doc comment my insertion had orphaned off `DerivedCheck` restored;
+direct tests for `exclusionPhrase`, whose multi-member branch was shipping
+unexecuted and is the only coverage of the forward-pinning scenario.
+
+**Carried, not fixed — version skew.** The SPA validates responses with the same
+schema, so a new SPA against an unupgraded daemon (or a cached old SPA against a
+new daemon) recomputes `ready` differently and `SchemaDriftState` replaces the
+entire readiness feature rather than degrading one row. This change is the first
+to move the predicate, so it is the first time the cost of cross-validating a
+derived field bites. Not a defect; belongs in the PR body and, if it recurs, in a
+decision about whether `refineReady` should stay a hard rejection.
+
+Also noted and left: `RepoSnapshot.ready` is computed at `service.ts:204` and
+ignored by `toSummary`, which recomputes. Pre-existing dead field, out of scope.
 
 ## 8. Archive, then ship
 
