@@ -148,17 +148,19 @@ function ReadyVerdict({
     )
   }
 
+  // The qualification is text, not an `aria-label`. A bare span has no role for
+  // a name to attach to, so the label is prohibited and dropped — and hiding the
+  // visible copy behind `aria-hidden` would then leave a screen reader hearing
+  // "Ready" with the disclosure gone, which is the one thing this must not do.
+  // Same reasoning as the loading region in RepoDetailPage.
   return (
     <span
       data-testid="readiness-verdict"
       className="text-sm font-medium text-status-success"
-      aria-label={phrase === null ? undefined : `Ready — ${phrase}`}
     >
       Ready
       {phrase !== null && (
-        <span aria-hidden className="ml-1 font-normal text-text-tertiary">
-          ({phrase})
-        </span>
+        <span className="font-normal text-text-tertiary"> ({phrase})</span>
       )}
     </span>
   )

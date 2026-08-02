@@ -68,6 +68,7 @@ export {
   ReadinessFileSchema,
   computeReady,
   ADVISORY_WHEN_UNDECLARED,
+  isAdvisoryCheck,
 } from './schemas/readiness.js'
 export type {
   CheckId,
@@ -75,6 +76,7 @@ export type {
   CheckSource,
   CheckResult,
   ReadinessNotice,
+  AdvisoryCheckId,
   RepoFamily,
   RepoSummary,
   RepoDetail,

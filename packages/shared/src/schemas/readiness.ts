@@ -243,7 +243,26 @@ const DetailChecksSchema = z.tuple([
  * a deriver's behaviour could not establish the property, because a conditional
  * branch satisfies any finite number of calls.
  */
-export const ADVISORY_WHEN_UNDECLARED: readonly CheckId[] = ['pen-test']
+export const ADVISORY_WHEN_UNDECLARED = ['pen-test'] as const satisfies readonly CheckId[]
+
+/**
+ * The ids in that set, as a union rather than as `CheckId`. The agent uses it to
+ * bind each member to a deriver that can only return `never`, so widening the
+ * set fails to compile until the new member has a deriver of that shape.
+ * Without the `as const` above this would collapse to `CheckId` and the binding
+ * would accept anything.
+ */
+export type AdvisoryCheckId = (typeof ADVISORY_WHEN_UNDECLARED)[number]
+
+/**
+ * Membership test. The set is a narrow literal tuple so the agent can bind each
+ * member to an underivable deriver, which makes `.includes` reject an arbitrary
+ * `CheckId` outright — this widens for the query without widening the constant
+ * that carries the guarantee.
+ */
+export function isAdvisoryCheck(id: CheckId): boolean {
+  return (ADVISORY_WHEN_UNDECLARED as readonly CheckId[]).includes(id)
+}
 
 /**
  * Readiness is a boolean over the six results, never a score. `fail`, `stale`,
@@ -270,7 +289,7 @@ export function computeReady(
   const exempt = (check: Pick<CheckResult, 'id' | 'status' | 'source'>) =>
     check.status === 'never' &&
     check.source === 'derived' &&
-    ADVISORY_WHEN_UNDECLARED.includes(check.id) &&
+    isAdvisoryCheck(check.id) &&
     notice === null
 
   const blocked = checks.some(

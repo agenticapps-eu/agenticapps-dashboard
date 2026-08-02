@@ -33,8 +33,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import {
-  ADVISORY_WHEN_UNDECLARED,
   CHECK_IDS,
+  isAdvisoryCheck,
   type CheckId,
   type CheckResult,
   type CheckStatus,
@@ -124,10 +124,17 @@ export const CHECK_LABELS: Record<CheckId, string> = {
  * The checks a ready verdict passed over rather than satisfied: those the
  * daemon cannot derive and this repo has not declared.
  *
- * Derived from `ADVISORY_WHEN_UNDECLARED` rather than naming pen-test, so a
- * second declared-only check is disclosed by joining the set instead of by
- * someone remembering to widen a sentence. Returns nothing when the repo is not
- * ready — a verdict that already withholds itself has nothing to qualify.
+ * Membership comes from `isAdvisoryCheck`, the same predicate `computeReady`
+ * applies, so the disclosure cannot name a different set than the one the
+ * verdict exempted. A second declared-only check is disclosed by joining the
+ * set rather than by someone remembering to widen a sentence.
+ *
+ * `computeReady` has one further clause this does not: the exemption is
+ * suspended while the repo carries a readiness-file notice. Omitting it here is
+ * safe only because of the `!ready` early return — a repo with a notice and a
+ * derived-never advisory check cannot be ready, so this is never asked about
+ * one. Stated because that is a two-hop argument guarding a disclosure, and the
+ * next reader should not have to reconstruct it.
  */
 export function excludedFromVerdict(
   ready: boolean,
@@ -139,7 +146,7 @@ export function excludedFromVerdict(
       (check) =>
         check.status === 'never' &&
         check.source === 'derived' &&
-        ADVISORY_WHEN_UNDECLARED.includes(check.id),
+        isAdvisoryCheck(check.id),
     )
     .map((check) => check.id)
 }

@@ -255,7 +255,7 @@ describe('FleetPage', () => {
 
     const [row] = rows()
     const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
-    expect(verdict).toHaveAccessibleName(/excludes pen test/i)
+    expect(verdict).toHaveTextContent(/Ready \(excludes pen test\)/i)
   })
 
   it('does not qualify a ready verdict when the pen test was declared', () => {
@@ -264,7 +264,7 @@ describe('FleetPage', () => {
 
     const [row] = rows()
     const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
-    expect(verdict).not.toHaveAccessibleName(/excludes/i)
+    expect(verdict).not.toHaveTextContent(/excludes/i)
   })
 
   it('does not qualify a not-ready verdict', () => {
@@ -274,7 +274,7 @@ describe('FleetPage', () => {
 
     const [row] = rows()
     const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
-    expect(verdict).not.toHaveAccessibleName(/excludes/i)
+    expect(verdict).not.toHaveTextContent(/excludes/i)
   })
 
   it('shows the notice when a readiness file could not be used', () => {

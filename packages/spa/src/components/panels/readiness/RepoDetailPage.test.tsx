@@ -252,8 +252,8 @@ describe('RepoDetailPage header', () => {
     render(<RepoDetailPage />)
 
     expect(screen.getByText('Ready')).toBeInTheDocument()
-    expect(screen.getByTestId('readiness-verdict')).toHaveAccessibleName(
-      /excludes pen test/i,
+    expect(screen.getByTestId('readiness-verdict')).toHaveTextContent(
+      /Ready \(excludes pen test\)/i,
     )
     expect(
       screen.getByText('Report a pen test through the readiness file.'),

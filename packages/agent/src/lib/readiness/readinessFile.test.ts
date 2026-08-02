@@ -1,4 +1,11 @@
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -43,6 +50,26 @@ describe('readReadinessFile', () => {
   it('reports absence as the normal case, with no notice', async () => {
     const outcome = await readReadinessFile(repo)
     expect(outcome.kind).toBe('absent')
+  })
+
+  // "No file" and "cannot look" are different facts, and conflating them is how
+  // a repo could get greener by making its declarations unreachable: `absent`
+  // raises no notice, and no notice means the readiness predicate applies the
+  // advisory exemption. Every other unreadability mode already produces a
+  // notice; this is the one that reached `absent`.
+  it('reports an unreadable directory as unusable rather than absent', async () => {
+    const dir = join(repo, dirname(READINESS_FILE_PATH))
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(repo, READINESS_FILE_PATH), JSON.stringify({ schemaVersion: 1 }))
+    chmodSync(dir, 0o000)
+
+    try {
+      const outcome = await readReadinessFile(repo)
+      expect(outcome.kind).toBe('unusable')
+    } finally {
+      // Restore before afterEach, or the rm of the sandbox fails too.
+      chmodSync(dir, 0o755)
+    }
   })
 
   it('parses a usable file', async () => {
@@ -110,11 +137,11 @@ describe('readReadinessFile', () => {
       JSON.stringify({ schemaVersion: 1, checks: [soundReview, declaredPenTest] }),
     )
 
+    // The whole file is refused, so the sound code-review declaration goes with
+    // the bad pen-test one. Contrast the unknown-check-id case below, which is
+    // the only per-entry discard there is.
     const outcome = await readReadinessFile(repo)
     expect(outcome.kind).toBe('unusable')
-    // Not "the bad entry was dropped and the good one kept" — there is no
-    // partial acceptance, so the sound code-review declaration is lost too.
-    expect(outcome.kind === 'unusable' && 'file' in outcome).toBe(false)
   })
 
   // `stat` succeeds on a directory, so "the path exists" is not the same claim

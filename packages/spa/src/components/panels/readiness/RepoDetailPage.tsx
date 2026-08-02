@@ -123,17 +123,21 @@ function DetailHeader({
           <span className="text-sm text-text-secondary">
             Last change {formatCommitTime(repo.lastCommitAt)}
           </span>
+          {/*
+            The exclusion is text, not an `aria-label`. A bare span has no role
+            for a name to attach to, so the label is prohibited and dropped —
+            and the visible copy behind `aria-hidden` would go with it, leaving
+            a screen reader hearing "Ready" and nothing about what it excludes.
+          */}
           {repo.ready ? (
             <span
               data-testid="readiness-verdict"
               className="text-sm font-medium text-status-success"
-              aria-label={
-                headerExclusion === null ? undefined : `Ready — ${headerExclusion}`
-              }
             >
               Ready
               {headerExclusion !== null && (
-                <span aria-hidden className="ml-1 font-normal text-text-tertiary">
+                <span className="font-normal text-text-tertiary">
+                  {' '}
                   ({headerExclusion})
                 </span>
               )}

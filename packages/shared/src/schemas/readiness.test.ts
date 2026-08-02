@@ -631,6 +631,37 @@ describe('computeReady — the advisory exemption', () => {
     expect(computeReady(checks, null)).toBe(false)
   })
 
+  /**
+   * The outbound refinement recomputes `ready` and rejects a response where the
+   * two disagree — so it has to be given the notice as well. Asserting only on
+   * `computeReady` leaves the mutation `computeReady(value.checks, null)` inside
+   * `refineReady` entirely undetected, and that mutation takes the whole fleet
+   * response to a 500 the moment one repo's readiness file is unusable.
+   *
+   * Both wire shapes, because the fleet row is where the verdict is read.
+   */
+  it.each([
+    ['summary', RepoSummarySchema],
+    ['detail', RepoDetailSchema],
+  ] as const)(
+    'validates the %s shape of a suspended-exemption response',
+    (shape, schema) => {
+      const checks = withAdvisory(result(CHECK_IDS[ADVISORY]!))
+      const withRemedy = checks.map((check) => ({ ...check, remedy: 'Run it.' }))
+
+      const repoValue = {
+        ...repo(),
+        ready: false,
+        notice: unusable,
+        checks: (shape === 'detail' ? withRemedy : checks) as never,
+      }
+
+      expect(schema.safeParse(repoValue).success).toBe(true)
+      // And the inverse: the value a notice-blind refinement would compute.
+      expect(schema.safeParse({ ...repoValue, ready: true }).success).toBe(false)
+    },
+  )
+
   it('is not ready when nothing is applicable and the only other result is exempt', () => {
     const checks = CHECK_IDS.map((id, i) =>
       i === ADVISORY ? result(id) : na(id),
