@@ -271,36 +271,36 @@ row; there is now a scenario and a task naming the summary path explicitly.
 
 ## 2. The predicate
 
-- [ ] 2.1 RED: `computeReady` — five derived `ok` plus a derived `never` on `pen-test` is ready
-- [ ] 2.2 RED: `computeReady` — a derived `never` on `coverage` still blocks. This is the test that fails under a provenance-only rule, so confirm it fails for that reason and not because the fixture is malformed
-- [ ] 2.3 RED: `computeReady` — a declared `never` on `workflow`, `spec`, or `coverage` still blocks
-- [ ] 2.4 RED: `computeReady` — a declared `pen-test` aged to `stale` still blocks
-- [ ] 2.5 RED: `computeReady` — a declared `pen-test` of `fail` still blocks
-- [ ] 2.6 The advisory-set invariant, **structural not behavioural**: constrain a member's deriver so `never` is the only status its declared return admits, and let that declaration be the guard. Round 4 established that invoking a deriver and asserting `never` proves nothing about a branch not taken — a behavioural test may accompany it but must not stand in for it
-- [ ] 2.6a RED: **the greener-repo guard** — a repo with an unusable readiness file and five derived `ok` is NOT ready. Write this one before 2.7; it is the finding that would have shipped, and a test written after the implementation will pass whatever the implementation does
-- [ ] 2.6a-i RED: `refineReady` accepts that same response. Round 3 established the guard is not expressible from the results alone — pass the notice into **both** `computeReady` and `refineReady`, or outbound validation rejects exactly the responses the guard produces. Assert on the schema parse, not only on the predicate, or this passes while the daemon 500s
-- [ ] 2.6a-ii RED: the same, through the **fleet summary** shape and not only the repo detail. Both go through `refineReady`; the fleet row is where the verdict is actually read
-- [ ] 2.6b RED: an advisory check carrying an evaluation error still blocks
-- [ ] 2.6c RED: every derivable check `na` plus the exempt derived `never` is not ready — the boundary the exemption creates, replacing the unreachable all-six-`na` case
-- [ ] 2.7 GREEN: export `ADVISORY_WHEN_UNDECLARED` from shared and implement the rule; widen the parameter to carry `id` and `source`
-- [ ] 2.8 Rebuild shared (`pnpm --filter @agenticapps/dashboard-shared build`) before running agent tests — the agent runs shared's built dist, and a stale dist reads as a logic failure
-- [ ] 2.9 Confirm no call site changed: both already pass whole `CheckResult` objects
+- [x] 2.1 RED: `computeReady` — five derived `ok` plus a derived `never` on `pen-test` is ready
+- [x] 2.2 RED: `computeReady` — a derived `never` on `coverage` still blocks. This is the test that fails under a provenance-only rule, so confirm it fails for that reason and not because the fixture is malformed
+- [x] 2.3 RED: `computeReady` — a declared `never` on `workflow`, `spec`, or `coverage` still blocks
+- [x] 2.4 RED: `computeReady` — a declared `pen-test` aged to `stale` still blocks
+- [x] 2.5 RED: `computeReady` — a declared `pen-test` of `fail` still blocks
+- [x] 2.6 The advisory-set invariant, **structural not behavioural**: constrain a member's deriver so `never` is the only status its declared return admits, and let that declaration be the guard. Round 4 established that invoking a deriver and asserting `never` proves nothing about a branch not taken — a behavioural test may accompany it but must not stand in for it
+- [x] 2.6a RED: **the greener-repo guard** — a repo with an unusable readiness file and five derived `ok` is NOT ready. Write this one before 2.7; it is the finding that would have shipped, and a test written after the implementation will pass whatever the implementation does
+- [x] 2.6a-i RED: `refineReady` accepts that same response. Round 3 established the guard is not expressible from the results alone — pass the notice into **both** `computeReady` and `refineReady`, or outbound validation rejects exactly the responses the guard produces. Assert on the schema parse, not only on the predicate, or this passes while the daemon 500s
+- [x] 2.6a-ii RED: the same, through the **fleet summary** shape and not only the repo detail. Both go through `refineReady`; the fleet row is where the verdict is actually read
+- [x] 2.6b RED: an advisory check carrying an evaluation error still blocks
+- [x] 2.6c RED: every derivable check `na` plus the exempt derived `never` is not ready — the boundary the exemption creates, replacing the unreachable all-six-`na` case
+- [x] 2.7 GREEN: export `ADVISORY_WHEN_UNDECLARED` from shared and implement the rule; widen the parameter to carry `id` and `source`
+- [x] 2.8 Rebuild shared (`pnpm --filter @agenticapps/dashboard-shared build`) before running agent tests — the agent runs shared's built dist, and a stale dist reads as a logic failure
+- [x] 2.9 Confirm no call site changed: both already pass whole `CheckResult` objects
 
 ## 3. The surfaces
 
-- [ ] 3.1 RED: fleet row — a ready repo with an undeclared advisory check carries wording on the verdict naming what it excludes, derived from the set rather than hardcoded to one name
-- [ ] 3.2 RED: repo detail header — same, and the wording is exposed to assistive technology as part of the verdict, not by adjacency
-- [ ] 3.3 RED: the advisory check's block still carries its never-run instruction while the repo is ready
-- [ ] 3.4 GREEN: implement both surfaces
+- [x] 3.1 RED: fleet row — a ready repo with an undeclared advisory check carries wording on the verdict naming what it excludes, derived from the set rather than hardcoded to one name
+- [x] 3.2 RED: repo detail header — same, and the wording is exposed to assistive technology as part of the verdict, not by adjacency
+- [x] 3.3 RED: the advisory check's block still carries its never-run instruction while the repo is ready
+- [x] 3.4 GREEN: implement both surfaces
 - [ ] 3.5 Boot the dev server and screenshot the fleet at 1440×900 in both appearances — a ready row next to an undeclared advisory check is a two-symbol state that has never rendered before, and its legibility is the thing the requirement exists to protect
 
 ## 4. Rescan contract and read isolation
 
-- [ ] 4.1 RED: rescan returns 200 carrying the same detail shape as `GET /repos/:id`
-- [ ] 4.2 RED: rescan overlapping an in-flight read recomputes rather than joining it. Drive it through the real coalescing path, not a mocked one — the PR #90 defect was invisible to every mock-level test in place at the time
-- [ ] 4.2a RED: rescan overlapping an in-flight **rescan** does share that computation. The complement of 4.2, and the pair is what stops a future change "fixing" one into a regression of the other
-- [ ] 4.3 RED: rescan answers 404 for an unknown id and 403 for a disallowed origin, neither carrying a detail body
-- [ ] 4.4 GREEN where a test fails. Where the shipped code is already correct, record that the test pins existing behaviour rather than driving new behaviour, and mutation-check it: break the property deliberately, confirm the test fails, revert
+- [x] 4.1 RED: rescan returns 200 carrying the same detail shape as `GET /repos/:id`
+- [x] 4.2 RED: rescan overlapping an in-flight read recomputes rather than joining it. Drive it through the real coalescing path, not a mocked one — the PR #90 defect was invisible to every mock-level test in place at the time
+- [x] 4.2a RED: rescan overlapping an in-flight **rescan** does share that computation. The complement of 4.2, and the pair is what stops a future change "fixing" one into a regression of the other
+- [x] 4.3 RED: rescan answers 404 for an unknown id and 403 for a disallowed origin, neither carrying a detail body
+- [x] 4.4 GREEN where a test fails. Where the shipped code is already correct, record that the test pins existing behaviour rather than driving new behaviour, and mutation-check it: break the property deliberately, confirm the test fails, revert
 
 ## 5. Evidence citations are verified
 
@@ -309,22 +309,22 @@ modified. Expect every test in this section to pin rather than drive, and
 mutation-check each one — a test that passes against unchanged code is worthless
 until you have seen it fail.
 
-- [ ] 5.1 Confirm the existing coverage at `readinessFile.test.ts:65/81/92` (absent, directory, symlink escape) and note which delta scenario each pins
-- [ ] 5.2 Add whatever of the delta's citation scenarios is not already covered — oversized citation, and a path that stats but cannot be opened
-- [ ] 5.3 RED: a repo whose file is invalidated by one bad citation falls back to derived on **all six** checks, not just the citing one. This is the blast radius the delta states; it is also the behaviour flagged in `design.md` Open Questions, so pin it as-is and do not narrow it here
-- [ ] 5.4 Mutation-check 5.1–5.3: remove the `open` call, and separately the `isFile` check, and confirm the right tests fail
-- [ ] 5.5 RED/GREEN: repo detail renders a citation outside the read route's allow-list as text rather than a link
+- [x] 5.1 Confirm the existing coverage at `readinessFile.test.ts:65/81/92` (absent, directory, symlink escape) and note which delta scenario each pins
+- [x] 5.2 Add whatever of the delta's citation scenarios is not already covered — oversized citation, and a path that stats but cannot be opened
+- [x] 5.3 RED: a repo whose file is invalidated by one bad citation falls back to derived on **all six** checks, not just the citing one. This is the blast radius the delta states; it is also the behaviour flagged in `design.md` Open Questions, so pin it as-is and do not narrow it here
+- [x] 5.4 Mutation-check 5.1–5.3: remove the `open` call, and separately the `isFile` check, and confirm the right tests fail
+- [x] 5.5 Already shipped and already pinned — `RepoDetailPage.test.tsx:596` ("names evidence the read route will not serve, but does not offer to open it"). Round 4 corrected the Impact section that claimed this was new work
 
 ## 6. Fixture and assertion churn
 
-- [ ] 6.1 Find every test and fixture asserting `ready: false` and classify each: flips to `true` (and why), or stays `false` (and why)
-- [ ] 6.2 Update the flipping ones. Any assertion that flips for a reason not on the 6.1 list is a signal the rule is wrong, not that the fixture is stale
-- [ ] 6.3 `pnpm --filter @agenticapps/dashboard-shared test`, `--filter @agenticapps/dashboard-agent test`, `--filter @agenticapps/dashboard-spa test` — per package, not `pnpm -r test`
+- [x] 6.1 Find every test and fixture asserting `ready: false` and classify each: flips to `true` (and why), or stays `false` (and why)
+- [x] 6.2 Update the flipping ones. Any assertion that flips for a reason not on the 6.1 list is a signal the rule is wrong, not that the fixture is stale
+- [x] 6.3 `pnpm --filter @agenticapps/dashboard-shared test`, `--filter @agenticapps/dashboard-agent test`, `--filter @agenticapps/dashboard-spa test` — per package, not `pnpm -r test`
 
 ## 7. Gates
 
-- [ ] 7.1 `pnpm -r typecheck` clean
-- [ ] 7.2 `pnpm lint` — 0 errors, warnings at or below the 207 baseline
+- [x] 7.1 `pnpm -r typecheck` clean
+- [x] 7.2 `pnpm lint` — 0 errors, warnings at or below the 207 baseline
 - [ ] 7.3 `impeccable:critique` on the fleet and repo-detail routes at 1440×900, composite ≥ 80, artifact committed
 - [ ] 7.4 `superpowers:requesting-code-review` in an independent context (Stage 2). `openspec validate` does not discharge it
 - [ ] 7.5 Triage that review the same way as 1.3
