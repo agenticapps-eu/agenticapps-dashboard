@@ -33,6 +33,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import {
+  ADVISORY_WHEN_UNDECLARED,
   CHECK_IDS,
   type CheckId,
   type CheckResult,
@@ -117,6 +118,41 @@ export const CHECK_LABELS: Record<CheckId, string> = {
   'security-review': 'Security review',
   'pen-test': 'Pen test',
   coverage: 'Coverage',
+}
+
+/**
+ * The checks a ready verdict passed over rather than satisfied: those the
+ * daemon cannot derive and this repo has not declared.
+ *
+ * Derived from `ADVISORY_WHEN_UNDECLARED` rather than naming pen-test, so a
+ * second declared-only check is disclosed by joining the set instead of by
+ * someone remembering to widen a sentence. Returns nothing when the repo is not
+ * ready — a verdict that already withholds itself has nothing to qualify.
+ */
+export function excludedFromVerdict(
+  ready: boolean,
+  checks: readonly Pick<CheckResult, 'id' | 'status' | 'source'>[],
+): CheckId[] {
+  if (!ready) return []
+  return checks
+    .filter(
+      (check) =>
+        check.status === 'never' &&
+        check.source === 'derived' &&
+        ADVISORY_WHEN_UNDECLARED.includes(check.id),
+    )
+    .map((check) => check.id)
+}
+
+/** "excludes pen test", "excludes pen test and threat model", … */
+export function exclusionPhrase(excluded: readonly CheckId[]): string | null {
+  if (excluded.length === 0) return null
+  const names = excluded.map((id) => CHECK_LABELS[id].toLowerCase())
+  const list =
+    names.length === 1
+      ? names[0]!
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
+  return `excludes ${list}`
 }
 
 /**

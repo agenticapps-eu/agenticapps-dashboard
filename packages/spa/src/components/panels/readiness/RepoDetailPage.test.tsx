@@ -233,6 +233,33 @@ describe('RepoDetailPage header', () => {
     expect(links.map((a) => a.getAttribute('href')?.split('#')[1])).toEqual([...CHECK_IDS])
   })
 
+  it('states what a ready verdict excludes, and keeps the remedy visible', () => {
+    // The detail page has room to say it plainly, and the advisory check's own
+    // block must still tell the reader how to make it run — the repo is ready
+    // and something is still undeclared, and both halves are true at once.
+    const base = detail()
+    const checks = base.checks.map((check) =>
+      check.id === 'pen-test'
+        ? {
+            ...check,
+            status: 'never' as const,
+            at: null,
+            remedy: 'Report a pen test through the readiness file.',
+          }
+        : check,
+    ) as unknown as RepoDetail['checks']
+    loaded({ ...base, checks, ready: computeReady(checks, null) })
+    render(<RepoDetailPage />)
+
+    expect(screen.getByText('Ready')).toBeInTheDocument()
+    expect(screen.getByTestId('readiness-verdict')).toHaveAccessibleName(
+      /excludes pen test/i,
+    )
+    expect(
+      screen.getByText('Report a pen test through the readiness file.'),
+    ).toBeInTheDocument()
+  })
+
   it('states readiness and any readiness-file notice in the header', () => {
     loaded(
       detail({

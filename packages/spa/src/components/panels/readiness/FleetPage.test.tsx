@@ -246,6 +246,37 @@ describe('FleetPage', () => {
     expect(within(row as HTMLElement).getByText('Ready')).toBeInTheDocument()
   })
 
+  it('says what a ready verdict excludes, in the verdict itself', () => {
+    // A green row must not imply a pen test happened. The six cells being
+    // rendered nearby does not discharge this — a reader who reads the verdict
+    // and not the cells is exactly who this protects.
+    fleet([repo('untested', { statuses: { 'pen-test': 'never' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
+    expect(verdict).toHaveAccessibleName(/excludes pen test/i)
+  })
+
+  it('does not qualify a ready verdict when the pen test was declared', () => {
+    fleet([repo('tested', { statuses: { 'pen-test': 'ok' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
+    expect(verdict).not.toHaveAccessibleName(/excludes/i)
+  })
+
+  it('does not qualify a not-ready verdict', () => {
+    // There is nothing to disclose when the verdict already withholds itself.
+    fleet([repo('blocked', { statuses: { coverage: 'never', 'pen-test': 'never' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
+    expect(verdict).not.toHaveAccessibleName(/excludes/i)
+  })
+
   it('shows the notice when a readiness file could not be used', () => {
     fleet([
       repo('bad-file', {

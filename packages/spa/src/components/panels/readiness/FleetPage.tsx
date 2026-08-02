@@ -24,7 +24,11 @@
 import type { ReactElement } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
-import { CHECK_IDS, type RepoSummary } from '@agenticapps/dashboard-shared'
+import {
+  CHECK_IDS,
+  type CheckResult,
+  type RepoSummary,
+} from '@agenticapps/dashboard-shared'
 
 import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
@@ -32,7 +36,12 @@ import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
 
-import { CHECK_LABELS, ReadinessIndicator } from './ReadinessIndicator.js'
+import {
+  CHECK_LABELS,
+  ReadinessIndicator,
+  excludedFromVerdict,
+  exclusionPhrase,
+} from './ReadinessIndicator.js'
 import { FleetToolbar } from './FleetToolbar.js'
 import {
   EMPTY_FILTERS,
@@ -118,11 +127,40 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
  * mistake §8.2 rejected for the cells. The six cells carry what is actually
  * wrong — this column only says whether anything is.
  */
-function ReadyVerdict({ ready }: { ready: boolean }): ReactElement {
-  return ready ? (
-    <span className="text-sm font-medium text-status-success">Ready</span>
-  ) : (
-    <span className="text-sm text-text-secondary">Not ready</span>
+function ReadyVerdict({
+  ready,
+  checks,
+}: {
+  ready: boolean
+  checks: readonly CheckResult[]
+}): ReactElement {
+  // A ready verdict names what it passed over. An undeclared pen test no longer
+  // blocks, so without this a green row would imply an assurance nobody
+  // performed — and the six cells sitting beside it do not discharge that, since
+  // the reader this protects is the one who reads the verdict and stops.
+  const phrase = exclusionPhrase(excludedFromVerdict(ready, checks))
+
+  if (!ready) {
+    return (
+      <span data-testid="readiness-verdict" className="text-sm text-text-secondary">
+        Not ready
+      </span>
+    )
+  }
+
+  return (
+    <span
+      data-testid="readiness-verdict"
+      className="text-sm font-medium text-status-success"
+      aria-label={phrase === null ? undefined : `Ready — ${phrase}`}
+    >
+      Ready
+      {phrase !== null && (
+        <span aria-hidden className="ml-1 font-normal text-text-tertiary">
+          ({phrase})
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -158,7 +196,7 @@ function FleetRow({
         )}
       </td>
       <td className="px-3 py-2 align-middle whitespace-nowrap">
-        <ReadyVerdict ready={repo.ready} />
+        <ReadyVerdict ready={repo.ready} checks={repo.checks} />
       </td>
       {/*
         No horizontal padding: the grid inside divides this cell into the same

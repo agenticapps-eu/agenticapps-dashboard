@@ -29,6 +29,8 @@ import { SchemaDriftState } from '../../SchemaDriftState.js'
 
 import {
   CHECK_LABELS,
+  excludedFromVerdict,
+  exclusionPhrase,
   ReadinessIndicator,
   STATUS_PRESENTATION,
 } from './ReadinessIndicator.js'
@@ -106,6 +108,11 @@ function DetailHeader({
   const rescan = useRescanRepo(repo.id)
   const openInEditor = useOpenInEditor(repo.id)
   const editorError = openInEditor.isError ? editorProblem(openInEditor.error) : null
+  // What a ready verdict passed over rather than satisfied. Derived from the
+  // advisory set, so a second declared-only check discloses itself.
+  const headerExclusion = exclusionPhrase(
+    excludedFromVerdict(repo.ready, repo.checks),
+  )
 
   return (
     <header className="flex flex-col gap-4 rounded-card bg-card-bg p-6 shadow-card">
@@ -117,9 +124,27 @@ function DetailHeader({
             Last change {formatCommitTime(repo.lastCommitAt)}
           </span>
           {repo.ready ? (
-            <span className="text-sm font-medium text-status-success">Ready</span>
+            <span
+              data-testid="readiness-verdict"
+              className="text-sm font-medium text-status-success"
+              aria-label={
+                headerExclusion === null ? undefined : `Ready — ${headerExclusion}`
+              }
+            >
+              Ready
+              {headerExclusion !== null && (
+                <span aria-hidden className="ml-1 font-normal text-text-tertiary">
+                  ({headerExclusion})
+                </span>
+              )}
+            </span>
           ) : (
-            <span className="text-sm text-text-secondary">Not ready</span>
+            <span
+              data-testid="readiness-verdict"
+              className="text-sm text-text-secondary"
+            >
+              Not ready
+            </span>
           )}
         </div>
 
