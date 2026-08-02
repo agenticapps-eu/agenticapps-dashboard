@@ -202,10 +202,17 @@ function disclose(check: CheckResult): string {
   // the two render identically and read identically, while ordering
   // differently. readinessOrder.ts promises "a reader can reconstruct any
   // pairwise result by counting cells"; this is what makes that true.
+  // An advisory check's `never` renders as the same grey dash as a blocking
+  // one, so without this the cell that a "Ready, excludes X" verdict points at
+  // is byte-identical on a repo it blocked and one it did not.
+  const advisory =
+    check.status === 'never' && check.source === 'derived' && isAdvisoryCheck(check.id)
+      ? ', advisory: does not block readiness'
+      : ''
   const head =
     check.error !== null
       ? `${CHECK_LABELS[check.id]} — could not be evaluated`
-      : `${CHECK_LABELS[check.id]} — ${word}`
+      : `${CHECK_LABELS[check.id]} — ${word}${advisory}`
   const body = `${value === null ? '' : `${value}, `}${formatObservedAt(check.at)}, ${check.source}`
   const reason = check.error?.message ?? check.summary.trim()
   return `${head}, ${body}${reason === '' ? '' : ` — ${reason}`}`

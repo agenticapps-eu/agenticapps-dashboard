@@ -325,7 +325,7 @@ until you have seen it fail.
 
 - [x] 7.1 `pnpm -r typecheck` clean
 - [x] 7.2 `pnpm lint` — 0 errors, warnings at or below the 207 baseline
-- [ ] 7.3 `impeccable:critique` on the fleet and repo-detail routes at 1440×900, composite ≥ 80, artifact committed
+- [x] 7.3 `impeccable:critique` run — **composite 67.5, below the ≥80 floor**. Artifact: `CRITIQUE.md`. Two of its priority findings fixed here; the floor gap is dominated by pre-existing debt (no glyph legend, /help stubs, filter row), so this is the structural-debt waiver case and the waiver is the operator's to grant, not mine
 - [x] 7.4 `superpowers:requesting-code-review` in an independent context (Stage 2) — general-purpose reviewer over `55f88f0..c6bce4f`
 - [x] 7.5 Triage: **11 findings, 10 fixed, 1 carried.** Recorded in 7.6
 

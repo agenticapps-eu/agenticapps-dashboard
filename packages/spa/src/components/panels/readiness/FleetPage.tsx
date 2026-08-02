@@ -204,7 +204,14 @@ function FleetRow({
           </span>
         )}
       </td>
-      <td className="px-3 py-2 align-middle whitespace-nowrap">
+      {/*
+        A fixed height, not an intrinsic one. Only rows carrying a disclosure
+        have two lines, so without this the table's rhythm breaks on exactly the
+        rows the eye should not be drawn to — and it would break further the
+        moment a second check becomes advisory and the phrase wraps. Uniform
+        height costs 12px per row and makes the fleet scannable at any mix.
+      */}
+      <td className="h-14 px-3 py-2 align-middle whitespace-nowrap">
         <ReadyVerdict ready={repo.ready} checks={repo.checks} />
       </td>
       {/*
