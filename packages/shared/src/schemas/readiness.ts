@@ -427,11 +427,26 @@ function reviewDeclaration(id: 'code-review' | 'security-review') {
 }
 
 /**
- * A declared pen test states only what an author can observe: `stale` is
- * derived from `validUntil`, `never` means no declaration at all, and `na` is
- * not valid for a slot that has no derived signal to be inapplicable to.
+ * A declared pen test takes one of two variants, distinguished by whether it
+ * records an observation.
+ *
+ * A *substantiated* entry asserts a test ran: `ok`, `warn` or `fail`, carrying
+ * an observed time, an evidence path, the commit it covered, and an expiry.
+ *
+ * An *unsubstantiated* entry asserts that no test ran — `never` — or that none
+ * applies — `na`, which states its reason like any other. It carries none of
+ * those four fields, because a test that did not happen has no artifact, no
+ * reviewed commit, no observed time and nothing to expire.
+ *
+ * The fields are *absent from the variant* rather than optional across one
+ * merged shape. An optional field would admit `pen-test: never` carrying an
+ * evidence path and an expiry — a claim about a test that did not occur — which
+ * the schema would then need a second rule to reject. Two variants make the
+ * invalid combination unstateable instead.
+ *
+ * `stale` is absent from both: it is computed from `validUntil`, not asserted.
  */
-const PenTestDeclarationSchema = z
+const SubstantiatedPenTestSchema = z
   .object({
     id: z.literal('pen-test'),
     status: z.enum(['ok', 'warn', 'fail']),
@@ -441,12 +456,32 @@ const PenTestDeclarationSchema = z
   })
   .strict()
 
-const DeclarationSchema = z.discriminatedUnion('id', [
+const UnsubstantiatedPenTestSchema = z
+  .object({
+    id: z.literal('pen-test'),
+    status: z.enum(['never', 'na']),
+    // `declaredBase` minus `observedAt`: there is nothing to have observed. The
+    // `na`-states-a-reason rule reads `summary` and is shared with every other
+    // check, so it is not restated here.
+    summary: declaredBase.summary,
+    value: declaredBase.value,
+  })
+  .strict()
+
+/**
+ * A plain union rather than a `discriminatedUnion` on `id`. Zod keys a
+ * discriminated union by its discriminator value, so it cannot hold the two
+ * `pen-test` variants at once. The cost is error-message quality inside a
+ * malformed entry; the benefit is that the unsubstantiated variant stays a
+ * variant rather than becoming a refinement over optional fields.
+ */
+const DeclarationSchema = z.union([
   plainDeclaration('workflow'),
   plainDeclaration('spec'),
   reviewDeclaration('code-review'),
   reviewDeclaration('security-review'),
-  PenTestDeclarationSchema,
+  SubstantiatedPenTestSchema,
+  UnsubstantiatedPenTestSchema,
   plainDeclaration('coverage'),
 ])
 

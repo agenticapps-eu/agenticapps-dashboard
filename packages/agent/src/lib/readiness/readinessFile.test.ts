@@ -11,7 +11,11 @@ import { dirname, join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { READINESS_FILE_PATH, readReadinessFile } from './readinessFile.js'
+import {
+  READINESS_FILE_PATH,
+  readReadinessFile,
+  type ReadinessFileOutcome,
+} from './readinessFile.js'
 
 let repo: string
 
@@ -37,6 +41,10 @@ const declaredPenTest = {
 function putEvidence(): void {
   put(declaredPenTest.evidence, '# pen test\n')
 }
+
+/** The check ids whose citation was refused, or [] for any other outcome. */
+const rejectedIds = (outcome: ReadinessFileOutcome): string[] =>
+  outcome.kind === 'usable' ? [...outcome.rejected.keys()] : []
 
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), 'readiness-file-'))
@@ -86,18 +94,18 @@ describe('readReadinessFile', () => {
 
   // Tier B is trusted author input, and the thing that makes it auditable rather
   // than merely asserted is that the evidence can be opened. A declaration
-  // citing a file that is not there is indistinguishable from a claim with
-  // nothing behind it, so it invalidates the file the same way any other
-  // malformed entry does.
-  it('refuses a declaration whose evidence file does not exist', async () => {
+  // citing a file that is not there is a claim with nothing behind it, so the
+  // entry is refused — but the entry only, and the file stays usable.
+  it('rejects a declaration whose evidence file does not exist', async () => {
     put(
       READINESS_FILE_PATH,
       JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
     )
 
     const outcome = await readReadinessFile(repo)
-    expect(outcome.kind).toBe('unusable')
-    expect(outcome.kind === 'unusable' && outcome.notice.code).toBe(
+    expect(outcome.kind).toBe('usable')
+    expect(rejectedIds(outcome)).toEqual(['pen-test'])
+    expect(outcome.kind === 'usable' && outcome.notice?.code).toBe(
       'readiness-file-invalid',
     )
   })
@@ -105,7 +113,7 @@ describe('readReadinessFile', () => {
   // The bound applies to the cited artifact, not only to the readiness file.
   // Without it an author could point the daemon at an arbitrarily large file and
   // have it opened on every scan.
-  it('refuses evidence larger than the read bound', async () => {
+  it('rejects evidence larger than the read bound', async () => {
     put(declaredPenTest.evidence, 'x'.repeat(4 * 1024 * 1024 + 1))
     put(
       READINESS_FILE_PATH,
@@ -113,16 +121,14 @@ describe('readReadinessFile', () => {
     )
 
     const outcome = await readReadinessFile(repo)
-    expect(outcome.kind).toBe('unusable')
+    expect(rejectedIds(outcome)).toEqual(['pen-test'])
   })
 
-  // The blast radius is the file, not the entry: one unopenable citation
-  // discards every declaration in it, including declarations that were
-  // themselves fine. This is a known weakness rather than a design to preserve —
-  // see the change's Open Questions — but it is the shipped contract, and the
-  // readiness predicate's unusable-file guard depends on knowing it, so it is
-  // pinned rather than left implicit.
-  it('discards every declaration when one citation is unopenable', async () => {
+  // The blast radius is the entry, not the file. One moved artifact used to
+  // discard every unrelated declaration in the repo — including declarations
+  // that were themselves fine — and because discarded declarations fell back to
+  // derived values it could move a repo's results in either direction.
+  it('keeps a sound declaration when a sibling citation is unopenable', async () => {
     const soundReview = {
       id: 'code-review',
       status: 'ok',
@@ -137,17 +143,72 @@ describe('readReadinessFile', () => {
       JSON.stringify({ schemaVersion: 1, checks: [soundReview, declaredPenTest] }),
     )
 
-    // The whole file is refused, so the sound code-review declaration goes with
-    // the bad pen-test one. Contrast the unknown-check-id case below, which is
-    // the only per-entry discard there is.
     const outcome = await readReadinessFile(repo)
-    expect(outcome.kind).toBe('unusable')
+    expect(outcome.kind).toBe('usable')
+    expect(rejectedIds(outcome)).toEqual(['pen-test'])
+    // The sound declaration survives its neighbour's failure.
+    expect(outcome.kind === 'usable' && outcome.file.checks).toHaveLength(2)
+  })
+
+  // Returning on the first failure would make an author fix three broken
+  // citations one scan at a time.
+  it('collects every rejected citation rather than stopping at the first', async () => {
+    const cite = (id: string, evidence: string) => ({
+      id,
+      status: 'ok',
+      observedAt: '2026-07-01T09:00:00Z',
+      evidence,
+      commit: 'c'.repeat(40),
+    })
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          cite('code-review', 'docs/review.md'),
+          cite('security-review', 'docs/security.md'),
+          declaredPenTest,
+        ],
+      }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(rejectedIds(outcome).sort()).toEqual([
+      'code-review',
+      'pen-test',
+      'security-review',
+    ])
+  })
+
+  // Six citations at the schema's 512-character path limit would blow the
+  // notice's 600-character bound, and a notice the outbound validator truncates
+  // or rejects is worse than one that names a count.
+  it('names one rejected citation and counts the rest in the notice', async () => {
+    const cite = (id: string, evidence: string) => ({
+      id,
+      status: 'ok',
+      observedAt: '2026-07-01T09:00:00Z',
+      evidence,
+      commit: 'c'.repeat(40),
+    })
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [cite('code-review', 'a'.repeat(400) + '.md'), declaredPenTest],
+      }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    const notice = outcome.kind === 'usable' ? outcome.notice : null
+    expect(notice?.message).toContain('1 other declared check')
+    expect(notice?.message.length).toBeLessThanOrEqual(600)
   })
 
   // `stat` succeeds on a directory, so "the path exists" is not the same claim
   // as "the evidence can be opened". A directory named like the report satisfied
   // the first and not the second.
-  it('refuses evidence that is a directory rather than a file', async () => {
+  it('rejects evidence that is a directory rather than a file', async () => {
     mkdirSync(join(repo, declaredPenTest.evidence), { recursive: true })
     put(
       READINESS_FILE_PATH,
@@ -155,10 +216,10 @@ describe('readReadinessFile', () => {
     )
 
     const outcome = await readReadinessFile(repo)
-    expect(outcome.kind).toBe('unusable')
+    expect(rejectedIds(outcome)).toEqual(['pen-test'])
   })
 
-  it('refuses evidence that resolves outside the repository through a symlink', async () => {
+  it('rejects evidence that resolves outside the repository through a symlink', async () => {
     const secret = join(dirname(repo), 'outside-evidence.md')
     writeFileSync(secret, 'secret\n')
     mkdirSync(join(repo, 'docs', 'security'), { recursive: true })
@@ -169,7 +230,19 @@ describe('readReadinessFile', () => {
     )
 
     const outcome = await readReadinessFile(repo)
-    expect(outcome.kind).toBe('unusable')
+    expect(rejectedIds(outcome)).toEqual(['pen-test'])
+  })
+
+  it('raises no notice when every citation opens', async () => {
+    putEvidence()
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind === 'usable' && outcome.notice).toBeNull()
+    expect(rejectedIds(outcome)).toEqual([])
   })
 
   it('discards an entry whose check id is unknown without discarding the file', async () => {

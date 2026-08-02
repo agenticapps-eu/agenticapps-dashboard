@@ -739,8 +739,12 @@ describe('ReadinessFileSchema', () => {
     ).toBe(true)
   })
 
+  // `na` and `never` are valid for this slot only in the unsubstantiated form.
+  // Carrying the substantiated fields — as this spread does — is a claim about a
+  // test that did not happen, and stays rejected. `stale` is rejected outright,
+  // because it is computed from `validUntil` rather than asserted.
   it.each(['na', 'stale', 'never'])(
-    'rejects a declared pen-test of %s',
+    'rejects a declared pen-test of %s carrying substantiated fields',
     (status) => {
       expect(
         ReadinessFileSchema.safeParse({
@@ -750,6 +754,70 @@ describe('ReadinessFileSchema', () => {
       ).toBe(false)
     },
   )
+
+  describe('the unsubstantiated pen-test variant', () => {
+    it('accepts a bare declared never', () => {
+      const parsed = ReadinessFileSchema.safeParse({
+        schemaVersion: 1,
+        checks: [{ id: 'pen-test', status: 'never' }],
+      })
+      expect(parsed.success).toBe(true)
+      expect(parsed.success && parsed.data.checks?.[0]?.status).toBe('never')
+    })
+
+    it('accepts a declared na carrying its reason', () => {
+      expect(
+        ReadinessFileSchema.safeParse({
+          schemaVersion: 1,
+          checks: [
+            {
+              id: 'pen-test',
+              status: 'na',
+              summary: 'this repo ships no network surface',
+            },
+          ],
+        }).success,
+      ).toBe(true)
+    })
+
+    it('rejects a declared na with no reason', () => {
+      expect(
+        ReadinessFileSchema.safeParse({
+          schemaVersion: 1,
+          checks: [{ id: 'pen-test', status: 'na' }],
+        }).success,
+      ).toBe(false)
+    })
+
+    // The four fields are absent from the variant rather than optional across a
+    // merged shape, so each of these is unstateable rather than rejected by a
+    // second rule.
+    it.each([
+      ['observedAt', { observedAt: '2026-07-01T09:00:00Z' }],
+      ['evidence', { evidence: 'docs/security/pen-test.md' }],
+      ['commit', { commit: 'b'.repeat(40) }],
+      ['validUntil', { validUntil: '2027-07-01T09:00:00Z' }],
+    ])('rejects a declared never carrying %s', (_label, extra) => {
+      expect(
+        ReadinessFileSchema.safeParse({
+          schemaVersion: 1,
+          checks: [{ id: 'pen-test', status: 'never', ...extra }],
+        }).success,
+      ).toBe(false)
+    })
+
+    it.each(['ok', 'warn', 'fail'])(
+      'still requires the substantiated fields for a declared %s',
+      (status) => {
+        expect(
+          ReadinessFileSchema.safeParse({
+            schemaVersion: 1,
+            checks: [{ id: 'pen-test', status }],
+          }).success,
+        ).toBe(false)
+      },
+    )
+  })
 
   it('requires a declared na to carry a reason', () => {
     const entry = {

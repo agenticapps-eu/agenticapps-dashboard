@@ -4,20 +4,29 @@
  * Tier B is trusted author input: a repo may declare a state better than the one
  * the daemon would derive, because the file exists to report what the daemon
  * cannot see. Trust does not extend to accepting a file it cannot understand —
- * an unsupported version, unparsable JSON, a malformed known entry, an escaping
- * path or an oversized file discards the whole file and raises a visible notice.
- * Falling back to derived values silently would make a typo indistinguishable
- * from a repo that never declared anything.
+ * an unsupported version, unparsable JSON or a malformed known entry discards the
+ * whole file and raises a visible notice. Falling back to derived values silently
+ * would make a typo indistinguishable from a repo that never declared anything.
  *
- * The one deliberate exception is an unrecognised check identifier, which the
- * schema discards entry by entry so a newer repo can declare a check this daemon
- * does not know without losing its whole file.
+ * Two failures are narrower than the file, because both have a trustworthy entry
+ * boundary to narrow to:
+ *
+ * - An unrecognised check identifier, which the schema discards entry by entry so
+ *   a newer repo can declare a check this daemon does not know.
+ * - A citation that cannot be verified, which rejects the entry that cites it.
+ *   The file stays usable and the caller reports that entry's check as an
+ *   error-bearing `fail` — never as its derived value, which would make a refused
+ *   declaration indistinguishable from one that was never made.
+ *
+ * Whole-file invalidation is kept for malformations that put the *structure* in
+ * question, where there is no reliable notion of which entry to blame.
  */
 import { lstat, open, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 
 import {
   ReadinessFileSchema,
+  type CheckId,
   type ReadinessFile,
   type ReadinessNotice,
 } from '@agenticapps/dashboard-shared'
@@ -29,10 +38,30 @@ const MAX_FILE_BYTES = 64 * 1024
 /** Evidence is prose or a report, not the 64 KB budget the declaration file gets. */
 const MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 
+/** Why one declared entry's citation could not be verified. */
+export interface RejectedCitation {
+  /** The repo-relative path the entry cited. */
+  cited: string
+  /** Why it could not be verified. Safe to put on the wire. */
+  reason: string
+}
+
 export type ReadinessFileOutcome =
   | { kind: 'absent' }
   | { kind: 'unusable'; notice: ReadinessNotice }
-  | { kind: 'usable'; file: ReadinessFile }
+  | {
+      kind: 'usable'
+      file: ReadinessFile
+      /**
+       * Entries whose citation failed verification, by check id. The file is
+       * still usable — every other declaration in it holds — but these entries
+       * SHALL NOT be honoured and SHALL NOT fall back to a derived value. The
+       * caller turns each into an error-bearing declared `fail`.
+       */
+      rejected: Map<CheckId, RejectedCitation>
+      /** Raised while any entry is rejected, so the author sees there is a fix to make. */
+      notice: ReadinessNotice | null
+    }
 
 const unusable = (
   code: ReadinessNotice['code'],
@@ -122,9 +151,12 @@ export async function readReadinessFile(root: string): Promise<ReadinessFileOutc
     )
   }
 
-  return (await evidenceIsReadable(root, result.data)) ?? {
+  const rejected = await rejectedCitations(root, result.data)
+  return {
     kind: 'usable',
     file: result.data,
+    rejected,
+    notice: citationNotice(rejected),
   }
 }
 
@@ -133,54 +165,84 @@ export async function readReadinessFile(root: string): Promise<ReadinessFileOutc
  * file is there, and a declaration whose evidence cannot be opened is a claim
  * with nothing behind it — indistinguishable, to a reader, from one that is
  * fully substantiated. Tier B is trusted author input precisely because it is
- * auditable, so an unopenable citation is treated as a malformed entry and
- * discards the whole file, exactly as an escaping path or a bad shape does.
+ * auditable, so an unopenable citation is refused.
+ *
+ * The refusal is scoped to the entry that cites it. It used to discard the whole
+ * file, which meant one moved artifact silently took every unrelated declaration
+ * in the repo with it. What made the wider radius defensible was that partial
+ * acceptance would report some declarations from a file already judged
+ * malformed; that objection is answered by not accepting the rejected entry
+ * either — the caller turns it into an error-bearing `fail` rather than letting
+ * it fall back to a derived value.
+ *
+ * Every entry is checked, not just up to the first failure, so an author fixing
+ * three broken citations learns about all three in one run.
  *
  * Containment goes through the same named-read primitive the coverage artifact
  * uses, so a symlink out of the repository is refused before any bytes are read.
  * The basename is passed as the allow-list because evidence is author-named.
- *
- * Returns an outcome when the file must be refused, and undefined when every
- * cited path is present, contained and within the read bound.
  */
-async function evidenceIsReadable(
+async function rejectedCitations(
   root: string,
   file: ReadinessFile,
-): Promise<ReadinessFileOutcome | undefined> {
+): Promise<Map<CheckId, RejectedCitation>> {
+  const rejected = new Map<CheckId, RejectedCitation>()
+
   for (const entry of file.checks ?? []) {
     const cited = 'evidence' in entry ? entry.evidence : undefined
     if (typeof cited !== 'string' || cited === '') continue
 
-    let absolute: string
-    try {
-      absolute = await resolveAllowedNamed(join(root, cited), {
-        roots: [root],
-        allowedNames: [basename(cited)],
-      })
-    } catch {
-      return unusable(
-        'readiness-file-invalid',
-        `${cited} does not resolve inside the repository`,
-      )
-    }
-
-    try {
-      const info = await stat(absolute)
-      // `stat` succeeds on a directory, so existence alone does not establish
-      // that the citation can be opened. Only a regular file is evidence.
-      if (!info.isFile()) {
-        return unusable('readiness-file-invalid', `${cited} is not a readable file`)
-      }
-      if (info.size > MAX_EVIDENCE_BYTES) {
-        return unusable('readiness-file-invalid', `${cited} is larger than the read bound`)
-      }
-      // Opened, not merely described. A path can stat cleanly and still be
-      // unreadable — wrong mode, a dangling mount — and the spec's bounded-read
-      // requirement is about the read, not the metadata.
-      await (await open(absolute, 'r')).close()
-    } catch {
-      return unusable('readiness-file-invalid', `${cited} could not be read`)
-    }
+    const reason = await citationFailure(root, cited)
+    if (reason) rejected.set(entry.id, { cited, reason })
   }
-  return undefined
+  return rejected
+}
+
+/** Why this citation cannot be verified, or null when it opens cleanly. */
+async function citationFailure(root: string, cited: string): Promise<string | null> {
+  let absolute: string
+  try {
+    absolute = await resolveAllowedNamed(join(root, cited), {
+      roots: [root],
+      allowedNames: [basename(cited)],
+    })
+  } catch {
+    return `${cited} does not resolve inside the repository`
+  }
+
+  try {
+    const info = await stat(absolute)
+    // `stat` succeeds on a directory, so existence alone does not establish
+    // that the citation can be opened. Only a regular file is evidence.
+    if (!info.isFile()) return `${cited} is not a readable file`
+    if (info.size > MAX_EVIDENCE_BYTES) return `${cited} is larger than the read bound`
+    // Opened, not merely described. A path can stat cleanly and still be
+    // unreadable — wrong mode, a dangling mount — and the spec's bounded-read
+    // requirement is about the read, not the metadata.
+    await (await open(absolute, 'r')).close()
+  } catch {
+    return `${cited} could not be read`
+  }
+  return null
+}
+
+/**
+ * One notice for however many entries were rejected. Only the first is named:
+ * six citations at the schema's 512-character path limit would blow the notice's
+ * 600-character bound, and a notice truncated by the outbound validator is worse
+ * than one that names a count. Each rejected check carries its own path in its
+ * own error, which is where a reader fixing them will actually look.
+ */
+function citationNotice(
+  rejected: ReadonlyMap<CheckId, RejectedCitation>,
+): ReadinessNotice | null {
+  const [first] = rejected.values()
+  if (!first) return null
+
+  const others = rejected.size - 1
+  const suffix = others > 0 ? ` (and ${others} other declared check${others > 1 ? 's' : ''})` : ''
+  return {
+    code: 'readiness-file-invalid',
+    message: `${READINESS_FILE_PATH} cites evidence that could not be verified: ${first.reason}${suffix}`,
+  }
 }

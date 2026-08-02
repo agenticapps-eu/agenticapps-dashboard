@@ -13,7 +13,7 @@
  * the host's own update command and migration 0032 instead of stopping at
  * "migrate".
  */
-import type { CheckId, CheckStatus } from '@agenticapps/dashboard-shared'
+import type { CheckId, CheckSource, CheckStatus } from '@agenticapps/dashboard-shared'
 
 import type { ReadinessHostId } from './workflowDeriver.js'
 
@@ -119,7 +119,7 @@ function coverageRemedy(status: CheckStatus): string {
  * place: the readiness file. No tool is named in any of them, per the spec's
  * tool-agnostic requirement.
  */
-function penTestRemedy(status: CheckStatus): string {
+function penTestRemedy(status: CheckStatus, source: CheckSource): string {
   switch (status) {
     case 'stale':
       return 'The declared penetration test has expired. Commission a new one and record its result in .agenticapps/readiness.json with a fresh validUntil.'
@@ -130,12 +130,19 @@ function penTestRemedy(status: CheckStatus): string {
     case 'ok':
       return 'A current penetration test is declared in .agenticapps/readiness.json. Nothing to do until it expires.'
     case 'na':
+      return 'This repo declares that a penetration test does not apply to it, and the check is excluded from the verdict. The declared reason is shown above; change or remove the entry in .agenticapps/readiness.json if that is no longer true.'
     case 'never':
-      // Says outright that this check does not block. The verdict on the fleet
-      // row and the detail header both name what they exclude, and this is
-      // where a reader arrives after reading that — so it has to answer the
-      // question that sent them, not restate the status.
-      return 'This check has no derived signal, so while it is undeclared it does not block a ready verdict. Once a penetration test has been performed, declare its result in .agenticapps/readiness.json with evidence, the reviewed commit, and a validUntil date to have it counted.'
+      // A derived `never` and a declared `never` render the same status and
+      // reach opposite verdicts, so they cannot share remedy text. Telling an
+      // author who just declared "we have never tested" that the check does not
+      // block would be false, and would send them looking for the real blocker.
+      return source === 'declared'
+        ? 'This repo declares that no penetration test has been performed, which blocks a ready verdict. Commission one and record its result in .agenticapps/readiness.json with evidence, the reviewed commit, and a validUntil date.'
+        : // Says outright that this check does not block. The verdict on the fleet
+          // row and the detail header both name what they exclude, and this is
+          // where a reader arrives after reading that — so it has to answer the
+          // question that sent them, not restate the status.
+          'This check has no derived signal, so while it is undeclared it does not block a ready verdict. Once a penetration test has been performed, declare its result in .agenticapps/readiness.json with evidence, the reviewed commit, and a validUntil date to have it counted.'
   }
 }
 
@@ -143,6 +150,7 @@ export function remedyFor(
   id: CheckId,
   status: CheckStatus,
   host: ReadinessHostId | null,
+  source: CheckSource = 'derived',
 ): string {
   switch (id) {
     case 'workflow':
@@ -155,6 +163,6 @@ export function remedyFor(
     case 'coverage':
       return coverageRemedy(status)
     case 'pen-test':
-      return penTestRemedy(status)
+      return penTestRemedy(status, source)
   }
 }
