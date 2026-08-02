@@ -254,8 +254,12 @@ describe('FleetPage', () => {
     render(<FleetPage />)
 
     const [row] = rows()
+    // The exclusion is a second line in the row, not a parenthetical: inline it
+    // overflowed the cell into the Workflow column at 1440. Both parts live
+    // inside the verdict element, so a reader gets them together.
     const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
-    expect(verdict).toHaveTextContent(/Ready \(excludes pen test\)/i)
+    expect(verdict).toHaveTextContent(/Ready/i)
+    expect(verdict).toHaveTextContent(/excludes pen test/i)
   })
 
   it('does not qualify a ready verdict when the pen test was declared', () => {

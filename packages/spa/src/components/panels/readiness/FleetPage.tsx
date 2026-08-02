@@ -160,7 +160,14 @@ function ReadyVerdict({
     >
       Ready
       {phrase !== null && (
-        <span className="font-normal text-text-tertiary"> ({phrase})</span>
+        // Its own line. Inline, this overflowed the readiness cell by ~48 px
+        // into the Workflow column at 1440 — measured, not guessed — because the
+        // cell is `whitespace-nowrap` and sized for "Not ready". A second line
+        // grows only the rows that carry a disclosure, and keeps the verdict
+        // itself the first thing read.
+        <span className="block text-xs font-normal text-text-tertiary">
+          {phrase}
+        </span>
       )}
     </span>
   )

@@ -292,7 +292,7 @@ row; there is now a scenario and a task naming the summary path explicitly.
 - [x] 3.2 RED: repo detail header — same, and the wording is exposed to assistive technology as part of the verdict, not by adjacency
 - [x] 3.3 RED: the advisory check's block still carries its never-run instruction while the repo is ready
 - [x] 3.4 GREEN: implement both surfaces
-- [ ] 3.5 Boot the dev server and screenshot the fleet at 1440×900 in both appearances — a ready row next to an undeclared advisory check is a two-symbol state that has never rendered before, and its legibility is the thing the requirement exists to protect
+- [x] 3.5 Visual gate at 1440×900, both appearances — **found and fixed a real layout defect**, see 3.6
 
 ## 4. Rescan contract and read isolation
 
@@ -401,3 +401,34 @@ ignored by `toSummary`, which recomputes. Pre-existing dead field, out of scope.
 - [ ] Do NOT add, remove, or rename a wire field
 - [ ] Do NOT give `pen-test` a derived signal — noted as an open question in `design.md`, not work for this change
 - [ ] Do NOT introduce an aggregate score or replace the boolean verdict
+
+### 3.6 Visual gate record
+
+The state this change creates had never rendered, so it was driven with real
+data rather than a fixture: a throwaway repo declaring the five derivable checks
+`ok` in tier B, registered against a locally built daemon. It reported
+`ready=true` with `pen-test: never/derived` — the row that was impossible before.
+
+**It overflowed.** Measured at 1440: the inline verdict
+`Ready (excludes pen test)` ran **48 px past its cell** into the Workflow column,
+because the readiness cell is `whitespace-nowrap` and sized for "Not ready". The
+Stage-2 reviewer predicted exactly this and could not confirm it without booting
+the app; no unit test could see it either, since jsdom has no layout.
+
+Fixed by putting the exclusion on its own line inside the verdict. Re-measured:
+**+48 px → −12 px**, so it sits inside the cell. Rows carrying a disclosure grow
+43 → 55 px; every other row is untouched. The detail header keeps it inline —
+that surface has the width.
+
+Artifacts: `fleet-1440x900-light.png`, `fleet-1440x900-dark.png`,
+`repo-detail-1440x900-dark.png`.
+
+Two things the screenshots confirm incidentally: the six cells stay aligned
+across ready and not-ready rows, and `docs/review.md` renders as plain text
+rather than a link on the detail page — the unservable-citation rule working on
+a real path outside the read-route allow-list.
+
+**Environment left clean.** The throwaway repo is unregistered and deleted, the
+registry is back to its three entries, the browser's stored pairing is restored
+to `127.0.0.1:5193` and the theme to light, and ports 4319 / 5174 / 5193 are all
+free.
