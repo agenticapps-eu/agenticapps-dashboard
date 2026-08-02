@@ -75,13 +75,30 @@ export const RepoRelativePathSchema = z
  * path. Applied where the spec requires it — error text and repo notices — so a
  * leak is caught by the outbound response validation rather than by review.
  * A symbolic root such as `~/.claude/skills` stays allowed; it names no user.
+ *
+ * A leading `/` counts as a path start unless the character before it is one
+ * that makes it part of a longer token — an alphanumeric, `.`, `_`, `~`, `-`, or
+ * another `/`. That is what keeps `coverage/summary.json`, `~/.claude/skills`
+ * and `https://example.com/x` acceptable while `resolved to:/Users/...` is not.
+ * The earlier form keyed on whitespace, quote or bracket alone, so a path
+ * pressed against a colon — the shape an interpolated message actually takes —
+ * walked straight through. `^//` is spelled out because a UNC root is absolute
+ * but its second slash is otherwise excluded as a boundary.
+ *
+ * The cost of a false positive is not a warning: the outbound validation fails
+ * and the client gets the schema-drift screen. Widening this is a trade, not a
+ * free tightening.
  */
 const SanitisedTextSchema = z
   .string()
   .max(MAX_TEXT_LENGTH)
-  .refine((value) => !/(^|[\s"'`([<])(\/|[A-Za-z]:[\\/])/.test(value), {
-    message: 'text must not carry an absolute filesystem path',
-  })
+  .refine(
+    (value) =>
+      !/(?:^|[^A-Za-z0-9._~/-])\/(?!\/)|^\/\/|(?:^|[^A-Za-z0-9._~-])[A-Za-z]:[\\/]/.test(
+        value,
+      ),
+    { message: 'text must not carry an absolute filesystem path' },
+  )
 
 const Rfc3339Schema = z.string().datetime({ offset: true })
 const CommitShaSchema = z.string().regex(/^[0-9a-f]{40}$/)

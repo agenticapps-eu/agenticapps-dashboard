@@ -85,13 +85,22 @@ async function fileIdentity(path: string, root: string): Promise<string> {
  */
 export async function fleetSignature(
   entries: readonly RegistryIdentity[],
-  machineSkillRoots: Readonly<Record<string, string>>,
+  // Accepts `undefined` values because the caller builds this from
+  // `defaultMachineRoots()`, where a host that is not installed leaves its key
+  // present and its value undefined. A host with no root contributes nothing:
+  // dropping it here is what stops `join(undefined, ...)` throwing and taking
+  // the whole fleet computation with it.
+  machineSkillRoots: Readonly<Record<string, string | undefined>>,
 ): Promise<string> {
   const registry = entries.flatMap((entry) => [entry.id, entry.root])
-  const hosts = Object.keys(machineSkillRoots).sort()
+  const rooted = Object.entries(machineSkillRoots).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  )
+  const hosts = rooted.map(([host]) => host).sort()
+  const roots = new Map(rooted)
   const identities = await Promise.all(
     hosts.map((host) => {
-      const root = machineSkillRoots[host]!
+      const root = roots.get(host)!
       return fileIdentity(join(root, SKILL_RELATIVE_PATH), root)
     }),
   )

@@ -287,6 +287,21 @@ describe('fleetSignature', () => {
     expect(await signature()).not.toContain(sandbox)
   })
 
+  // The caller builds this record from `defaultMachineRoots()`, which can leave
+  // a host key present with an undefined value. `Object.keys` still reports that
+  // host, and joining an undefined root throws — taking down the whole fleet
+  // computation over a host that simply is not installed.
+  it('ignores a host whose machine skill root is undefined', async () => {
+    const roots = { codex: join(machine, 'codex', 'skills') }
+
+    await expect(
+      fleetSignature([{ id: 'a', root: repo }], {
+        ...roots,
+        pi: undefined,
+      } as unknown as Record<string, string>),
+    ).resolves.toBe(await fleetSignature([{ id: 'a', root: repo }], roots))
+  })
+
   /**
    * The machine-global skill is read through the same contained primitive as
    * the readiness file. These roots are named policy rather than request input,

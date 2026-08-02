@@ -199,6 +199,16 @@ describe('deriveReview — verdicts', () => {
     expect(result.error?.code).toBeTruthy()
   })
 
+  // The dangerous shape: a key with no value parses to '', which is not
+  // undefined, and Number('') is a finite 0. A malformed artifact therefore read
+  // as "zero blocking issues" and the check passed — the one outcome a blocker
+  // gate must never produce by accident.
+  it('carries an evaluation error when blocking_open is present but empty', async () => {
+    const result = await withCodeReview('---\nverdict: PASS\nblocking_open:\n---\n')
+    expect(result.status).toBe('fail')
+    expect(result.error?.code).toBeTruthy()
+  })
+
   it('accepts the legacy stage_2_verdict key for a code review', async () => {
     const result = await withCodeReview('---\nstage_2_verdict: APPROVE\nblocking_open: 0\n---\n')
     expect(result.status).toBe('ok')

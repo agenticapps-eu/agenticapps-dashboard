@@ -356,6 +356,21 @@ describe('rescanRepo', () => {
     expect(await rescanRepo('../../etc', options())).toBeNull()
   })
 
+  // Coalescing must not swallow the force. A read that is already in flight was
+  // started with force=false, so joining it hands the rescan whatever the cache
+  // already held — the route answers 200 and rescans nothing. The window is real:
+  // resolveSnapshot awaits the git fingerprint before it consults the cache, so a
+  // click on Rescan while the page is still loading lands inside it.
+  it('does not let a rescan join an in-flight read and skip the recomputation', async () => {
+    await readFleet(options({ now: NOW }))
+
+    const read = readRepo('a', options({ now: NOW + 1_000 }))
+    const rescanned = await rescanRepo('a', options({ now: NOW + 2_000 }))
+    await read
+
+    expect(rescanned!.generatedAt).toBe(NOW + 2_000)
+  })
+
   it('coalesces concurrent rescans into one computation', async () => {
     const [first, second] = await Promise.all([
       rescanRepo('a', options({ now: NOW })),

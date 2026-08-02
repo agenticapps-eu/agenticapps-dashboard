@@ -400,16 +400,22 @@ function Evidence({ repoId, path }: { repoId: string; path: string }): ReactElem
  */
 function useLandOnHashedCheck(ready: boolean): void {
   const { hash } = useLocation()
-  const landed = useRef(false)
+  // The id landed on, not merely whether we have landed. The header pills link
+  // to this same route with a different hash, so the page does not remount
+  // between jumps and a boolean latch would answer "already done" for every
+  // pill after the first. Keyed by id, the latch still fires once per hash —
+  // which is what stops a refetch re-yanking the viewport — while a genuinely
+  // new hash still lands.
+  const landed = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!ready || landed.current) return
+    if (!ready) return
     const id = hash.replace(/^#/, '')
-    if (id === '') return
+    if (id === '' || landed.current === id) return
     const target = document.getElementById(id)
     if (target === null) return
 
-    landed.current = true
+    landed.current = id
     target.scrollIntoView({ block: 'start' })
     target.focus({ preventScroll: true })
   }, [ready, hash])

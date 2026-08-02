@@ -14,6 +14,7 @@
  * machine-global workflow state, which is context about the host and not this
  * repo's data to persist.
  */
+import { homedir } from 'node:os'
 import { join, relative, sep } from 'node:path'
 
 import {
@@ -88,7 +89,18 @@ interface RepoSnapshot {
 
 const cache = new Map<string, RepoSnapshot>()
 /** One in-flight computation per repo, so overlapping requests share it. */
-const inFlight = new Map<string, Promise<RepoSnapshot>>()
+/**
+ * The `force` of the computation is carried alongside it, because whether a
+ * newcomer may join depends on it: a forcing rescan that joins a non-forcing
+ * read inherits that read's willingness to replay the cache, and rescans
+ * nothing.
+ */
+interface InFlight {
+  promise: Promise<RepoSnapshot>
+  force: boolean
+}
+
+const inFlight = new Map<string, InFlight>()
 
 export function _resetReadinessCacheForTests(): void {
   cache.clear()
@@ -132,7 +144,11 @@ function sourcecodeRootOf(opts: ReadinessScanOptions): string {
 }
 
 function homeSourcecode(): string {
-  return join(process.env.HOME ?? '', 'Sourcecode')
+  // `process.env.HOME ?? ''` made this `Sourcecode` — a *relative* path — when
+  // HOME was unset, so every family root resolved against the process working
+  // directory instead. `homedir()` is what workflowScan.ts already uses, and it
+  // is defined on Windows, where HOME usually is not.
+  return join(homedir(), 'Sourcecode')
 }
 
 /** Six identical fails, for a repo whose root cannot be read at all. */
@@ -209,18 +225,37 @@ function snapshotFor(
   force = false,
 ): Promise<RepoSnapshot> {
   const pending = inFlight.get(entry.id)
-  if (pending) return pending
+  // Join only a computation that is at least as forcing as this request. Two
+  // rescans still coalesce, and a read still joins anything; what may not happen
+  // is a rescan inheriting a read's permission to replay the cache.
+  if (pending && (!force || pending.force)) return pending.promise
+
+  // A forcing request arriving over a non-forcing one waits for it rather than
+  // racing it, so the repo is still computed one at a time. The rejection is
+  // swallowed because that failure belongs to the read that owns it.
+  const start = pending
+    ? pending.promise.then(
+        () => undefined,
+        () => undefined,
+      )
+    : Promise.resolve()
 
   // Registered synchronously, before the first await inside resolveSnapshot.
   // Registering after it would let two overlapping rescans both get past this
   // check and compute the same repo twice.
-  const computation = resolveSnapshot(entry, fleet, opts, force)
+  const computation = start
+    .then(() => resolveSnapshot(entry, fleet, opts, force))
     .then((snapshot) => {
       cache.set(entry.id, snapshot)
       return snapshot
     })
-    .finally(() => inFlight.delete(entry.id))
-  inFlight.set(entry.id, computation)
+    .finally(() => {
+      // Only the current owner clears the slot. Without this, the read we
+      // chained behind would delete the record this call just installed.
+      if (inFlight.get(entry.id) === record) inFlight.delete(entry.id)
+    })
+  const record: InFlight = { promise: computation, force }
+  inFlight.set(entry.id, record)
   return computation
 }
 
@@ -285,10 +320,9 @@ function signatureFor(
   opts: ReadinessScanOptions,
 ): Promise<string> {
   const sources = workflowSources(opts)
-  return fleetSignature(
-    entries,
-    sources.machineSkillRoots as Record<string, string>,
-  )
+  // No cast: `fleetSignature` now takes the Partial shape this actually is. The
+  // cast was what let an undefined root through to a `join`.
+  return fleetSignature(entries, sources.machineSkillRoots)
 }
 
 export async function readFleet(

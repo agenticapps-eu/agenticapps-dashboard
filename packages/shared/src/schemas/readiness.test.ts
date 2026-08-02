@@ -221,6 +221,42 @@ describe('CheckResultSchema', () => {
     ).toBe(false)
   })
 
+  // The boundary the leak check keys on used to be whitespace, quote or bracket
+  // only, so a path pressed straight against a colon walked through it. That is
+  // the shape an interpolated message actually takes.
+  it('rejects an absolute path that follows a colon with no space', () => {
+    expect(
+      CheckResultSchema.safeParse(
+        result('coverage', {
+          status: 'fail',
+          summary: 'unreadable',
+          error: {
+            code: 'coverage-unreadable',
+            message: 'resolved to:/Users/someone/repo/coverage-summary.json',
+          },
+        }),
+      ).success,
+    ).toBe(false)
+  })
+
+  // The counterweight to widening that boundary: a false rejection fails the
+  // whole outbound response and shows the schema-drift screen, so the symbolic
+  // root and a scheme-relative URL must both survive.
+  it.each([
+    ['a symbolic home root', 'the skill is missing from ~/.claude/skills'],
+    ['a URL', 'see https://example.com/docs/readiness for the format'],
+  ])('accepts an error message carrying %s', (_label, message) => {
+    expect(
+      CheckResultSchema.safeParse(
+        result('coverage', {
+          status: 'fail',
+          summary: 'unreadable',
+          error: { code: 'coverage-unreadable', message },
+        }),
+      ).success,
+    ).toBe(true)
+  })
+
   it('accepts an error message carrying a repo-relative path', () => {
     expect(
       CheckResultSchema.safeParse(

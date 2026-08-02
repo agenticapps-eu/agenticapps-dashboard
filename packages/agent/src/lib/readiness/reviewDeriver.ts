@@ -258,14 +258,18 @@ function evaluateVerdict(checkId: ReviewCheckId, text: string): Verdict {
 
   if (checkId === 'code-review') {
     const declared = frontmatter.blocking_open
-    if (declared === undefined) {
+    // A bare `blocking_open:` parses to '', which is not undefined, and
+    // Number('') is a finite 0 — so without the emptiness test a malformed
+    // artifact declared itself free of blocking issues and passed the gate.
+    const raw = declared === undefined ? undefined : unquote(declared)
+    if (raw === undefined || raw === '') {
       return {
         kind: 'error',
         code: 'review-blocking-count-missing',
         message: 'the artifact declares no blocking_open count',
       }
     }
-    const count = Number(unquote(declared))
+    const count = Number(raw)
     if (!Number.isFinite(count)) {
       return {
         kind: 'error',

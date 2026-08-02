@@ -44,7 +44,11 @@ function commit(files: string[], message: string, date: string): string {
   return git(['rev-parse', 'HEAD']).trim()
 }
 
-/** Host repos ship 3.2.0/1.0.0 (claude) and 1.2.0/1.0.0 (codex, opencode). */
+/**
+ * Host repos ship 3.2.0/1.0.0 (claude), 1.2.0/1.0.0 (codex) and 1.0.0/1.0.0
+ * (opencode). opencode's lower pair is deliberate — the opencode case below
+ * depends on it to report `ok`.
+ */
 function shipHostRepos(): void {
   put(join(family, 'claude-workflow', 'skill', 'SKILL.md'), skill('3.2.0', '1.0.0'))
   put(

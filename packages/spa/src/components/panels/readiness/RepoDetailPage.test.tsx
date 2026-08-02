@@ -376,6 +376,27 @@ describe('RepoDetailPage evidence blocks', () => {
     expect(document.activeElement).toBe(block('coverage'))
   })
 
+  // The header pills link to this same route with a different hash, so the page
+  // never unmounts between jumps. A once-per-mount latch therefore fired for the
+  // first pill and for nothing after it — the second click moved neither the
+  // viewport nor focus, which for a keyboard user is a dead control.
+  it('lands again when the hash changes without the page remounting', () => {
+    routerState.hash = 'coverage'
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    loaded(detail())
+    const { rerender } = render(<RepoDetailPage />)
+    expect(scrollIntoView.mock.instances[0]).toBe(block('coverage'))
+
+    routerState.hash = 'pen-test'
+    rerender(<RepoDetailPage />)
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(2)
+    expect(scrollIntoView.mock.instances[1]).toBe(block('pen-test'))
+    expect(document.activeElement).toBe(block('pen-test'))
+  })
+
   it('leaves the page where it is when no check was named', () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
