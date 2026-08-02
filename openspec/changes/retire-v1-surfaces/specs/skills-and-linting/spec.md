@@ -19,8 +19,21 @@ particular tool found. Which tool satisfies a check is deliberately outside the
 UI, and embedding one tool's output contradicts that.
 
 **Migration**: The subprocess, its cache, and its panel are removed. The linter
-remains usable directly, and a repo that wants its result on the dashboard
-reports it through its readiness file as a declared check.
+remains usable directly, at the command line and in CI.
+
+**There is no dashboard path for its result, and this migration SHALL NOT claim
+one.** An earlier draft said a repo could report the linter's result "through its
+readiness file as a declared check". It cannot: the readiness model accepts
+exactly six check identifiers — `workflow`, `spec`, `code-review`,
+`security-review`, `pen-test`, `coverage` — and an entry naming anything else is
+**silently discarded entry by entry**, by the same rule that lets a newer repo
+declare a check this daemon does not know. None of the six represents generic
+lint or tooling health, so an author following the old advice would have written
+a valid file, seen no error, and got no check.
+
+Reporting linter output on the dashboard would require a seventh check
+identifier. That is a change to the readiness model, not a migration path this
+withdrawal can offer, and it is not proposed here.
 
 ### Requirement: Cross-Repo Skill Drift Matrix
 

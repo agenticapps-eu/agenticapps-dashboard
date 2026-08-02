@@ -65,10 +65,25 @@ written by this surface, so nothing changes about secret handling.
 withdrawn. With no integration to configure, it has no consumer.
 
 **Migration**: The management surface is removed. Existing files under the
-daemon's own directory are left in place for rollback rather than deleted. Inert
-means v2 neither reads nor writes them. Deletion or archival requires separate
-cleanup with an explicit retention decision. The daemon's file-mode discipline
-in `filesystem-access-policy` is unaffected.
+daemon's own directory are left in place so a rollback does not destroy
+configuration. Inert means v2 neither reads nor writes them.
+
+**Retention SHALL be bounded, owned, and dated.** These files hold integration
+credentials, and "left in place for rollback" with no end is indefinite retention
+of secrets the product no longer has any use for. The retention window SHALL be
+the rollback window and no longer: **thirty days from the cutover release**,
+after which the files SHALL be deleted. The cutover's implementing change SHALL
+name the deletion as one of its own tasks with a dated deadline, so the owner is
+whoever ships the cutover rather than nobody.
+
+Deferring this to "separate cleanup with an explicit retention decision" is what
+the previous draft did, and it named no one, no window, and no date — which is
+how a secret outlives the feature that needed it.
+
+The daemon's file-mode discipline in `filesystem-access-policy` is unaffected and
+SHALL NOT be read as covering this. Mode `0600` governs **who** can read a file,
+not **how long** it exists; a credential retained forever at `0600` is still a
+credential retained forever.
 
 ### Requirement: Local Tooling Health Detection
 
@@ -76,8 +91,18 @@ in `filesystem-access-policy` is unaffected.
 answers "what is set up here". v2 asks whether the work was done, not which tool
 was used, and deliberately keeps tool identity out of the surface.
 
-**Migration**: The detection and its panel are removed. A repo wanting such a
-signal on the dashboard reports it as a declared check.
+**Migration**: The detection and its panel are removed, with no dashboard
+replacement.
+
+An earlier draft offered one — "a repo wanting such a signal on the dashboard
+reports it as a declared check" — and it does not exist. The readiness model
+accepts exactly six check identifiers and **silently discards** an entry naming
+any other, so a repo declaring observability-tooling health would produce a valid
+file, no error, and no check. None of the six carries tool-identity or
+tooling-setup meaning, which is the point of the withdrawal rather than an
+oversight in it: v2 asks whether the work was done, not which tool was used.
+
+A repo that wants this signal keeps it where the tooling already reports it.
 
 ### Requirement: Integration Status Summary
 
@@ -92,6 +117,26 @@ integrations withdrawn, it binds nothing. Its spirit is visible elsewhere in v2 
 the knowledge-graph viewer is withdrawn for exactly this reason, and the board is
 read-only rather than a control plane — but it is not restated as a standing rule
 here.
+
+**This is asymmetric with its sibling, deliberately, and the asymmetry is the
+part worth stating.** `Optional Integrations Never Become Load-Bearing` is
+*preserved* by moving it to surviving `project-dashboard`, on the reasoning in
+design §7: it binds any future integration "without relying on archive
+archaeology". That reasoning applies word for word to this requirement, and this
+requirement is nonetheless withdrawn with a migration that says the opposite —
+that a future author should recover it from the archive.
+
+The two are kept apart on consequence, not on principle. Load-bearing is a
+failure the product suffers silently: an unrelated surface degrades because an
+integration is down, and nobody thinks to look at the integration. Reimplementing
+a third-party product is a failure nobody can miss — it is visible in the diff,
+in review, and in the size of the work — so rediscovering the constraint late
+costs a design argument rather than a broken surface. One is worth carrying
+forward as a standing rule; the other is worth writing down and letting the next
+author find.
+
+If that trade is wrong, the fix is to preserve this one too rather than to
+withdraw both — the reasoning in design §7 would support it.
 
 **Migration**: None. If integrations return, this constraint should return with
 them.

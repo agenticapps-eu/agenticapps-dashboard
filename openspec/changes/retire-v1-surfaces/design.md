@@ -168,6 +168,24 @@ measurement principle: a future time series must version its measurement
 definition or recompute history so a metric change is not displayed as a health
 change.
 
-GitNexus removal and this retirement therefore deploy atomically. The former
-MUST be folded first, but no release may expose the old chart after the column
-change; if atomicity is lost, recomputation returns as a release gate.
+**Superseded 2026-08-02: the atomic deployment this section assumed did not
+happen, and did not need to.** `remove-gitnexus-integration` archived on
+2026-07-28 and shipped **independently and deliberately** — its own proposal says
+so — leaving `code-intelligence` at five requirements weeks before this change
+could run.
+
+The obligation that atomicity was standing in for was discharged upstream rather
+than lost. What the clause protected against was a release exposing the old
+conformance chart after the column set changed, which would put a step in the
+90-day chart that reads as a change in fleet health but is really a change in
+measurement. The upstream change solved that at the source: daily snapshots store
+every per-column state inline, so old days were re-scored ignoring `gitNexus` and
+`wiki`, and every point in the retained window is now interpreted using the same
+post-cutover column set.
+
+So recomputation did not "return as a release gate" — it was performed, which is
+what the gate would have demanded. **This change therefore carries no outstanding
+recomputation obligation and no atomicity requirement against GitNexus removal.**
+The stale assertion is recorded as corrected rather than deleted, because a
+reader who met the original clause needs to know it was satisfied upstream rather
+than quietly dropped.
