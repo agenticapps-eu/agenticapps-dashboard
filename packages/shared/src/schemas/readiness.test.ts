@@ -503,7 +503,7 @@ describe('computeReady', () => {
   const na = (id: CheckId) => result(id, { status: 'na', summary: 'not applicable' })
 
   it('is false when any check has never run', () => {
-    expect(computeReady(sixNever())).toBe(false)
+    expect(computeReady(sixNever(), null)).toBe(false)
   })
 
   it.each(['fail', 'stale', 'never'] as const)(
@@ -514,7 +514,7 @@ describe('computeReady', () => {
           ? result(id, { status, summary: 'blocking', at: status === 'never' ? null : 1 })
           : ok(id),
       )
-      expect(computeReady(checks)).toBe(false)
+      expect(computeReady(checks, null)).toBe(false)
     },
   )
 
@@ -528,27 +528,27 @@ describe('computeReady', () => {
           })
         : ok(id),
     )
-    expect(computeReady(checks)).toBe(false)
+    expect(computeReady(checks, null)).toBe(false)
   })
 
   it('is false when every check is not applicable', () => {
-    expect(computeReady(CHECK_IDS.map(na))).toBe(false)
+    expect(computeReady(CHECK_IDS.map(na), null)).toBe(false)
   })
 
   it('is true when only ok, warn and na results are present', () => {
     const checks = CHECK_IDS.map((id, i) =>
       i === 0 ? na(id) : i === 1 ? warn(id) : ok(id),
     )
-    expect(computeReady(checks)).toBe(true)
+    expect(computeReady(checks, null)).toBe(true)
   })
 
   it('is true when the one applicable check is a warning', () => {
     const checks = CHECK_IDS.map((id, i) => (i === 4 ? warn(id) : na(id)))
-    expect(computeReady(checks)).toBe(true)
+    expect(computeReady(checks, null)).toBe(true)
   })
 
   it('returns a boolean rather than a score', () => {
-    expect(typeof computeReady(sixNever())).toBe('boolean')
+    expect(typeof computeReady(sixNever(), null)).toBe('boolean')
   })
 })
 
