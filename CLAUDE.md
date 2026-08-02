@@ -89,7 +89,7 @@ A multi-project pipeline dashboard: a static SPA on Cloudflare Pages plus one
 local daemon that reads each registered project's files and git history. No
 project data leaves the machine.
 
-**Product behaviour is specified in `openspec/specs/`, not here.** Thirteen
+**Product behaviour is specified in `openspec/specs/`, not here.** Fourteen
 capabilities; read the one you are touching before you touch it:
 
 | Capability | Covers |
@@ -107,6 +107,7 @@ capabilities; read the one you are touching before you touch it:
 | [`optional-integrations`](openspec/specs/optional-integrations/spec.md) | Sentry / Linear / Infisical, and the works-without-them contract |
 | [`help-docs`](openspec/specs/help-docs/spec.md) | The in-product `/help` documentation system |
 | [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, shared primitives, shell IA |
+| [`repo-readiness`](openspec/specs/repo-readiness/spec.md) | The six checks (`workflow`, `spec`, `code-review`, `security-review`, `pen-test`, `coverage`), the six-value status vocabulary, two-tier provenance, ancestry-based freshness, and the fleet/detail readiness routes |
 
 Project-wide context and the hard constraints also live in
 [`openspec/config.yaml`](openspec/config.yaml) under `context:`.
