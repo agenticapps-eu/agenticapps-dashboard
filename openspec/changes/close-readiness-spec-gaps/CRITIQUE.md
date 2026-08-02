@@ -97,3 +97,20 @@ the check now blocks nothing, what is the column for?* A permanent grey stripe
 down the fleet whose only function is to make the verdict apologise for it. And:
 *is "Ready" the right word once it can be true with a check that never ran?*
 Both belong to the follow-up that narrows the readiness-file blast radius.
+
+## Waiver — granted 2026-08-02
+
+The operator waived the ≥ 80 floor under the CLAUDE.md structural-debt clause,
+having been shown the score, what this change caused, and what it inherited.
+
+Basis: both priority findings attributable to this change (P1, P3) are fixed and
+verified. The residual gap is dominated by debt that predates the change and is
+out of its scope — no glyph legend on `/fleet`, `/help` at 11-of-12 stubs, no
+filter on the readiness predicate, and nine undifferentiated controls in the
+filter row with `sr-only` group labels.
+
+Not waived away, carried: **P4** (the detail header renders the verdict at
+`text-sm`, level with the timestamp beside it) and **P5** ("Not ready" names no
+blocker while "Ready" now explains itself). P5 is the sharper of the two — this
+change established that a verdict states its own basis, then applied it only to
+the passing case, which inverts what an operator opens the dashboard to triage.
