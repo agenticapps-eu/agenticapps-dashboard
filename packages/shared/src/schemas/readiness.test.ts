@@ -552,6 +552,80 @@ describe('computeReady', () => {
   })
 })
 
+describe('computeReady — the advisory exemption', () => {
+  const ok = (id: CheckId) => result(id, { status: 'ok', summary: 'current' })
+  const na = (id: CheckId) => result(id, { status: 'na', summary: 'not applicable' })
+  /** `pen-test` is the only underivable check, at index 4 of CHECK_IDS. */
+  const ADVISORY = 4
+  const COVERAGE = 5
+
+  const unusable = {
+    code: 'readiness-file-invalid',
+    message: 'the readiness file does not match the schema',
+  } as const
+
+  /** Five derivable checks `ok`, with the advisory slot supplied by the caller. */
+  const withAdvisory = (advisory: CheckResult) =>
+    CHECK_IDS.map((id, i) => (i === ADVISORY ? advisory : ok(id)))
+
+  it('does not block on an undeclared advisory check', () => {
+    const checks = withAdvisory(result(CHECK_IDS[ADVISORY]!))
+    expect(computeReady(checks, null)).toBe(true)
+  })
+
+  it('still blocks on a derived never from a derivable check', () => {
+    // The coverage deriver looked and found no artifact. That is a measurement,
+    // not an absence of signal, so the exemption must not reach it. A rule keyed
+    // on `source` alone would let a repo with no tests report ready.
+    const checks = CHECK_IDS.map((id, i) => (i === COVERAGE ? result(id) : ok(id)))
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  it('still blocks on a declared never from a derivable check', () => {
+    const checks = CHECK_IDS.map((id, i) =>
+      i === 0 ? result(id, { source: 'declared' }) : ok(id),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  it.each(['fail', 'stale'] as const)(
+    'still blocks on a declared %s advisory check',
+    (status) => {
+      const checks = withAdvisory(
+        result(CHECK_IDS[ADVISORY]!, { status, source: 'declared', at: 1, summary: 'declared' }),
+      )
+      expect(computeReady(checks, null)).toBe(false)
+    },
+  )
+
+  it('still blocks on an advisory check carrying an evaluation error', () => {
+    const checks = withAdvisory(
+      result(CHECK_IDS[ADVISORY]!, {
+        status: 'fail',
+        summary: 'could not evaluate',
+        error: { code: 'pen-test-deriver-failed', message: 'the pen-test deriver failed' },
+      }),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  it('suspends the exemption while the readiness file is unusable', () => {
+    // The guard against getting greener by breaking your own evidence. An
+    // unusable file discards every declaration and returns all six checks to
+    // derived values, so a declared blocking status on the advisory check
+    // vanishes and would otherwise be excused by the exemption.
+    const checks = withAdvisory(result(CHECK_IDS[ADVISORY]!))
+    expect(computeReady(checks, unusable)).toBe(false)
+  })
+
+  it('is not ready when nothing is applicable and the only other result is exempt', () => {
+    const checks = CHECK_IDS.map((id, i) =>
+      i === ADVISORY ? result(id) : na(id),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+})
+
 describe('ReadinessFileSchema', () => {
   const declaredPenTest = {
     id: 'pen-test',
