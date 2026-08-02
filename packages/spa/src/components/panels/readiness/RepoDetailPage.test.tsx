@@ -18,6 +18,27 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useParams: () => routerState.params,
     useLocation: () => ({ hash: routerState.hash }),
+    // The header's check pills are links now, and a real TanStack Link needs a
+    // router context this page-level test has no reason to build.
+    Link: ({
+      to,
+      params,
+      hash,
+      children,
+      ...rest
+    }: {
+      to: string
+      params?: { repoId?: string }
+      hash?: string
+      children: React.ReactNode
+    } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+      <a
+        href={`${to.replace('$repoId', params?.repoId ?? '')}${hash === undefined ? '' : `#${hash}`}`}
+        {...rest}
+      >
+        {children}
+      </a>
+    ),
   }
 })
 vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
@@ -194,19 +215,22 @@ describe('RepoDetailPage header', () => {
     expect(within(header as HTMLElement).getByText(/2026-07-30 09:15 UTC/)).toBeInTheDocument()
   })
 
-  it('shows the six checks in the full variant, labelled and unlinked', () => {
+  it('makes the six header checks the jump nav for a page six blocks tall', () => {
+    // Reversed by the design critique. These pills are visually identical to
+    // the fleet's clickable cells and sat inert at the top of a 1648px page
+    // with six anchored blocks and no other in-page navigation — the shape of
+    // a jump bar, doing nothing. "A self-link is noise" was the wrong call
+    // when the link is to a block two screens down.
     loaded(detail())
     render(<RepoDetailPage />)
 
     const group = screen.getByRole('group', { name: /agenticapps-dashboard/ })
-    expect(within(group).getAllByRole('figure')).toHaveLength(CHECK_IDS.length)
-    // The full variant names each check in the cell, so the detail needs no
-    // column headers to say which is which.
     for (const id of CHECK_IDS) {
       expect(within(group).getByText(CHECK_LABELS[id])).toBeInTheDocument()
     }
-    // Every cell already points at this page; linking them would be noise.
-    expect(within(group).queryAllByRole('link')).toHaveLength(0)
+    const links = within(group).getAllByRole('link')
+    expect(links).toHaveLength(CHECK_IDS.length)
+    expect(links.map((a) => a.getAttribute('href')?.split('#')[1])).toEqual([...CHECK_IDS])
   })
 
   it('states readiness and any readiness-file notice in the header', () => {
@@ -393,6 +417,22 @@ describe('RepoDetailPage evidence blocks', () => {
 
     const spec = block('spec')
     expect(within(spec).getByText(/derived by the daemon from this repo/i)).toBeInTheDocument()
+  })
+
+  it('does not claim to have derived a check that never ran', () => {
+    // Introduced by the provenance fix and caught by the design critique: a
+    // never-run check rendered "Derived by the daemon from this repo" four
+    // lines above a remedy reading "This check is never derived." Pen-test is
+    // declaration-only and sits at `never` fleet-wide, so this was the state
+    // of the block most likely to be read sceptically, on the page whose whole
+    // job is provenance.
+    loaded(neverDetail())
+    render(<RepoDetailPage />)
+
+    for (const id of CHECK_IDS) {
+      expect(within(block(id)).queryByText(/derived by the daemon/i)).not.toBeInTheDocument()
+    }
+    expect(within(block('pen-test')).getByText(/nothing observed yet/i)).toBeInTheDocument()
   })
 
   it('renders an em dash rather than inventing a timestamp or a path', () => {

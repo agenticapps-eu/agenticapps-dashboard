@@ -415,4 +415,28 @@ belongs with whoever revisits the table, not with a §10 that is closing.
 - [ ] Do NOT add a GSD fallback to the `spec` check
 - [ ] Do NOT compute an aggregate score
 - [ ] Do NOT select a pen-test tool
-- [ ] Do NOT widen the filesystem allow-list or add an execution path
+- [ ] Do NOT widen the filesystem allow-list
+- [x] ~~Do NOT add an execution path~~ — **overridden 2026-08-02, on the record.**
+
+  §10's first task line asks for open-in-editor, and
+  `POST /api/projects/{id}/open` had never been built despite
+  `filesystem-access-policy` enumerating it as one of four permitted
+  process-creation surfaces since long before this change. Building it was the
+  user's explicit decision, taken twice: once when the gap was surfaced, and
+  again when this non-goal was found and put to them directly.
+
+  This clause is struck rather than quietly broken, because a non-goal that is
+  violated in silence stops being worth writing down. What contains the
+  override:
+
+  - A second `/cso` pass covering the new surface, with **independent verifier
+    sub-tasks** — closing the gap the §7 pass recorded when it could not spawn
+    them. It found one HIGH, fixed on this branch.
+  - `SECURITY.md` amended from three endpoints to four and from zero new
+    execution paths to one, with `REVIEWS.md`'s precedence disclosed.
+  - The read allow-list is **unchanged**. `resolveAllowed` still accepts
+    `.planning`, `.claude` and `openspec` and nothing else, and every named
+    path on this route goes through it. The first half of this non-goal holds.
+  - The one reach beyond that list is the no-path form, which spawns the editor
+    on the registered project root. It returns no bytes to any client; what
+    bounds it is the registry.

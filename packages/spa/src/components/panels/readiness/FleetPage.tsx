@@ -91,7 +91,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
       <h2 className="text-lg font-semibold text-text-primary">
         Could not read the fleet.
       </h2>
-      <p className="mt-2 text-sm text-text-tertiary">
+      {/* Capped, like the page's own subtitle. Uncapped it ran ~184 characters
+          per line at 1440, which is nobody's idea of readable prose. */}
+      <p className="mt-2 max-w-prose text-sm text-text-tertiary">
         The daemon did not answer. Readiness is read from your machine, so
         nothing is cached remotely to fall back on.
       </p>

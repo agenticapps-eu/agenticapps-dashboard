@@ -73,6 +73,7 @@ export function Sidebar(): React.JSX.Element {
               sits. `/` still belongs to Projects until retire-v1-surfaces. */}
           <SidebarItem
             to="/fleet"
+            alsoActiveFor="/repos"
             icon={<ShieldCheck size={16} aria-hidden="true" />}
             label="Fleet readiness"
           />

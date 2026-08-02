@@ -121,4 +121,20 @@ describe('D-6.1-04 ARIA additions', () => {
       screen.getByRole('button', { name: /Skills section, available in Phase 6/i }),
     ).toBeInTheDocument()
   })
+
+  it('stays active across a subtree it owns', () => {
+    // /repos/:id is only reachable from /fleet and belongs to it, but the
+    // sidebar highlighted nothing there — so the detail page represented the
+    // reader as being nowhere in the product.
+    mockMatchRoute.mockImplementation((opts: { to: string; fuzzy?: boolean }) =>
+      opts.to === '/repos' && opts.fuzzy === true,
+    )
+    render(
+      <SidebarItem to="/fleet" alsoActiveFor="/repos" icon={<span />} label="Fleet readiness" />,
+    )
+
+    const link = screen.getByRole('link', { name: /Fleet readiness/ })
+    expect(link.getAttribute('aria-current')).toBe('page')
+    expect(link.className).toContain('bg-accent-bg-strong')
+  })
 })

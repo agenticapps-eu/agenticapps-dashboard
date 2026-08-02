@@ -26,7 +26,7 @@ import { Link } from '@tanstack/react-router'
 import {
   AlertTriangle,
   Check,
-  CircleDashed,
+  Minus,
   Clock,
   Slash,
   X,
@@ -93,7 +93,12 @@ export const STATUS_PRESENTATION: Record<CheckStatus, StatusPresentation> = {
   },
   never: {
     word: 'never run',
-    icon: CircleDashed,
+    // `CircleDashed` is the lucide spinner silhouette, and `never` is the most
+    // common status across a young fleet — so the healthy case rendered as a
+    // field of things that look like they are still loading, next to a
+    // LoadingState that is the same grey rounded bar minus the animation.
+    // `Minus` says "nothing here" without saying "wait".
+    icon: Minus,
     bg: 'bg-text-tertiary/10',
     text: 'text-text-secondary',
   },
@@ -178,7 +183,12 @@ function ReadinessCell({
   const value = formatValue(check)
   const full = variant === 'full'
 
-  const surface = `flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'justify-center px-1.5 py-1'} ${presentation.bg} ${presentation.text}`
+  // Compact cells sit in a six-track grid, so an unconstrained surface stretched
+  // to the full column — a 111px tinted bar carrying one 14px glyph, an 8% ink
+  // ratio that read as a placeholder rather than a value. `w-8 mx-auto` caps the
+  // tint at its content and leaves the grid track, and therefore the alignment
+  // with the column header above it, untouched.
+  const surface = `flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'mx-auto w-8 justify-center py-1.5'} ${presentation.bg} ${presentation.text}`
   const body = (
     <>
       <Shape size={full ? 16 : 14} aria-hidden="true" />

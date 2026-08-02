@@ -18,11 +18,27 @@ export interface SidebarItemProps {
   params?: Record<string, string>
   icon: React.ReactNode
   label: string
+  /**
+   * A subtree this item also owns, matched fuzzily. `/fleet` passes `/repos`
+   * because a repo detail is reachable only from the fleet and belongs to it —
+   * without this the sidebar highlighted nothing there, and the page
+   * represented the reader as being nowhere in the product.
+   */
+  alsoActiveFor?: string
 }
 
-export function SidebarItem({ to, params, icon, label }: SidebarItemProps): React.JSX.Element {
+export function SidebarItem({
+  to,
+  params,
+  icon,
+  label,
+  alsoActiveFor,
+}: SidebarItemProps): React.JSX.Element {
   const matchRoute = useMatchRoute()
-  const isActive = !!matchRoute({ to, params: params ?? {}, fuzzy: false } as Parameters<typeof matchRoute>[0])
+  const isActive =
+    !!matchRoute({ to, params: params ?? {}, fuzzy: false } as Parameters<typeof matchRoute>[0]) ||
+    (alsoActiveFor !== undefined &&
+      !!matchRoute({ to: alsoActiveFor, fuzzy: true } as Parameters<typeof matchRoute>[0]))
 
   const stateClasses = isActive
     ? 'bg-accent-bg-strong text-white'

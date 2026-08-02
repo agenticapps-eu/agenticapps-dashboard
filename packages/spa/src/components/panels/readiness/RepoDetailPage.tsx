@@ -55,7 +55,7 @@ function NotRegisteredState({ repoId }: { repoId: string }): ReactElement {
       <h2 className="text-lg font-semibold text-text-primary">
         {repoId} is not registered.
       </h2>
-      <p className="mt-2 text-sm text-text-tertiary">
+      <p className="mt-2 max-w-prose text-sm text-text-tertiary">
         Readiness is only reported for repositories in the registry. Register it
         with <code className="font-mono">agentic-dashboard register &lt;path&gt;</code>.
       </p>
@@ -188,9 +188,46 @@ function DetailHeader({
         </p>
       )}
 
-      <ReadinessIndicator checks={repo.checks} repoName={repo.name} variant="full" />
+      {/*
+        The jump nav. Passing `repoId` turns each pill into a link to
+        `#<check>`, which the hash-landing effect below already knows how to
+        receive — so a page six blocks and 1648px tall gains in-page navigation
+        without a new component. These pills were inert until the design
+        critique pointed out they were sitting in exactly the shape of a jump
+        bar and doing nothing.
+      */}
+      <ReadinessIndicator
+        checks={repo.checks}
+        repoName={repo.name}
+        repoId={repo.id}
+        variant="full"
+      />
     </header>
   )
+}
+
+/**
+ * Where this value came from, in the order the questions actually arise.
+ *
+ * `never` is answered first and on its own. A check that has not run was not
+ * derived from anything, and saying it was put the block into flat
+ * contradiction with its own remedy — pen-test read "Derived by the daemon
+ * from this repo" four lines above "This check is never derived." Pen-test is
+ * declaration-only and sits at `never` across the whole fleet, so that was the
+ * single most-read block on the page, on the surface whose entire job is
+ * provenance.
+ *
+ * Below that: a declaration names the file it was declared in, and a derived
+ * value names the file it came from — or says plainly that there wasn't one,
+ * which is the honest answer for the spec check on every healthy repo.
+ */
+function provenance(check: DetailCheck): string {
+  if (check.status === 'never') return 'Nothing observed yet'
+  if (check.source === 'declared') return `Declared in ${READINESS_FILE}`
+  if (check.evidence === null) {
+    return 'Derived by the daemon from this repo, with no single file behind it'
+  }
+  return 'Derived'
 }
 
 /**
@@ -263,17 +300,7 @@ function CheckBlock({
         <Fact term="Observed">
           {check.at === null ? <EmDash /> : formatCommitTime(check.at)}
         </Fact>
-        <Fact term="Provenance">
-          {check.source === 'declared'
-            ? `Declared in ${READINESS_FILE}`
-            : check.evidence === null
-              ? // Named, not shrugged at. Several derivers legitimately produce
-                // no evidence file — the spec check has none for `ok` or
-                // `warn`, which is every healthy repo — and a bare "Derived"
-                // there answered "where did this come from?" with nothing.
-                'Derived by the daemon from this repo, with no single file behind it'
-              : 'Derived'}
-        </Fact>
+        <Fact term="Provenance">{provenance(check)}</Fact>
         <Fact term="Evidence">
           {check.evidence === null ? (
             <EmDash />
