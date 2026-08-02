@@ -140,8 +140,28 @@ TDD throughout: the failing test comes first in every task below.
 
       Flagged for the reviewer rather than settled unilaterally: if the intent of
       the gate is "any diff under packages/spa", this needs a run before merge.
-- [ ] 6.2 Run `run-plan-review.sh` with `REVIEW_TIMEOUT=540` for two other-vendor
+- [x] 6.2 Run `run-plan-review.sh` with `REVIEW_TIMEOUT=540` for two other-vendor
       reviewers. The gate reports rather than enforces this, so skipping it is a
       decision to record, not a step to forget.
-- [ ] 6.3 Address confirmed REQUEST-CHANGES findings against the code before
+
+      **Started, then cancelled on the author's instruction to merge.** It was
+      launched at `REVIEW_TIMEOUT=540 MIN_REVIEWERS=2` and had produced no
+      `REVIEWS.md` when it was stopped, so **this change ships with zero
+      independent review.** Recorded here rather than left as an absent file,
+      because the §18 gate only prints a `NOTE` for a missing review and nothing
+      else would preserve the fact.
+
+      What that costs is specific, not ceremonial. Every defect this change fixed
+      was one the previous round's reviewers caught or the spec had recorded;
+      three of this change's own claims turned out wrong under test (tasks 3.7,
+      4.3, 4.4). The remaining risk is concentrated in the same place: the
+      entry-level rejection deliberately does **not** rely on the repo-level
+      notice to block, and that independence is asserted by one test
+      (`assemble.test.ts` — "cannot be made readier by deleting the evidence it
+      declared"). A reviewer's first job would have been to attack that test.
+
+- [x] 6.3 Address confirmed REQUEST-CHANGES findings against the code before
       archiving — a defect folded into durable spec is expensive to remove.
+
+      Vacuous: no reviewer ran, so there are no findings. The delta folds into
+      durable spec unreviewed.

@@ -99,6 +99,14 @@ became unreadable. While a notice reports the file unusable, a derived `never` o
 an advisory check SHALL block, because the daemon cannot tell what the discarded
 file claimed.
 
+This clause SHALL be retained even though an unverifiable citation no longer
+discards the file. Entry-level rejection closes that route locally, by giving the
+rejected check an error-bearing result that blocks on its own; but the whole-file
+modes that remain — an unsupported version, unparsable JSON, a malformed known
+entry, a collapsing production scope — still discard every declaration, and the
+suspension is what keeps those from being usable as a route to ready. Narrowing
+the citation radius removes one entrant to this clause, not the need for it.
+
 **The check results alone SHALL NOT be treated as sufficient input to the
 predicate.** When a readiness file is unusable, every check falls back to its
 derived value carrying no error, so an advisory check's result is indistinguishable
@@ -125,6 +133,11 @@ as `ready` and the results, so this requires no new field on the wire.
 - **THEN** the repo is not ready, because the advisory check's derived `never` blocks while the notice stands
 - **AND** a repo cannot reach ready by making its own declarations unreadable.
 
+#### Scenario: A rejected citation cannot make a repo readier either
+- **WHEN** a repo declares its advisory check with a citation that cannot be opened, and its five derivable checks report `ok`
+- **THEN** the repo is not ready, because the rejected entry carries an evaluation error rather than falling back to a derived `never`
+- **AND** the verdict does not depend on the notice for this case, because the blocking result is local to the check whose citation failed.
+
 #### Scenario: An advisory check that fails to evaluate blocks
 - **WHEN** a check in the advisory set carries an evaluation error
 - **THEN** the repo is not ready
@@ -150,11 +163,12 @@ as `ready` and the results, so this requires no new field on the wire.
 - **THEN** the repo is not ready, because no check reported `ok` or `warn`
 - **AND** no vacuous success is produced by exempting the only non-`na` result.
 
-The two differ in reachability, and both are kept deliberately. The daemon cannot
-currently produce the first — `pen-test` derives a constant `never` and a declared
-`na` is invalid for that slot — but the predicate is a pure function over results
-and accepts it, so it remains its contract and is pinned. The second is the
-boundary the advisory exemption actually creates.
+Both are reachable, and both are kept deliberately. The first became reachable
+when `pen-test` gained a declared `na`: a repo may now report `na` on all six and
+is not ready, which was previously a contract the predicate honoured but no input
+could produce. It is no longer pinned as a pure-function property alone — it is
+now a state a repo can actually be in, and the scenario is the stronger for it.
+The second is the boundary the advisory exemption creates.
 
 #### Scenario: An undeclared advisory check does not block readiness
 - **WHEN** a repo's five derivable checks report `ok` and its advisory check reports a derived `never`
@@ -165,6 +179,11 @@ boundary the advisory exemption actually creates.
 - **WHEN** a derivable check observes its repo, finds no artifact, and reports `never`
 - **THEN** the repo is not ready
 - **AND** the advisory exemption does not apply to it, because the absence of the artifact is itself the observation.
+
+#### Scenario: A declared never on the advisory check blocks
+- **WHEN** a repo declares its advisory check as `never`
+- **THEN** the repo is not ready
+- **AND** the exemption does not apply, because it covers only a derived `never` and this is the author asserting the check has never run.
 
 #### Scenario: An expired advisory declaration blocks
 - **WHEN** a repo declared its advisory check and the declaration has since expired
@@ -229,26 +248,41 @@ exist, and an expired declared pen test becomes `stale`. Its `source` remains
 `declared`.
 
 **A cited evidence path SHALL be verified as openable, and a citation that is not
-SHALL make the whole readiness file unusable.** While validating tier B, every
-declared entry's evidence path SHALL be resolved within the canonical repo root,
-SHALL be confirmed to be a regular file within the evidence read bound, and SHALL
-be opened rather than merely described — a path can stat cleanly and still be
+SHALL reject its own entry rather than the whole file.** While validating tier B,
+every declared entry's evidence path SHALL be resolved within the canonical repo
+root, SHALL be confirmed to be a regular file within the evidence read bound, and
+SHALL be opened rather than merely described — a path can stat cleanly and still be
 unreadable. A citation that is absent, is not a regular file, exceeds the bound,
-escapes the repository through a symlink, or cannot be opened SHALL invalidate the
-file through the ordinary unusable-file path, and the repo's checks SHALL all fall
-back to their derived values.
+escapes the repository through a symlink, or cannot be opened SHALL reject the entry
+that cites it. Every other declared entry in the same file SHALL be honoured.
 
-The blast radius is the whole file rather than the offending entry. This is
-recorded as the **current behaviour and a known weakness**, not as a design this
-requirement endorses. What justifies it is narrow: partial acceptance would leave
-the surface reporting some declarations from a file the daemon had already judged
-malformed. What argues against it is broader — one moved artifact silently
-discards every unrelated declaration in the repo, and because discarded
-declarations fall back to derived values, an unusable file can move a repo's
-results in either direction. The predicate requirement therefore forbids the
-advisory exemption while a file is unusable, so that this weakness cannot make a
-repo report ready. Narrowing the radius to the offending entry is the better
-long-term shape and is deliberately not done here.
+**A rejected entry SHALL NOT fall back to its derived value.** Its check SHALL
+report `fail` with `source: declared` and an evaluation error identifying the
+citation as unverifiable. Falling back is the one outcome that must not happen
+here: a declaration the daemon refused would become byte-identical to a
+declaration that was never made, so an author's blocking assertion could be
+erased by breaking the artifact it cites. Reporting the refusal as an
+error-bearing `fail` blocks readiness through the predicate's existing
+error clause, which makes the entry-level rejection self-sufficient — it does not
+rely on the repo-level notice to reach the right verdict.
+
+The repo SHALL still carry the unusable-file notice while any entry is rejected,
+naming the rejected citation. The file is not wholly unusable, but it is not
+correct either, and the author has something to fix. The notice is what carries
+that to the surface.
+
+The blast radius is the offending entry rather than the whole file. **This
+narrows the previous behaviour**, under which one moved artifact silently
+discarded every unrelated declaration in the repo, and — because discarded
+declarations fell back to derived values — could move a repo's results in either
+direction. The objection that justified the wider radius was that partial
+acceptance would leave the surface reporting some declarations from a file the
+daemon had already judged malformed. That objection is answered by not accepting
+the rejected entry either: nothing from a refused citation is reported as
+declared truth, and the refusal is visible on the check it belongs to. Whole-file
+invalidation remains correct for malformations that make the file's *structure*
+untrustworthy — an unsupported version, unparsable JSON, a malformed known entry —
+because those give no reliable entry boundaries to narrow to.
 
 A cited path SHALL be treated as disclosed, and a cited path inside the read
 route's allow-list SHALL be treated as disclosing its **contents** too. Tier B
@@ -273,10 +307,25 @@ surface SHALL present a verified path as evidence that the underlying assurance
 was performed or that it says what the declaration claims. What is verified is the
 citation, not the claim.
 
-#### Scenario: An unopenable citation invalidates the file
+#### Scenario: An unopenable citation rejects its own entry
 - **WHEN** a declared entry cites an evidence path that is absent, is a directory, exceeds the read bound, or cannot be opened
-- **THEN** the readiness file is unusable and reported through the existing notice path
-- **AND** every check for that repo falls back to its derived value rather than some declarations being honoured.
+- **THEN** that check reports `fail` with `source: declared` and an evaluation error naming the citation as unverifiable
+- **AND** every other declared entry in the same file is still honoured.
+
+#### Scenario: A rejected entry does not become an absent declaration
+- **WHEN** a declared entry is rejected for an unverifiable citation
+- **THEN** its check does not report the value the daemon would have derived
+- **AND** a reader can tell that a declaration was made and refused, rather than never made.
+
+#### Scenario: A rejected citation is still reported at the repo level
+- **WHEN** any declared entry in a repo's readiness file is rejected for its citation
+- **THEN** the repo carries the unusable-file notice naming that citation
+- **AND** the notice is the author's signal that the file needs correcting even though it was not wholly discarded.
+
+#### Scenario: Structural malformation still invalidates the whole file
+- **WHEN** a readiness file declares an unsupported version, is unparsable, or carries a malformed known entry
+- **THEN** the whole file is unusable and every check falls back to its derived value
+- **AND** the narrowed citation radius does not extend to malformations that leave no trustworthy entry boundaries.
 
 #### Scenario: Citation validity is not content validity
 - **WHEN** a declared entry cites an evidence path that opens successfully
@@ -315,20 +364,58 @@ repo-relative coverage artifact path, the coverage threshold, included
 production-code paths, and additional ignored paths. It SHALL carry declared
 check entries using the fixed check identifier and status vocabularies.
 
-Every declared entry SHALL carry `observedAt` as an RFC 3339 timestamp. Declared
-`code-review`, `security-review`, and `pen-test` entries SHALL also carry a
-repo-relative evidence path and a full git commit SHA. A declared `pen-test`
-entry SHALL carry `validUntil` as an RFC 3339 timestamp. All strings and arrays
-SHALL have explicit size/count bounds.
+Every declared entry SHALL carry `observedAt` as an RFC 3339 timestamp, **except
+an entry declaring a status that records the absence of an observation**. Declared
+`code-review`, `security-review`, and substantiated `pen-test` entries SHALL also
+carry a repo-relative evidence path and a full git commit SHA. A substantiated
+declared `pen-test` entry SHALL carry `validUntil` as an RFC 3339 timestamp. All
+strings and arrays SHALL have explicit size/count bounds.
 
 Every configured or evidence path SHALL be repo-relative, SHALL remain beneath
 the canonical repo root after symlink resolution, and SHALL be read with an
 explicit file-size limit. Unknown check identifiers SHALL be ignored
 entry-by-entry. Unknown top-level fields, unknown fields inside a recognised
 entry, and any other malformed known entry SHALL invalidate the whole file.
-Declared `pen-test` entries MAY use only `ok`, `warn`, or `fail`; `stale` is
-derived from expiration, `never` means no declaration, and `na` is not valid for
-this applicable declared-only slot.
+
+**Where a path violation is caught determines what it costs, and the three
+outcomes SHALL NOT be conflated.** A path that escapes *by its own shape* —
+absolute, drive-lettered, or traversing — is a malformed field caught while
+parsing, and invalidates the whole file. An *evidence* path that passes the shape
+check but escapes or cannot be opened at resolution rejects the entry that cites
+it. A *configured coverage artifact* path that escapes at resolution is refused by
+the check that reads it, which reports an error-bearing `fail`; it does not make
+the file unusable, because it is never verified during file validation. The
+previous version of this requirement stated that configured and evidence paths
+alike made the file unusable on a resolution-time escape, which was true of
+neither: the coverage path was refused at read time and is still refused there.
+
+**A declared `pen-test` entry SHALL take one of two variants, distinguished by
+whether it records an observation.** A *substantiated* entry uses `ok`, `warn`, or
+`fail` and SHALL carry `observedAt`, an evidence path, a commit SHA, and
+`validUntil`. An *unsubstantiated* entry uses `never` or `na` and SHALL carry
+none of those four fields; an entry declaring `na` SHALL carry a reason. `stale`
+SHALL remain underivable by declaration, because it is computed from `validUntil`.
+
+The fields SHALL be absent from the unsubstantiated variant rather than optional
+across one merged entry shape. An optional field admits `pen-test: never` carrying
+an evidence path and an expiry, which is a claim about a test that did not happen
+and which the schema would then have to reject by a second rule. Two variants make
+the invalid combination unstateable.
+
+**This removes the reserved meaning of `never` for this slot, and the reservation
+is replaced rather than dropped.** `never` previously distinguished "no
+declaration" from anything an author could say; that distinction is now carried by
+`source`, which every result already records. A derived `never` means no
+declaration and is advisory; a declared `never` is the author asserting no test
+has been performed, and blocks. The two are separable on the wire and on the
+surface, which is what the reservation existed to guarantee.
+
+`na` SHALL become valid for this slot. The prior reasoning — that `na` cannot
+apply to a slot that applies to every repo — asserted a product judgement about
+every repo that the daemon has no signal to support, and it is the author, not the
+daemon, who knows whether a penetration test is meaningful for a given repository.
+A declared `na` SHALL state its reason like any other, and SHALL be excluded from
+the predicate like any other.
 
 All tier-B file and evidence reads SHALL use the daemon's shared bounded,
 canonical, symlink-contained project-read primitive rather than a second path
@@ -351,20 +438,17 @@ a spec that overstates a containment guarantee is worse than one that bounds it.
 The residual exposure SHALL be stated rather than characterised as bounded.
 **Tier-B validation** discloses nothing from a raced artifact: it opens each
 citation only to establish that it can be read and closes it without parsing, so no
-raced content reaches a client through that path. The exposure is availability, and
-it is not small: a substituted FIFO or device node can make the validating open
-block indefinitely, and because fleet assembly awaits a result for every registered
-repo without a per-repo time bound, one repo can withhold the whole fleet response.
+raced content reaches a client through that path. The substitution window itself
+SHALL remain open — closing it belongs to the shared read primitive and is out of
+scope — so a substituted FIFO or device node can still make a validating open block
+indefinitely.
 
-**The per-repo degradation guarantee in the endpoints requirement SHALL therefore
-be read as covering failure, not indefinite blocking.** A repo whose scan rejects
-is replaced by an unscannable result and the fleet still answers; a repo whose scan
-never settles has no such treatment, and the fleet does not answer at all. This is
-a pre-existing property of the shared read path rather than something this change
-introduces, and it is recorded here because the alternative is a spec that claims
-isolation the implementation does not provide. Bounding the open — and with it
-closing the substitution window — belongs to the shared read primitive and is out
-of scope.
+**What SHALL NOT follow from that is a withheld fleet response.** The availability
+consequence is bounded at the endpoint rather than at the open: fleet assembly
+carries a per-repo time bound, so a repo whose scan blocks indefinitely is reported
+as unscannable and the fleet still answers. The exposure that remains is one repo's
+readiness going unreported until the block clears, which is the same degradation a
+rejecting repo already receives.
 
 **Expiry and status-vocabulary restrictions differ per check by design.**
 `validUntil` SHALL be carried only by `pen-test`, because a pen test is the only
@@ -381,45 +465,65 @@ while both the code and the declared value were unchanged — and giving them
 ancestry decay is a change to what tier B requires of an author, which this
 requirement does not make.
 
-Correspondingly, `pen-test` is the only check whose declared status
-vocabulary is restricted, and it is restricted to exactly those values the daemon
-derives for that slot rather than arbitrarily: `never` is how the slot reports the
-absence of a declaration, `stale` is computed from `validUntil`, and `na` cannot
-apply to a slot that applies to every repo. The other five checks accept the full
-vocabulary as declarations because none of those three values is reserved for
-them: a declared `never` on those checks is an assertion that the check has never
-run, and SHALL block readiness accordingly.
+Correspondingly, `pen-test` remains the only check whose declared status
+vocabulary is restricted, and the restriction is now narrow: `stale` alone is
+excluded, because it is computed from `validUntil` rather than asserted. The other
+five checks accept the full vocabulary as declarations, and a declared `never` on
+those checks is an assertion that the check has never run and SHALL block
+readiness accordingly.
 
-**An author cannot presently assert "no penetration test has been performed" as a
-blocking declaration, and this requirement SHALL NOT claim otherwise.** Declared
-`pen-test: never` is invalid because `never` is reserved for the absence of a
-declaration. Declared `fail` is not a substitute: it asserts that a test ran and
-did not pass, and it requires an evidence path, a full commit SHA, and
-`validUntil`, all mandatory — so an author with no test would have to cite an
-artifact for an event that did not occur. The honest statement of the current
-design is that an author who has not tested leaves the slot undeclared, which under
-the advisory rule does **not** block.
-
-This is a real gap and is recorded as one. Closing it means either permitting a
-declared `never` for this slot — which collides with the reserved meaning that the
-same restriction depends on — or an entry variant whose evidence fields are
-optional for a non-passing status. Both change what tier B asks of an author, and
-neither is decided here.
+**An author SHALL be able to assert "no penetration test has been performed" as a
+blocking declaration.** This closes a gap the previous version of this requirement
+recorded and did not resolve: an author with no test could neither declare `never`,
+which was reserved, nor `fail`, which asserts a test ran and demanded an evidence
+path, a commit SHA, and `validUntil` for an event that did not occur. Leaving the
+slot undeclared was the only honest option and did not block, so the file could not
+express a known, accepted gap. The unsubstantiated variant is that expression.
 
 #### Scenario: A review claim is auditable
 - **WHEN** a repo declares a code or security review result
 - **THEN** the entry identifies its evidence path, observed time, and reviewed commit
 - **AND** a missing or malformed field makes the readiness file unusable.
 
-#### Scenario: Paths cannot escape the repo
-- **WHEN** a configured artifact or evidence path is absolute, traverses above the repo, resolves through a symlink outside it, or exceeds its read bound
-- **THEN** the readiness file is unusable
+#### Scenario: A path that escapes by its own shape invalidates the file
+- **WHEN** a configured artifact or evidence path is absolute, carries a drive letter, or traverses above the repo
+- **THEN** the readiness file is unusable, because the violation is a malformed field caught while parsing rather than a citation that failed verification
+- **AND** no file outside the canonical repo root is read.
+
+#### Scenario: A configured coverage path that escapes at resolution fails its own check
+- **WHEN** the configured coverage artifact path resolves through a symlink outside the repo or exceeds its read bound
+- **THEN** the coverage check reports an error-bearing `fail` naming the refusal, and the readiness file stays usable
+- **AND** no file outside the canonical repo root is read.
+
+#### Scenario: An evidence path that escapes at resolution rejects its entry
+- **WHEN** a declared entry's evidence path resolves through a symlink outside the repo or exceeds its read bound
+- **THEN** that entry is rejected and its check reports an error-bearing declared `fail`
 - **AND** no file outside the canonical repo root is read.
 
 #### Scenario: A declared never on a derivable check blocks
 - **WHEN** a repo declares `workflow`, `spec`, or `coverage` as `never`
 - **THEN** the declaration is accepted and that repo is not ready
 - **AND** the advisory exemption does not apply, because the exemption covers a derived `never` and this is an assertion.
+
+#### Scenario: An author declares that no penetration test has been performed
+- **WHEN** a repo declares `pen-test` as `never` with no evidence path, commit, expiry, or observed time
+- **THEN** the entry is valid, the check reports `never` marked `declared`, and the repo is not ready
+- **AND** the author has stated a known gap rather than leaving the slot silent.
+
+#### Scenario: An unsubstantiated pen-test entry cannot carry evidence
+- **WHEN** a declared `pen-test` entry uses `never` or `na` and also carries an evidence path, a commit, `validUntil`, or `observedAt`
+- **THEN** the entry is malformed and the readiness file is unusable
+- **AND** the invalid combination is unstateable rather than rejected by a second rule.
+
+#### Scenario: A declared not-applicable pen test states its reason
+- **WHEN** a repo declares `pen-test` as `na` with a reason
+- **THEN** the check reports `na` marked `declared` and is excluded from the predicate
+- **AND** a repo whose every check is `na` is still not ready, because nothing is applicable.
+
+#### Scenario: A declared stale pen test is refused
+- **WHEN** a declared `pen-test` entry states `stale`
+- **THEN** the entry is malformed and the readiness file is unusable
+- **AND** staleness remains computed from `validUntil` rather than asserted.
 
 #### Scenario: Expiry is carried by the calendar-decaying check alone
 - **WHEN** a declared entry for a check other than `pen-test` carries `validUntil`
@@ -625,10 +729,18 @@ freshness.
 
 ### Requirement: The Pen-Test Check Is A Declared-Only Slot
 
-The `pen-test` check SHALL have no derived signal and SHALL report `never` unless
-a repo declares it in tier B. A declaration whose `validUntil` has passed SHALL
-report `stale`. The check SHALL remain visible and tool-agnostic: no tool name
-appears in the surface.
+The `pen-test` check SHALL have no derived signal and SHALL report a derived
+`never` unless a repo declares it in tier B. A declaration whose `validUntil` has
+passed SHALL report `stale`. The check SHALL remain visible and tool-agnostic: no
+tool name appears in the surface.
+
+**The slot's `never` SHALL be readable as two distinct states through `source`.**
+A derived `never` records that the daemon had nothing to observe and no author
+spoke; a declared `never` records that the author asserts no test has been
+performed. They render the same shape and status but differ in the verdict: the
+first is advisory, the second blocks. Any surface that explains the verdict SHALL
+be able to tell them apart, because "nobody has said" and "we have said no" are
+different facts about a repo and only the second is an assertion.
 
 `pen-test` SHALL be the check designated as having no derived signal, and its
 undeclared `never` SHALL therefore be advisory rather than blocking. Without this
@@ -654,6 +766,11 @@ deriver that returns `never` today and something else on a branch not taken
 satisfies any finite number of calls while violating the requirement. A behavioural
 test MAY accompany the structural constraint but SHALL NOT stand in for it.
 
+The constraint governs the *deriver* and SHALL NOT be read as a constraint on the
+check's declared vocabulary. A member may accept any declared status its tier-B
+variant admits; what membership fixes is that the daemon itself can observe
+nothing for it.
+
 #### Scenario: Membership is constrained structurally
 - **WHEN** a check named in the advisory set has a deriver whose declared return admits a status other than `never`
 - **THEN** the build fails on that declaration
@@ -661,8 +778,13 @@ test MAY accompany the structural constraint but SHALL NOT stand in for it.
 
 #### Scenario: Undeclared pen-test is never run, not omitted
 - **WHEN** a repo declares no pen-test result
-- **THEN** the check reports `never` and keeps its position among the six
+- **THEN** the check reports a derived `never` and keeps its position among the six
 - **AND** its remedy text explains that the result is reported through the readiness file.
+
+#### Scenario: A derived never and a declared never are distinguishable
+- **WHEN** one repo leaves `pen-test` undeclared and another declares it `never`
+- **THEN** both checks report `never`, the first marked `derived` and the second `declared`
+- **AND** the first repo may still be ready while the second is not.
 
 #### Scenario: The surface names no tool
 - **WHEN** the pen-test check renders in any state
@@ -774,13 +896,39 @@ result, and a failure for one repo MUST NOT remove other repos from the fleet
 result. Responses SHALL be validated against the shared schema before being sent
 and returned in registry order without server-side sorting.
 
-**The rescan route SHALL answer with the recomputed repo detail.** A successful
-rescan SHALL return 200 carrying the same repo-detail shape the read route
-returns for that repo, reflecting the recomputation the call performed, so that a
-caller observes the result of its own rescan without a following read. It SHALL
-return 404 for an unknown repo identifier and 403 for a disallowed origin,
-using the same error shape as the read routes. Rescan SHALL NOT answer with an
-acknowledgement that omits the new state.
+**The per-repo degradation guarantee SHALL cover a scan that never settles, not
+only one that rejects.** Fleet assembly SHALL apply a finite time bound to each
+repo's scan and to the fleet-wide signature it computes first. A repo whose scan
+exceeds its bound SHALL be reported as unscannable — the same six error-bearing
+`fail` results a rejecting repo receives — and the fleet response SHALL still
+carry every other repo. The endpoint SHALL answer within a bounded time whatever
+any single repository does.
+
+This closes a gap the previous version of this requirement recorded: awaiting
+every repo's result without a time bound meant that a scan which merely rejected
+was isolated while a scan which blocked indefinitely withheld the entire
+response. The distinction was invisible to a reader of the guarantee and
+indefensible to a user of the endpoint, for whom no answer is worse than a
+degraded one. The bound SHALL exceed the subprocess timeouts already applied
+within a scan, so that a slow-but-progressing repo is reported rather than cut
+off; a repo reported unscannable on timeout is therefore genuinely stuck, not
+merely large.
+
+A timed-out scan SHALL NOT be cached as a result. The bound governs how long the
+endpoint waits, not what the repo is: recording an expiry as a snapshot would let
+one transient block suppress a repo for the memo's lifetime even after the block
+cleared.
+
+**A computation that has exceeded its bound SHALL nonetheless remain the one
+in-flight computation for its repo, and later requests SHALL join it rather than
+starting another.** A repo whose scan is genuinely blocked therefore continues to
+report unscannable until the block clears, at which point the joined computation
+settles and the repo recovers on its own. This is deliberate and is the reason
+the bound is safe to make short: abandoning the computation instead would start a
+fresh scan on every poll, and since a blocked filesystem call cannot be
+cancelled, each would block in turn — converting one stuck repo into an unbounded
+accumulation of stuck work. Coalescing is what keeps the cost at one blocked
+computation per repo however often the endpoint is called.
 
 Computed readiness SHALL be cached for no more than five seconds and invalidated
 by relevant HEAD, the entire dirty/untracked working-tree state, readiness-file
@@ -813,6 +961,26 @@ repo-owned data.
 - **WHEN** the fleet endpoint is called and one registered repo cannot be read at all
 - **THEN** the response still carries every other repo
 - **AND** the failing repo appears with six `fail` results carrying structured errors.
+
+#### Scenario: One hung repo does not withhold the fleet
+- **WHEN** the fleet endpoint is called and one registered repo's scan blocks past its time bound
+- **THEN** the response still answers, carrying every other repo
+- **AND** the blocked repo appears as unscannable in the same shape a rejecting repo receives.
+
+#### Scenario: A blocking fleet signature does not withhold the fleet
+- **WHEN** computing the fleet-wide signature blocks past its time bound
+- **THEN** the endpoint still answers rather than waiting indefinitely before any repo is scanned
+- **AND** the bound covers the work that precedes per-repo assembly, not only the per-repo scans.
+
+#### Scenario: A timed-out scan is not remembered as a result
+- **WHEN** a repo's scan exceeds its time bound, the block later clears, and a further request arrives for that repo
+- **THEN** that request reports the repo's real readiness rather than replaying the timeout
+- **AND** the expiry was never recorded as a snapshot.
+
+#### Scenario: Repeated requests do not multiply a blocked scan
+- **WHEN** the fleet endpoint is called repeatedly while one repo's scan remains blocked
+- **THEN** those requests join the one computation already in flight for that repo rather than each starting another
+- **AND** the cost of a stuck repo stays at one blocked computation however often the endpoint is polled.
 
 #### Scenario: One broken deriver does not break its repo
 - **WHEN** a single check's deriver throws for a repo
