@@ -1,10 +1,18 @@
 # Tasks
 
-**Applies in the atomic cutover.** `add-repo-readiness` and
-`add-workflow-fleet-conformance` must be complete and green.
-`remove-gitnexus-integration` MUST be folded before this change; its code
-removal may be prepared earlier, but it and this retirement MUST deploy
-atomically so the old conformance chart never renders the changed measurement.
+**Applies at the cutover.** `add-repo-readiness` and
+`add-workflow-fleet-conformance` must be complete and green — **both now are**:
+readiness shipped in #90 and was completed in #92 and #93, and
+`add-workflow-fleet-conformance` is archived.
+
+`remove-gitnexus-integration` was previously required to deploy *atomically* with
+this change, so the old conformance chart could never render the changed
+measurement. **That requirement is retired (2026-08-02).** It archived on
+2026-07-28 and shipped independently by design, discharging the obligation at the
+source: old snapshots were re-scored ignoring `gitNexus` and `wiki`, so every
+point in the retained window already uses the post-cutover column set. There is
+no outstanding recomputation gate and no atomicity constraint left to honour.
+See design §9.
 
 **The agent-change surface is a further prerequisite and is not yet proposed.**
 `add-agent-board` was withdrawn on 2026-07-28. This cutover MUST NOT run until a

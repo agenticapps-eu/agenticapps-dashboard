@@ -129,6 +129,26 @@ precomputed post-change output. Task 4 folds the delta into those baselines only
 after the replacement surfaces stand; seeing the withdrawn requirements in a
 baseline before that fold is therefore expected, not a count discrepancy.
 
+## Review disposition (2026-08-02)
+
+`REVIEWS.md` (2026-07-28) carried claude APPROVE, opencode APPROVE, and
+**gemini + codex REQUEST-CHANGES**. Every finding was verified against `main`
+before being acted on; two did not survive that check, and transcribing them
+would have made the change worse.
+
+| Finding | Disposition |
+|---|---|
+| codex — atomicity premise false | **Fixed.** True, but its consequence was not: `remove-gitnexus-integration` shipped independently *by design* and discharged the recomputation obligation at the source by re-scoring old snapshots. No gate is outstanding. design §9, tasks preamble. |
+| codex — migration to a "declared check" is impossible | **Fixed.** Confirmed against `CHECK_IDS`: six identifiers, unknown ids silently discarded. Both migrations rewritten to stop offering a path that does not exist. |
+| codex — removed daemon APIs defined circularly | **Fixed, and it was larger than reported.** ~60 endpoints across 11 route modules, none enumerated. The withdrawal is now normative over the retired modules, with an explicit rule that an endpoint missing from the list is an error in the list. |
+| codex — credential files retained indefinitely | **Fixed.** Thirty-day window, owner is whoever ships the cutover, deletion is a dated task. `0600` governs access, not lifetime. |
+| codex — hybrid reader cannot distinguish empty from absent | **Refuted.** The spec already says presence is read from the tree *because* the CLI collapses both to `0/0`, and the reader opens the artifact — empty reads present, missing reads absent. The real gap is narrower: the reader looks at one path, so an artifact under a non-default schema reads absent. Claim narrowed; behaviour unchanged. |
+| codex — `No Reimplementation` silently relaxed | **Reframed.** Not silent: the withdrawal says outright that it is not restated. The genuine issue is the asymmetry with its preserved sibling, which design §7 justifies on reasoning that applies to both. The asymmetry is now argued on consequence rather than left to look like an oversight. |
+| gemini — deep links lose repo context | **Fixed.** A retired location carrying an identifier resolves to `/repos/:id`. |
+| gemini — path-drift repair UI regression | **Fixed as an explicit non-goal.** Accepted, unscheduled, and recorded for whoever proposes the registry surface. |
+| gemini — degraded reads render silently | **Fixed.** Divergence is marked as compatibility mode and names the malformed spec. |
+| gemini — fifteen-row density is brittle | **Fixed.** Density is a measured row height; the row count is retained as intent, not as the pass condition. |
+
 ## What this change explicitly does not do
 
 - **It does not tidy `openspec/CAPABILITY-MAP.md`.** That document is ratified
@@ -150,6 +170,17 @@ baseline before that fold is therefore expected, not a count discrepancy.
 - **It does not itself delete code.** The deletions are AGE-473 (cutover) and
   AGE-474 (daemon teardown). This change is the statement about the product that
   those deletions implement.
+- **It does not replace the path-drift repair UI, and that is a regression it
+  accepts rather than one it overlooks.** The conformance page carried a panel
+  for repairing a drifted repository path; the panel goes with the page. Drift
+  *detection*, suggested-path discovery, and the strict atomic repair endpoint
+  all survive in `project-registry`, so the capability remains — but an operator
+  who previously fixed a drifted path by clicking must now call the endpoint.
+  **This is deliberate and it is not scheduled.** A repair affordance belongs on
+  a v2 surface that shows drift, and no v2 surface shows drift yet; adding one
+  here would mean designing that surface inside a withdrawal change. Recorded as
+  a known gap for whoever proposes the registry surface, not as future work this
+  change commits to.
 
 ## A note on `coverage` and `conformance` as words
 

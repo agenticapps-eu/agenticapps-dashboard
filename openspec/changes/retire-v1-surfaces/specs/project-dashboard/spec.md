@@ -3,22 +3,69 @@
 ### Requirement: Retired Locations Have An Explicit Transition
 
 Known SPA transitions SHALL come from one explicit migration manifest.
-`/coverage`, `/observability/skill-drift`, `/observability/conformance`, and
-`/code-intelligence` SHALL redirect to the fleet surface. `/projects/:id` SHALL
-redirect to `/repos/:id`, preserving the registered-project identifier. Unknown
-SPA locations MUST return the ordinary not-found state. Daemon API routes
-enumerated as removed in that same manifest MUST also return not-found. A removed
-API MUST NOT retain a compatibility stub or synthetic payload.
+`/coverage`, `/observability/skill-drift`, and `/observability/conformance` SHALL
+redirect to the fleet surface. `/code-intelligence` SHALL redirect to the fleet
+surface. `/projects/:id` SHALL redirect to `/repos/:id`, preserving the
+registered-project identifier.
+
+**A retired location carrying a repo identifier SHALL redirect to that repo's
+detail surface, not to the fleet.** `/projects/:id/coverage` and any other
+retired per-project path SHALL resolve to `/repos/:id`. Discarding an identifier
+the URL already carries costs the user the context they bookmarked and lands them
+on a list they must search to get back to where they were. Only a retired
+location with no identifier in it falls back to the fleet surface.
+
+Unknown SPA locations MUST return the ordinary not-found state.
+
+**The withdrawn daemon API surface SHALL be enumerated normatively, not by
+reference to the manifest.** Defining it as "the routes the manifest lists" makes
+the requirement circular: an endpoint omitted from the manifest is, by that
+wording, not required to be removed, and cannot be found missing by review. The
+withdrawal covers **every** method and path served by the retired route modules —
+the knowledge-graph viewer's asset and read endpoints, the coverage and
+coverage-history endpoints, the conformance endpoint, the skill-drift endpoints,
+the AgentLinter endpoints, and the Sentry, Linear, secrets, integrations and
+observability endpoints. Roughly sixty endpoints across eleven route modules; the
+implementing change SHALL record the exact method/path list and SHALL treat any
+endpoint in a retired module that is absent from that list as an error in the
+list rather than as a survivor.
+
+The viewer endpoints are called out because they are the ones where an escape
+costs most: they serve graph and file content, so an endpoint left standing after
+its surface is withdrawn keeps that content reachable with no product surface
+that would reveal it is still there.
+
+A removed API MUST NOT retain a compatibility stub or synthetic payload.
 
 #### Scenario: A bookmarked v1 page reaches the fleet
-- **WHEN** a user navigates to a known retired SPA location after the cutover
+- **WHEN** a user navigates to a known retired SPA location carrying no repo identifier
 - **THEN** the application redirects to the fleet surface
 - **AND** it does not render a blank shell or a withdrawn page.
+
+#### Scenario: A degraded spec read is visible, not silent
+- **WHEN** the CLI and tree readers return different values for a project whose spec is non-conformant
+- **THEN** the surface marks that project as read in compatibility mode and names the malformed spec
+- **AND** two machines that differ only in whether the binary is installed do not present the difference as a difference between repos.
+
+#### Scenario: A retired per-project link keeps its repo
+- **WHEN** a user navigates to a retired location that names a registered project, such as `/projects/:id/coverage`
+- **THEN** the application redirects to `/repos/:id` rather than to the fleet surface
+- **AND** the user is not made to search a list for the repo their bookmark already named.
 
 #### Scenario: A removed API is absent
 - **WHEN** a client requests a daemon API withdrawn by this change
 - **THEN** the daemon returns not-found
 - **AND** no compatibility response exposes the removed schema.
+
+#### Scenario: No endpoint survives by being left off a list
+- **WHEN** an endpoint served by a retired route module is absent from the implementing change's method/path list
+- **THEN** it is still withdrawn, and its absence from the list is an error in the list
+- **AND** the requirement cannot be satisfied by an enumeration that quietly omits a route.
+
+#### Scenario: A withdrawn viewer endpoint stops serving content
+- **WHEN** a client requests a knowledge-graph viewer asset or read endpoint after the cutover
+- **THEN** the daemon returns not-found and serves no graph or file content
+- **AND** the content is not left reachable by an endpoint whose surface was withdrawn.
 
 #### Scenario: An unknown location is not disguised as a migration
 - **WHEN** a user navigates to an unrecognised SPA location
@@ -196,6 +243,16 @@ except `archive/` and names beginning with a dot; an incomplete directory
 containing only a proposal or only a task artifact still counts. A change the
 CLI reports but the tree does not is ignored.
 
+**Where the two readers disagree, the surface SHALL say so rather than pick a
+winner quietly.** The CLI and the tree can diverge on a non-conformant spec, and
+because the CLI is used only when the binary is present, the same repository can
+render differently on two machines with no indication that anything is
+environment-dependent. A reader comparing two dashboards would take the
+difference for a difference in the repos. When a divergence is detected the
+surface SHALL mark the affected project as read in a degraded or compatibility
+mode and name the malformed spec as the cause; it SHALL NOT present the merged
+values as though both readers agreed.
+
 For the tree-enumerated changes, the daemon SHALL use the `openspec` CLI's
 machine-readable values when that binary is available and SHALL fall back to
 values read directly from the tree when it is not. The CLI augments the
@@ -205,7 +262,18 @@ invocation discipline in `filesystem-access-policy`.
 Task-artifact presence is always read from the tree on **both** paths because
 the CLI emits `completedTasks` and `totalTasks` as zero both for a change with no
 task artifact and for one with an empty artifact. Presence cannot be recovered
-from CLI output and is not a fallback value.
+from CLI output and is not a fallback value. Reading it from the tree does
+separate the two: an empty artifact is a file that opens, and an absent one is
+not.
+
+**The claim SHALL be understood as holding for the schema's default task-artifact
+path.** The tree reader looks for the artifact at that one location, so a change
+whose schema places its tasks elsewhere reports absent rather than present, and
+the surface understates it. Every change in this project uses the `spec-driven`
+schema, whose task artifact is at the default path, so the gap is not reachable
+here today — it becomes reachable the moment a second schema is used. Stated
+because "presence is read from the tree" reads like a guarantee about all changes
+and is a guarantee about one path.
 
 The reader SHALL NOT enumerate archived changes or derive each open change's
 affected capabilities: no v2 surface consumes either value. It SHALL continue

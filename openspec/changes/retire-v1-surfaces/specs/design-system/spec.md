@@ -23,12 +23,24 @@ does not perceive the colour difference MUST be able to distinguish every state.
 ### Requirement: Dense Rows And Aligned Figures
 
 Every surface SHALL fit horizontally at the declared verification viewports
-without page-level horizontal scrolling. At the reference viewport, list and
-table surfaces SHALL use a compact, uniform row height so that a fifteen-row
-working set is visible without scrolling, and numeric columns SHALL use tabular
-figures so that digits align vertically. At the `xs` viewport a logical row MAY
-wrap its fields internally, but it MUST remain one list item rather than becoming
-a card and every required field MUST remain available.
+without page-level horizontal scrolling. List and table surfaces SHALL use a
+compact, uniform row height, and numeric columns SHALL use tabular figures so
+that digits align vertically. At the `xs` viewport a logical row MAY wrap its
+fields internally, but it MUST remain one list item rather than becoming a card
+and every required field MUST remain available.
+
+**Density SHALL be specified as a row height, not as a row count that fits a
+screen.** The binding constraint is a maximum height per row in CSS pixels,
+verifiable by measuring one row. "A fifteen-row working set is visible without
+scrolling" was the earlier phrasing and it is not a property of the design: the
+same stylesheet passes or fails it depending on browser chrome, OS font scaling,
+zoom level, and whether a bookmarks bar is open. A requirement that a correct
+implementation can fail for reasons outside the page cannot be met deliberately,
+only met by luck.
+
+The row-count figure is retained as the **intent** the height is chosen to serve
+— roughly a fifteen-row working set at the reference viewport in a typical
+browser — and SHALL NOT be used as the pass condition.
 
 The **reference viewport** for density guarantees is 1440×900, matching the
 design critique. Responsive fit SHALL also be verified at the smallest declared
@@ -36,10 +48,15 @@ breakpoint; a width breakpoint alone is not used to assert vertical fit. The
 smallest named breakpoint is `xs` below 640 CSS pixels, and its representative
 verification viewport is 390×844.
 
-#### Scenario: A working set fits on one screen
-- **WHEN** a list surface renders fifteen rows at the reference viewport
-- **THEN** all of them are visible without scrolling
+#### Scenario: A row is no taller than the density budget
+- **WHEN** a row on a list or table surface is measured
+- **THEN** its height is at or below the declared maximum
 - **AND** every row is the same height, rather than a card-sized block.
+
+#### Scenario: Density does not depend on the viewer's browser furniture
+- **WHEN** the same surface is rendered with a bookmarks bar open, at a non-default OS font scale, or at a zoom level other than 100%
+- **THEN** it still satisfies the density requirement, because the requirement is a measured row height
+- **AND** conformance does not change with conditions the stylesheet does not control.
 
 #### Scenario: Numbers in a column line up
 - **WHEN** a column carries version numbers, percentages, or counts
