@@ -13,7 +13,7 @@
  * schema discards entry by entry so a newer repo can declare a check this daemon
  * does not know without losing its whole file.
  */
-import { lstat, readFile, stat } from 'node:fs/promises'
+import { lstat, open, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 
 import {
@@ -155,9 +155,18 @@ async function evidenceIsReadable(
 
     try {
       const info = await stat(absolute)
+      // `stat` succeeds on a directory, so existence alone does not establish
+      // that the citation can be opened. Only a regular file is evidence.
+      if (!info.isFile()) {
+        return unusable('readiness-file-invalid', `${cited} is not a readable file`)
+      }
       if (info.size > MAX_EVIDENCE_BYTES) {
         return unusable('readiness-file-invalid', `${cited} is larger than the read bound`)
       }
+      // Opened, not merely described. A path can stat cleanly and still be
+      // unreadable — wrong mode, a dangling mount — and the spec's bounded-read
+      // requirement is about the read, not the metadata.
+      await (await open(absolute, 'r')).close()
     } catch {
       return unusable('readiness-file-invalid', `${cited} could not be read`)
     }

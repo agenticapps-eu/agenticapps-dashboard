@@ -222,8 +222,14 @@ function withinBound(absolute: string): boolean {
   }
 }
 
+/**
+ * Anchored at both ends. Unanchored, `3.2.0garbage` parsed as a version and the
+ * trailing text rode along into the comparison, where the patch component became
+ * `NaN` — so a malformed artifact compared equal to nothing, fell through every
+ * branch, and reported `ok` with no error at all.
+ */
 const asSemver = (value: unknown): string | null =>
-  typeof value === 'string' && /^\d+\.\d+\.\d+/.test(value.trim()) ? value.trim() : null
+  typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value.trim()) ? value.trim() : null
 
 async function repoScoped(
   host: HostDefinition,

@@ -73,6 +73,23 @@ describe('readGitFacts', () => {
     }
   })
 
+  // The whole freshness model rests on `changed`: evidence is current only when
+  // no production path is dirty. An empty `changed` therefore asserts "nothing
+  // has moved", and returning it because the status command *failed* asserts
+  // that on no evidence at all — quietly keeping stale evidence green. A repo
+  // whose status cannot be read is not a clean repo, it is an unreadable one.
+  it('reports a repo whose status cannot be read as unavailable, not clean', async () => {
+    write('packages/agent/src/a.ts')
+    commit(['packages/agent/src/a.ts'], 'init', '2026-01-01T00:00:00Z')
+    write('packages/agent/src/unreviewed.ts')
+    // A config value git rejects when it runs `status`, while `ls-files` is fine.
+    execFileSync('git', ['config', 'status.showUntrackedFiles', 'bogus'], { cwd: repo })
+
+    const facts = await readGitFacts(repo)
+
+    expect(facts.available).toBe(false)
+  })
+
   it('lists tracked and unignored-untracked files, never ignored ones', async () => {
     write('.gitignore', 'node_modules/\n')
     write('packages/agent/src/a.ts')

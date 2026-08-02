@@ -124,6 +124,21 @@ describe('deriveWorkflow — a repo-scoped host', () => {
     expect((await derive()).status).toBe('warn')
   })
 
+  // A version pattern anchored only at the front accepted the trailing text and
+  // carried it into the comparison, where the patch component became NaN. Every
+  // ordering test against NaN is false, so the artifact matched no branch and
+  // came out `ok` — a malformed artifact reporting the healthiest possible state.
+  it.each([
+    ['a trailing suffix on the version', '3.2.0garbage', '1.0.0'],
+    ['a trailing suffix on implements_spec', '3.2.0', '1.0.0garbage'],
+  ])('does not report ok for %s', async (_label, version, implementsSpec) => {
+    installClaude(version, implementsSpec)
+    commit([CLAUDE_SKILL], 'workflow', '2026-02-01T00:00:00Z')
+
+    const result = await derive()
+    expect(result.status).not.toBe('ok')
+  })
+
   it('reports fail when implements_spec trails', async () => {
     installClaude('3.2.0', '0.9.0')
     commit([CLAUDE_SKILL], 'workflow', '2026-02-01T00:00:00Z')

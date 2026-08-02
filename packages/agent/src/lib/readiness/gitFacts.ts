@@ -74,10 +74,17 @@ export async function readGitFacts(root: string): Promise<GitFacts> {
     '--untracked-files=all',
   ])
 
+  // An empty `changed` is a positive claim — "no production path has moved" —
+  // and freshness is decided on it. Returning it because the status command
+  // failed asserts that claim on no evidence, which keeps stale evidence green.
+  // A repo whose status cannot be read is unreadable, not clean, so it degrades
+  // its own checks the same way a non-work-tree does.
+  if (!status.ok) return { available: false, files: [], changed: [] }
+
   return {
     available: true,
     files: [...new Set(splitNul(listed.stdout))],
-    changed: status.ok ? parseStatus(status.stdout) : [],
+    changed: parseStatus(status.stdout),
   }
 }
 

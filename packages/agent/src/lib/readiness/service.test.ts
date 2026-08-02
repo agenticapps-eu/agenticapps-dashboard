@@ -386,6 +386,22 @@ describe('rescanRepo', () => {
     expect(second!.generatedAt).toBe(NOW + 3_000)
   })
 
+  // The counterweight to the repointed-root test above. Keying the in-flight
+  // slot on anything that is not the repo — the fleet signature, say — means an
+  // unrelated repo joining the registry gives this repo a different key, and the
+  // same root is then scanned twice at once.
+  it('still coalesces when an unrelated repo changes the fleet mid-flight', async () => {
+    const root = makeRepo('a-pinned')
+    registry([{ id: 'a', root }])
+
+    const first = rescanRepo('a', options({ now: NOW }))
+    // Same repo, same root — only the fleet around it changes.
+    registry([{ id: 'a', root }, { id: 'c', root: makeRepo('c-repo') }])
+    const second = await rescanRepo('a', options({ now: NOW + 3_000 }))
+
+    expect(second!.generatedAt).toBe((await first)!.generatedAt)
+  })
+
   it('coalesces concurrent rescans into one computation', async () => {
     const [first, second] = await Promise.all([
       rescanRepo('a', options({ now: NOW })),

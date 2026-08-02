@@ -228,9 +228,13 @@ function snapshotFor(
   opts: ReadinessScanOptions,
   force = false,
 ): Promise<RepoSnapshot> {
-  // NUL-separated because it cannot occur in an id or a path, so no two
-  // distinct triples can collide onto one key.
-  const key = [entry.id, entry.root, fleet].join('\0')
+  // Identity is the repo: its registry id and the root behind it. The fleet
+  // signature is deliberately NOT part of this key — it already discriminates
+  // the *cache* through `repoFingerprint`, and putting it here made an unrelated
+  // repo joining the registry hand this repo a fresh key, so the same root was
+  // scanned twice concurrently. NUL-separated because it cannot occur in an id
+  // or a path, so no two distinct pairs collide onto one key.
+  const key = [entry.id, entry.root].join('\0')
   const pending = inFlight.get(key)
   // Join only a computation that is at least as forcing as this request. Two
   // rescans still coalesce, and a read still joins anything; what may not happen

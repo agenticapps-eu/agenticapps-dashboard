@@ -75,6 +75,20 @@ describe('readReadinessFile', () => {
     )
   })
 
+  // `stat` succeeds on a directory, so "the path exists" is not the same claim
+  // as "the evidence can be opened". A directory named like the report satisfied
+  // the first and not the second.
+  it('refuses evidence that is a directory rather than a file', async () => {
+    mkdirSync(join(repo, declaredPenTest.evidence), { recursive: true })
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
+  })
+
   it('refuses evidence that resolves outside the repository through a symlink', async () => {
     const secret = join(dirname(repo), 'outside-evidence.md')
     writeFileSync(secret, 'secret\n')
