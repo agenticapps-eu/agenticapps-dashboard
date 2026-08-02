@@ -4,10 +4,16 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ADVISORY_WHEN_UNDECLARED } from '@agenticapps/dashboard-shared'
 
 import { readGitFacts } from './gitFacts.js'
 import { resolveProductionScope } from './productionScope.js'
-import { derivePenTest, deriveReview, type ReviewCheckId } from './reviewDeriver.js'
+import {
+  UNDERIVABLE_DERIVERS,
+  derivePenTest,
+  deriveReview,
+  type ReviewCheckId,
+} from './reviewDeriver.js'
 
 const COVERAGE_PATH = 'coverage/coverage-summary.json'
 const NOW = Date.parse('2026-07-31T12:00:00Z')
@@ -393,5 +399,25 @@ describe('derivePenTest', () => {
     expect(result.error).toBeNull()
     expect(result.summary).toMatch(/readiness file/i)
     expect(result.summary.toLowerCase()).not.toMatch(/burp|zap|nessus|metasploit|pentest-tools/)
+  })
+
+  /**
+   * The advisory exemption shrinks the readiness predicate, so membership of
+   * ADVISORY_WHEN_UNDECLARED has to be earned: a member must have no signal to
+   * observe. The guarantee is carried by `UnderivableCheck` — `derivePenTest`
+   * cannot compile while returning any status but `never` — and this test is
+   * the link between that type and the set.
+   *
+   * It cannot itself establish underivability. Calling a deriver proves nothing
+   * about a branch not taken, which is why the real constraint is the return
+   * type and this only pins that the set has not grown past what is constrained.
+   */
+  it('is the only check exempted from blocking while undeclared', () => {
+    expect([...ADVISORY_WHEN_UNDECLARED]).toEqual(['pen-test'])
+    // Every member is bound to a deriver that can only return `never`.
+    // `UNDERIVABLE_DERIVERS` is typed `Record<AdvisoryCheckId, …>`, so appending
+    // to the set without adding a deriver fails to compile (verified: TS2741) —
+    // this assertion records the current membership, it does not enforce it.
+    expect(Object.keys(UNDERIVABLE_DERIVERS)).toEqual([...ADVISORY_WHEN_UNDECLARED])
   })
 })

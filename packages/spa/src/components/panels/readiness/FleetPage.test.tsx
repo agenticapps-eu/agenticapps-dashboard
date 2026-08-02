@@ -99,7 +99,7 @@ function repo(
     id,
     name: over.name ?? id,
     family: over.family ?? 'agenticapps',
-    ready: computeReady(checks),
+    ready: computeReady(checks, over.notice ?? null),
     lastCommitAt:
       over.lastCommitAt === undefined ? Date.UTC(2026, 6, 30, 9, 15) : over.lastCommitAt,
     checks,
@@ -221,15 +221,64 @@ describe('FleetPage', () => {
   })
 
   it('states readiness in words on every row', () => {
+    // The blocker is `coverage`, not `pen-test`. An undeclared pen test is
+    // advisory and no longer blocks, so a repo whose only never was pen-test
+    // now reads Ready — see the row below this one, which pins that.
     fleet([
       repo('all-clear'),
-      repo('blocked', { statuses: { 'pen-test': 'never' } }),
+      repo('blocked', { statuses: { coverage: 'never' } }),
     ])
     render(<FleetPage />)
 
     const [first, second] = rows()
     expect(within(second as HTMLElement).getByText('Ready')).toBeInTheDocument()
     expect(within(first as HTMLElement).getByText('Not ready')).toBeInTheDocument()
+  })
+
+  it('reads ready when the only never is the undeclared pen test', () => {
+    // The watermark this change removes: pen-test derives a constant `never`
+    // and nothing declares one, so before this every row read Not ready and
+    // always would have.
+    fleet([repo('untested', { statuses: { 'pen-test': 'never' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    expect(within(row as HTMLElement).getByText('Ready')).toBeInTheDocument()
+  })
+
+  it('says what a ready verdict excludes, in the verdict itself', () => {
+    // A green row must not imply a pen test happened. The six cells being
+    // rendered nearby does not discharge this — a reader who reads the verdict
+    // and not the cells is exactly who this protects.
+    fleet([repo('untested', { statuses: { 'pen-test': 'never' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    // The exclusion is a second line in the row, not a parenthetical: inline it
+    // overflowed the cell into the Workflow column at 1440. Both parts live
+    // inside the verdict element, so a reader gets them together.
+    const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
+    expect(verdict).toHaveTextContent(/Ready/i)
+    expect(verdict).toHaveTextContent(/excludes pen test/i)
+  })
+
+  it('does not qualify a ready verdict when the pen test was declared', () => {
+    fleet([repo('tested', { statuses: { 'pen-test': 'ok' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
+    expect(verdict).not.toHaveTextContent(/excludes/i)
+  })
+
+  it('does not qualify a not-ready verdict', () => {
+    // There is nothing to disclose when the verdict already withholds itself.
+    fleet([repo('blocked', { statuses: { coverage: 'never', 'pen-test': 'never' } })])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    const verdict = within(row as HTMLElement).getByTestId('readiness-verdict')
+    expect(verdict).not.toHaveTextContent(/excludes/i)
   })
 
   it('shows the notice when a readiness file could not be used', () => {

@@ -295,7 +295,7 @@ function toSummary(snapshot: RepoSnapshot): RepoSummary {
     id: snapshot.id,
     name: snapshot.name,
     family: snapshot.family,
-    ready: computeReady(snapshot.checks),
+    ready: computeReady(snapshot.checks, snapshot.notice),
     lastCommitAt: snapshot.lastCommitAt,
     checks: snapshot.checks as unknown as RepoSummary['checks'],
     notice: snapshot.notice,

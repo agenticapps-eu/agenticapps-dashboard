@@ -234,6 +234,18 @@ describe('POST /api/v2/repos/:id/rescan', () => {
     expect(rescanRepo).not.toHaveBeenCalled()
   })
 
+  // The origin check binds browsers. A request with no Origin at all is not a
+  // browser page, so it is not what this check exists to refuse — the bearer
+  // token is its authorization boundary. Pinned because the shipped guard reads
+  // `if (origin && ...)`, and a reader could just as easily infer that a missing
+  // origin is refused.
+  it('does not refuse a request that carries no origin', async () => {
+    const response = await post('/api/v2/repos/a/rescan', auth())
+
+    expect(response.status).toBe(200)
+    expect(rescanRepo).toHaveBeenCalled()
+  })
+
   it('is not reachable by GET', async () => {
     const response = await createApp({ authFile }).request(
       'http://127.0.0.1/api/v2/repos/a/rescan',

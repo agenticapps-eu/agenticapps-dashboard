@@ -127,7 +127,7 @@ export async function assembleReadiness(
     )
   }
 
-  return { checks, ready: computeReady(checks), notice }
+  return { checks, ready: computeReady(checks, notice), notice }
 }
 
 async function guard(

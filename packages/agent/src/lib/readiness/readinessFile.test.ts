@@ -1,4 +1,11 @@
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -45,6 +52,26 @@ describe('readReadinessFile', () => {
     expect(outcome.kind).toBe('absent')
   })
 
+  // "No file" and "cannot look" are different facts, and conflating them is how
+  // a repo could get greener by making its declarations unreachable: `absent`
+  // raises no notice, and no notice means the readiness predicate applies the
+  // advisory exemption. Every other unreadability mode already produces a
+  // notice; this is the one that reached `absent`.
+  it('reports an unreadable directory as unusable rather than absent', async () => {
+    const dir = join(repo, dirname(READINESS_FILE_PATH))
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(repo, READINESS_FILE_PATH), JSON.stringify({ schemaVersion: 1 }))
+    chmodSync(dir, 0o000)
+
+    try {
+      const outcome = await readReadinessFile(repo)
+      expect(outcome.kind).toBe('unusable')
+    } finally {
+      // Restore before afterEach, or the rm of the sandbox fails too.
+      chmodSync(dir, 0o755)
+    }
+  })
+
   it('parses a usable file', async () => {
     putEvidence()
     put(
@@ -73,6 +100,48 @@ describe('readReadinessFile', () => {
     expect(outcome.kind === 'unusable' && outcome.notice.code).toBe(
       'readiness-file-invalid',
     )
+  })
+
+  // The bound applies to the cited artifact, not only to the readiness file.
+  // Without it an author could point the daemon at an arbitrarily large file and
+  // have it opened on every scan.
+  it('refuses evidence larger than the read bound', async () => {
+    put(declaredPenTest.evidence, 'x'.repeat(4 * 1024 * 1024 + 1))
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [declaredPenTest] }),
+    )
+
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
+  })
+
+  // The blast radius is the file, not the entry: one unopenable citation
+  // discards every declaration in it, including declarations that were
+  // themselves fine. This is a known weakness rather than a design to preserve —
+  // see the change's Open Questions — but it is the shipped contract, and the
+  // readiness predicate's unusable-file guard depends on knowing it, so it is
+  // pinned rather than left implicit.
+  it('discards every declaration when one citation is unopenable', async () => {
+    const soundReview = {
+      id: 'code-review',
+      status: 'ok',
+      observedAt: '2026-07-01T09:00:00Z',
+      evidence: 'openspec/changes/one/REVIEW.md',
+      commit: 'c'.repeat(40),
+    }
+    put(soundReview.evidence, '# review\n')
+    // The pen-test citation is deliberately absent while this one is present.
+    put(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, checks: [soundReview, declaredPenTest] }),
+    )
+
+    // The whole file is refused, so the sound code-review declaration goes with
+    // the bad pen-test one. Contrast the unknown-check-id case below, which is
+    // the only per-entry discard there is.
+    const outcome = await readReadinessFile(repo)
+    expect(outcome.kind).toBe('unusable')
   })
 
   // `stat` succeeds on a directory, so "the path exists" is not the same claim

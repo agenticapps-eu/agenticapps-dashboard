@@ -24,7 +24,11 @@
 import type { ReactElement } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
-import { CHECK_IDS, type RepoSummary } from '@agenticapps/dashboard-shared'
+import {
+  CHECK_IDS,
+  type CheckResult,
+  type RepoSummary,
+} from '@agenticapps/dashboard-shared'
 
 import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
@@ -32,7 +36,12 @@ import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
 
-import { CHECK_LABELS, ReadinessIndicator } from './ReadinessIndicator.js'
+import {
+  CHECK_LABELS,
+  ReadinessIndicator,
+  excludedFromVerdict,
+  exclusionPhrase,
+} from './ReadinessIndicator.js'
 import { FleetToolbar } from './FleetToolbar.js'
 import {
   EMPTY_FILTERS,
@@ -118,11 +127,49 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
  * mistake §8.2 rejected for the cells. The six cells carry what is actually
  * wrong — this column only says whether anything is.
  */
-function ReadyVerdict({ ready }: { ready: boolean }): ReactElement {
-  return ready ? (
-    <span className="text-sm font-medium text-status-success">Ready</span>
-  ) : (
-    <span className="text-sm text-text-secondary">Not ready</span>
+function ReadyVerdict({
+  ready,
+  checks,
+}: {
+  ready: boolean
+  checks: readonly CheckResult[]
+}): ReactElement {
+  // A ready verdict names what it passed over. An undeclared pen test no longer
+  // blocks, so without this a green row would imply an assurance nobody
+  // performed — and the six cells sitting beside it do not discharge that, since
+  // the reader this protects is the one who reads the verdict and stops.
+  const phrase = exclusionPhrase(excludedFromVerdict(ready, checks))
+
+  if (!ready) {
+    return (
+      <span data-testid="readiness-verdict" className="text-sm text-text-secondary">
+        Not ready
+      </span>
+    )
+  }
+
+  // The qualification is text, not an `aria-label`. A bare span has no role for
+  // a name to attach to, so the label is prohibited and dropped — and hiding the
+  // visible copy behind `aria-hidden` would then leave a screen reader hearing
+  // "Ready" with the disclosure gone, which is the one thing this must not do.
+  // Same reasoning as the loading region in RepoDetailPage.
+  return (
+    <span
+      data-testid="readiness-verdict"
+      className="text-sm font-medium text-status-success"
+    >
+      Ready
+      {phrase !== null && (
+        // Its own line. Inline, this overflowed the readiness cell by ~48 px
+        // into the Workflow column at 1440 — measured, not guessed — because the
+        // cell is `whitespace-nowrap` and sized for "Not ready". A second line
+        // grows only the rows that carry a disclosure, and keeps the verdict
+        // itself the first thing read.
+        <span className="block text-xs font-normal text-text-tertiary">
+          {phrase}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -157,8 +204,15 @@ function FleetRow({
           </span>
         )}
       </td>
-      <td className="px-3 py-2 align-middle whitespace-nowrap">
-        <ReadyVerdict ready={repo.ready} />
+      {/*
+        A fixed height, not an intrinsic one. Only rows carrying a disclosure
+        have two lines, so without this the table's rhythm breaks on exactly the
+        rows the eye should not be drawn to — and it would break further the
+        moment a second check becomes advisory and the phrase wraps. Uniform
+        height costs 12px per row and makes the fleet scannable at any mix.
+      */}
+      <td className="h-14 px-3 py-2 align-middle whitespace-nowrap">
+        <ReadyVerdict ready={repo.ready} checks={repo.checks} />
       </td>
       {/*
         No horizontal padding: the grid inside divides this cell into the same

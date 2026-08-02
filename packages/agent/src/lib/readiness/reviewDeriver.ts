@@ -10,9 +10,15 @@
  */
 import { readFile, stat } from 'node:fs/promises'
 
+import type { AdvisoryCheckId } from '@agenticapps/dashboard-shared'
+
 import { resolveAllowed } from '../paths.js'
 
-import { clampSummary, type DerivedCheck } from './derivedCheck.js'
+import {
+  clampSummary,
+  type DerivedCheck,
+  type UnderivableCheck,
+} from './derivedCheck.js'
 import { stalenessReason } from './freshness.js'
 import { commitTimesFor, type CommitStamp, type GitFacts } from './gitFacts.js'
 import { type ProductionScope } from './productionScope.js'
@@ -333,7 +339,21 @@ function failure(
  * and tool-agnostic: which tool satisfies it is a mapping question that never
  * appears in the surface.
  */
-export function derivePenTest(): DerivedCheck {
+/**
+ * Binds every member of the advisory set to a deriver that can only return
+ * `never`. This is the structural half of the membership constraint: adding an
+ * id to `ADVISORY_WHEN_UNDECLARED` fails to compile here until that check has a
+ * deriver returning `UnderivableCheck`, and widening a member's deriver return
+ * fails at the same place.
+ *
+ * A test cannot do this job — calling a deriver says nothing about a branch it
+ * did not take — which is why the requirement asks for the build to fail.
+ */
+export const UNDERIVABLE_DERIVERS: Record<AdvisoryCheckId, () => UnderivableCheck> = {
+  'pen-test': derivePenTest,
+}
+
+export function derivePenTest(): UnderivableCheck {
   return {
     status: 'never',
     at: null,

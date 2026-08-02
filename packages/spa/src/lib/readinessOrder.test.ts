@@ -65,7 +65,7 @@ function repo(
     id,
     name: id,
     family: 'agenticapps',
-    ready: computeReady(checks),
+    ready: computeReady(checks, null),
     lastCommitAt: over.lastCommitAt === undefined ? Date.UTC(2026, 6, 30) : over.lastCommitAt,
     checks,
     notice: null,

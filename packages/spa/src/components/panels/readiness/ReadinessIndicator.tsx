@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import {
   CHECK_IDS,
+  isAdvisoryCheck,
   type CheckId,
   type CheckResult,
   type CheckStatus,
@@ -120,6 +121,48 @@ export const CHECK_LABELS: Record<CheckId, string> = {
 }
 
 /**
+ * The checks a ready verdict passed over rather than satisfied: those the
+ * daemon cannot derive and this repo has not declared.
+ *
+ * Membership comes from `isAdvisoryCheck`, the same predicate `computeReady`
+ * applies, so the disclosure cannot name a different set than the one the
+ * verdict exempted. A second declared-only check is disclosed by joining the
+ * set rather than by someone remembering to widen a sentence.
+ *
+ * `computeReady` has one further clause this does not: the exemption is
+ * suspended while the repo carries a readiness-file notice. Omitting it here is
+ * safe only because of the `!ready` early return — a repo with a notice and a
+ * derived-never advisory check cannot be ready, so this is never asked about
+ * one. Stated because that is a two-hop argument guarding a disclosure, and the
+ * next reader should not have to reconstruct it.
+ */
+export function excludedFromVerdict(
+  ready: boolean,
+  checks: readonly Pick<CheckResult, 'id' | 'status' | 'source'>[],
+): CheckId[] {
+  if (!ready) return []
+  return checks
+    .filter(
+      (check) =>
+        check.status === 'never' &&
+        check.source === 'derived' &&
+        isAdvisoryCheck(check.id),
+    )
+    .map((check) => check.id)
+}
+
+/** "excludes pen test", "excludes pen test and threat model", … */
+export function exclusionPhrase(excluded: readonly CheckId[]): string | null {
+  if (excluded.length === 0) return null
+  const names = excluded.map((id) => CHECK_LABELS[id].toLowerCase())
+  const list =
+    names.length === 1
+      ? names[0]!
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
+  return `excludes ${list}`
+}
+
+/**
  * UTC to the minute, because every time in this feature is a git committer time
  * and a local rendering would invite comparing it against a UTC one. A null
  * time renders an em dash: the response generation time is a different fact and
@@ -159,10 +202,17 @@ function disclose(check: CheckResult): string {
   // the two render identically and read identically, while ordering
   // differently. readinessOrder.ts promises "a reader can reconstruct any
   // pairwise result by counting cells"; this is what makes that true.
+  // An advisory check's `never` renders as the same grey dash as a blocking
+  // one, so without this the cell that a "Ready, excludes X" verdict points at
+  // is byte-identical on a repo it blocked and one it did not.
+  const advisory =
+    check.status === 'never' && check.source === 'derived' && isAdvisoryCheck(check.id)
+      ? ', advisory: does not block readiness'
+      : ''
   const head =
     check.error !== null
       ? `${CHECK_LABELS[check.id]} — could not be evaluated`
-      : `${CHECK_LABELS[check.id]} — ${word}`
+      : `${CHECK_LABELS[check.id]} — ${word}${advisory}`
   const body = `${value === null ? '' : `${value}, `}${formatObservedAt(check.at)}, ${check.source}`
   const reason = check.error?.message ?? check.summary.trim()
   return `${head}, ${body}${reason === '' ? '' : ` — ${reason}`}`

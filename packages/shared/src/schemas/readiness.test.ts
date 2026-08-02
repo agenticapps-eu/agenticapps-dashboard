@@ -503,7 +503,7 @@ describe('computeReady', () => {
   const na = (id: CheckId) => result(id, { status: 'na', summary: 'not applicable' })
 
   it('is false when any check has never run', () => {
-    expect(computeReady(sixNever())).toBe(false)
+    expect(computeReady(sixNever(), null)).toBe(false)
   })
 
   it.each(['fail', 'stale', 'never'] as const)(
@@ -514,7 +514,7 @@ describe('computeReady', () => {
           ? result(id, { status, summary: 'blocking', at: status === 'never' ? null : 1 })
           : ok(id),
       )
-      expect(computeReady(checks)).toBe(false)
+      expect(computeReady(checks, null)).toBe(false)
     },
   )
 
@@ -528,27 +528,145 @@ describe('computeReady', () => {
           })
         : ok(id),
     )
-    expect(computeReady(checks)).toBe(false)
+    expect(computeReady(checks, null)).toBe(false)
   })
 
   it('is false when every check is not applicable', () => {
-    expect(computeReady(CHECK_IDS.map(na))).toBe(false)
+    expect(computeReady(CHECK_IDS.map(na), null)).toBe(false)
   })
 
   it('is true when only ok, warn and na results are present', () => {
     const checks = CHECK_IDS.map((id, i) =>
       i === 0 ? na(id) : i === 1 ? warn(id) : ok(id),
     )
-    expect(computeReady(checks)).toBe(true)
+    expect(computeReady(checks, null)).toBe(true)
   })
 
   it('is true when the one applicable check is a warning', () => {
     const checks = CHECK_IDS.map((id, i) => (i === 4 ? warn(id) : na(id)))
-    expect(computeReady(checks)).toBe(true)
+    expect(computeReady(checks, null)).toBe(true)
   })
 
   it('returns a boolean rather than a score', () => {
-    expect(typeof computeReady(sixNever())).toBe('boolean')
+    expect(typeof computeReady(sixNever(), null)).toBe('boolean')
+  })
+})
+
+describe('computeReady — the advisory exemption', () => {
+  const ok = (id: CheckId) => result(id, { status: 'ok', summary: 'current' })
+  const na = (id: CheckId) => result(id, { status: 'na', summary: 'not applicable' })
+  /** `pen-test` is the only underivable check, at index 4 of CHECK_IDS. */
+  const ADVISORY = 4
+  const COVERAGE = 5
+
+  const unusable = {
+    code: 'readiness-file-invalid',
+    message: 'the readiness file does not match the schema',
+  } as const
+
+  /** Five derivable checks `ok`, with the advisory slot supplied by the caller. */
+  const withAdvisory = (advisory: CheckResult) =>
+    CHECK_IDS.map((id, i) => (i === ADVISORY ? advisory : ok(id)))
+
+  it('does not block on an undeclared advisory check', () => {
+    const checks = withAdvisory(result(CHECK_IDS[ADVISORY]!))
+    expect(computeReady(checks, null)).toBe(true)
+  })
+
+  it('still blocks on a derived never from a derivable check', () => {
+    // The coverage deriver looked and found no artifact. That is a measurement,
+    // not an absence of signal, so the exemption must not reach it. A rule keyed
+    // on `source` alone would let a repo with no tests report ready.
+    const checks = CHECK_IDS.map((id, i) => (i === COVERAGE ? result(id) : ok(id)))
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  it('still blocks on a declared never from a derivable check', () => {
+    const checks = CHECK_IDS.map((id, i) =>
+      i === 0 ? result(id, { source: 'declared' }) : ok(id),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  it.each(['fail', 'stale'] as const)(
+    'still blocks on a declared %s advisory check',
+    (status) => {
+      const checks = withAdvisory(
+        result(CHECK_IDS[ADVISORY]!, { status, source: 'declared', at: 1, summary: 'declared' }),
+      )
+      expect(computeReady(checks, null)).toBe(false)
+    },
+  )
+
+  it('still blocks on an advisory check carrying an evaluation error', () => {
+    const checks = withAdvisory(
+      result(CHECK_IDS[ADVISORY]!, {
+        status: 'fail',
+        summary: 'could not evaluate',
+        error: { code: 'pen-test-deriver-failed', message: 'the pen-test deriver failed' },
+      }),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  it('suspends the exemption while the readiness file is unusable', () => {
+    // The guard against getting greener by breaking your own evidence. An
+    // unusable file discards every declaration and returns all six checks to
+    // derived values, so a declared blocking status on the advisory check
+    // vanishes and would otherwise be excused by the exemption.
+    const checks = withAdvisory(result(CHECK_IDS[ADVISORY]!))
+    expect(computeReady(checks, unusable)).toBe(false)
+  })
+
+  it('does not exempt a declared never on the advisory check', () => {
+    // Unreachable through the tier-B schema today, which restricts a declared
+    // pen-test to ok/warn/fail. Pinned at the predicate anyway: the exemption's
+    // stated contract is that it covers a *derived* never, and this clause is
+    // what keeps an explicit "never tested" assertion blocking if that
+    // vocabulary is ever widened. Without it the predicate passes every other
+    // test in this file.
+    const checks = withAdvisory(
+      result(CHECK_IDS[ADVISORY]!, { source: 'declared' }),
+    )
+    expect(computeReady(checks, null)).toBe(false)
+  })
+
+  /**
+   * The outbound refinement recomputes `ready` and rejects a response where the
+   * two disagree — so it has to be given the notice as well. Asserting only on
+   * `computeReady` leaves the mutation `computeReady(value.checks, null)` inside
+   * `refineReady` entirely undetected, and that mutation takes the whole fleet
+   * response to a 500 the moment one repo's readiness file is unusable.
+   *
+   * Both wire shapes, because the fleet row is where the verdict is read.
+   */
+  it.each([
+    ['summary', RepoSummarySchema],
+    ['detail', RepoDetailSchema],
+  ] as const)(
+    'validates the %s shape of a suspended-exemption response',
+    (shape, schema) => {
+      const checks = withAdvisory(result(CHECK_IDS[ADVISORY]!))
+      const withRemedy = checks.map((check) => ({ ...check, remedy: 'Run it.' }))
+
+      const repoValue = {
+        ...repo(),
+        ready: false,
+        notice: unusable,
+        checks: (shape === 'detail' ? withRemedy : checks) as never,
+      }
+
+      expect(schema.safeParse(repoValue).success).toBe(true)
+      // And the inverse: the value a notice-blind refinement would compute.
+      expect(schema.safeParse({ ...repoValue, ready: true }).success).toBe(false)
+    },
+  )
+
+  it('is not ready when nothing is applicable and the only other result is exempt', () => {
+    const checks = CHECK_IDS.map((id, i) =>
+      i === ADVISORY ? result(id) : na(id),
+    )
+    expect(computeReady(checks, null)).toBe(false)
   })
 })
 

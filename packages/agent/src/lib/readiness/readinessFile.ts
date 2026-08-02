@@ -42,14 +42,25 @@ const unusable = (
 export async function readReadinessFile(root: string): Promise<ReadinessFileOutcome> {
   const candidate = join(root, READINESS_FILE_PATH)
 
-  let present: boolean
+  // "There is no file" and "I could not look" are different facts, and only the
+  // first is `absent`. The distinction became load-bearing when the readiness
+  // predicate started suspending the advisory exemption on a notice: classify an
+  // unreadable `.agenticapps/` as absent and a repo could reach ready by making
+  // its own declarations unreachable — the same hole the notice guard closes for
+  // every other unreadability mode, reopened through `lstat`.
+  //
+  // ENOENT and ENOTDIR mean the path genuinely is not there. EACCES, ELOOP and
+  // anything else mean the answer is unknown, which is not the same as no.
   try {
     await lstat(candidate)
-    present = true
-  } catch {
-    present = false
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT' || code === 'ENOTDIR') return { kind: 'absent' }
+    return unusable(
+      'readiness-file-invalid',
+      `${READINESS_FILE_PATH} could not be read`,
+    )
   }
-  if (!present) return { kind: 'absent' }
 
   let absolute: string
   try {

@@ -131,7 +131,11 @@ function penTestRemedy(status: CheckStatus): string {
       return 'A current penetration test is declared in .agenticapps/readiness.json. Nothing to do until it expires.'
     case 'na':
     case 'never':
-      return 'This check is never derived. Once a penetration test has been performed, declare its result in .agenticapps/readiness.json with evidence, the reviewed commit, and a validUntil date.'
+      // Says outright that this check does not block. The verdict on the fleet
+      // row and the detail header both name what they exclude, and this is
+      // where a reader arrives after reading that — so it has to answer the
+      // question that sent them, not restate the status.
+      return 'This check has no derived signal, so while it is undeclared it does not block a ready verdict. Once a penetration test has been performed, declare its result in .agenticapps/readiness.json with evidence, the reviewed commit, and a validUntil date to have it counted.'
   }
 }
 
