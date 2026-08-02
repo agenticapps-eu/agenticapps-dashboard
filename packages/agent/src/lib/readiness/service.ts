@@ -380,6 +380,11 @@ export async function readFleet(
   // blocking read here withholds the response earlier than a stuck repo would.
   // An unavailable signature is not fatal — it is a cache key, and a distinct
   // placeholder simply means nothing replays from the previous key.
+  //
+  // The two bounds are sequential and cannot be overlapped, because every repo's
+  // cache key is derived from the signature. The endpoint's worst case is
+  // therefore two bounds rather than one — still bounded, which is the property
+  // that matters, but it is 30s and should not be read as 15s.
   const signature = await withinBound(signatureFor(entries, opts), opts)
   const fleet = signature === TIMED_OUT ? 'signature-unavailable' : signature
 

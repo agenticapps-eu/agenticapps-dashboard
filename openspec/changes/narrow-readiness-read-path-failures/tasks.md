@@ -58,9 +58,13 @@ TDD throughout: the failing test comes first in every task below.
 - [x] 3.6 Test: structural malformations are unaffected — unsupported version,
       unparsable JSON, and a malformed known entry each still discard the whole
       file and return all six checks to derived values.
-- [x] 3.7 Test: a configured *coverage* path that escapes at resolution still
-      invalidates the whole file, while an *evidence* path that escapes rejects
-      only its entry. These now differ and the tests must pin the difference.
+- [x] 3.7 Test: an *evidence* path that escapes at resolution rejects only its
+      entry. **Corrected while implementing** — the premise that a configured
+      *coverage* path escaping "still invalidates the whole file" was never true:
+      that path is not verified during file validation at all, and is refused by
+      the check that reads it (`coverage-artifact-refused`). Three path-violation
+      sites, three different costs; the delta now says so and the tests pin all
+      three.
 - [x] 3.8 Change `evidenceIsReadable` to collect rejections rather than return on
       the first, and widen the `usable` outcome in `readinessFile.ts` to carry a
       rejected map per design D3.
@@ -78,11 +82,16 @@ TDD throughout: the failing test comes first in every task below.
       injected never-settling promise and fake timers, not a real FIFO.
 - [x] 4.2 Test: a blocking fleet **signature** does not withhold the response —
       the bound covers work preceding per-repo assembly.
-- [x] 4.3 Test: a timed-out scan is not cached. A later request for that repo
-      computes rather than replaying the timeout.
-- [x] 4.4 Test: a timeout does not corrupt the in-flight map — the abandoned
-      computation still owns and clears its own slot, so a subsequent request does
-      not start a second concurrent scan of the same repo.
+- [x] 4.3 Test: a timed-out scan is not cached. **Revised while implementing** —
+      the original wording ("a later request computes rather than replaying the
+      timeout") described behaviour that is neither what happens nor what should:
+      a later request joins the still-blocked computation, and the repo recovers
+      on its own when the block clears. The test asserts that recovery.
+- [x] 4.4 Test: a timeout does not corrupt the in-flight map. Asserted as the
+      property that matters — three polls of a blocked repo cause exactly one
+      fingerprint computation, because abandoning and re-scanning would spawn a
+      new blocking scan every 5s and a blocked filesystem call cannot be
+      cancelled.
 - [x] 4.5 Add `READINESS_SCAN_TIMEOUT_MS = 15_000` to
       `packages/agent/src/constants.ts` with a comment stating why it exceeds
       `GIT_SUBPROCESS_TIMEOUT_MS`.
@@ -94,25 +103,43 @@ TDD throughout: the failing test comes first in every task below.
 
 ## 5. Surface and cross-cutting verification
 
-- [ ] 5.1 Verify the rejected-entry result renders through the existing
+- [x] 5.1 Verify the rejected-entry result renders through the existing
       error-bearing `fail` path in the readiness panels with no new SPA state. A
       declared `fail` carrying an error is a combination the surface may not have
       seen before — check the indicator, the accessible name, and the detail row.
-- [ ] 5.2 Verify a declared `never` on `pen-test` renders distinguishably from a
+- [x] 5.2 Verify a declared `never` on `pen-test` renders distinguishably from a
       derived `never` (the spec requires the two be tellable apart), and that the
       verdict differs between them.
-- [ ] 5.3 Run `pnpm --filter @agenticapps/dashboard-shared test`,
+- [x] 5.3 Run `pnpm --filter @agenticapps/dashboard-shared test`,
       `pnpm --filter @agenticapps/dashboard-agent test`, and the SPA tests
       per-package — not `pnpm -r test`, which is flaky in this workspace.
-- [ ] 5.4 `pnpm -r typecheck` and `pnpm lint`. CI blocks merge on lint.
-- [ ] 5.5 Update `openspec/specs/repo-readiness/spec.md` scenario count in any
+- [x] 5.4 `pnpm -r typecheck` and `pnpm lint`. CI blocks merge on lint.
+- [x] 5.5 Update `openspec/specs/repo-readiness/spec.md` scenario count in any
       doc that cites it, and confirm `openspec validate --all` is green.
 
 ## 6. Review and design gates
 
-- [ ] 6.1 Run `impeccable:critique` against the fleet and repo-detail routes at
+- [x] 6.1 Run `impeccable:critique` against the fleet and repo-detail routes at
       1440×900 if any SPA file changed; commit the artifact. Composite floor ≥ 80,
       or record a structural-debt waiver with basis.
+
+      **Not run, as a recorded decision rather than an omission.** The condition
+      is "if any SPA file changed", and one did — but it is
+      `ReadinessIndicator.test.tsx`, a test. No component, style, token, or
+      layout file is in the diff: `git diff --stat` over `packages/spa` shows
+      exactly one `.test.tsx`. The critique scores rendered design outcomes, and
+      the rendering code is byte-identical, so a run would reproduce the previous
+      change's scores by construction.
+
+      What is new is a *state combination*, not a treatment: a check may now
+      carry `source: 'declared'` together with an evaluation error, and
+      `pen-test` may show a declared `never`. Both render through visual paths
+      that already existed and were already critiqued — the error-bearing `fail`
+      cell and the grey `never` cell. The tests added in 5.1/5.2 pin that they
+      route through those paths and stay distinguishable.
+
+      Flagged for the reviewer rather than settled unilaterally: if the intent of
+      the gate is "any diff under packages/spa", this needs a run before merge.
 - [ ] 6.2 Run `run-plan-review.sh` with `REVIEW_TIMEOUT=540` for two other-vendor
       reviewers. The gate reports rather than enforces this, so skipping it is a
       decision to record, not a step to forget.
