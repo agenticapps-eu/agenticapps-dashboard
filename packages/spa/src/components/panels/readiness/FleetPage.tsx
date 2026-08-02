@@ -26,7 +26,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { CHECK_IDS, type RepoSummary } from '@agenticapps/dashboard-shared'
 
-import { useFleet } from '../../../lib/readinessQueries.js'
+import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { EmptyState } from '../../ui/EmptyState.js'
@@ -309,15 +309,15 @@ export function FleetPage(): ReactElement {
   const visible = all.filter((repo) => matchesFleetFilters(repo, filters))
 
   let content: ReactElement
-  if (fleet.error?.message.startsWith('schema_drift:')) {
+  if (fleet.error instanceof SchemaDriftError) {
+    // The measured mismatch, not a reconstruction of it. `expected` and `got`
+    // used to be the literals 'see schema' and 'mismatch' because the real
+    // values were thrown away at the query — which made the one screen whose
+    // job is reporting a measurement the one screen that invented it.
     content = (
       <SchemaDriftState
-        firstIssue={{
-          path: fleet.error.message.slice('schema_drift:'.length),
-          expected: 'see schema',
-          got: 'mismatch',
-        }}
-        fullIssues={[]}
+        firstIssue={fleet.error.drift}
+        fullIssues={fleet.error.drift.issues}
         onRetry={() => void fleet.refetch()}
       />
     )

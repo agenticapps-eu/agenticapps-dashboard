@@ -19,6 +19,7 @@ import { isReadableProjectPath, type RepoDetail } from '@agenticapps/dashboard-s
 
 import { ApiError } from '../../../lib/api.js'
 import {
+  SchemaDriftError,
   useEvidence,
   useOpenInEditor,
   useRepoDetail,
@@ -385,16 +386,15 @@ export function RepoDetailPage(): ReactElement {
   const detail = useRepoDetail(repoId)
   useLandOnHashedCheck(detail.data !== undefined)
 
-  if (detail.error?.message.startsWith('schema_drift:')) {
+  if (detail.error instanceof SchemaDriftError) {
+    // The measured mismatch, not a reconstruction of it. This screen exists to
+    // report what the two ends disagreed about; inventing `expected` and `got`
+    // made it the one screen that lied.
     return (
       <div>
         <SchemaDriftState
-          firstIssue={{
-            path: detail.error.message.slice('schema_drift:'.length),
-            expected: 'see schema',
-            got: 'mismatch',
-          }}
-          fullIssues={[]}
+          firstIssue={detail.error.drift}
+          fullIssues={detail.error.drift.issues}
           onRetry={() => void detail.refetch()}
         />
       </div>

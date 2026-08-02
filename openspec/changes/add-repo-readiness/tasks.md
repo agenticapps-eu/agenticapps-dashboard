@@ -380,6 +380,26 @@ belongs to the header because it describes the reading, not any one check — an
 the block-level guard against a check borrowing it for an observation that never
 happened is asserted separately.
 
+### 10.6 The six check cells share one `td`, and the headers above them are a visual claim
+
+Recorded because the Stage-2 review was right that it is currently carried as a
+claim the code does not make. Commit `6febf06` says "put every check cell under
+its own column header". Visually true, and measured true at 1440 — header and
+cell centres agree within 1 px. Semantically false: the six `<th scope="col">`
+sit above a single `<td colSpan={6}>`, so a screen-reader user stepping
+cell-by-cell hears all six header names announced for one cell and no check is
+associated with its own column.
+
+Six real `<td>`s would fix the association, the ~1.7 px grid drift, and the
+zero-padding hack that exists only to keep the grid aligned with the header row.
+They would also cost the per-repo `role="group"` wrapper, which is what names
+the strip "Readiness for <repo>" and is asserted by test.
+
+Not resolved here. It is a genuine trade between two accessibility properties —
+column association versus a named group — and the cells already carry the check
+name in their own accessible label, so nothing is unreachable today. Deciding it
+belongs with whoever revisits the table, not with a §10 that is closing.
+
 ## 11. Verify
 
 - [ ] `openspec validate --all` green

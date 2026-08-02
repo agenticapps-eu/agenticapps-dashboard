@@ -20,7 +20,9 @@ import { CHECK_IDS } from '@agenticapps/dashboard-shared'
 
 import {
   FLEET_QUERY_KEY,
+  SchemaDriftError,
   useEvidence,
+  useFleet,
   useOpenInEditor,
   useRescanRepo,
 } from './readinessQueries.js'
@@ -60,6 +62,27 @@ function ok(body: unknown) {
 
 beforeEach(() => {
   mockFetch.mockReset()
+})
+
+describe('schema drift', () => {
+  it('carries the measured mismatch rather than a stringified path', async () => {
+    // The drift screen renders `expected:` and `got:` rows. Those were being
+    // filled with the literals 'see schema' and 'mismatch' because the real
+    // values had been thrown away here — invented diagnostics presented as
+    // measured ones, on the one screen whose whole job is to report a
+    // measurement.
+    mockFetch.mockReturnValue(ok({ generatedAt: 'not-a-number', repos: [] }))
+
+    const { result } = renderHook(() => useFleet(), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    const error = result.current.error as SchemaDriftError
+    expect(error).toBeInstanceOf(SchemaDriftError)
+    expect(error.drift.path).toBe('generatedAt')
+    expect(error.drift.expected).not.toBe('see schema')
+    expect(error.drift.got).not.toBe('mismatch')
+    expect(error.drift.issues.length).toBeGreaterThan(0)
+  })
 })
 
 describe('useOpenInEditor', () => {

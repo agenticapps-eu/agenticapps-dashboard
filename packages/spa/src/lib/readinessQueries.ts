@@ -15,7 +15,20 @@ import {
   type RepoDetailResponse,
 } from '@agenticapps/dashboard-shared'
 
-import { apiFetch } from './api.js'
+import { apiFetch, type DriftIssue } from './api.js'
+
+/**
+ * A response that did not match its schema, carrying what was actually
+ * measured. The drift screen renders `field`, `expected` and `got`; passing a
+ * bare message meant those had to be invented at the call site, and a screen
+ * whose only job is to report a measurement was reporting literals.
+ */
+export class SchemaDriftError extends Error {
+  constructor(public readonly drift: DriftIssue) {
+    super(`schema_drift:${drift.path}`)
+    this.name = 'SchemaDriftError'
+  }
+}
 
 export const FLEET_QUERY_KEY = ['readiness', 'fleet'] as const
 
@@ -40,7 +53,7 @@ export function useFleet(): UseQueryResult<FleetResponse, Error> {
     queryKey: FLEET_QUERY_KEY,
     queryFn: async () => {
       const result = await apiFetch('/api/v2/fleet', FleetResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      if (!result.ok) throw new SchemaDriftError(result.drift)
       return result.data
     },
     staleTime: 5_000,
@@ -64,7 +77,7 @@ export function useRepoDetail(repoId: string): UseQueryResult<RepoDetailResponse
         `/api/v2/repos/${encodeURIComponent(repoId)}`,
         RepoDetailResponseSchema,
       )
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      if (!result.ok) throw new SchemaDriftError(result.drift)
       return result.data
     },
     staleTime: 5_000,
@@ -94,7 +107,7 @@ export function useEvidence(
     queryFn: async () => {
       const url = `/api/projects/${encodeURIComponent(repoId)}/read?path=${encodeURIComponent(path ?? '')}`
       const result = await apiFetch(url, ReadResponseSchema)
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      if (!result.ok) throw new SchemaDriftError(result.drift)
       return result.data
     },
     enabled: enabled && path !== null,
@@ -121,7 +134,7 @@ export function useRescanRepo(repoId: string): UseMutationResult<RepoDetailRespo
         RepoDetailResponseSchema,
         { method: 'POST' },
       )
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      if (!result.ok) throw new SchemaDriftError(result.drift)
       return result.data
     },
     onSuccess: (fresh) => {
@@ -148,7 +161,7 @@ export function useOpenInEditor(repoId: string): UseMutationResult<unknown, Erro
         OpenAcceptedSchema,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
       )
-      if (!result.ok) throw new Error(`schema_drift:${result.drift.path}`)
+      if (!result.ok) throw new SchemaDriftError(result.drift)
       return result.data
     },
   })

@@ -45,9 +45,14 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ),
   }
 })
-vi.mock('../../../lib/readinessQueries.js', () => ({ useFleet: vi.fn() }))
+vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
+  // `useFleet` is mocked; `SchemaDriftError` is not. The page branches on
+  // `instanceof`, so a stubbed class would make that branch untestable.
+  ...(await importOriginal<typeof import('../../../lib/readinessQueries.js')>()),
+  useFleet: vi.fn(),
+}))
 
-import { useFleet } from '../../../lib/readinessQueries.js'
+import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 
 import { CHECK_LABELS } from './ReadinessIndicator.js'
 import { FleetPage } from './FleetPage.js'
@@ -425,7 +430,12 @@ describe('FleetPage', () => {
       data: undefined,
       isPending: false,
       isError: true,
-      error: new Error('schema_drift:repos.0.checks.5.status'),
+      error: new SchemaDriftError({
+        path: 'repos.0.checks.5.status',
+        expected: "'ok' | 'warn' | 'fail' | 'stale' | 'never' | 'na'",
+        got: 'unknown-status',
+        issues: [],
+      }),
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useFleet>)
     render(<FleetPage />)

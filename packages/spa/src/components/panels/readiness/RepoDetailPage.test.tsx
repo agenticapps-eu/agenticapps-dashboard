@@ -20,7 +20,11 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useLocation: () => ({ hash: routerState.hash }),
   }
 })
-vi.mock('../../../lib/readinessQueries.js', () => ({
+vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
+  // The hooks are mocked; `SchemaDriftError` is not. The page branches on
+  // `instanceof`, so a stubbed class would make that branch untestable and an
+  // omitted one would make it throw.
+  ...(await importOriginal<typeof import('../../../lib/readinessQueries.js')>()),
   useFleet: vi.fn(),
   useRepoDetail: vi.fn(),
   useEvidence: vi.fn(),
