@@ -27,8 +27,9 @@ rejected, is at
 
 - One fleet-wide board answering "what is in flight, at what stage" across every
   registered repository.
-- Stage classification that agrees with the terminal board, so the two do not
-  disagree about the same repository.
+- Stage classification derived from the terminal board's, so the two agree about
+  the same repository except where this one deliberately does not — two
+  divergences, both specified rather than discovered.
 - Degradation that names what it lost, per repository.
 - No amendment to the security spine.
 
@@ -42,6 +43,8 @@ rejected, is at
   board exists.
 - Running the `retire-v1-surfaces` cutover.
 - Widening `GIT_ALLOWED_CMDS` or the four authorised spawn sites.
+- **A `ship` stage.** Deferred to its own change with its own
+  `filesystem-access-policy` delta — see decision 5.
 
 ## Decisions
 
@@ -72,14 +75,35 @@ sections". It counts approvals and never subtracts rejections.
 
 Applied literally to this repository, `retire-v1-surfaces` — claude APPROVE,
 opencode APPROVE, gemini REQUEST-CHANGES, codex REQUEST-CHANGES — reads as
-approved and lands in Execute. That is the wrong answer. This project's whole
-posture is that a rejection is dispositioned, not outvoted; the discipline
-recorded in `CLAUDE.md` and exercised in the sanitiser change is to fix confirmed
-REQUEST-CHANGES findings before folding a delta.
+approved and lands in Execute.
 
-**Chosen: a reviewer counts only while their latest verdict approves.** Under
-that rule the change sits in Validate, which is where two unanswered rejections
-should put it.
+**Rejected: "a reviewer counts only while their latest verdict approves."** This
+was the first draft of the divergence, and it does not do what it was written to
+do. All four verdicts above are from *distinct* reviewers, each one their
+latest — so two still approve, and the change still advances to Execute. The
+filter only catches the same reviewer approving and then rejecting, which is not
+the case that motivated it. Two of three plan reviewers found this independently;
+the rule was refuted by its own worked example.
+
+**Chosen: two latest-verdict approvals AND no latest-verdict rejection.** A
+standing request for changes from any reviewer vetoes, however many others
+approve. Under that rule `retire-v1-surfaces` sits in Validate, which is what the
+divergence was for.
+
+**What this costs, stated plainly.** The board is now stricter than this
+repository's ratified gate. `CLAUDE.md` (gate 2.0.0, corrected 2026-08-02) is
+explicit that review evidence is *reported, never enforced* — "two rejections
+open the gate exactly as two approvals do" — and that disposition is "address it
+**or record why not**". The board can read verdicts; it cannot read a recorded
+why-not, because prose is not a verdict. So a change whose author legitimately
+declined a finding sits at Validate until the reviewers are re-run, and the only
+thing that clears a rejection on this surface is a fresh one.
+
+That asymmetry is the honest form of the divergence: the earlier framing —
+"this project's whole posture is that a rejection is dispositioned, not
+outvoted" — asserted as settled what is a *discipline the machine deliberately
+does not enforce*. The board takes the stricter reading on purpose. It should say
+so rather than claim the repository already agreed.
 
 Recorded as a requirement rather than a code comment, because it is the one place
 the two boards will legitimately disagree about the same repository, and the
@@ -118,20 +142,44 @@ running and the endpoint stops waiting for it. That limitation is inherited
 knowingly; threading an `AbortSignal` through the shared read primitive is the
 principled fix and belongs to that primitive, not to this board.
 
-### 5. Ship-versus-Archive through the existing bounded-git site
+### 5. No Ship stage — the probe does not fit the security spine
 
-`GIT_ALLOWED_CMDS` is `['log', 'status', 'diff-stat', 'branch']`, and
-`add-workflow-fleet-conformance` closes process-spawn authorisation at exactly
-four sites.
+**Rejected: `git log <ref> -- openspec/changes/archive/<name>` through the
+existing bounded-git site.** This was the original design, and it is not
+implementable as written. Three things are wrong with it, found in plan review
+and each verified against the code:
 
-Proving an archive entry is on `main`/`origin/HEAD` is expressible as
-`git log <ref> -- openspec/changes/archive/<name>`, which uses the permitted
-`log` subcommand through the existing site. No new subcommand, no fifth site, no
-amendment to `filesystem-access-policy`.
+1. **The site takes no such arguments.** `runAllowedGit(cmd, cwd)` in
+   `packages/agent/src/lib/git.ts` maps every allow-listed subcommand to a fixed
+   argv — `log` is `['log', '--oneline', '-20']` — and the only request-derived
+   value it accepts is the working directory. The probe cannot go "through the
+   existing site"; the site would have to grow argument passing first.
+2. **That growth is the thing the spine forbids.** The ref is bounded, but the
+   archive directory name is a string read out of a project tree, and
+   `filesystem-access-policy` states for spawn site 3 that "change names,
+   capability names, file names, and every other string read out of a project
+   tree MUST NOT reach the argument vector". The git site's fixed argv is that
+   same rule made structural. Adding a parameter is a policy amendment, not a
+   refactor.
+3. **`log` is the wrong probe anyway.** It proves an archive path was *touched in
+   history*, not that the ref *currently contains* it — a deleted archive entry
+   would classify as shipped. A deletion-safe proof needs `ls-tree` or
+   `cat-file -e`, neither of which is in `GIT_ALLOWED_CMDS`.
 
-**A failed probe resolves to `archive`, never `ship`.** Absence of evidence takes
-the weaker claim; a board that reports "shipped" on a failed check is worse than
-one that reports "archived" on a successful ship.
+Only the "no fifth spawn site" half of the original claim survives: `integrations.ts`
+and `linear.ts` already call `runAllowedGit` from routes other than
+`GET /api/projects/{id}/git`, so the bounded function — not the route — is the
+site by established practice.
+
+**Chosen: drop the `ship` stage.** Archived is archived; the board never claims a
+change has landed. This keeps "the security spine is not amended" literally true
+rather than technically-true-and-misleading, and it means the board spawns no
+process at all.
+
+The stage is not abandoned, it is unbundled: a `ship` stage is a change to
+`filesystem-access-policy` with its own delta, its own argv discipline (closed
+ref set, a strict `YYYY-MM-DD-<slug>` validator, a deletion-safe subcommand), and
+its own review pass. That work should not ride in on a surface change.
 
 ### 6. Kanban, chosen over two denser alternatives
 
@@ -144,26 +192,34 @@ the board exists to provide.
 beneath. It keeps pipeline order and full names, and it was the recommendation.
 It was not chosen.
 
-**Chosen: five kanban columns**, mirroring the terminal board that already has
-this job, on the reasoning that recognition across the two surfaces is worth more
-than the density a table would buy.
+**Chosen: kanban columns**, mirroring the terminal board that already has this
+job, on the reasoning that recognition across the two surfaces is worth more than
+the density a table would buy. Four of them, per decision 5.
 
 Two consequences are handled rather than absorbed. Long names wrap to two lines
 instead of truncating — the terminal elides because a cell grid forces it, and
 all four change names in the current fleet that exceed one line fit whole in two.
-And because five columns cannot fit a small viewport, the board pages one stage
-at a time behind a stage rail below a 180px minimum column width, which is the
-mechanism the terminal board already uses when narrow.
+And because four columns still cannot fit a small viewport, the board pages one
+stage at a time behind a stage rail below a 180px minimum column width, which is
+the mechanism the terminal board already uses when narrow.
 
-### 7. Two search parameters, never one composite
+### 7. Separate search parameters, never one composite
 
-The drawer is addressable as `?repo=<id>&change=<name>`.
+The drawer is addressable as `?repo=<id>&source=<source>&change=<name>`.
 
 A single `repo:name` parameter needs a separator, a separator needs a parser, and
 a parser over author-controlled names is precisely the shape that produced
 `fix-readiness-sanitiser-colon-hazard`: a legal change name containing the
-separator becomes an injection into the surrounding grammar. Two parameters need
-no parsing at all, so the failure mode does not exist rather than being guarded.
+separator becomes an injection into the surrounding grammar. Separate parameters
+need no parsing at all, so the failure mode does not exist rather than being
+guarded.
+
+**`source` is in the address because it is in the identity.** Review pointed out
+that `(repo, name)` does not identify a card: a backlog entry and an active
+change of the same name — the ordinary case, since a backlog entry becomes a
+change under its own name — collide on one address, as would an active change and
+its own archived predecessor. The card's identity is the triple, so the address
+is the triple.
 
 ## Risks / Trade-offs
 
@@ -175,11 +231,14 @@ fixtures across a repository boundary, which is the coupling decision 1 declines
 Accepted, and named here so it is a known gap rather than a surprise.
 
 **The board is the most expensive read the daemon performs.** It walks
-`openspec/changes/`, `openspec/changes/archive/` and `BACKLOG.md` per repository
-and probes git per archived change. → Its own endpoint with its own bound, so it
-cannot slow readiness; per-repository settlement, so it cannot be withheld by one
-repo. If the archive walk proves too costly in practice, the fallback is
-active-only cards, which removes two of five columns — a product regression, so
+`openspec/changes/`, `openspec/changes/archive/` and `BACKLOG.md` per repository,
+and reads `REVIEWS.md` and `tasks.md` per active change. → Its own endpoint with
+its own bound, so it cannot slow readiness; per-repository settlement, so it
+cannot be withheld by one repo. Dropping the ship probe removes the part that
+scaled with archive size — a mature repository's archive is now a directory
+listing, not one subprocess per entry, which is what review flagged as
+unscalable. If the archive walk still proves too costly, the fallback is
+active-only cards, which removes one of four columns — a product regression, so
 it is a fallback and not the plan.
 
 **A kanban sits against the design-system's direction.** `retire-v1-surfaces`
@@ -193,6 +252,18 @@ leave two documents disagreeing.
 reports some `REVIEWS.md` files as unverifiable (trailer-absent). → A change whose
 verdicts cannot be read classifies as `validate`, the same as one with too few
 approvals: the board never advances a change on evidence it could not parse.
+
+**"Latest verdict" sounded like it needed an ordering discipline. It does not.**
+Review raised this as an ambiguity the classifier could not be built from —
+ordering by document position or by timestamp is undefined, and the rule is
+load-bearing now that a rejection vetoes. Checked against every `REVIEWS.md` in
+this repository, active and archived: **twelve files, not one of which repeats a
+reviewer.** `run-plan-review.sh` rewrites the file wholesale per run, so each
+reviewer appears exactly once and their section *is* their latest verdict. →
+Specify the invariant rather than an ordering: one section per reviewer, and if a
+file ever carries two for the same reviewer, the later section in document order
+wins. One line of tie-break instead of a timestamp discipline for a case the
+producer does not produce.
 
 **The `N active` row is designed out, not designed around.** The terminal card has
 three rows and this one has two. → The card's layout must not assume a fixed row
@@ -220,6 +291,12 @@ Two ordering notes:
   pager mode only. Retaining it at every width would give the board a stable
   summary line; it also duplicates the column headers.
 - **How should a change appear that exists in two registered repositories under
-  the same name?** Upstream reports a `collision` limit notice. This design
-  carries cards keyed by repository so no merge occurs, but the surface does not
-  yet distinguish two same-named changes visually beyond their repository label.
+  the same name?** Upstream reports a `collision` limit notice. Cards are keyed by
+  repository, source and name (decision 7), so no merge occurs and every card
+  addresses distinctly; what is still open is purely visual — the surface does not
+  distinguish two same-named cards beyond their repository label.
+- **When should the `ship` follow-up be proposed?** Decision 5 defers it with its
+  shape already worked out. It could reasonably be proposed before this board
+  ships, so the Archive column is never shipped knowing it conflates two things —
+  or left until the board has been used and the missing column has actually been
+  felt.
