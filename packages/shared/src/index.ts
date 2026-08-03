@@ -273,3 +273,35 @@ export type {
 
 export { buildUnderstandCommand } from './clipboard.js'
 export type { UnderstandCommand } from './clipboard.js'
+
+// add-agent-change-board — the fleet OpenSpec change board's wire contract.
+export {
+  CHANGE_STAGES,
+  CHANGE_SOURCES,
+  CHANGE_NOTICE_KINDS,
+  CHANGE_READ_FAILURES,
+  ChangeStageSchema,
+  ChangeSourceSchema,
+  ChangeArtifactsSchema,
+  ChangeChecklistRowSchema,
+  ChangeCardSchema,
+  ChangeNoticeKindSchema,
+  ChangeNoticeSchema,
+  ChangeReadFailureSchema,
+  ChangeRepositoryStatusSchema,
+  ChangesFleetResponseSchema,
+  cardKey,
+  fleetReadState,
+} from './schemas/changes.js'
+export type {
+  ChangeStage,
+  ChangeSource,
+  ChangeArtifacts,
+  ChangeChecklistRow,
+  ChangeCard,
+  ChangeNoticeKind,
+  ChangeNotice,
+  ChangeReadFailure,
+  ChangeRepositoryStatus,
+  ChangesFleetResponse,
+} from './schemas/changes.js'
