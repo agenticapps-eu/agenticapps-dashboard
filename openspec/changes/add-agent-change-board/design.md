@@ -70,6 +70,24 @@ have. ADRs record a decision at a moment; the classifier is what the other board
 actually does today. Where they disagree, the code is the origin and the ADR is
 history.
 
+**And it is the whole reader, not just the stage machine.** Round 3 made the
+scope of that mistake clear. `reader.ts` already contains, tested and working:
+`parseBacklog` (code-fence aware, with anchored closed-marker matchers),
+`backlogSlug`, `sourceIdentity`, `occupiedSlugs` deduplication,
+`MAX_SOURCE_RECORDS` with a `truncated` notice, `parseChecklist`, and a symbolic
+notice vocabulary (`collision`, `empty-slug`, `evidence-limited`, `malformed`,
+`rejected`, `truncated`). Three review rounds spent their findings on the seams
+in hand-written substitutes for each of those — substring markers that closed
+`Redone migration`, an identity of heading-text-plus-index that reintroduced the
+separator hazard decision 7 exists to avoid, an archive-only bound that
+contradicted the corpus requirement.
+
+**So the corpus rules are cited, not restated.** The delta now names the upstream
+functions and specifies only what departs from them. The rule of thumb this
+change paid three rounds to learn: when a specification and a working
+implementation of the same behaviour both exist, write the specification against
+the implementation.
+
 The cost is real and is accepted: two definitions of "validate" now exist and
 must be kept in step by hand. The mitigation is that the divergence is *stated*
 rather than discovered — see decision 2 — so a future reader compares two
@@ -221,6 +239,27 @@ And because four columns still cannot fit a small viewport, the board pages one
 stage at a time behind a stage rail below a 180px minimum column width, which is
 the mechanism the terminal board already uses when narrow.
 
+### 6b. Fix the data, not the parser
+
+This repository's `openspec/BACKLOG.md` did not match the convention upstream's
+`parseBacklog` expects. Its two closed entries used a trailing `✅ RESOLVED` in
+the heading and a `**Status: ✅ RETIRED 2026-07-26 by explicit decision.**` body
+line; upstream's matchers are anchored — a bracketed or `MARKER:` prefix, or a
+body line ending at the marker — so both entries read as **open**.
+
+**Rejected: loosen the matcher to a substring test.** That was the round-3
+draft, and reviewers immediately found what it costs: `Redone migration` and
+`Add WITHDRAWN flag support` close as resolved. A rule loose enough to catch our
+idiosyncratic file is loose enough to close entries nobody resolved.
+
+**Chosen: correct the two entries** to `## [RESOLVED] …` and `**Status:**
+RETIRED`. One editorial edit, no divergence to maintain, and both boards then
+read the file identically — verified by running upstream's unmodified regexes
+over the corrected file: two closed, one open.
+
+The general form: when local data does not fit a shared parser, the parser is
+usually not the thing that is wrong.
+
 ### 7. Separate search parameters, never one composite
 
 The drawer is addressable as `?repo=<id>&source=<source>&change=<name>`.
@@ -241,12 +280,15 @@ is the triple.
 
 ## Risks / Trade-offs
 
-**Two stage definitions drift apart.** → The divergence is specified, not
-implicit, and the classifier is tested against fixtures mirrored from upstream's.
-A conformance test that runs upstream's fixtures through this classifier was
-considered and deferred: it would pin the two together, but it requires importing
-fixtures across a repository boundary, which is the coupling decision 1 declines.
-Accepted, and named here so it is a known gap rather than a surprise.
+**Two stage definitions drift apart.** → The departures are specified, and the
+conformance test is no longer deferred: upstream's mirrored fixtures run through
+both `classifyActiveChange` (copied verbatim into the test as an oracle) and
+`stage.ts`, asserting identical stages. Deferring it was what allowed a phantom
+divergence to survive two rounds — the test would have shown the two classifiers
+already agreeing. The residual risk is that the copied oracle and the mirrored
+fixtures are snapshots: they pin today's behaviour and drift silently when
+upstream changes. That is a smaller gap than the one it closes, and it is named
+here rather than discovered.
 
 **The board is the most expensive read the daemon performs.** It walks
 `openspec/changes/`, `openspec/changes/archive/` and `BACKLOG.md` per repository,

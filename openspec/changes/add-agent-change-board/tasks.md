@@ -20,8 +20,8 @@ waiting for it.
 - [ ] 2.2 Write one failing test per ordered rule 1–5, plus a backlog entry classifying as `propose`
 - [ ] 2.3 Write the failing veto test **against the real `retire-v1-surfaces/REVIEWS.md` shape** — two approvals from distinct reviewers plus two requests-for-changes from two *other* distinct reviewers classifies `validate`, not `execute`. This is the case that refuted the first draft of the rule; it is the one test that must exist
 - [ ] 2.4 Write the failing tests for the rest of the reviewer rule: a reviewer whose rejection is followed by an approval in a later round no longer vetoes; unparseable verdicts count as absent and classify `validate`; a vendor approving twice counts once
-- [ ] 2.5 Write the failing parse-grammar tests mirroring upstream's `parseReviewEvidence`: `## Reviewer: <vendor>` section bounds, `VERDICT: APPROVE|REQUEST-CHANGES` matched case-insensitively, vendor dedup on the lowercased name
-- [ ] 2.6 Write the failing staleness test: a change directory holding `REVIEWS.md` plus `REVIEWS-round-1..3.md` classifies from round 3, and the card records multi-round evidence. `archive/2026-08-02-close-readiness-spec-gaps/` is the real fixture — copy it, do not invent one
+- [ ] 2.5 Write the failing parse-grammar tests mirroring upstream's `parseReviewEvidence` and `parseChecklist`: `## Reviewer: <vendor>` section bounds, `VERDICT: APPROVE|REQUEST-CHANGES` matched case-insensitively, vendor dedup on the lowercased name, and checklist rows matching `^\s*-\s+\[([ xX])\]\s+(.+?)\s*$`. Include the case that broke the round-3 draft: one vendor approving **and** rejecting in one record holds the change at `validate`, with no last-section-wins rule
+- [ ] 2.6 Write the failing staleness tests: with `REVIEWS.md` plus `REVIEWS-round-1..3.md`, the most recently modified record is the one read and the card names it; a `REVIEWS.md` touched after the last round wins; `REVIEWS-round-10.md` beats `REVIEWS-round-9.md` on a modification-time tie; a reviewer absent from the selected record has no verdict rather than a carried-forward one. `archive/2026-08-02-close-readiness-spec-gaps/` is the real fixture — copy it, do not invent one
 - [ ] 2.7 Write the failing test that `design.md` presence never changes a stage
 - [ ] 2.8 Write the failing test that both archive readings are distinguishable — a rule-1 card carries source `archive`, a rule-5 card carries source `active` with `ready`
 - [ ] 2.9 **Conformance, not just agreement**: run upstream's mirrored fixtures through both `classifyActiveChange` (copied verbatim into the test as the oracle) and `stage.ts`, and assert identical stages for every fixture. This is the check that would have caught the phantom divergence
@@ -34,13 +34,14 @@ waiting for it.
 - [ ] 3.2 Write the failing test that a repository with no `openspec/` yields no cards and is not reported as an error
 - [ ] 3.3 Write failing tests for malformed input: an unparseable change directory and an unparseable backlog entry are skipped and counted, never fatal
 - [ ] 3.4 Write the failing test that `openspec/changes/archive/` produces no card of its own, and that a non-change entry (a README, a directory holding none of the three artifacts) produces none either — this repo's own tree is the fixture
-- [ ] 3.5 Write the failing tests for the backlog rule **against this repo's own `openspec/BACKLOG.md`** — of its three level-two headings, `## Human verification backlog` (body opens `**Status: ✅ RETIRED …**`) and `## Known stale artifact — ✅ RESOLVED 2026-07-26` must produce no card, and the third must. The first rule written for this shipped two of three wrong; a fixture that is not this file does not prove the rule
+- [ ] 3.5 Mirror upstream's `parseBacklog` — fence tracking, anchored `closedHeading`/`closedBodyLine`, `backlogSlug` — rather than writing a marker rule. Test **against this repo's own `openspec/BACKLOG.md`**, whose two closed entries were corrected to the convention in this change: `Human verification backlog` and `[RESOLVED] Known stale artifact` must close, the third must stay open. Also assert `Redone migration` and `Add WITHDRAWN flag support` stay open — the substring rule that closed them is the defect this replaced
 - [ ] 3.6 Write the failing tests for the malformed/absent split: an absent `BACKLOG.md`, an empty one, and a directory holding none of the three artifacts are silent; an unreadable file, an oversized file, and an `archive/` entry failing the date or artifact test are reported as skipped. Assert no input satisfies both
-- [ ] 3.7 Write the failing identity tests: two dated archives of one slug are two cards; two identical backlog headings are two cards; a backlog entry and an active change of one name are two cards
-- [ ] 3.8 Implement `packages/agent/src/lib/changes/changeReader.ts` to green
-- [ ] 3.9 Confirm every path read passes `isReadableProjectPath`; add a test asserting it for the archive and backlog paths specifically
-- [ ] 3.10 Add realpath containment on top of the lexical guard — resolve each path, confirm it lies under the registered project root, and read regular files only. Write the failing test first: a symlink under `openspec/` resolving outside the root yields no card and is reported skipped. `isReadableProjectPath` is lexical by its own docblock and does not cover this; `coverageResolver` and `conformanceScan` are the precedent to match
-- [ ] 3.11 Add the pre-read size cap as a named constant, checked by `stat` before the read, with the oversized file skipped and reported. This was required by round-1 review alongside realpath and regular-file checks and was the one of the three silently dropped — round 2 caught the omission
+- [ ] 3.7 Write the failing identity tests against upstream's `sourceIdentity` (NUL-joined root/source/instance): two dated archives of one slug are two cards; a backlog entry whose slug matches an active change is **one** card, not two (`occupiedSlugs`); the instance for a backlog entry is its slug, never its raw heading text
+- [ ] 3.8 Write the failing bound test: more than `MAX_SOURCE_RECORDS` records of one source in one repository admits the bound and emits a `truncated` notice carrying admitted and observed counts
+- [ ] 3.9 Implement `packages/agent/src/lib/changes/changeReader.ts` to green
+- [ ] 3.10 Confirm every path read passes `isReadableProjectPath`; add a test asserting it for the archive and backlog paths specifically
+- [ ] 3.11 Add realpath containment on top of the lexical guard — resolve each path and confirm it lies under **`<project root>/openspec`**, not merely under the project root, and read regular files only. Write the failing tests first: a symlink under `openspec/` resolving to `../.env` or `../.git/config` **inside the same repository** yields no card and is reported skipped. A root-scoped check passes that case, which is why round 3 rejected it; `coverageResolver` and `conformanceScan` are the precedent for the resolution itself
+- [ ] 3.12 Add the pre-read size cap as a named constant, checked before the read, with the oversized file skipped and reported. This was required by round-1 review alongside realpath and regular-file checks and was the one of the three silently dropped — round 2 caught the omission
 
 ## 4. Fleet service and route
 
@@ -60,7 +61,7 @@ waiting for it.
 - [ ] 5.3 Write the failing test that a long change name renders across two lines rather than eliding at one
 - [ ] 5.4 Write failing tests for the degraded and unreachable states, asserting a degraded read does not present as an ordinary empty board
 - [ ] 5.5 Write the failing test that the Archive column distinguishes a filed archive card from an active card marked `ready`
-- [ ] 5.6 Write the failing tests for the archive bound: a repository past the bound renders the most recently dated cards and states how many it withheld; one under the bound renders all and withholds nothing; ordering is date-descending with a name tie-break
+- [ ] 5.6 Write the failing ordering tests: every column totally ordered and stable across two renders of an unchanged fleet; Archive date-descending with the rule-5 `ready` card ahead of every dated card; `propose`/`validate`/`execute` by modification time descending; ties broken on card identity so no repository's name decides another's order
 - [ ] 5.7 Implement `ChangeBoardPage`, `StageColumn` and `ChangeCard` to green; the card must not assume a fixed row count, so the session row is additive later
 - [ ] 5.8 Add the `/changes` route and one `Changes` sidebar entry in the product-content group
 
@@ -90,7 +91,8 @@ now and a separate change once its delta is folded.
 
 - [ ] 8.1 Correct its `project-dashboard` delta: archived-change ordering is no longer droppable, because this board renders archived changes in date order
 - [ ] 8.2 Resolve the kanban question in its `design-system` delta — scope `Dense Rows And Aligned Figures` to list and table surfaces, or grant this board a stated exception
-- [ ] 8.3 Append a dated note to `openspec/CAPABILITY-MAP.md` recording that the agent-board prerequisite is discharged — append only, never edit the ratified table
+- [ ] 8.3 Leave the `openspec/CAPABILITY-MAP.md` prerequisite note to the cutover owner, per the design's migration plan — this change ships the surface, it does not declare the prerequisite discharged. (Round 3: this task previously claimed the note for itself and contradicted the design.)
+- [x] 8.4 Correct `openspec/BACKLOG.md`'s two closed entries to upstream's marker convention — `## [RESOLVED] …` and `**Status:** RETIRED` — so `parseBacklog` closes them without loosening the matcher. Verified by running upstream's unmodified regexes over the corrected file: two closed, one open
 
 ## 9. Plan-review disposition — round 1 (2026-08-03)
 
@@ -220,6 +222,101 @@ before being accepted.
 - [ ] 10.15 opencode: the "twelve files" census is self-referential and the count
       will drift. Moot for the spec text, which no longer cites a count — but the
       lesson is recorded rather than dropped
+
+## 11. Plan-review disposition — round 3 (2026-08-03)
+
+Three REQUEST-CHANGES again, ~19 findings. Four were defects the round-2
+revision itself introduced. The rest exposed a pattern rather than a list, and
+the response was to change approach rather than fold findings one by one.
+
+**The pattern: hand-writing rules that already exist upstream.** Verifying
+gemini's "delta spec is undefined" led into `reader.ts`, which already contains
+`parseBacklog` (code-fence aware, anchored `closedHeading`/`closedBodyLine`),
+`backlogSlug`, `sourceIdentity`, `occupiedSlugs`, `MAX_SOURCE_RECORDS` with a
+`truncated` notice, `parseChecklist`, and the symbolic notice vocabulary. Every
+one had a hand-written substitute in this delta, and the reviewers' findings were
+the seams in those substitutes. The corpus rules are now **cited, not restated** —
+the same correction round 2 applied to the stage machine, applied to the reader.
+
+- [x] 11.1 Backlog markers: substring matching closed `Redone migration` and
+      `Add WITHDRAWN flag support` (codex, opencode). Replaced by upstream's
+      anchored matchers. This repository's `BACKLOG.md` was the reason the rule
+      had been loosened; **the file was corrected instead** (task 8.4), verified
+      by running upstream's unmodified regexes: two closed, one open
+- [x] 11.2 Backlog identity as "heading text plus one-based index" required
+      composite encoding inside a single parameter — reintroducing the hazard
+      decision 7 exists to prevent (opencode). Replaced by `backlogSlug` and
+      upstream's NUL-joined `sourceIdentity`, which no author string can forge
+- [x] 11.3 Code-fenced `## ` lines were indistinguishable from headings
+      (opencode). Upstream's fence tracking covers it
+- [x] 11.4 Checklist grammar was left to implementation while the verdict grammar
+      was specified line-by-line (opencode). Both now cite upstream
+- [x] 11.5 "Delta spec" was never defined (gemini). It is `specs/<name>/spec.md`,
+      per upstream's `deltaSpecCount`
+- [x] 11.6 Per-source bounding and `truncated` notices replace the hand-rolled
+      archive-only bound, which also resolves codex's contradiction between
+      "render one card per change discovered" and a withholding column
+- [x] 11.7 Symbolic notice kinds (`collision`, `empty-slug`, `evidence-limited`,
+      `malformed`, `rejected`, `truncated`) answer the disclosure finding carried
+      since round 1 (9.18 → 10.14): the vocabulary is symbolic and path-free by
+      construction
+
+**Fixed — the four self-inflicted defects:**
+
+- [x] 11.8 `proposal.md` Capabilities still said "five-column" after decision 5
+      dropped `ship` (codex, opencode)
+- [x] 11.9 "A vendor that has already approved SHALL NOT be counted twice" (first
+      wins) contradicted "a vendor appearing twice resolves to the later section"
+      (last wins) (opencode). Resolved upstream's way: any rejection sets the
+      flag regardless of position, and there is no order rule
+- [x] 11.10 Containment was scoped to the project root, so a symlink under
+      `openspec/` could still surface `.env` or `.git/config` from inside the
+      same repository (codex). Now scoped to `<root>/openspec`
+- [x] 11.11 Task 8.3 claimed the `CAPABILITY-MAP.md` note while the design
+      assigned it to the cutover owner (codex). Task corrected
+
+**Fixed — remaining confirmed:**
+
+- [x] 11.12 Round-record selection only handled `REVIEWS.md` lagging the rounds;
+      a `REVIEWS.md` rewritten after the last round classified from staler
+      evidence, and "highest-numbered" never said numeric or lexicographic
+      (opencode, codex). Now most-recently-modified wins, numbers compare
+      numerically, and a reviewer absent from the selected record has no verdict
+- [x] 11.13 "One divergence exists" was asserted from a single quoted clause
+      (opencode). Two departures are now enumerated and the rest shown to be
+      upstream's; the conformance test is what makes it checkable
+- [x] 11.14 The conformance test was described as deferred in the risks while
+      task 2.9 required it (opencode). The risk text now matches the ledger
+- [x] 11.15 Column sort order was unspecified, and rule-5 `ready` cards had no
+      entry date to sort by (codex, opencode). Every column now has a total,
+      stable order with identity as the tie-break
+
+**Refuted or declined:**
+
+- [x] 11.16 gemini: backlog identity should be a content hash for durability
+      under reordering. `backlogSlug` is upstream's answer and is stable under
+      reordering already, since it derives from the title, not the position. A
+      hash would also make the address unreadable
+- [x] 11.17 gemini: the marker set should be configurable or extended with
+      `WONTFIX`/`CLOSED`. `CLOSED` is already in upstream's set. Extending it
+      unilaterally recreates the divergence this round removed — propose it
+      upstream instead
+- [x] 11.18 codex: tasks 8.1–8.2 modify another open change despite the proposal
+      declaring no modified capabilities. Disclosed, not hidden — the proposal's
+      Capabilities section states both couplings and why they are corrections to
+      `retire-v1-surfaces` rather than deltas of this change
+
+**Carried:**
+
+- [ ] 11.19 codex: in-flight coalescing and fleet-wide cardinality bounds beyond
+      the per-source bound and the response cache. Narrower after 11.6 and task
+      4.4, and still not nothing under five-second polling
+- [ ] 11.20 opencode: no cadence or staleness budget is stated for the cache, and
+      the endpoint's bound is not required to be a named constant while the read
+      cap and source bound are. Worth settling with task 4.4 rather than after it
+- [ ] 11.21 opencode: non-dated entries parked under `archive/` will generate
+      persistent skip notices. Real, and the fix is a judgement about noise
+      versus silence that should be made against a live fleet, not guessed here
 
 ## Out of scope
 

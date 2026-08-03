@@ -9,7 +9,9 @@ OpenSpec migration (2026-07-26).
 
 ## Human verification backlog
 
-**Status: ✅ RETIRED 2026-07-26 by explicit decision.** All 10 `human_needed`
+**Status:** RETIRED
+
+✅ Retired 2026-07-26 by explicit decision. All 10 `human_needed`
 verifications and the residual UAT statuses are closed, not carried forward a
 third time.
 
@@ -52,7 +54,7 @@ delegated to an agent.
 > withdrawn: it has no spec delta, and `openspec validate` correctly refuses a
 > change without one. Process debt belongs here, not in `openspec/changes/`.
 
-## Known stale artifact — ✅ RESOLVED 2026-07-26
+## [RESOLVED] Known stale artifact (✅ 2026-07-26)
 
 `.claude/claude-md/workflow.md`, the GSD-era vendored workflow document, has been
 **removed**. `CLAUDE.md` points at `docs/WORKFLOW.md` (workflow v3.0.0).

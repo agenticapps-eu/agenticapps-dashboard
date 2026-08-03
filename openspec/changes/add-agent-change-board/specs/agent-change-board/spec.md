@@ -2,62 +2,86 @@
 
 ### Requirement: The Board Shows Every Registered Repository's Changes
 
-The board SHALL render one card per OpenSpec change discovered across the
-registered repositories, and its population SHALL be registry-scoped: a
+The board SHALL render one card per **admitted** OpenSpec change record across
+the registered repositories, and its population SHALL be registry-scoped: a
 repository that is not registered contributes no cards, and no card is produced
 by walking family roots or any other directory the registry does not name.
+Records the corpus rules below exclude, and records dropped by the per-source
+bound, are not cards — they are reported per `The Board Degrades Per Repository
+And Names What It Lost`.
 
-Three sources SHALL contribute cards, each labelled on the card:
+**The corpus rules are upstream's, not this specification's.** Three sources
+contribute cards — `active`, `archive`, `backlog` — and what qualifies for each,
+how each is named, and how they deduplicate are defined by
+`agents-task-viewer/src/openspec/reader.ts`, which this board SHALL mirror rather
+than restate:
 
-- `active` — a directory directly under `openspec/changes/` that is not the
-  `archive/` directory itself. A directory contributes a card when it holds at
-  least one of `proposal.md`, `tasks.md`, or a delta spec; a directory holding
-  none of those, and any non-directory entry such as a README, contributes no
-  card and is not reported as malformed.
-- `archive` — a directory under `openspec/changes/archive/` whose name matches
-  `YYYY-MM-DD-<slug>` with a calendar-valid date, holding at least one of
-  `proposal.md`, `tasks.md`, or a delta spec. The artifact test is the same one
-  the `active` source applies, so a directory that would be hidden as active is
-  not admitted merely by being archived. An entry under `archive/` failing either
-  test is **reported as skipped**, not silently dropped: unlike an absent file, a
-  malformed archive record is something someone filed, and hiding it hides
-  repository corruption.
-- `backlog` — an unresolved entry in `openspec/BACKLOG.md`. An entry is a
-  level-two ATX heading (`## `). It is **resolved**, and contributes no card,
-  when any of the following holds: its heading line carries a checked checkbox;
-  its heading line is struck through; its heading line contains a resolution
-  marker (`RESOLVED`, `RETIRED`, `DONE`, `WITHDRAWN`, `OBSOLETE`, in any case,
-  with or without a leading tick); or the body between it and the next level-two
-  heading opens with a bolded `Status:` line carrying such a marker. A
-  `BACKLOG.md` that is absent, empty, or contains no level-two headings
-  contributes no cards.
-
-  The marker set is not a guess. This repository's own `openspec/BACKLOG.md` is
-  the fixture: of its three level-two headings, one is `## Human verification
-  backlog` whose body opens `**Status: ✅ RETIRED 2026-07-26 by explicit
-  decision.**`, and one is `## Known stale artifact — ✅ RESOLVED 2026-07-26`.
-  A rule that reads only checkboxes and strikethrough reports both as live work.
+- **Artifact presence** — `proposal.md`, `tasks.md`, and `design.md` by name; a
+  **delta spec** is `specs/<name>/spec.md` under the change directory, and
+  `deltaSpecCount` is how many such files read successfully.
+- **Backlog entries** — `parseBacklog`: level-two ATX headings, **code-fence
+  aware** so a `## ` inside a fenced block is not a heading; an entry is closed
+  when its heading matches `closedHeading` (an anchored `[RESOLVED]`-style
+  bracket or `RESOLVED:`-style prefix, from `RESOLVED | RETIRED | DONE |
+  CLOSED`) or its first body line matches `closedBodyLine` (`**Status:**
+  RETIRED`). Both are **anchored**, so a heading merely containing a marker word
+  — `Redone migration`, `Add WITHDRAWN flag support` — is not falsely closed. An
+  entry's name is `backlogSlug(title)`.
+- **Deduplication** — a backlog entry whose slug is already an active or archived
+  change is **not** admitted as a second card (`occupiedSlugs`). A backlog item
+  that has become a change is one piece of work, not two.
+- **Per-source bound** — at most `MAX_SOURCE_RECORDS` (128 upstream) records per
+  source per repository, with the excess reported as a `truncated` notice
+  carrying admitted and observed counts.
+- **Checklist rows** — `parseChecklist`: lines matching
+  `^\s*-\s+\[([ xX])\]\s+(.+?)\s*$`, completion decided by the box character.
 
 A repository with no `openspec/` directory SHALL contribute no cards and SHALL
 NOT be reported as an error.
 
 **Absent is not malformed.** A source that is simply not present — no
-`openspec/`, no `BACKLOG.md`, no headings, a directory holding none of the three
-artifacts — contributes no card **silently**. An entry is **malformed**, and
-therefore reported per `The Board Degrades Per Repository And Names What It
-Lost`, only when the board attempted to read something that exists and could
-not: an unreadable file, a file exceeding the read cap, an entry whose required
-structure could not be parsed. Nothing SHALL satisfy both readings.
+`openspec/`, no `BACKLOG.md`, no headings — contributes no card **silently**. A
+record is reported when the board attempted to read something that exists and
+could not, or admitted it only partially: upstream's notice vocabulary
+(`collision`, `empty-slug`, `evidence-limited`, `malformed`, `rejected`,
+`truncated`) is the reporting vocabulary here too. Nothing SHALL satisfy both
+readings.
+
+**This repository's `BACKLOG.md` was corrected to the convention rather than the
+parser loosened to fit it.** Its two closed entries used a trailing `✅ RESOLVED`
+in the heading and a `**Status: ✅ RETIRED … by explicit decision.**` body line,
+neither of which upstream's anchored matchers close; a rule loose enough to catch
+them also closes `Redone migration`. The entries now read `## [RESOLVED] …` and
+`**Status:** RETIRED`, and upstream's unmodified matchers classify the file
+two-closed one-open.
+
+#### Scenario: The two parsers agree on this repository's backlog
+- **WHEN** `openspec/BACKLOG.md` is parsed by upstream's `parseBacklog` and by this board
+- **THEN** both close `Human verification backlog` and `[RESOLVED] Known stale artifact`
+- **AND** both admit the remaining entry as one `backlog` card.
+
+#### Scenario: A marker word inside a heading does not close it
+- **WHEN** a backlog heading reads `Redone migration` or `Add WITHDRAWN flag support`
+- **THEN** the entry is admitted as a card, because the closed-marker match is anchored rather than a substring test.
+
+#### Scenario: A fenced heading is not an entry
+- **WHEN** `BACKLOG.md` contains a fenced code block whose body includes a line beginning `## `
+- **THEN** that line produces no card.
+
+#### Scenario: A backlog entry that became a change is one card
+- **WHEN** a backlog entry's slug matches an active change in the same repository
+- **THEN** only the active change renders
+- **AND** the backlog entry is not admitted a second time.
+
+#### Scenario: A source past the bound is truncated and says so
+- **WHEN** one repository holds more records of a source than the per-source bound
+- **THEN** the admitted records render
+- **AND** a `truncated` notice reports the admitted and observed counts for that repository and source.
 
 #### Scenario: A registered repository contributes its changes
 - **WHEN** a registered repository contains active changes, dated archive entries, and unresolved backlog entries
 - **THEN** each appears as one card carrying its repository name
 - **AND** each card states which of the three sources it came from.
-
-#### Scenario: A resolved backlog entry is not live work
-- **WHEN** a level-two backlog heading is struck through, carries a checked checkbox, contains a resolution marker in its heading, or opens its body with a bolded `Status:` line carrying one
-- **THEN** it contributes no card
-- **AND** an unresolved sibling heading in the same file still does.
 
 #### Scenario: Absence is silent and unreadability is reported
 - **WHEN** one repository has no `BACKLOG.md` and another has one that cannot be read
@@ -103,11 +127,26 @@ source `archive`, and a rule-5 card carries source `active` and the `ready`
 marker.
 
 The rule set is derived from the upstream `agents-task-viewer` board's **current
-classifier** and ADR 0008, not from ADR 0004's prose, which the implementation
-has moved past. The specification SHALL name that origin and SHALL state every
-deliberate divergence from it. **One divergence exists**: this board has no
-`ship` stage, so upstream's mainline-reachability distinction collapses into
-`archive`.
+classifier** (`classifyActiveChange`) and ADR 0008, not from ADR 0004's prose,
+which the implementation has moved past. The specification SHALL name that origin
+and SHALL state every deliberate divergence from it.
+
+**The divergences SHALL be demonstrated, not counted.** Each rule above either
+cites the upstream clause it mirrors or is marked as a departure, and the
+conformance test named in this capability's tasks — upstream's fixtures run
+through both classifiers, asserting identical stages — is what makes "the two
+boards agree" a check rather than a claim. Two departures exist:
+
+1. **No `ship` stage.** Upstream's mainline-reachability distinction collapses
+   into `archive` here, because the probe does not fit this daemon's security
+   spine. See `The Board Does Not Claim A Change Has Shipped`.
+2. **Round-numbered review records.** Upstream reads `REVIEWS.md` alone; this
+   fleet produces `REVIEWS-round-N.md` beside it, so the board selects the most
+   recently modified record. See the reviewer requirement below.
+
+Everything else — artifact completeness, the reviewer clause, the empty-checklist
+clause, the `ready` marker, and backlog entries classifying as `propose` — is
+upstream's behaviour, mirrored.
 
 Rule 3's empty-checklist clause is upstream's (`checklist.length === 0`), and is
 carried deliberately: a change with no checklist rows stays at `validate` rather
@@ -152,30 +191,42 @@ without subtracting rejections — describes neither the current classifier nor
 ADR 0008. The specification SHALL cite the classifier and ADR 0008 as the origin,
 not ADR 0004's prose.
 
-**The verdict grammar is part of the contract**, because stage classification
-hinges on it. A reviewer section SHALL be a level-two heading matching
-`## Reviewer: <vendor>`; its verdict SHALL be a line matching
-`VERDICT: APPROVE` or `VERDICT: REQUEST-CHANGES`, case-insensitively, bounded by
-the next reviewer heading; vendors SHALL be compared case-insensitively, and a
-vendor that has already approved SHALL NOT be counted twice. This mirrors
-upstream's parser so the two boards read one file the same way.
+**The verdict grammar is upstream's `parseReviewEvidence`**, mirrored rather than
+restated: reviewer sections are `## Reviewer: <vendor>` headings, bounded by the
+next such heading; a section matching `VERDICT: REQUEST-CHANGES`
+case-insensitively sets the rejection flag and contributes no approval; a section
+matching `VERDICT: APPROVE` contributes its vendor, compared case-insensitively
+and counted once however many times it appears.
+
+**Order does not decide a duplicate vendor — rejection does.** Any section
+recording a request for changes sets the flag regardless of its position, so a
+vendor that both approves and rejects within one record holds the change at
+`validate`. There is no last-section-wins rule and there SHALL NOT be one:
+document order is not evidence of recency inside a single record.
 
 Verdicts that cannot be read SHALL be treated as absent rather than as approvals,
 so an unparseable or trailer-absent review record classifies the change as
 `validate` for want of evidence.
 
-**Review evidence may be stale, and the board SHALL NOT pretend otherwise.** The
-review producer rewrites `REVIEWS.md` in place, but that is not the only way
-review rounds are recorded in practice: `close-readiness-spec-gaps` carried
-`REVIEWS-round-1.md`, `REVIEWS-round-2.md` and `REVIEWS-round-3.md` beside a
-`REVIEWS.md` that lagged behind them. Since a standing rejection now holds a
-change at `validate`, reading a superseded file is the difference between a
-cleared rejection clearing and a change stranded. Therefore: where a change
-directory carries round-numbered review records alongside `REVIEWS.md`, the
-board SHALL classify from the highest-numbered record, and SHALL mark the change
-as carrying multi-round review evidence so a reader can see which file was read.
-Within a single record, a vendor appearing twice resolves to the later section in
-document order.
+**Review evidence may be stale, and this is the board's one extension to
+upstream's reader.** Upstream reads `REVIEWS.md` alone. This fleet holds
+round-numbered records beside it — `close-readiness-spec-gaps` carries
+`REVIEWS-round-1.md` through `REVIEWS-round-3.md` next to a `REVIEWS.md` that
+lagged them — and with a rejection holding a change at `validate`, reading a
+superseded record is the difference between a cleared rejection clearing and a
+change stranded.
+
+Where a change directory carries round-numbered records, the board SHALL classify
+from the **most recently modified** of `REVIEWS.md` and those records, comparing
+by modification time rather than by name, so a `REVIEWS.md` rewritten after the
+last round still wins. Round numbers SHALL be compared **numerically**, so
+`REVIEWS-round-10.md` sorts above `REVIEWS-round-9.md`, and the number breaks a
+modification-time tie. The card SHALL name the record it was classified from,
+not merely note that several exist.
+
+A reviewer absent from the selected record has **no verdict**, and contributes
+neither an approval nor a rejection; verdicts SHALL NOT be carried forward from
+an unselected record.
 
 #### Scenario: A standing rejection holds the change at validate
 - **WHEN** a change carries approvals from two reviewers and requests for changes from two other reviewers
@@ -185,10 +236,18 @@ document order.
 - **WHEN** a reviewer whose recorded verdict was a request for changes records an approval in a later round, and a second reviewer approves
 - **THEN** the change is eligible to leave `validate`.
 
-#### Scenario: The newest round is the one that counts
-- **WHEN** a change directory holds `REVIEWS.md` alongside `REVIEWS-round-1.md` through `REVIEWS-round-3.md`
+#### Scenario: The newest record is the one that counts
+- **WHEN** a change directory holds `REVIEWS.md` alongside `REVIEWS-round-1.md` through `REVIEWS-round-3.md`, and `REVIEWS-round-3.md` is the most recently modified
 - **THEN** the stage is classified from `REVIEWS-round-3.md`
-- **AND** the card records that the change carries multi-round review evidence.
+- **AND** the card names that record as the one it read.
+
+#### Scenario: A rewritten REVIEWS.md supersedes the round files
+- **WHEN** `REVIEWS.md` is modified after the last round-numbered record
+- **THEN** the stage is classified from `REVIEWS.md`.
+
+#### Scenario: Round numbers compare numerically
+- **WHEN** a change directory holds `REVIEWS-round-9.md` and `REVIEWS-round-10.md` with the same modification time
+- **THEN** `REVIEWS-round-10.md` is the record read.
 
 #### Scenario: Unreadable verdicts do not advance a change
 - **WHEN** a change's reviewer verdicts cannot be parsed
@@ -274,28 +333,34 @@ either recomputes the threshold rather than invalidating the requirement.
 - **WHEN** a stage contains no cards
 - **THEN** the column or paged view states that it has no changes rather than rendering blank.
 
-### Requirement: The Archive Column Is Bounded
+### Requirement: Every Column Has A Total Order
 
-Archive cards SHALL be ordered by their entry date, most recent first, and ties
-broken by name so the order is total and stable across requests.
+Cards within a column SHALL be ordered totally and stably, so the same fleet
+renders in the same order on every request.
 
-Archived changes accumulate without limit while the other three stages drain, so
-the Archive column SHALL render at most a bounded number of the most recently
-dated archive cards per repository, against a named constant, and SHALL state
-how many it withheld.
+Archive cards SHALL order by entry date, most recent first. A rule-5 card — an
+active change complete enough to archive — has no entry date, and SHALL sort
+ahead of every dated card rather than being given a synthetic one: it is the
+thing waiting to be filed, not a thing already filed. `propose`, `validate` and
+`execute` columns SHALL order by the record's most recent modification time, most
+recent first.
 
-A bound that is silently applied is indistinguishable from a repository that has
-archived little, which is the reporting failure this board exists to avoid.
+Every ordering SHALL break ties on the card's identity, which is unique by
+construction, so no two cards can compare equal and no repository's name can
+decide another repository's order.
 
-#### Scenario: A mature archive is bounded and says so
-- **WHEN** a repository has more archived changes than the bound
-- **THEN** the column renders the most recently dated ones up to the bound
-- **AND** states the number withheld for that repository.
+Cardinality is bounded by the per-source bound in `The Board Shows Every
+Registered Repository's Changes`, which applies to every source alike and reports
+what it withheld. No column applies a second, silent bound of its own.
 
-#### Scenario: A small archive is unbounded in practice
-- **WHEN** a repository has fewer archived changes than the bound
-- **THEN** every one of them renders
-- **AND** nothing is reported as withheld.
+#### Scenario: The order is stable across requests
+- **WHEN** the same fleet is rendered twice with no change on disk
+- **THEN** each column presents its cards in the same order.
+
+#### Scenario: A ready card sorts ahead of filed archives
+- **WHEN** the Archive column holds a rule-5 `ready` card and several dated archive cards
+- **THEN** the `ready` card appears first
+- **AND** the dated cards follow in date-descending order.
 
 ### Requirement: A Change Name Wraps Before It Elides
 
@@ -320,19 +385,24 @@ Selecting a card SHALL open a detail drawer over the board, leaving the board
 visible. The drawer SHALL carry the change's repository, stage, source, artifact
 presence, reviewer verdicts, and its checklist rows.
 
-The open drawer SHALL be addressable, and a card's identity SHALL be the triple
-of repository, source, and **the entry's own name as it appears on disk** — for
-an active change its directory name, for an archived entry its full dated
-`YYYY-MM-DD-<slug>` basename, for a backlog entry its heading text plus its
-one-based index among the file's headings. A backlog entry, an active change and
-an archived entry sharing a slug within one repository are distinct cards and
-SHALL address distinctly; so are two archived entries of the same slug filed on
-different dates, and two backlog headings with identical text.
+A card's identity SHALL be upstream's `sourceIdentity(repositoryRoot, source,
+instance)` — the triple, joined by NUL. The instance is the entry's own name:
+an active change's directory name, an archived entry's full dated
+`YYYY-MM-DD-<slug>` basename, a backlog entry's `backlogSlug(title)`. Two
+archived entries of one slug filed on different dates are distinct; a backlog
+entry whose slug is already a change is not a second card at all, per the
+deduplication rule above.
 
-The location SHALL carry the three values as **separate** parameters. A single
-composite parameter requiring a separator SHALL NOT be used, because parsing a
-separator out of an author-controlled change name is the failure mode that
-produced the readiness sanitiser defect.
+NUL is the separator precisely because no filesystem name and no heading can
+contain one, so the identity cannot be forged by an author-controlled string.
+
+The location SHALL carry the three values as **separate** parameters, since NUL
+cannot appear in a URL. A single composite parameter requiring a printable
+separator SHALL NOT be used, because parsing a separator out of an
+author-controlled change name is the failure mode that produced the readiness
+sanitiser defect — and an identity built from a heading's raw text would
+reintroduce exactly that hazard inside one parameter rather than between two.
+The slug is what makes the address safe.
 
 #### Scenario: Opening a card is addressable
 - **WHEN** a card is selected
@@ -366,9 +436,15 @@ is widened to serve it.
 
 Path admission SHALL NOT rest on the lexical guard alone. `isReadableProjectPath`
 answers whether a path's shape is offerable, not whether reading it stays inside
-the repository, so every path the board reads SHALL additionally be resolved and
-confirmed to lie under the registered project root, and SHALL be read only when
-it is a regular file.
+the tree the board is entitled to. Every path the board reads SHALL therefore be
+resolved and confirmed to lie under **`<registered project root>/openspec`** —
+not merely under the project root — and SHALL be read only when it is a regular
+file.
+
+The narrower root is the point. A symlink under `openspec/` that resolves to
+`.env`, `.git/config`, or any other file elsewhere in the same repository passes
+a root-scoped containment check and fails this one; the board is entitled to a
+repository's OpenSpec tree, not to its repository.
 
 **Every read SHALL be size-capped before it is performed**, against a named
 constant, and a file exceeding the cap SHALL be skipped and reported rather than
@@ -387,8 +463,8 @@ regular-file checks, and was the one of the three left unimplemented.
 - **THEN** the board does not read it
 - **AND** the entry is reported as skipped, naming its repository.
 
-#### Scenario: A symlink out of the repository is not read
-- **WHEN** an entry under `openspec/` is a symlink resolving outside the registered project root
+#### Scenario: A symlink out of the OpenSpec tree is not read
+- **WHEN** an entry under `openspec/` is a symlink resolving outside `<project root>/openspec` — including to a file elsewhere inside the same repository, such as `.env` or `.git/config`
 - **THEN** the board does not read through it
 - **AND** the entry produces no card and is reported as skipped.
 

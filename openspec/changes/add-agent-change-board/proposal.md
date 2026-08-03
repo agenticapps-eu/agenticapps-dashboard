@@ -94,7 +94,7 @@ Four columns ship here.
 ### New Capabilities
 
 - `agent-change-board`: the fleet OpenSpec change board — its card corpus, the
-  ordered lifecycle classification, the five-column and paged layouts, drawer
+  ordered lifecycle classification, the four-column and paged layouts, drawer
   detail and deep-linking, and per-repository degradation.
 
 ### Modified Capabilities

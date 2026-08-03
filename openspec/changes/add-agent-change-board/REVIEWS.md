@@ -12,53 +12,48 @@
 - failed:    (none)
 
 ## Reviewer: gemini
-_generated 2026-08-03T19:28:03Z · timeout 540s_
+_generated 2026-08-03T19:50:01Z · timeout 540s_
 
 VERDICT: REQUEST-CHANGES
-
-*   **The reviewer-verdict rule imposes a new policy, creating a conflict between the tool and the repository's official process.** The spec correctly notes that its "two approvals AND no rejections" rule is stricter than the ratified change-gate (which allows for dispositioning rejections). A tool should reflect the established process, not unilaterally enforce a stricter one. This divergence guarantees the board will show a different, more pessimistic status than the actual ground truth, undermining its usefulness. The policy itself should be ratified before being implemented in tooling.
-*   **The lifecycle rules incorrectly block changes that have no checklist tasks.** A change with "zero checklist rows" is permanently stuck in the `validate` stage according to rule #3. This assumes all changes must have tasks. A change that is purely documentary or declarative might be complete and approved with no tasks, but this board would show it as perpetually stuck.
-*   **The "Archive" column conflates two distinct states, which is potentially confusing.** It shows both changes that are *ready to be archived* (active, approved, tasks complete) and changes that *have been archived* (physically moved to the archive directory). While a `ready` marker is mentioned, a clearer user experience would be to use a distinct "Done" or "Ready to Archive" column to represent the first state, leaving "Archive" for things that are truly finished.
-*   **A malformed archive entry is silently ignored.** The requirements state an entry under `archive/` not matching `YYYY-MM-DD-<slug>` "contributes no card". This should be reported as a degradation, just as a malformed active change would be. Silently ignoring malformed but presumably intentional archive records hides potential repository corruption.
+- The deep-link identity for a backlog card (`heading text plus its one-based index`) is fragile. It will break if headings are reordered, and may collide if headings are not unique. The spec should acknowledge this fragility and recommend a more durable identifier, such as a hash of the heading content.
+- The definition of a "delta spec" is ambiguous. The requirement for an `active` card hinges on the presence of `proposal.md`, `tasks.md`, or a "delta spec", but the latter is never defined. This should be clarified to specify which file(s) qualify (e.g., `*.spec.md`, any other `.md`).
+- The list of resolution markers for backlog items is derived from a single file, making it potentially brittle. The spec should consider a more resilient approach, such as making the marker set configurable or expanding it with other common terms (`WONTFIX`, `CLOSED`).
 
 ## Reviewer: codex
-_generated 2026-08-03T19:32:57Z · timeout 540s_
+_generated 2026-08-03T19:53:50Z · timeout 540s_
 
 VERDICT: REQUEST-CHANGES
 
-- The central reviewer “divergence” is based on stale ADR 0004. The current upstream durable spec and classifier already hold any `REQUEST-CHANGES` at Validate; only duplicate-reviewer/latest-verdict handling actually differs. Rebase the comparison on ADR 0008/current product truth.
-- The backlog rule misclassifies this repository’s own retired/resolved entries as Propose because they use `**Status: ✅ RETIRED**` or `✅ RESOLVED`, not checked headings or strikethrough.
-- `(repo, source, changeName)` is not unique. Repeated dated archives of one slug and duplicate backlog headings collide. Define a stable source instance—such as the dated archive basename or backlog document index—and use it in deep links.
-- The timeout bounds waiting, not work. Without file/directory/aggregate-size limits, caching, and in-flight coalescing, five-second polling can accumulate overlapping scans and unbounded memory work. This also contradicts `daemon-runtime`’s requirement to cache expensive derived fleet aggregates.
-- Corpus semantics are inconsistent: design-only active directories are hidden, while empty dated archive directories become cards. The delta also promises archive date ordering without specifying any ordering rule.
-- Degradation reasons and bulk drawer data lack disclosure rules. Require symbolic error codes with no absolute paths/usernames, bounded or lazy detail transfer, and plain-text rendering of author-controlled names, reviewer labels, and checklist prose.
+- Filesystem containment is too weak: canonical targets are checked against the repository root, not `<root>/openspec`. A symlink can therefore expose any file elsewhere inside the repository. Require containment within the exact allowed root and TOCTOU-safe capped reads.
+- Review freshness is incorrect. Whenever numbered records exist, `REVIEWS-round-N.md` wins even if a later successful run rewrote `REVIEWS.md`; reviewers omitted from the selected round also have undefined “standing” verdicts.
+- The archive requirements contradict each other: one requirement renders every discovered change, while another withholds archived cards. Active changes marked `ready` also lack the “entry date” used for Archive ordering, and date-plus-name is not a total fleet-wide order when repositories share names.
+- Five-second polling plus non-aborting timeouts, unrestricted `Promise.allSettled`, and no in-flight coalescing or fleet-wide cardinality bound can accumulate filesystem work indefinitely. A per-repository archive display limit does not bound the endpoint or active/backlog cards.
+- Parsing remains underspecified despite the task ledger claiming otherwise: checklist-row syntax and “delta spec” detection are undefined. Resolution markers need token boundaries; headings such as “Redone migration” currently contain `DONE` and may be falsely resolved.
+- Disclosure controls remain explicitly unresolved in task 10.14. Raw backlog titles, checklist prose, reviewer labels, and degradation errors can expose PII, absolute paths, or usernames; putting heading text in query parameters additionally exposes it through browser history and referrers. Require sanitized symbolic errors, plain-text rendering, bounded/lazy detail, and an opaque URL identity.
+- The artifacts are internally inconsistent: the capability summary promises a “five-column” layout while the normative design has four; tasks 8.1–8.2 modify another open change despite declaring no modified capabilities; and task 8.3 marks the prerequisite discharged here while the design assigns that note to the later cutover owner.
 
 ## Reviewer: opencode
-_generated 2026-08-03T19:34:55Z · timeout 540s_
+_generated 2026-08-03T19:54:52Z · timeout 540s_
 
-I'll verify a few load-bearing factual claims against the repo before ruling.
-One more check — the change's load-bearing assumption that `run-plan-review.sh` rewrites `REVIEWS.md` wholesale, versus the `REVIEWS-round-3.md` file I spotted in the archive:
 VERDICT: REQUEST-CHANGES
 
-Verified before ruling: the fixed-argv git claim (`log: ['log','--oneline','-20']` in `packages/agent/src/lib/git.ts`), the four-verdict reading of `retire-v1-surfaces/REVIEWS.md`, the lexical-only nature of `isReadableProjectPath`, and the "twelve files, no repeated reviewer" census all check out. The issues are elsewhere:
+Concrete issues:
 
-- **The load-bearing "latest verdict" invariant is empirically falsified by this repo's own history.** The spec asserts "the review producer rewrites `REVIEWS.md` wholesale on every run," so a section is always the reviewer's latest verdict. `archive/2026-08-02-close-readiness-spec-gaps/` disproves the "every run" part: rounds 1–3 went to `REVIEWS-round-N.md` while `REVIEWS.md` stayed stale (round 3's own text complains REVIEWS.md still carried pre-amendment RCs); only the final run rewrote it. During multi-round review churn — exactly when the veto matters — the board will read stale verdicts, and a cleared rejection may not clear. The per-file uniqueness invariant holds; the freshness claim does not. Specify staleness explicitly (or how round files are treated) instead of asserting a producer behavior that isn't guaranteed.
-
-- **Internal contradiction on "malformed."** Requirement 1 says a change directory holding none of the artifacts, and an absent/empty BACKLOG.md, contribute no card "and are not reported as malformed." Requirement 5's scenario says "a change directory or backlog entry cannot be parsed → skipped and counted/reported." No definition separates "no card, silent" from "no card, reported as skipped." An unreadable `proposal.md` (EACCES) satisfies both rules simultaneously with opposite reporting outcomes. Define the malformed trigger or drop one clause.
-
-- **The veto is load-bearing but its parse grammar is unspecified.** The delta never states how a reviewer is identified (`## Reviewer: <name>`), how a verdict is extracted (`VERDICT: APPROVE|REQUEST-CHANGES`), case handling, or section boundaries — yet stage classification now hinges on it. "Unparseable → absent" is a fallback, not a contract. Same gap for "checklist rows" (checkbox syntax, nesting, whether headings count) and for the archive name rule (does `2026-13-40-foo` match `YYYY-MM-DD-<slug>`?).
-
-- **A security ask from this change's own first-round review was silently dropped.** `REVIEWS.md` (line 31) required realpath containment, regular-file checks, **and pre-read size limits**. The final requirement keeps the first two and drops the size limit without disposition. A multi-GB `tasks.md`/`BACKLOG.md` under `openspec/` is read fully per request, per repo, on a fleet endpoint. Restore the cap or record the refusal.
-
-- **The Archive column is unbounded.** No requirement caps or windows archive cards; archives grow monotonically, and "in date order" with no limit means a mature repo renders every change it has ever archived. The risk section discusses walk cost, not rendered cardinality.
-
-- **Backlog heuristic over-collects.** "Unresolved level-two heading" makes *any* `## ` heading a Propose card unless struck/checked — including section headers like `## Done`, `## Notes`, `## Parked`. Either restrict to a known entry shape or add a scenario covering non-entry headings.
-
-- Minor: the "twelve files" census is now self-referential (this change's own `REVIEWS.md` is one of the twelve); fine as evidence, but the number will drift and the spec text shouldn't lean on a count.
+- **Stale column count in Capabilities.** `agent-change-board` is described as covering "the five-column and paged layouts" — decision 5 dropped `ship`, so it's four columns. The capability description contradicts the rest of the document.
+- **Backlog identity breaks decision 7.** Backlog card identity is "heading text plus one-based index," but the address carries a single `change` parameter. Encoding text+index into one value requires exactly the composite-with-separator parsing that decision 7 forbids — the hazard reappears inside the parameter instead of between parameters. Unspecified and currently unsound (heading "Foo — 3" vs. heading "Foo" at index 3 collide under any naive join).
+- **Round-record selection has no freshness reconciliation.** "Classify from the highest-numbered round record where one exists" only handles the falsifying case (REVIEWS.md lagging the rounds). If the producer rewrote REVIEWS.md *after* the last round file, the rule classifies from staler evidence. No mtime or content comparison is specified, and "highest-numbered" doesn't state numeric vs. lexicographic ordering (`round-9` vs `round-10`).
+- **Resolution-marker matching is under-specified and false-positive-prone.** "Contains a resolution marker (… DONE …, in any case)" as a substring reads `## Refactor donee-service` or `## Add WITHDRAWN flag support` as resolved. Word-boundary/anchoring rules are not stated, and "with or without a leading tick" is undefined (backtick? ✅?).
+- **Contradictory duplicate-vendor rules.** "A vendor that has already approved SHALL NOT be counted twice" (first wins) conflicts with "a vendor appearing twice resolves to the later section in document order" (last wins) when the same vendor approves then rejects within one record — the two clauses give opposite stages.
+- **"One divergence exists" is asserted, not demonstrated.** Only the `validate` clause of upstream's classifier is quoted. The artifact-completeness rule (rule 2), the `ready` marker, and backlog→propose cards are not shown to exist upstream; if any differ, the divergence count is wrong and the conformance claim ("the two boards agree") is overstated.
+- **Checklist grammar is not in the contract.** The verdict grammar (`## Reviewer:`, `VERDICT:`) is specified line-by-line, but what counts as a checklist row in `tasks.md` — the other half of the stage machine — is left to implementation, so "both classify the change to the same stage" is unverifiable for execute/archive.
+- **Backlog heading parsing: code fences.** A fenced block in BACKLOG.md containing `## something` is indistinguishable from a real heading under the stated rule ("a level-two ATX heading"). Fence-awareness is unspecified.
+- **Unverifiable scenario.** "The boards read one file the same way" has no test mechanism — the conformance test was explicitly deferred, and mirrored fixtures are hand-copied snapshots that drift silently. Either the scenario needs the test or it should be dropped from the delta.
+- **Caching is asserted, not specified.** Decision 4 leans on the durable `daemon-runtime` caching requirement, but no cadence, invalidation trigger, or staleness budget appears in any requirement — a user editing `tasks.md` has no specified upper bound on when the board reflects it. Also the endpoint's bound value is never required to be a named constant, unlike the archive bound and read cap.
+- **Minor:** sort order within Propose/Validate/Execute columns is unspecified; non-dated entries under `archive/` are "reported as skipped," which will generate persistent noise in repos that park non-change directories there; the multi-round "mark" requirement says a reader can see *which file was read* but the SHALL only requires marking that multi-round evidence exists.
 
 <!-- openspec-review-trailer v1
 implementing-host: claude
-digest: sha256:1b711afc254806d2769d72d8fa1e92e0047b3fdac200e728972c3e9fff681f09
+digest: sha256:3be3898d4dcf6ede1f56128925a23febe36565c6021d923c9ba44e3a6df1df7d
 producer-version: 1.2.0
-tasks-digest: sha256:02702f870175499c44b93ddc99906b6d2ddc97c9ac905ff408d4bd6b18b8bd91
+tasks-digest: sha256:adf8c1a8a8de923802e7b1f6808e0b5b6d80def5edcbfcfdf06427560d9f8bb6
 -->
