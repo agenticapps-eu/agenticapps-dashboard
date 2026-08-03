@@ -266,6 +266,45 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(result.notice?.message).not.toContain(cited)
   })
 
+  /**
+   * The same outage reached without a colon anywhere. `RepoRelativePathSchema`
+   * allows 512 characters, and a citation at that limit renders a 622-character
+   * notice against a 600-character field maximum — so the response died on
+   * length while the path rule was perfectly happy.
+   *
+   * Found by review, not by this change's own tests, because the guard was
+   * written to certify the path rule rather than the field's schema. It now
+   * certifies the schema, which is the only bound that cannot drift from what
+   * the boundary actually enforces.
+   */
+  it('survives a citation at the path length limit, which carries no colon at all', async () => {
+    const cited = `${'d/'.repeat(6)}${'a'.repeat(497)}.md`
+    expect(cited).toHaveLength(512)
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(CheckResultSchema.safeParse(penTest).success).toBe(true)
+    expect(ReadinessNoticeSchema.safeParse(result.notice).success).toBe(true)
+  })
+
   it('honours the other declarations when one citation is unopenable', async () => {
     write('docs/review.md')
     write(
@@ -421,6 +460,44 @@ describe('assembleReadiness — per-check precedence', () => {
     // The file stays usable and the sound declaration is honoured.
     expect(byId(result.checks, 'code-review').source).toBe('declared')
     expect(result.notice).toBeNull()
+  })
+
+  /**
+   * The third author-input site, which this change originally missed and a
+   * reviewer found: `coverage.path` is author-supplied and lands in five
+   * different `readArtifact` error messages. Nothing about the citing-evidence
+   * fix touched it, so the coverage check could still refuse its own message and
+   * take the response down — a colon-bearing path and an over-long one both.
+   */
+  it.each([
+    // A first-segment colon: the residual the narrowed regex still refuses, and
+    // therefore the shape that actually needs the guard here. A path with a
+    // directory before the colon — `coverage/out:/Users/x.json` — is accepted by
+    // the regex outright and proves nothing about this call site.
+    //
+    // Length cannot reach this site: the longest suffix these messages append is
+    // 44 characters, so a 512-character path yields 556 against a 600 maximum.
+    // The notice site is where length bites, and it is covered separately.
+    ['a first-segment colon', 'ab:/Users/x.json'],
+  ])('keeps the coverage check on the wire when its configured path has %s', async (
+    _label,
+    coveragePath,
+  ) => {
+    // The artifact must exist and be unreadable-as-coverage, or `readArtifact`
+    // returns `absent` and the error message under test is never built at all.
+    write(coveragePath, 'not json')
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, coverage: { path: coveragePath } }),
+    )
+
+    const result = await assembleReadiness(options())
+    const coverage = byId(result.checks, 'coverage')
+
+    // The error path must actually be reached, or this test proves nothing.
+    expect(coverage.status).toBe('fail')
+    expect(coverage.error).not.toBeNull()
+    expect(CheckResultSchema.safeParse(coverage).success).toBe(true)
   })
 
   // `error.message` is validated by SanitisedTextSchema on the way out, and a

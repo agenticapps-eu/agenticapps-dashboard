@@ -99,12 +99,22 @@ export const RepoRelativePathSchema = z
  * is validated as one payload for every repo, a single filename answered the
  * whole fleet endpoint with `schema_drift`.
  *
- * **The residual, stated rather than assumed.** A colon in the *first* path
- * segment — `ab:/Users/x` — leaves nothing to separate the citation from an
- * interpolated absolute path, and is still refused. Text-level detection cannot
- * close that; only carrying the path in its own `RepoRelativePathSchema` field,
- * instead of interpolating it into prose, would. That is a wire and surface
- * change and has not been made.
+ * **The residual, stated rather than assumed.** Two things this no longer
+ * catches, and the second is the price of the first:
+ *
+ *   1. A colon in the *first* path segment — `ab:/Users/x` — leaves nothing to
+ *      separate the citation from an interpolated absolute path. Still refused,
+ *      so callers must be ready for `wireSafeText` to substitute.
+ *   2. A genuine leak later in a whitespace-delimited token that already
+ *      contains a `/`. `docs/x.md,next:/home/b` and `a/b;c:/Users/x` were
+ *      caught by the unanchored clause and are not caught now. "Token" here
+ *      means everything back to string start, whitespace, quote or bracket —
+ *      commas, semicolons and equals signs do not break it, so the span is
+ *      wider than a path-shaped word.
+ *
+ * Text-level detection cannot close either; only carrying the path in its own
+ * `RepoRelativePathSchema` field, instead of interpolating it into prose, would.
+ * That is a wire and surface change and has not been made.
  *
  * An earlier version of this comment bounded the residual risk on the claim
  * that "no message this daemon constructs interpolates anything but a
@@ -142,25 +152,34 @@ export function carriesAbsolutePath(text: string): boolean {
   return ABSOLUTE_PATH.test(text)
 }
 
-/**
- * Text for a sanitised field, or `fallback` when it cannot be certified.
- *
- * This is what makes "one repo cannot withhold the fleet" a property of the
- * design rather than of the heuristic's accuracy. The boundary stays
- * fail-closed; what changes is that no caller hands it text it cannot certify.
- * Callers SHALL keep the full reference on an unrestricted field — `summary` —
- * so withholding it from one message never removes it from the surface.
- */
-export function wireSafeText(text: string, fallback: string): string {
-  return carriesAbsolutePath(text) ? fallback : text
-}
-
 const SanitisedTextSchema = z
   .string()
   .max(MAX_TEXT_LENGTH)
   .refine((value) => !carriesAbsolutePath(value), {
     message: 'text must not carry an absolute filesystem path',
   })
+
+/**
+ * Text for a sanitised field, or `fallback` when it cannot be certified.
+ *
+ * This is what makes "one repo cannot withhold the fleet" a property of the
+ * design rather than of the heuristic's accuracy. The boundary stays
+ * fail-closed; what changes is that no caller hands it text it cannot certify.
+ *
+ * It certifies against `SanitisedTextSchema` itself, not against the path rule
+ * alone. An earlier version tested only `carriesAbsolutePath`, which left the
+ * length bound uncovered — and the length bound is reachable without any colon
+ * at all: a citation at the path schema's own 512-character limit produces a
+ * 622-character notice, over the 600-character field maximum, and the response
+ * carrying it died exactly as it did for the path case. Certifying against
+ * anything narrower than the field's own schema is how that recurs.
+ *
+ * `fallback` MUST itself satisfy the schema; it is a short constant at every
+ * call site rather than anything derived from author input.
+ */
+export function wireSafeText(text: string, fallback: string): string {
+  return SanitisedTextSchema.safeParse(text).success ? text : fallback
+}
 
 const Rfc3339Schema = z.string().datetime({ offset: true })
 const CommitShaSchema = z.string().regex(/^[0-9a-f]{40}$/)

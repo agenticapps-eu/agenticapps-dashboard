@@ -33,8 +33,8 @@
 ## 5. Review and ship
 
 - [x] 5.1 `impeccable:critique` does not apply and was not run. Verified, not assumed: `git diff --name-only` touches nine files, none under `packages/spa`, and no wire field was added, removed or retyped — the SPA renders `error.message`, `summary` and `notice.message` exactly as before, only with better content in them.
-- [ ] 5.2 Run `run-plan-review.sh` with `REVIEW_TIMEOUT=540` and record the verdicts. Nothing enforces this; skipping it is a decision to record, not a step to forget.
-- [ ] 5.3 Answer each REQUEST-CHANGES finding against the code before archiving — verify it, then fix it or record why it was refuted.
+- [x] 5.2 Run `run-plan-review.sh` with `REVIEW_TIMEOUT=540` and record the verdicts. Nothing enforces this; skipping it is a decision to record, not a step to forget.
+- [x] 5.3 Answer each REQUEST-CHANGES finding against the code before archiving — verify it, then fix it or record why it was refuted.
 - [ ] 5.4 Open the PR to `main` from `fix/readiness-sanitiser-colon-hazard`, then archive the change once merged.
 
 ## 6. Record
@@ -56,3 +56,66 @@
   500 into a *degraded but valid* response — the path missing from the notice,
   the fleet still answered. Fail-soft prevents the outage; the narrowing
   restores the information. Neither was assumed to be doing the other's job.
+
+## 7. Reviewer disposition
+
+Three reviewers counted: **gemini APPROVE**, **codex REQUEST-CHANGES** (6),
+**opencode REQUEST-CHANGES** (5). `claude` excluded as the implementing host.
+Every finding was checked against the code before being acted on.
+
+**Confirmed and fixed — two of them falsified this change's own guarantee.**
+
+- [x] 7.1 **codex: `wireSafeText` certified the path rule, not the field.** A
+  512-character citation renders a 622-character notice against a 600-character
+  maximum — *no colon required* — and the response died on length exactly as it
+  had on shape. Measured, not argued. `wireSafeText` now certifies against
+  `SanitisedTextSchema` itself, which is the only bound that cannot drift from
+  what the boundary enforces. Pinned by "survives a citation at the path length
+  limit, which carries no colon at all", verified RED against the old helper.
+- [x] 7.2 **codex: "exactly two author-input sites" was false.**
+  `coverage.path` is author input and reaches five `readArtifact` error
+  messages. Guarded at `failure()`, the single point where they become wire
+  text. Pinned and verified RED against the unguarded version.
+- [x] 7.3 **codex + opencode: "the complete reference SHALL remain" was false.**
+  `summary` clamps at 600, so a maximal citation truncates there too. The
+  requirement now says the summary retains it *so far as its length bound
+  permits*, and states that the guarantee is that the response survives.
+- [x] 7.4 **opencode: the notice is not a check and has no summary sibling.**
+  "On the same result" was undefined for a repo-level notice. The text now says
+  the reference it withholds remains on the result of the check that declared it.
+- [x] 7.5 **codex: the survival obligation contradicted its own exception.**
+  The first-segment case is now stated in the normative paragraph rather than
+  implied by a following sentence.
+- [x] 7.6 **opencode: the residual was understated.** Corrected in the code
+  comment: a leak later in a whitespace-delimited token that already contains a
+  `/` is no longer caught — `docs/x.md,next:/home/b` and `a/b;c:/Users/x` both
+  regressed. "Token" is spelled out, since commas and semicolons do not break it.
+- [x] 7.7 **opencode: reduction vs substitution read as one mechanism.** They are
+  now distinguished in the requirement: reduction rewrites a known absolute path
+  to a repo-relative one; substitution replaces text that cannot be certified.
+- [x] 7.8 **codex: secret precedence was unspecified.** The credential-material
+  prohibition is now stated to take precedence over the survival obligation, on
+  any field, restricted or not.
+
+**Refuted, with the check that refuted them.**
+
+- [x] 7.9 **opencode: shared `lastIndex` makes the predicate non-deterministic.**
+  Only true of a `/g` regex. `ABSOLUTE_PATH` is built with no flags, so `.test`
+  is stateless. No change.
+- [x] 7.10 **opencode's worked example was wrong**, though its point was not.
+  `…to:/Users/a,next:/home/b` is *still refused* — the first path sits after a
+  space and is caught by the strong-boundary clause. The regression needs a
+  slash inside the token, which is why 7.6 restates the residual instead.
+- [x] 7.11 **codex: the narrowing "contradicts the unchanged MUST".** Partly
+  accepted, partly refuted. The detector was always a heuristic — `/mycustomroot/x`
+  was never caught, and the pre-existing comment said so — so this is not a newly
+  introduced class of violation. The weakening is real and is now stated
+  precisely under 7.6 rather than described as a comment-level acknowledgement.
+
+- [x] 7.12 **Two fixture defects found while verifying, both mine.** The first
+  coverage test asserted only schema validity and passed with the guard removed —
+  the path did not exist, so `readArtifact` returned `absent` and the message
+  under test was never built. The second used `coverage/out:` , which the
+  narrowed regex accepts outright. Both were rewritten until they failed without
+  the fix. A reviewer finding that survives verification is worth more than a
+  test that never went red.
