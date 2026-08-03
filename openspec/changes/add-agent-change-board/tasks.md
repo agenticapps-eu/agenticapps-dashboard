@@ -45,14 +45,14 @@ waiting for it.
 
 ## 4. Fleet service and route
 
-- [ ] 4.1 Write the failing degradation test: one repository throws, the rest still render, and the thrower is named with a reason
-- [ ] 4.2 Write the failing test that all-repositories-failed is distinguishable from no-open-changes
-- [ ] 4.3 Implement `packages/agent/src/lib/changes/service.ts` using `withinBound` + `Promise.allSettled`, one bound — document why the readiness signature pre-pass is not copied
-- [ ] 4.4 Cache the fleet aggregate server-side with explicit invalidation, per `daemon-runtime` → `Response Caching Cadences` ("derived fleet aggregates on their own cadence"). Write the failing tests first: a second request inside the cadence does not re-walk the repositories, and an invalidating action makes the next read reflect new state without waiting for expiry. **No delta is needed — that requirement already binds this endpoint; the change was non-compliant with it**
-- [ ] 4.5 Write the failing route contract test for `GET /api/v2/changes/fleet` — 200 shape, degraded notice, auth required
-- [ ] 4.6 Implement `packages/agent/src/routes/changes.ts` and register it
-- [ ] 4.7 Measure the endpoint against the real registry and record the figure; if the archive walk dominates, record it rather than silently narrowing scope
-- [ ] 4.8 Assert in test that the board spawns no process at all: `GIT_ALLOWED_CMDS` is unchanged and no new spawn site exists
+- [x] 4.1 Write the failing degradation test: one repository throws, the rest still render, and the thrower is named with a reason
+- [x] 4.2 Write the failing test that all-repositories-failed is distinguishable from no-open-changes
+- [x] 4.3 Implement `packages/agent/src/lib/changes/service.ts` using `withinBound` + `Promise.allSettled`, one bound — document why the readiness signature pre-pass is not copied
+- [x] 4.4 Cache the fleet aggregate server-side with explicit invalidation, per `daemon-runtime` → `Response Caching Cadences`. **Cadence settled here rather than after (closes 11.20):** `CHANGES_MEMO_TTL_MS = 5_000`, named, because `Polling, Not Push` fixes the client at ~5s — a shorter cache is never hit, a longer one visibly lags the client's own refresh. The endpoint bound is likewise a named constant, `CHANGES_SCAN_TIMEOUT_MS = 15_000`. Readiness's content fingerprint is deliberately not copied (it is what forces readiness's second bound), so within one cadence a file edit is unseen — bounded by the polling interval, and stated in the module rather than hidden. The key is the registry's own content, so a registry change is a different key rather than a stale hit, and `invalidateChangesCache()` is the explicit lever the scenario calls for
+- [x] 4.5 Write the failing route contract test for `GET /api/v2/changes/fleet` — 200 shape, degraded notice, auth required
+- [x] 4.6 Implement `packages/agent/src/routes/changes.ts` and register it
+- [x] 4.7 **Measured against the real registry (3 projects, 2026-08-03): 60 cards — 14 active, 45 archive, 1 backlog — in 21–28 ms cold over five runs, 0.07 ms served from cache, 0 notices.** The archive walk dominates the *card count* at 45 of 60 but not the latency: the whole read is three orders of magnitude inside the 15 s bound, because dropping the ship probe turned a mature archive from one subprocess per entry into a directory listing. No scope narrowing needed, and the active-only fallback stays a fallback
+- [x] 4.8 Assert in test that the board spawns no process at all: `GIT_ALLOWED_CMDS` is unchanged and no new spawn site exists. Three assertions — a static scan of the three modules, `GIT_ALLOWED_CMDS` unchanged at four subcommands, and a runtime test in `service.nospawn.test.ts` that replaces every `node:child_process` entry point with a thrower and assembles a fleet covering all three sources. The trap was itself proved to fire by temporarily adding an `execFileSync` call
 
 ## 5. Board surface
 

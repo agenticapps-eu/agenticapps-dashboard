@@ -292,7 +292,7 @@ describe('fleetReadState', () => {
   it('reports `degraded` even when the readable repositories produced cards', () => {
     expect(
       fleetReadState({
-        cards: [card()],
+        cards: [ChangeCardSchema.parse(card())],
         repositories: [
           { id: 'a', name: 'a', read: 'ok', reason: null },
           { id: 'b', name: 'b', read: 'failed', reason: 'unreachable' },
@@ -309,7 +309,7 @@ describe('fleetReadState', () => {
   it('reports `ok` when every repository read and cards exist', () => {
     expect(
       fleetReadState({
-        cards: [card()],
+        cards: [ChangeCardSchema.parse(card())],
         repositories: [{ id: 'a', name: 'a', read: 'ok', reason: null }],
       }),
     ).toBe('ok')

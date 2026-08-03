@@ -35,6 +35,7 @@ import { conformanceRoute } from '../routes/conformance.js'
 import { registryFixPathRoute } from '../routes/registryFixPath.js'
 import { understandViewerRoute, understandDataRoute } from '../routes/understandViewer.js'
 import { workflowRoute } from '../routes/workflow.js'
+import { changesRoute } from '../routes/changes.js'
 import { readinessRoute } from '../routes/readiness.js'
 
 import { errorHandler } from './middleware/errors.js'
@@ -200,6 +201,7 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/admin', registryFixPathRoute) // Phase 12 D-12-19, D-12-26: POST /api/admin/registry/fix-path
   app.route('/api/v2', workflowRoute)
   app.route('/api/v2', readinessRoute) // AGE-462: GET /fleet, GET+POST /repos/:id
+  app.route('/api/v2', changesRoute) // add-agent-change-board: GET /changes/fleet
 
   // 7. Error handler (last — RESEARCH Pitfall 8: do NOT run error responses through D-16 outbound parse)
   app.onError(errorHandler)
