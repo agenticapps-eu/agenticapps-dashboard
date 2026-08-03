@@ -26,8 +26,8 @@ moving through it.
   repo's `openspec/` tree and returns one card per change, bounded and degrading
   per repository. It spawns no process.
 - **New lifecycle classification in the daemon** — an ordered stage machine
-  derived from the upstream `agents-task-viewer` ADR 0004, with two deliberate
-  divergences: reviewer verdicts, and the absence of a `ship` stage (both below).
+  derived from the upstream `agents-task-viewer` board's current classifier and
+  ADR 0008, with one deliberate divergence: no `ship` stage (below).
 - **Backlog entries become cards.** Unresolved level-two entries in
   `openspec/BACKLOG.md` render as Propose cards with `source: backlog`, so
   unstarted work is visible rather than invisible until someone opens a change.
@@ -42,30 +42,34 @@ host adapters, which need `agents-task-viewer` converted to a consumable package
 
 Also explicitly not in this change: a **`ship` stage**. See below.
 
-### Divergence 1: a standing rejection holds a change at Validate
+### The reviewer rule is not a divergence — that was a research failure
 
-ADR 0004 moves a change past Validate on "two distinct approved reviewer
-sections". It counts approvals and never subtracts rejections.
+Two rounds of this proposal argued for a deliberate divergence on reviewer
+verdicts. There is no divergence. The upstream board's current classifier
+already holds a change at Validate when any reviewer has requested changes:
 
-Applied literally here, `retire-v1-surfaces` — claude APPROVE, opencode APPROVE,
-gemini REQUEST-CHANGES, codex REQUEST-CHANGES — reads as approved and sits in
-Execute. **Counting only latest verdicts does not fix that**: all four are
-distinct reviewers, so two still approve and the change still advances. The
-counter needs a veto, not a filter.
+```js
+// agents-task-viewer/src/openspec/reader.ts
+if (input.hasRequestChanges || distinctReviewers.size < 2 || input.checklist.length === 0) {
+  return "validate"
+}
+```
 
-**Two reviewers' latest verdicts must approve, and no reviewer's latest verdict
-may be a rejection.** That places `retire-v1-surfaces` in Validate, where a
-change carrying two unanswered rejections belongs.
+The argument was built on ADR 0004's prose — "two distinct approved reviewer
+sections" — without reading the classifier that supersedes it or **ADR 0008**,
+which is dated the same day as the upstream change this design cites throughout
+and was never opened. Round-2 review caught it.
 
-This is stricter than gate 2.0.0, which reports review evidence and enforces
-none of it — two rejections open the gate exactly as two approvals do, and its
-disposition is "address it **or record why not**". A recorded why-not is prose,
-not a verdict, so the board cannot see it: the only thing that clears a standing
-rejection here is a fresh verdict. A change whose author legitimately declined a
-finding sits at Validate until the reviewers are re-run. That cost is accepted
-and specified rather than left to be discovered.
+The rule stands unchanged in effect: two distinct approvals and no standing
+request for changes. What changes is the justification, which is now "match the
+upstream board" rather than "deliberately depart from it" — and the origin cited
+by the delta, which is the classifier and ADR 0008 rather than ADR 0004's prose.
 
-### Divergence 2: no `ship` stage, and why
+Upstream's parser comes with it: `## Reviewer: <vendor>` sections,
+`VERDICT: APPROVE|REQUEST-CHANGES` lines, case-insensitive vendor dedup. Mirroring
+it is what makes "the two boards agree" checkable rather than aspirational.
+
+### The one real divergence: no `ship` stage
 
 Separating "archived" from "actually on `main`" needs
 `git <cmd> <ref> -- openspec/changes/archive/<name>` — a ref and a pathspec built

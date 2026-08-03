@@ -27,9 +27,9 @@ rejected, is at
 
 - One fleet-wide board answering "what is in flight, at what stage" across every
   registered repository.
-- Stage classification derived from the terminal board's, so the two agree about
-  the same repository except where this one deliberately does not — two
-  divergences, both specified rather than discovered.
+- Stage classification derived from the terminal board's current classifier, so
+  the two agree about the same repository except in the one place this one
+  deliberately does not: no `ship` stage.
 - Degradation that names what it lost, per repository.
 - No amendment to the security spine.
 
@@ -59,55 +59,66 @@ means performing the E-3 workspace-and-package conversion in another repository
 before any dashboard surface can exist, which is a cross-repo project standing in
 front of a single page.
 
-**Chosen: re-derive in the daemon, naming ADR 0004 as the origin**, with test
-fixtures mirrored from upstream's `src/openspec/__fixtures__` so the two
-classifiers are checked against the same inputs.
+**Chosen: re-derive in the daemon, naming the current classifier
+(`src/openspec/reader.ts`) and ADR 0008 as the origin**, with test fixtures
+mirrored from upstream's `src/openspec/__fixtures__` so the two classifiers are
+checked against the same inputs.
+
+**Read the implementation, not only the ADR.** Decision 2 originally cited ADR
+0004 and argued at length for a divergence that the current classifier does not
+have. ADRs record a decision at a moment; the classifier is what the other board
+actually does today. Where they disagree, the code is the origin and the ADR is
+history.
 
 The cost is real and is accepted: two definitions of "validate" now exist and
 must be kept in step by hand. The mitigation is that the divergence is *stated*
 rather than discovered — see decision 2 — so a future reader compares two
 documented rules instead of two behaviours.
 
-### 2. Diverge from ADR 0004 on reviewer verdicts
+### 2. The reviewer rule, and two rounds of getting it wrong
 
-ADR 0004 advances a change past Validate on "two distinct approved reviewer
-sections". It counts approvals and never subtracts rejections.
+**The rule: two distinct approvals and no standing request for changes.** It is
+worth recording how this decision arrived there, because both wrong turns were
+the same mistake at different depths.
 
-Applied literally to this repository, `retire-v1-surfaces` — claude APPROVE,
-opencode APPROVE, gemini REQUEST-CHANGES, codex REQUEST-CHANGES — reads as
-approved and lands in Execute.
+**Draft 1 — "a reviewer counts only while their latest verdict approves."**
+Written to hold `retire-v1-surfaces` (claude APPROVE, opencode APPROVE, gemini
+REQUEST-CHANGES, codex REQUEST-CHANGES) at Validate. It does not: all four
+verdicts are from *distinct* reviewers, each one their latest, so two still
+approve and the change still advances. A filter cannot express a veto. Refuted by
+its own worked example, by two of three reviewers independently.
 
-**Rejected: "a reviewer counts only while their latest verdict approves."** This
-was the first draft of the divergence, and it does not do what it was written to
-do. All four verdicts above are from *distinct* reviewers, each one their
-latest — so two still approve, and the change still advances to Execute. The
-filter only catches the same reviewer approving and then rejecting, which is not
-the case that motivated it. Two of three plan reviewers found this independently;
-the rule was refuted by its own worked example.
+**Draft 2 — the veto, argued as a deliberate divergence from ADR 0004.** The rule
+was right and the justification was fiction. Upstream's classifier already does
+exactly this:
 
-**Chosen: two latest-verdict approvals AND no latest-verdict rejection.** A
-standing request for changes from any reviewer vetoes, however many others
-approve. Under that rule `retire-v1-surfaces` sits in Validate, which is what the
-divergence was for.
+```js
+if (input.hasRequestChanges || distinctReviewers.size < 2 || input.checklist.length === 0) {
+  return "validate"
+}
+```
 
-**What this costs, stated plainly.** The board is now stricter than this
-repository's ratified gate. `CLAUDE.md` (gate 2.0.0, corrected 2026-08-02) is
-explicit that review evidence is *reported, never enforced* — "two rejections
-open the gate exactly as two approvals do" — and that disposition is "address it
-**or record why not**". The board can read verdicts; it cannot read a recorded
-why-not, because prose is not a verdict. So a change whose author legitimately
-declined a finding sits at Validate until the reviewers are re-run, and the only
-thing that clears a rejection on this surface is a fresh one.
+ADR 0004's prose — the sole source for two rounds of argument — describes neither
+the current classifier nor ADR 0008. A long, careful case was made for departing
+from a rule nobody follows, including a passage explaining that the board is
+"deliberately stricter than this repository's ratified gate". It is not stricter
+than anything. It matches.
 
-That asymmetry is the honest form of the divergence: the earlier framing —
-"this project's whole posture is that a rejection is dispositioned, not
-outvoted" — asserted as settled what is a *discipline the machine deliberately
-does not enforce*. The board takes the stricter reading on purpose. It should say
-so rather than claim the repository already agreed.
+**What survives.** The rule, unchanged. What goes: the divergence framing, the
+appeal to project posture, and the claim about gate 2.0.0 — which was itself
+overstated, as round-1 review said, and is now simply irrelevant. The board
+displays a stage; it enforces nothing, so what the gate enforces never entered
+into it.
 
-Recorded as a requirement rather than a code comment, because it is the one place
-the two boards will legitimately disagree about the same repository, and the
-first person to notice should find the reason rather than file a bug.
+**What this cost.** Two review rounds spent adjudicating a difference that does
+not exist, and a spec requirement whose stated origin was wrong. The check that
+would have caught it at the start is `grep` in the upstream classifier — cheaper
+than either round.
+
+Recorded as a requirement rather than a code comment, because it is the rule two
+independent classifiers have to keep agreeing on, and the parse grammar it rests
+on — `## Reviewer:` sections, `VERDICT:` lines, case-insensitive vendor dedup —
+is a contract between them rather than an implementation detail of either.
 
 ### 3. A new reader module, not an extension of `openspecReader.ts`
 
@@ -141,6 +152,13 @@ one bound rather than two.
 running and the endpoint stops waiting for it. That limitation is inherited
 knowingly; threading an `AbortSignal` through the shared read primitive is the
 principled fix and belongs to that primitive, not to this board.
+
+**The bound is not a substitute for a cache, and the durable spec already says
+so.** `daemon-runtime` → `Response Caching Cadences` requires expensive
+computations to be cached server-side, naming "derived fleet aggregates on their
+own cadence" with explicit invalidation. This endpoint is one, so it is cached —
+no delta required, because the requirement already binds it. The change simply
+did not comply until round-2 review pointed at the citation.
 
 ### 5. No Ship stage — the probe does not fit the security spine
 
@@ -253,17 +271,25 @@ reports some `REVIEWS.md` files as unverifiable (trailer-absent). → A change w
 verdicts cannot be read classifies as `validate`, the same as one with too few
 approvals: the board never advances a change on evidence it could not parse.
 
-**"Latest verdict" sounded like it needed an ordering discipline. It does not.**
-Review raised this as an ambiguity the classifier could not be built from —
-ordering by document position or by timestamp is undefined, and the rule is
-load-bearing now that a rejection vetoes. Checked against every `REVIEWS.md` in
-this repository, active and archived: **twelve files, not one of which repeats a
-reviewer.** `run-plan-review.sh` rewrites the file wholesale per run, so each
-reviewer appears exactly once and their section *is* their latest verdict. →
-Specify the invariant rather than an ordering: one section per reviewer, and if a
-file ever carries two for the same reviewer, the later section in document order
-wins. One line of tie-break instead of a timestamp discipline for a case the
-producer does not produce.
+**Review evidence goes stale, and the census that said otherwise was rigged by
+its own glob.** Round 1 raised "latest verdict" as undefined. The answer given
+was a census — every `REVIEWS.md` in the repo, twelve files, none repeating a
+reviewer — concluding that the producer rewrites the file wholesale, so a section
+is always the latest verdict. That went into the delta as a SHALL.
+
+It is false, and round 2 falsified it in one line.
+`archive/2026-08-02-close-readiness-spec-gaps/` holds `REVIEWS-round-1.md`,
+`REVIEWS-round-2.md` and `REVIEWS-round-3.md` beside a `REVIEWS.md` that lagged
+them. The census ran `-name REVIEWS.md`, which structurally excluded the only
+counter-evidence in the repository — a pattern chosen by the same person who
+wanted the conclusion.
+
+→ The per-file invariant survives (no file repeats a reviewer). The freshness
+claim does not, and it mattered: with a rejection now vetoing, reading a
+superseded file is the difference between a cleared rejection clearing and a
+change stranded at Validate. Classify from the highest-numbered round record
+where one exists, mark the card as carrying multi-round evidence, and keep the
+document-order tie-break within a record.
 
 **The `N active` row is designed out, not designed around.** The terminal card has
 three rows and this one has two. → The card's layout must not assume a fixed row
