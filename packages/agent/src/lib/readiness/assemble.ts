@@ -15,6 +15,7 @@
 import {
   CHECK_IDS,
   computeReady,
+  wireSafeText,
   type CheckId,
   type CheckResult,
   type ReadinessDeclaration,
@@ -172,26 +173,23 @@ function refusedResult(id: CheckId, refusal: RejectedCitation): CheckResult {
       `Declared in this repo’s readiness file, but the evidence it cites could not be verified: ${refusal.reason}.`,
     ),
     evidence: null,
-    error: { code: 'evidence-unverifiable', message: wireSafeReason(refusal) },
+    error: {
+      code: 'evidence-unverifiable',
+      // `error.message` is validated by the shared sanitiser on the way out;
+      // `summary` above is not, and keeps the full path in every case.
+      //
+      // The reason is built with the path in it and withheld only when the
+      // guard would actually refuse it. The predicate is the shared one, so it
+      // cannot drift from the boundary — the version this replaced kept its own
+      // approximation here, asking whether the path contained a colon at all,
+      // which discarded `docs/a:b.md` from a message that would have carried it
+      // perfectly well.
+      message: wireSafeText(
+        refusal.reason,
+        'the evidence path declared for this check could not be verified',
+      ),
+    },
   }
-}
-
-/**
- * `error.message` is validated by the shared sanitiser on the way out; `summary`
- * is not. The sanitiser refuses a colon followed by a filesystem-looking root,
- * which is how it catches an interpolated absolute path — and a *repo-relative*
- * path is allowed to contain a colon, so `docs/notes:/Users/x.md` is a legal
- * citation whose message the daemon would then reject as its own output. The
- * client's view of that is the schema-drift screen, not a warning.
- *
- * So the path is dropped from the wire message in the one case that can trip the
- * guard. The full path stays in `summary`, which is where a reader looks for it
- * and which carries no such restriction.
- */
-function wireSafeReason(refusal: RejectedCitation): string {
-  return refusal.cited.includes(':')
-    ? 'the evidence path declared for this check could not be verified'
-    : refusal.reason
 }
 
 async function guard(

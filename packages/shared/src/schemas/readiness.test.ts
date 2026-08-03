@@ -293,6 +293,94 @@ describe('CheckResultSchema', () => {
     ).toBe(true)
   })
 
+  /**
+   * A repo-relative path may legally contain a colon — `RepoRelativePathSchema`
+   * refuses a leading `/`, a leading `~`, a backslash, a drive letter and
+   * `.`/`..` segments, and nothing else. So a path whose own characters spell
+   * `:/Users` is a citation an author can commit, and the colon rule alone read
+   * it as an interpolated absolute path. The daemon then refused its own
+   * message, and because the fleet route validates one payload for every repo,
+   * a single filename answered the whole endpoint with `schema_drift`.
+   *
+   * What separates the two is whether the token holding the colon already
+   * contains a path separator: `docs/notes` does, the `to` of `resolved to:`
+   * does not.
+   */
+  it.each([
+    ['a directory segment', 'docs/notes:/Users/x.md'],
+    ['an asset directory', 'assets/img:/Library/a.png'],
+    ['a deeply nested segment', 'deep/nested/dir:/tmp/f'],
+  ])(
+    'accepts an error message naming a legal repo-relative path with %s before a colon',
+    (_label, cited) => {
+      expect(
+        CheckResultSchema.safeParse(
+          result('pen-test', {
+            status: 'fail',
+            source: 'declared',
+            summary: `cites ${cited}`,
+            error: {
+              code: 'evidence-unverifiable',
+              message: `${cited} does not resolve inside the repository`,
+            },
+          }),
+        ).success,
+      ).toBe(true)
+    },
+  )
+
+  /**
+   * The counterweight to the narrowing above, and the load-bearing half of it.
+   * Widening what the guard admits is exactly where a leak slips through
+   * unnoticed, so the refusal set is pinned in full rather than sampled. None
+   * of these may be relaxed to make the acceptance cases above pass.
+   */
+  it.each([
+    ['a colon-adjacent home path', 'resolved to:/Users/someone/secret'],
+    ['a colon-adjacent linux home', 'failed at:/home/x/y'],
+    ['a whitespace-bounded path', 'read /Users/someone/x failed'],
+    ['a quoted path', 'of "/var/db/x"'],
+    ['a drive letter', 'C:/Users/x is bad'],
+    ['an external volume', 'scan at:/Volumes/ext/p'],
+  ])('still rejects an error message carrying %s', (_label, message) => {
+    expect(
+      CheckResultSchema.safeParse(
+        result('coverage', {
+          status: 'fail',
+          summary: 'unreadable',
+          error: { code: 'coverage-unreadable', message },
+        }),
+      ).success,
+    ).toBe(false)
+  })
+
+  /**
+   * The residual the narrowing does not close: a colon in the *first* path
+   * segment leaves nothing to distinguish the citation from an interpolated
+   * absolute path, so it is still refused. That is deliberate — the ambiguity
+   * is resolved by withholding the reference, never the response — and the
+   * agent is required to substitute text it can certify rather than hand this
+   * to the boundary.
+   */
+  it.each(['ab:/Users/x', 'ab:cd:/Users/x'])(
+    'still rejects %s, whose first segment carries the colon',
+    (cited) => {
+      expect(
+        CheckResultSchema.safeParse(
+          result('pen-test', {
+            status: 'fail',
+            source: 'declared',
+            summary: `cites ${cited}`,
+            error: {
+              code: 'evidence-unverifiable',
+              message: `${cited} does not resolve inside the repository`,
+            },
+          }),
+        ).success,
+      ).toBe(false)
+    },
+  )
+
   it('rejects evidence that escapes the repo', () => {
     expect(
       CheckResultSchema.safeParse(

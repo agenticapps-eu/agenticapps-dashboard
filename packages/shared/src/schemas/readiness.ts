@@ -89,31 +89,97 @@ export const RepoRelativePathSchema = z
  * requires the first segment to name a filesystem root. That is a heuristic —
  * a path under an unusual mount such as `/mycustomroot/x` is not caught — and
  * it is the right trade here, because the alternative rejects ordinary route
- * text. The residual risk is bounded by the fact that no message this daemon
- * constructs interpolates anything but a repo-relative path.
+ * text.
+ *
+ * The colon rule additionally requires the token holding the colon to contain
+ * no `/`. `RepoRelativePathSchema` permits a colon, so `docs/notes:/Users/x.md`
+ * is a citation an author can legally commit — and it is not a leak, whereas
+ * the `to` of `resolved to:` names nothing on disk. Without that requirement
+ * the daemon refused its own error text for such a path, and since a response
+ * is validated as one payload for every repo, a single filename answered the
+ * whole fleet endpoint with `schema_drift`.
+ *
+ * **The residual, stated rather than assumed.** Two things this no longer
+ * catches, and the second is the price of the first:
+ *
+ *   1. A colon in the *first* path segment — `ab:/Users/x` — leaves nothing to
+ *      separate the citation from an interpolated absolute path. Still refused,
+ *      so callers must be ready for `wireSafeText` to substitute.
+ *   2. A genuine leak later in a whitespace-delimited token that already
+ *      contains a `/`. `docs/x.md,next:/home/b` and `a/b;c:/Users/x` were
+ *      caught by the unanchored clause and are not caught now. "Token" here
+ *      means everything back to string start, whitespace, quote or bracket —
+ *      commas, semicolons and equals signs do not break it, so the span is
+ *      wider than a path-shaped word.
+ *
+ * Text-level detection cannot close either; only carrying the path in its own
+ * `RepoRelativePathSchema` field, instead of interpolating it into prose, would.
+ * That is a wire and surface change and has not been made.
+ *
+ * An earlier version of this comment bounded the residual risk on the claim
+ * that "no message this daemon constructs interpolates anything but a
+ * repo-relative path". That reasoning was inverted: a repo-relative path is
+ * exactly what breaks it.
  *
  * The cost of a false positive is not a warning: the outbound validation fails
- * and the client gets the schema-drift screen. Widening this is a trade, not a
- * free tightening.
+ * and the client gets the schema-drift screen. So callers building text from
+ * author-controlled input MUST route it through `wireSafeText` rather than hand
+ * it to this boundary and hope. Widening this is a trade, not a free tightening.
  */
 const FILESYSTEM_ROOTS =
   'Users|home|var|tmp|private|etc|opt|usr|mnt|Volumes|root|srv|System|Library|Applications'
 
+const STRONG_BOUNDARY = `(?:^|[\\s"'\`([<])`
+
 const ABSOLUTE_PATH = new RegExp(
   [
-    `(?:^|[\\s"'\`([<])/`, // absolute POSIX path at a strong boundary
-    `(?:^|[\\s"'\`([<])\\\\\\\\`, // UNC \\\\server at a strong boundary
-    `:/(?:${FILESYSTEM_ROOTS})\\b`, // colon-adjacent, filesystem-looking only
-    `(?:^|[\\s"'\`([<])[A-Za-z]:[\\\\/]`, // drive letter
+    `${STRONG_BOUNDARY}/`, // absolute POSIX path at a strong boundary
+    `${STRONG_BOUNDARY}\\\\\\\\`, // UNC \\\\server at a strong boundary
+    // Colon-adjacent, filesystem-looking, and only where the token holding the
+    // colon carries no path separator of its own.
+    `${STRONG_BOUNDARY}[^\\s"'\`([</]*:/(?:${FILESYSTEM_ROOTS})\\b`,
+    `${STRONG_BOUNDARY}[A-Za-z]:[\\\\/]`, // drive letter
   ].join('|'),
 )
+
+/**
+ * Whether this text would be refused by the outbound guard. Exported so that a
+ * caller tests with exactly what the boundary enforces: the previous in-agent
+ * approximation asked whether the path contained a colon, which discarded
+ * `docs/a:b.md` — a path this guard has always accepted.
+ */
+export function carriesAbsolutePath(text: string): boolean {
+  return ABSOLUTE_PATH.test(text)
+}
 
 const SanitisedTextSchema = z
   .string()
   .max(MAX_TEXT_LENGTH)
-  .refine((value) => !ABSOLUTE_PATH.test(value), {
+  .refine((value) => !carriesAbsolutePath(value), {
     message: 'text must not carry an absolute filesystem path',
   })
+
+/**
+ * Text for a sanitised field, or `fallback` when it cannot be certified.
+ *
+ * This is what makes "one repo cannot withhold the fleet" a property of the
+ * design rather than of the heuristic's accuracy. The boundary stays
+ * fail-closed; what changes is that no caller hands it text it cannot certify.
+ *
+ * It certifies against `SanitisedTextSchema` itself, not against the path rule
+ * alone. An earlier version tested only `carriesAbsolutePath`, which left the
+ * length bound uncovered — and the length bound is reachable without any colon
+ * at all: a citation at the path schema's own 512-character limit produces a
+ * 622-character notice, over the 600-character field maximum, and the response
+ * carrying it died exactly as it did for the path case. Certifying against
+ * anything narrower than the field's own schema is how that recurs.
+ *
+ * `fallback` MUST itself satisfy the schema; it is a short constant at every
+ * call site rather than anything derived from author input.
+ */
+export function wireSafeText(text: string, fallback: string): string {
+  return SanitisedTextSchema.safeParse(text).success ? text : fallback
+}
 
 const Rfc3339Schema = z.string().datetime({ offset: true })
 const CommitShaSchema = z.string().regex(/^[0-9a-f]{40}$/)

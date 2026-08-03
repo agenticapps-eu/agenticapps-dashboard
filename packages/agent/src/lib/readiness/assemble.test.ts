@@ -3,7 +3,12 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { CHECK_IDS, CheckResultSchema, computeReady } from '@agenticapps/dashboard-shared'
+import {
+  CHECK_IDS,
+  CheckResultSchema,
+  ReadinessNoticeSchema,
+  computeReady,
+} from '@agenticapps/dashboard-shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { makeCoverageResolver } from '../coverageResolver.js'
@@ -182,6 +187,124 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(result.notice?.code).toBe('readiness-file-invalid')
   })
 
+  /**
+   * A repo-relative path may legally contain a colon, and this one spells the
+   * shape the outbound guard reads as an interpolated absolute path. Both the
+   * check's error and the repo-level notice are built from it, and both are
+   * validated on the way out — so before this was fixed the daemon refused its
+   * own message and the whole response died with it.
+   *
+   * The path has to reach the reader, not merely fail to kill the response:
+   * it is the only handle on what to fix.
+   */
+  it('names a colon-bearing citation in the error and keeps the response valid', async () => {
+    const cited = 'docs/notes:/Users/x.md'
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(penTest.error?.message).toContain(cited)
+    expect(penTest.summary).toContain(cited)
+    expect(CheckResultSchema.safeParse(penTest).success).toBe(true)
+    expect(ReadinessNoticeSchema.safeParse(result.notice).success).toBe(true)
+    expect(result.notice?.message).toContain(cited)
+  })
+
+  /**
+   * The residual the narrowing does not close. A colon in the *first* segment
+   * leaves nothing to tell the citation apart from a leaked absolute path, so
+   * the guard still refuses it — and the daemon must therefore substitute text
+   * it can certify rather than hand it over and 500.
+   *
+   * The reference is withheld from the message, never from the surface: the
+   * summary is unrestricted and still carries the path in full.
+   */
+  it('withholds a first-segment colon path from the message but not from the summary', async () => {
+    const cited = 'ab:/Users/x.md'
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(penTest.error?.message).not.toContain(cited)
+    expect(penTest.summary).toContain(cited)
+    expect(CheckResultSchema.safeParse(penTest).success).toBe(true)
+    expect(ReadinessNoticeSchema.safeParse(result.notice).success).toBe(true)
+    expect(result.notice?.message).not.toContain(cited)
+  })
+
+  /**
+   * The same outage reached without a colon anywhere. `RepoRelativePathSchema`
+   * allows 512 characters, and a citation at that limit renders a 622-character
+   * notice against a 600-character field maximum — so the response died on
+   * length while the path rule was perfectly happy.
+   *
+   * Found by review, not by this change's own tests, because the guard was
+   * written to certify the path rule rather than the field's schema. It now
+   * certifies the schema, which is the only bound that cannot drift from what
+   * the boundary actually enforces.
+   */
+  it('survives a citation at the path length limit, which carries no colon at all', async () => {
+    const cited = `${'d/'.repeat(6)}${'a'.repeat(497)}.md`
+    expect(cited).toHaveLength(512)
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(CheckResultSchema.safeParse(penTest).success).toBe(true)
+    expect(ReadinessNoticeSchema.safeParse(result.notice).success).toBe(true)
+  })
+
   it('honours the other declarations when one citation is unopenable', async () => {
     write('docs/review.md')
     write(
@@ -339,6 +462,44 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(result.notice).toBeNull()
   })
 
+  /**
+   * The third author-input site, which this change originally missed and a
+   * reviewer found: `coverage.path` is author-supplied and lands in five
+   * different `readArtifact` error messages. Nothing about the citing-evidence
+   * fix touched it, so the coverage check could still refuse its own message and
+   * take the response down — a colon-bearing path and an over-long one both.
+   */
+  it.each([
+    // A first-segment colon: the residual the narrowed regex still refuses, and
+    // therefore the shape that actually needs the guard here. A path with a
+    // directory before the colon — `coverage/out:/Users/x.json` — is accepted by
+    // the regex outright and proves nothing about this call site.
+    //
+    // Length cannot reach this site: the longest suffix these messages append is
+    // 44 characters, so a 512-character path yields 556 against a 600 maximum.
+    // The notice site is where length bites, and it is covered separately.
+    ['a first-segment colon', 'ab:/Users/x.json'],
+  ])('keeps the coverage check on the wire when its configured path has %s', async (
+    _label,
+    coveragePath,
+  ) => {
+    // The artifact must exist and be unreadable-as-coverage, or `readArtifact`
+    // returns `absent` and the error message under test is never built at all.
+    write(coveragePath, 'not json')
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({ schemaVersion: 1, coverage: { path: coveragePath } }),
+    )
+
+    const result = await assembleReadiness(options())
+    const coverage = byId(result.checks, 'coverage')
+
+    // The error path must actually be reached, or this test proves nothing.
+    expect(coverage.status).toBe('fail')
+    expect(coverage.error).not.toBeNull()
+    expect(CheckResultSchema.safeParse(coverage).success).toBe(true)
+  })
+
   // `error.message` is validated by SanitisedTextSchema on the way out, and a
   // colon followed by a filesystem-looking root is exactly the shape it refuses.
   // A repo-relative path must survive that, or the daemon fails validation on its
@@ -365,9 +526,14 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(review.error?.code).toBe('evidence-unverifiable')
     // The whole result must round-trip the shared schema, message included.
     expect(CheckResultSchema.safeParse(review).success).toBe(true)
-    // The path is dropped from the wire message but kept in the summary, which
-    // carries no sanitiser restriction and is where a reader looks for it.
-    expect(review.error?.message).not.toContain('/Users/')
+    // This assertion is the reverse of what it was. It used to require the path
+    // to be dropped, which was the workaround the sanitiser's ambiguity forced:
+    // any colon in a citation removed it from the message. That bought safety
+    // with the reader's only handle on what to fix, and it did not even work —
+    // the notice built from the same path had no guard at all and took the
+    // whole fleet response down with it. The guard now separates a citation
+    // from a leak, so the path stays.
+    expect(review.error?.message).toContain('docs/notes:/Users/reviewer/report.md')
     expect(review.summary).toContain('docs/notes:/Users/reviewer/report.md')
   })
 

@@ -67,6 +67,8 @@ export {
   RepoDetailResponseSchema,
   ReadinessFileSchema,
   computeReady,
+  carriesAbsolutePath,
+  wireSafeText,
   ADVISORY_WHEN_UNDECLARED,
   isAdvisoryCheck,
 } from './schemas/readiness.js'

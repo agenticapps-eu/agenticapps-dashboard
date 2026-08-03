@@ -114,6 +114,55 @@ describe('readFleet', () => {
     )
   })
 
+  /**
+   * The outage end to end, through the real assembler rather than a mocked
+   * payload: one repo cites an evidence path that is legal and repo-relative but
+   * whose own characters read as an absolute path. The notice and the check
+   * error are both built from it, the fleet is validated as a single payload,
+   * and before the guard could tell a citation from a leak this answered the
+   * whole endpoint with `schema_drift` — taking `a-repo`, which has nothing
+   * wrong with it, down alongside the repo that owns the bad filename.
+   */
+  it('answers the whole fleet when one repo cites a colon-bearing evidence path', async () => {
+    const cited = 'docs/notes:/Users/x.md'
+    const a = makeRepo('a-repo')
+    const citing = makeRepo('citing-repo')
+    write(
+      citing,
+      '.agenticapps/readiness.json',
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+    git(citing, ['add', '.'])
+    git(citing, ['commit', '-m', 'declare a colon-bearing citation'])
+    registry([
+      { id: 'a', root: a },
+      { id: 'citing', root: citing },
+    ])
+
+    const fleet = await readFleet(options())
+
+    expect(FleetResponseSchema.safeParse(fleet).success).toBe(true)
+    expect(fleet.repos.map((repo) => repo.id)).toEqual(['a', 'citing'])
+
+    const repo = fleet.repos[1]
+    expect(repo?.notice?.message).toContain(cited)
+    const penTest = repo?.checks.find((check) => check.id === 'pen-test')
+    expect(penTest?.error?.code).toBe('evidence-unverifiable')
+    expect(penTest?.error?.message).toContain(cited)
+  })
+
   it('gives every repo six checks in the fixed order', async () => {
     registry([{ id: 'a', root: makeRepo('a-repo') }])
 

@@ -13,6 +13,8 @@
 import { lstat, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 
+import { wireSafeText } from '@agenticapps/dashboard-shared'
+
 import { resolveAllowedNamed } from '../paths.js'
 
 import { clampSummary, type DerivedCheck } from './derivedCheck.js'
@@ -177,6 +179,19 @@ async function exists(root: string, relativePath: string): Promise<boolean> {
   }
 }
 
+/**
+ * The one place a coverage failure becomes wire text, and therefore the one
+ * place the guard belongs.
+ *
+ * Every `readArtifact` error interpolates `coveragePath`, which is
+ * `readiness.json`'s `coverage.path` — author input, validated only as
+ * repo-relative, and so free to be 512 characters long or to contain a colon.
+ * Both shapes make `SanitisedTextSchema` refuse the message, and a refused
+ * message fails the response that carries it, not just the check.
+ *
+ * The summary keeps the full text where the clamp permits; the wire message
+ * degrades to a constant naming no path when it cannot be certified.
+ */
 function failure(code: string, message: string, threshold: number): DerivedCheck {
   return {
     status: 'fail',
@@ -185,6 +200,12 @@ function failure(code: string, message: string, threshold: number): DerivedCheck
     threshold,
     summary: clampSummary(`This check could not be evaluated: ${message}.`),
     evidence: null,
-    error: { code, message },
+    error: {
+      code,
+      message: wireSafeText(
+        message,
+        'the coverage artifact declared for this repo could not be read',
+      ),
+    },
   }
 }
