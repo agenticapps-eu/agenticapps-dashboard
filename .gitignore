@@ -42,3 +42,6 @@ playwright-report/
 # Track the AgenticApps workflow skill (version marker) while keeping other skills local
 !.claude/skills/agentic-apps-workflow/
 !.claude/skills/agentic-apps-workflow/**
+
+# Brainstorming visual-companion mockups
+.superpowers/
