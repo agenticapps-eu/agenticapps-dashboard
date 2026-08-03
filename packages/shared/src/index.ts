@@ -291,6 +291,7 @@ export {
   ChangeRepositoryStatusSchema,
   ChangesFleetResponseSchema,
   cardKey,
+  compareChangeCards,
   fleetReadState,
 } from './schemas/changes.js'
 export type {

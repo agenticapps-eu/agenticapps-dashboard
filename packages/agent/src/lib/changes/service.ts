@@ -48,6 +48,7 @@ import { statSync } from 'node:fs'
 
 import {
   cardKey,
+  compareChangeCards,
   type ChangeCard,
   type ChangeNotice,
   type ChangeReadFailure,
@@ -231,34 +232,6 @@ async function readRepository(
 }
 
 /**
- * Every column's order, in one place.
- *
- * Archive orders by entry date, most recent first, with a rule-5 `ready` card
- * ahead of every dated one — it is the thing waiting to be filed, not a thing
- * already filed, and giving it a synthetic date would file it. The other three
- * order by the record's most recent modification time, most recent first.
- *
- * Every comparison ends on the card's identity, which is unique by
- * construction, so no two cards compare equal and no repository's name can
- * decide another repository's order.
- */
-function compareCards(left: ChangeCard, right: ChangeCard): number {
-  if (left.stage === 'archive' && right.stage === 'archive') {
-    // A ready card has no entry date and sorts ahead of every dated card.
-    if (left.archiveDate === null && right.archiveDate !== null) return -1
-    if (left.archiveDate !== null && right.archiveDate === null) return 1
-    if (left.archiveDate !== null && right.archiveDate !== null) {
-      if (left.archiveDate !== right.archiveDate) {
-        return left.archiveDate < right.archiveDate ? 1 : -1
-      }
-    }
-  } else if (left.updatedAt !== right.updatedAt) {
-    return right.updatedAt - left.updatedAt
-  }
-  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
-}
-
-/**
  * The whole board: one card per admitted record across every registered
  * repository, plus what each repository lost.
  *
@@ -292,7 +265,7 @@ export async function readChangesFleet(
     // Stamped when computed and replayed with the reading, so a cached board
     // reports the time it was taken rather than the time it was served.
     generatedAt: now,
-    cards: readings.flatMap((reading) => reading.cards).sort(compareCards),
+    cards: readings.flatMap((reading) => reading.cards).sort(compareChangeCards),
     repositories: readings.map((reading) => reading.status),
     notices: readings.flatMap((reading) => reading.notices),
   }

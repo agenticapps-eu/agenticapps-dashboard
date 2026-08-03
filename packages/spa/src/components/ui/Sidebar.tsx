@@ -16,7 +16,7 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, Layers, ShieldCheck, TrendingUp, Network, Workflow } from 'lucide-react'
+import { Activity, Cog, HelpCircle, FolderKanban, KanbanSquare, Layers, ShieldCheck, TrendingUp, Network, Workflow } from 'lucide-react'
 
 import { useRegistryList } from '../../lib/registry.js'
 
@@ -76,6 +76,16 @@ export function Sidebar(): React.JSX.Element {
             alsoActiveFor="/repos"
             icon={<ShieldCheck size={16} aria-hidden="true" />}
             label="Fleet readiness"
+          />
+          {/* Changes — add-agent-change-board §5.8. One entry, in WORKSPACE
+              beside the other product-content surfaces, because the board
+              answers "what is in flight" about the same repositories Projects
+              and Fleet readiness answer other questions about. Not an
+              Observability entry: it reports work, not instrumentation. */}
+          <SidebarItem
+            to="/changes"
+            icon={<KanbanSquare size={16} aria-hidden="true" />}
+            label="Changes"
           />
         </SidebarSection>
 

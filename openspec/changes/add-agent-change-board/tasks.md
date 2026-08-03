@@ -56,22 +56,22 @@ waiting for it.
 
 ## 5. Board surface
 
-- [ ] 5.1 Write failing SPA tests: four columns at the reference viewport, header `Label · N`, `No changes` for an empty stage
-- [ ] 5.2 Write the failing test that the board pages one stage at a time behind a stage rail below the 180px minimum column width, with every stage reachable
-- [ ] 5.3 Write the failing test that a long change name renders across two lines rather than eliding at one
-- [ ] 5.4 Write failing tests for the degraded and unreachable states, asserting a degraded read does not present as an ordinary empty board
-- [ ] 5.5 Write the failing test that the Archive column distinguishes a filed archive card from an active card marked `ready`
-- [ ] 5.6 Write the failing ordering tests: every column totally ordered and stable across two renders of an unchanged fleet; Archive date-descending with the rule-5 `ready` card ahead of every dated card; `propose`/`validate`/`execute` by modification time descending; ties broken on card identity so no repository's name decides another's order
-- [ ] 5.7 Implement `ChangeBoardPage`, `StageColumn` and `ChangeCard` to green; the card must not assume a fixed row count, so the session row is additive later
-- [ ] 5.8 Add the `/changes` route and one `Changes` sidebar entry in the product-content group
+- [x] 5.1 Write failing SPA tests: four columns at the reference viewport, header `Label · N`, `No changes` for an empty stage
+- [x] 5.2 Write the failing test that the board pages one stage at a time behind a stage rail below the 180px minimum column width, with every stage reachable. **The minimum column width is the constant and the viewport threshold is derived from it** — `4 x 180 + 3 x 16 (gap) + 240 (sidebar) + 48 (main padding) = 1056px`, each input named in `boardLayout.ts`, so a change to the shell recomputes the threshold rather than invalidating the requirement. Implemented with `matchMedia` rather than a `ResizeObserver`, per the rationale `useViewportBreakpoint` already records
+- [x] 5.3 Write the failing test that a long change name renders across two lines rather than eliding at one
+- [x] 5.4 Write failing tests for the degraded and unreachable states, asserting a degraded read does not present as an ordinary empty board
+- [x] 5.5 Write the failing test that the Archive column distinguishes a filed archive card from an active card marked `ready`
+- [x] 5.6 **`compareChangeCards` moved to shared and applied by both the daemon and the board.** The readiness fleet sorts client-side only, on the reasoning that a sorting server plus a sorting client eventually disagree — but that hazard is two *different* orderings, not one applied twice. One shared total order is idempotent, so the daemon ships an ordered response and the board still orders what it renders, and the tests can feed deliberately shuffled cards. Write the failing ordering tests: every column totally ordered and stable across two renders of an unchanged fleet; Archive date-descending with the rule-5 `ready` card ahead of every dated card; `propose`/`validate`/`execute` by modification time descending; ties broken on card identity so no repository's name decides another's order
+- [x] 5.7 Implement `ChangeBoardPage`, `StageColumn` and `ChangeCard` to green; the card must not assume a fixed row count, so the session row is additive later. Asserted directly: the card's row container is a column flex with no `h-*` and no `grid-rows-*`. **Interpretation recorded:** a fleet with *no cards at all* renders the explicit "no changes in flight" state rather than four empty columns — the per-stage "No changes" copy is for a stage that is empty while others are not
+- [x] 5.8 Add the `/changes` route and one `Changes` sidebar entry in the product-content group
 
 ## 6. Drawer
 
-- [ ] 6.1 Write failing tests: selecting a card opens a drawer over the board carrying repository, stage, source, artifact presence, reviewer verdicts and checklist rows
-- [ ] 6.2 Write the failing test that the location carries repository, source and change as three separate parameters, and that no composite separator is parsed
-- [ ] 6.3 Write the failing test that a backlog entry and an active change of the same name in one repository are two cards with two distinct addresses
-- [ ] 6.4 Write the failing tests that a deep link restores the drawer, and that a deep link to an absent change renders the board with a not-found statement
-- [ ] 6.5 Implement `ChangeDrawer` to green
+- [x] 6.1 Write failing tests: selecting a card opens a drawer over the board carrying repository, stage, source, artifact presence, reviewer verdicts and checklist rows
+- [x] 6.2 Write the failing test that the location carries repository, source and change as three separate parameters, and that no composite separator is parsed
+- [x] 6.3 Write the failing test that a backlog entry and an active change of the same name in one repository are two cards with two distinct addresses
+- [x] 6.4 Write the failing tests that a deep link restores the drawer, and that a deep link to an absent change renders the board with a not-found statement
+- [x] 6.5 Implement `ChangeDrawer` to green
 
 ## 7. Verify
 

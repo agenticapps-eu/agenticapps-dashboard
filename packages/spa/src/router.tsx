@@ -187,6 +187,34 @@ const fleetRoute = createRoute({
 }).lazy(() => import('./routes/fleet.lazy.js').then((m) => m.Route))
 
 /**
+ * changesRoute — /changes, the fleet OpenSpec change board
+ * (add-agent-change-board §5).
+ *
+ * The drawer's address is three separate search parameters — `repo`, `source`
+ * and `change` — never one composite. A single parameter would need a
+ * separator, a separator needs a parser, and a parser over author-controlled
+ * change names is exactly the shape that produced
+ * `fix-readiness-sanitiser-colon-hazard`. Separate parameters need no parsing
+ * at all, so the failure mode does not exist rather than being guarded.
+ *
+ * All three are optional and unvalidated beyond being strings: a deep link
+ * naming a change that no longer exists renders the board with a not-found
+ * statement, which is a better answer than blanking the page.
+ */
+const ChangeSearchSchema = z.object({
+  repo: z.coerce.string().optional(),
+  source: z.coerce.string().optional(),
+  change: z.coerce.string().optional(),
+})
+
+const changesRoute = createRoute({
+  getParentRoute: () => appShellLayoutRoute,
+  path: '/changes',
+  validateSearch: zodValidator(ChangeSearchSchema),
+  errorComponent: pairErrorComponent,
+}).lazy(() => import('./routes/changes.lazy.js').then((m) => m.Route))
+
+/**
  * repoDetailRoute — /repos/$repoId, where a fleet row or cell lands. A cell
  * carries the check id as the hash, so the detail can position itself at the
  * block that was selected.
@@ -248,6 +276,7 @@ const routeTree = rootRoute.addChildren([
     workflowRoute,
     fleetRoute, // add-repo-readiness §9 — /fleet under _appshell
     repoDetailRoute, // add-repo-readiness §9/§10 — /repos/$repoId under _appshell
+    changesRoute, // add-agent-change-board §5 — /changes under _appshell
   ] as AnyRoute[]),
   // _helpLayout is a PEER of _appshell (D-7-12) — /help/* bypasses AppShellV2.
   helpLayoutRoute.addChildren(buildHelpRoutes(helpLayoutRoute as unknown as AnyRoute) as AnyRoute[]),

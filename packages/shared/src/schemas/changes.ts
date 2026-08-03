@@ -187,6 +187,47 @@ export const ChangesFleetResponseSchema = z
 export type ChangesFleetResponse = z.infer<typeof ChangesFleetResponseSchema>
 
 /**
+ * Every column's order, in one definition.
+ *
+ * Archive orders by entry date, most recent first, with a rule-5 `ready` card
+ * ahead of every dated one — it is the thing waiting to be filed, not a thing
+ * already filed, and giving it a synthetic date would file it. The other three
+ * columns order by the record's most recent modification time, most recent
+ * first.
+ *
+ * Every comparison ends on the card's identity, which is unique by
+ * construction, so no two cards compare equal and no repository's name can
+ * decide another repository's order.
+ *
+ * It lives in shared, and both the daemon and the board apply it. The readiness
+ * fleet deliberately sorts only on the client, on the reasoning that a sorting
+ * server plus a sorting client eventually disagree — that hazard is two
+ * *different* orderings, not one applied twice. This is one total order and it
+ * is idempotent, so the daemon can ship an ordered response and the board can
+ * still order what it renders without the two ever being able to disagree.
+ *
+ * The four stage groups never interleave on screen, so a comparison across two
+ * stages is only ever a tie-break to keep the order total.
+ */
+export function compareChangeCards(left: ChangeCard, right: ChangeCard): number {
+  if (left.stage === 'archive' && right.stage === 'archive') {
+    // A ready card has no entry date and sorts ahead of every dated card.
+    if (left.archiveDate === null && right.archiveDate !== null) return -1
+    if (left.archiveDate !== null && right.archiveDate === null) return 1
+    if (
+      left.archiveDate !== null
+      && right.archiveDate !== null
+      && left.archiveDate !== right.archiveDate
+    ) {
+      return left.archiveDate < right.archiveDate ? 1 : -1
+    }
+  } else if (left.updatedAt !== right.updatedAt) {
+    return right.updatedAt - left.updatedAt
+  }
+  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+}
+
+/**
  * How the surface should read the response.
  *
  * `empty` and `all-failed` both render no cards, and the requirement is that
