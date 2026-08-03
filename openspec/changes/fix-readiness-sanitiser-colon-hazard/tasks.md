@@ -35,7 +35,7 @@
 - [x] 5.1 `impeccable:critique` does not apply and was not run. Verified, not assumed: `git diff --name-only` touches nine files, none under `packages/spa`, and no wire field was added, removed or retyped — the SPA renders `error.message`, `summary` and `notice.message` exactly as before, only with better content in them.
 - [x] 5.2 Run `run-plan-review.sh` with `REVIEW_TIMEOUT=540` and record the verdicts. Nothing enforces this; skipping it is a decision to record, not a step to forget.
 - [x] 5.3 Answer each REQUEST-CHANGES finding against the code before archiving — verify it, then fix it or record why it was refuted.
-- [ ] 5.4 Open the PR to `main` from `fix/readiness-sanitiser-colon-hazard`, then archive the change once merged.
+- [x] 5.4 PR #96 opened to `main` from `fix/readiness-sanitiser-colon-hazard`. Archive the change once merged.
 
 ## 6. Record
 
