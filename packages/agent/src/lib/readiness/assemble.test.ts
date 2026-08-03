@@ -3,7 +3,12 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { CHECK_IDS, CheckResultSchema, computeReady } from '@agenticapps/dashboard-shared'
+import {
+  CHECK_IDS,
+  CheckResultSchema,
+  ReadinessNoticeSchema,
+  computeReady,
+} from '@agenticapps/dashboard-shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { makeCoverageResolver } from '../coverageResolver.js'
@@ -180,6 +185,85 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(penTest.error?.code).toBe('evidence-unverifiable')
     expect(penTest.error?.message).toContain('docs/pen-test.md')
     expect(result.notice?.code).toBe('readiness-file-invalid')
+  })
+
+  /**
+   * A repo-relative path may legally contain a colon, and this one spells the
+   * shape the outbound guard reads as an interpolated absolute path. Both the
+   * check's error and the repo-level notice are built from it, and both are
+   * validated on the way out — so before this was fixed the daemon refused its
+   * own message and the whole response died with it.
+   *
+   * The path has to reach the reader, not merely fail to kill the response:
+   * it is the only handle on what to fix.
+   */
+  it('names a colon-bearing citation in the error and keeps the response valid', async () => {
+    const cited = 'docs/notes:/Users/x.md'
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(penTest.error?.message).toContain(cited)
+    expect(penTest.summary).toContain(cited)
+    expect(CheckResultSchema.safeParse(penTest).success).toBe(true)
+    expect(ReadinessNoticeSchema.safeParse(result.notice).success).toBe(true)
+    expect(result.notice?.message).toContain(cited)
+  })
+
+  /**
+   * The residual the narrowing does not close. A colon in the *first* segment
+   * leaves nothing to tell the citation apart from a leaked absolute path, so
+   * the guard still refuses it — and the daemon must therefore substitute text
+   * it can certify rather than hand it over and 500.
+   *
+   * The reference is withheld from the message, never from the surface: the
+   * summary is unrestricted and still carries the path in full.
+   */
+  it('withholds a first-segment colon path from the message but not from the summary', async () => {
+    const cited = 'ab:/Users/x.md'
+    write(
+      READINESS_FILE_PATH,
+      JSON.stringify({
+        schemaVersion: 1,
+        checks: [
+          {
+            id: 'pen-test',
+            status: 'ok',
+            observedAt: '2026-07-01T09:00:00Z',
+            validUntil: '2027-07-01T09:00:00Z',
+            evidence: cited,
+            commit: 'b'.repeat(40),
+          },
+        ],
+      }),
+    )
+
+    const result = await assembleReadiness(options())
+    const penTest = byId(result.checks, 'pen-test')
+
+    expect(penTest.error?.code).toBe('evidence-unverifiable')
+    expect(penTest.error?.message).not.toContain(cited)
+    expect(penTest.summary).toContain(cited)
+    expect(CheckResultSchema.safeParse(penTest).success).toBe(true)
+    expect(ReadinessNoticeSchema.safeParse(result.notice).success).toBe(true)
+    expect(result.notice?.message).not.toContain(cited)
   })
 
   it('honours the other declarations when one citation is unopenable', async () => {
@@ -365,9 +449,14 @@ describe('assembleReadiness — per-check precedence', () => {
     expect(review.error?.code).toBe('evidence-unverifiable')
     // The whole result must round-trip the shared schema, message included.
     expect(CheckResultSchema.safeParse(review).success).toBe(true)
-    // The path is dropped from the wire message but kept in the summary, which
-    // carries no sanitiser restriction and is where a reader looks for it.
-    expect(review.error?.message).not.toContain('/Users/')
+    // This assertion is the reverse of what it was. It used to require the path
+    // to be dropped, which was the workaround the sanitiser's ambiguity forced:
+    // any colon in a citation removed it from the message. That bought safety
+    // with the reader's only handle on what to fix, and it did not even work —
+    // the notice built from the same path had no guard at all and took the
+    // whole fleet response down with it. The guard now separates a citation
+    // from a leak, so the path stays.
+    expect(review.error?.message).toContain('docs/notes:/Users/reviewer/report.md')
     expect(review.summary).toContain('docs/notes:/Users/reviewer/report.md')
   })
 

@@ -26,6 +26,7 @@ import { basename, join } from 'node:path'
 
 import {
   ReadinessFileSchema,
+  wireSafeText,
   type CheckId,
   type ReadinessFile,
   type ReadinessNotice,
@@ -42,7 +43,12 @@ const MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 export interface RejectedCitation {
   /** The repo-relative path the entry cited. */
   cited: string
-  /** Why it could not be verified. Safe to put on the wire. */
+  /**
+   * Why it could not be verified. Interpolates `cited`, which is author-named
+   * and may legally contain a colon — so this is NOT safe to put on the wire
+   * unconditionally, whatever an earlier version of this comment claimed. Route
+   * it through `wireSafeText` at every site that puts it on a sanitised field.
+   */
   reason: string
 }
 
@@ -232,6 +238,12 @@ async function citationFailure(root: string, cited: string): Promise<string | nu
  * 600-character bound, and a notice truncated by the outbound validator is worse
  * than one that names a count. Each rejected check carries its own path in its
  * own error, which is where a reader fixing them will actually look.
+ *
+ * The reason is author-derived — it interpolates the cited path — so it goes out
+ * through `wireSafeText`. This is the site that made a single filename fatal:
+ * the notice was built without a guard, the fleet response is validated as one
+ * payload for every repo, and a citation whose own characters read as an
+ * absolute path therefore answered the whole endpoint with `schema_drift`.
  */
 function citationNotice(
   rejected: ReadonlyMap<CheckId, RejectedCitation>,
@@ -241,8 +253,12 @@ function citationNotice(
 
   const others = rejected.size - 1
   const suffix = others > 0 ? ` (and ${others} other declared check${others > 1 ? 's' : ''})` : ''
+  const plural = rejected.size > 1 ? 's' : ''
   return {
     code: 'readiness-file-invalid',
-    message: `${READINESS_FILE_PATH} cites evidence that could not be verified: ${first.reason}${suffix}`,
+    message: wireSafeText(
+      `${READINESS_FILE_PATH} cites evidence that could not be verified: ${first.reason}${suffix}`,
+      `${READINESS_FILE_PATH} cites evidence that could not be verified for ${rejected.size} declared check${plural}`,
+    ),
   }
 }

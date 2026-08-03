@@ -127,6 +127,47 @@ describe('GET /api/v2/fleet', () => {
     expect(readFleet).toHaveBeenCalled()
   })
 
+  /**
+   * The outage this change closes. A repo may legally cite an evidence path
+   * containing a colon, and the notice built from it then looks to the outbound
+   * guard exactly like an interpolated absolute path. Because the route
+   * validates one payload for every repo, that refusal took the entire fleet
+   * down with a 500 — one repo's filename withholding every other repo's
+   * readiness, which the degradation requirement already forbids.
+   *
+   * The mocked payload is the one the real assembler builds for this input;
+   * what is under test is the boundary the route applies to it.
+   */
+  it('answers the fleet when one repo cites a colon-bearing evidence path', async () => {
+    const cited = 'docs/notes:/Users/x.md'
+    const citing = {
+      ...summary,
+      id: 'b',
+      name: 'b-repo',
+      notice: {
+        code: 'readiness-file-invalid' as const,
+        message: `.agenticapps/readiness.json cites evidence that could not be verified: ${cited} does not resolve inside the repository`,
+      },
+    }
+    vi.mocked(readFleet).mockResolvedValueOnce({
+      generatedAt: GENERATED_AT,
+      repos: [summary, citing],
+    } as never)
+
+    const response = await createApp({ authFile }).request(
+      'http://127.0.0.1/api/v2/fleet',
+      { headers: auth() },
+    )
+
+    expect(response.status).toBe(200)
+    const parsed = FleetResponseSchema.safeParse(await response.json())
+    expect(parsed.success).toBe(true)
+    // The other repo is still there: degradation is per repo, not per fleet.
+    const repos = parsed.success ? parsed.data.repos : []
+    expect(repos.map((repo) => repo.id)).toEqual(['a', 'b'])
+    expect(repos[1]?.notice?.message).toContain(cited)
+  })
+
   it('returns schema_drift rather than a malformed body', async () => {
     vi.mocked(readFleet).mockResolvedValueOnce({ repos: 'not-a-list' } as never)
 
