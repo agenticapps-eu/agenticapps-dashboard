@@ -1,12 +1,66 @@
 import { realpath } from 'node:fs/promises'
 import { join } from 'node:path'
-import { mkdirSync, writeFileSync, symlinkSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, symlinkSync, mkdtempSync, rmSync, realpathSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 
 import { makeTmpProject } from './__fixtures__/tmpHome.js'
-import { resolveAllowed, resolveAllowedNamed, COVERAGE_ROOTS, PathViolation } from './paths.js'
+import {
+  resolveAllowed,
+  resolveAllowedNamed,
+  isAnchoredUnder,
+  COVERAGE_ROOTS,
+  PathViolation,
+} from './paths.js'
+
+describe('isAnchoredUnder', () => {
+  it('accepts a boundary equal to the root', () => {
+    expect(isAnchoredUnder('/a/root', '/a/root')).toBe(true)
+  })
+
+  it('accepts a boundary under the root', () => {
+    expect(isAnchoredUnder('/a/root/.claude/skills', '/a/root')).toBe(true)
+  })
+
+  // The reason this is a separate predicate rather than a bare startsWith:
+  // a sibling whose name merely begins with the root's name is NOT under it.
+  it('rejects a sibling whose name shares the root as a prefix', () => {
+    expect(isAnchoredUnder('/a/rootster/secrets', '/a/root')).toBe(false)
+  })
+
+  it('rejects a boundary outside the root', () => {
+    expect(isAnchoredUnder('/tmp/outside', '/a/root')).toBe(false)
+  })
+
+  it('rejects a parent of the root', () => {
+    expect(isAnchoredUnder('/a', '/a/root')).toBe(false)
+  })
+})
+
+/**
+ * A project whose `.claude` entry is itself a symlink to a directory outside
+ * the project root — the containment-anchor escape. The target deliberately
+ * carries both an arbitrary file and a plausibly-named `skills/foo/SKILL.md`,
+ * so a reader that adopts the escaped boundary would serve either one.
+ */
+function makeTmpAnchorEscape(): { root: string; outside: string; cleanup: () => void } {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-anchor-')))
+  const outside = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-anchor-outside-')))
+  mkdirSync(join(root, '.planning'), { recursive: true })
+  mkdirSync(join(outside, 'skills', 'foo'), { recursive: true })
+  writeFileSync(join(outside, 'secrets.txt'), 'THIS IS OUTSIDE THE PROJECT ROOT')
+  writeFileSync(join(outside, 'skills', 'foo', 'SKILL.md'), 'outside skill')
+  symlinkSync(outside, join(root, '.claude'), 'dir')
+  return {
+    root,
+    outside,
+    cleanup: () => {
+      rmSync(root, { recursive: true, force: true })
+      rmSync(outside, { recursive: true, force: true })
+    },
+  }
+}
 
 describe('resolveAllowed', () => {
   let cleanup: () => void
@@ -107,6 +161,45 @@ describe('resolveAllowed', () => {
         e instanceof PathViolation && /outside allowed/i.test((e as PathViolation).message),
     )
     rmSync(outside, { recursive: true, force: true })
+  })
+
+  // anchor-allowed-subdirs-to-root task group 1 — the allow-listed directory
+  // being ITSELF a symlink. Distinct from the cases above, which all plant a
+  // symlink *under* a real allow-listed directory: here the boundary the reader
+  // adopts is the thing that escaped, so every per-path check still passes.
+  it('refuses a read whose allow-listed directory is itself an escaping symlink', async () => {
+    const tmp = makeTmpAnchorEscape()
+    cleanup = tmp.cleanup
+    await expect(resolveAllowed(tmp.root, '.claude/secrets.txt')).rejects.toSatisfy(
+      (e: unknown) =>
+        e instanceof PathViolation && /outside allowed/i.test((e as PathViolation).message),
+    )
+  })
+
+  it('does not leak the escaped target even when the basename looks allow-listed', async () => {
+    const tmp = makeTmpAnchorEscape()
+    cleanup = tmp.cleanup
+    await expect(
+      resolveAllowed(tmp.root, '.claude/skills/foo/SKILL.md'),
+    ).rejects.toBeInstanceOf(PathViolation)
+  })
+
+  // Control: the two shapes that MUST keep working. If either of these ever
+  // goes red, the anchor check has over-tightened.
+  it('control — an ordinary allow-listed directory still resolves', async () => {
+    const tmp = makeTmpProject()
+    cleanup = tmp.cleanup
+    const result = await resolveAllowed(tmp.root, '.claude/skills/foo/SKILL.md')
+    expect(result).toBe(await realpath(join(tmp.root, '.claude', 'skills', 'foo', 'SKILL.md')))
+  })
+
+  it('control — a symlink under an allow-listed directory pointing within the project still resolves', async () => {
+    const tmp = makeTmpProject()
+    cleanup = tmp.cleanup
+    const target = join(tmp.root, '.claude', 'skills', 'foo', 'SKILL.md')
+    symlinkSync(target, join(tmp.root, '.planning', 'linked-skill.md'))
+    const result = await resolveAllowed(tmp.root, '.planning/linked-skill.md')
+    expect(result).toBe(await realpath(target))
   })
 
   // Explicitly rejected in the change's non-goals: relocated GSD history under
@@ -218,6 +311,75 @@ describe('resolveAllowedNamed', () => {
         extension: '.yml',
       }),
     ).rejects.toBeInstanceOf(PathViolation)
+  })
+
+  // anchor-allowed-subdirs-to-root task 2.4 — anchorTo.
+  describe('anchorTo', () => {
+    it('drops a derived root that has left the repository, refusing its target', async () => {
+      const tmp = makeTmpAnchorEscape()
+      cleanups.push(tmp.cleanup)
+      const skillRoot = join(tmp.root, '.claude', 'skills')
+      await expect(
+        resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
+          roots: [skillRoot],
+          allowedNames: ['SKILL.md'],
+          anchorTo: tmp.root,
+        }),
+      ).rejects.toBeInstanceOf(PathViolation)
+    })
+
+    it('keeps a derived root that is still inside the repository', async () => {
+      const tmp = makeTmpProject()
+      cleanups.push(tmp.cleanup)
+      const skillRoot = join(tmp.root, '.claude', 'skills')
+      const result = await resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
+        roots: [skillRoot],
+        allowedNames: ['SKILL.md'],
+        anchorTo: tmp.root,
+      })
+      expect(result).toBe(await realpath(join(skillRoot, 'foo', 'SKILL.md')))
+    })
+
+    // The proposal's second finding: roots are alternatives, so listing the repo
+    // root alongside an escaped derived root must not rescue the escaped one.
+    it('pairing an escaped root with the repository root does not admit the escaped target', async () => {
+      const tmp = makeTmpAnchorEscape()
+      cleanups.push(tmp.cleanup)
+      const skillRoot = join(tmp.root, '.claude', 'skills')
+      await expect(
+        resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
+          roots: [skillRoot, tmp.root],
+          allowedNames: ['SKILL.md'],
+          anchorTo: tmp.root,
+        }),
+      ).rejects.toBeInstanceOf(PathViolation)
+    })
+
+    it('raises PathViolation when no root survives the anchor filter', async () => {
+      const tmp = makeTmpAnchorEscape()
+      cleanups.push(tmp.cleanup)
+      await expect(
+        resolveAllowedNamed(join(tmp.outside, 'secrets.txt'), {
+          roots: [join(tmp.root, '.claude')],
+          allowedNames: ['secrets.txt'],
+          anchorTo: tmp.root,
+        }),
+      ).rejects.toSatisfy(
+        (e: unknown) =>
+          e instanceof PathViolation && /anchored/i.test((e as PathViolation).message),
+      )
+    })
+
+    it('without anchorTo, behaviour is unchanged — the derived root is still honoured', async () => {
+      const tmp = makeTmpAnchorEscape()
+      cleanups.push(tmp.cleanup)
+      const skillRoot = join(tmp.root, '.claude', 'skills')
+      const result = await resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
+        roots: [skillRoot],
+        allowedNames: ['SKILL.md'],
+      })
+      expect(result).toBe(await realpath(join(tmp.outside, 'skills', 'foo', 'SKILL.md')))
+    })
   })
 
   it('throws PathViolation when BOTH allowedNames and extension are provided (mutually exclusive)', async () => {

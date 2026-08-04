@@ -55,6 +55,118 @@ describe('makeCoverageResolver', () => {
     expect(typeof resolve).toBe('function')
   })
 
+  // anchor-allowed-subdirs-to-root task 3.3 — anchorTo on the sync resolver.
+  describe('anchorTo', () => {
+    /** A repo whose `.claude` is a symlink to a directory outside every family root. */
+    function makeEscapingRepo(): { repo: string; outside: string; cleanup: () => void } {
+      const repo = join(root, 'Sourcecode', 'agenticapps', 'escaping-repo')
+      mkdirSync(repo, { recursive: true })
+      const outside = mkdtempSync(join(tmpdir(), 'anchor-sync-outside-'))
+      mkdirSync(join(outside, 'skills'), { recursive: true })
+      writeFileSync(join(outside, 'skills', 'SKILL.md'), 'outside skill')
+      symlinkSync(outside, join(repo, '.claude'), 'dir')
+      return {
+        repo,
+        outside,
+        cleanup: () => rmSync(outside, { recursive: true, force: true }),
+      }
+    }
+
+    it('drops a derived root that has left the repository', () => {
+      const { repo, cleanup: rm } = makeEscapingRepo()
+      try {
+        const skillRoot = join(repo, '.claude', 'skills')
+        expect(() =>
+          resolve(join(skillRoot, 'SKILL.md'), {
+            allowedNames: ['SKILL.md'],
+            roots: [skillRoot],
+            anchorTo: repo,
+          }),
+        ).toThrow(PathViolation)
+      } finally {
+        rm()
+      }
+    })
+
+    it('keeps a derived root that is still inside the repository', () => {
+      const repo = join(root, 'Sourcecode', 'agenticapps', 'ordinary-repo')
+      const skillRoot = join(repo, '.claude', 'skills')
+      mkdirSync(skillRoot, { recursive: true })
+      writeFileSync(join(skillRoot, 'SKILL.md'), 'inside skill')
+      const result = resolve(join(skillRoot, 'SKILL.md'), {
+        allowedNames: ['SKILL.md'],
+        roots: [skillRoot],
+        anchorTo: repo,
+      })
+      expect(result.endsWith('SKILL.md')).toBe(true)
+    })
+
+    // An anchored call asserts that the read stays inside the named repository,
+    // so the cross-family allowance does not apply to it. Without this, an
+    // anchor is defeated whenever ONE root survives the filter and the target
+    // happens to sit under a family root — which is every repo in the fleet.
+    it('does not fall back to the family roots when a call is anchored', () => {
+      const repo = join(root, 'Sourcecode', 'agenticapps', 'my-repo')
+      const otherRepo = join(root, 'Sourcecode', 'agenticapps', 'other-repo')
+      mkdirSync(repo, { recursive: true })
+      mkdirSync(join(otherRepo, 'skills'), { recursive: true })
+      writeFileSync(join(otherRepo, 'skills', 'SKILL.md'), 'other repo skill')
+      symlinkSync(otherRepo, join(repo, '.claude'), 'dir')
+      const skillRoot = join(repo, '.claude', 'skills')
+
+      // One root escapes, one survives — the shape workflowVersionScanner uses.
+      expect(() =>
+        resolve(join(skillRoot, 'SKILL.md'), {
+          allowedNames: ['SKILL.md'],
+          roots: [skillRoot, repo],
+          anchorTo: repo,
+        }),
+      ).toThrow(PathViolation)
+    })
+
+    // Raised by the codex reviewer: `resolveAllowedNamed` throws when the anchor
+    // cannot be realpath'd, while this resolver fell back to a LEXICAL resolve
+    // and compared against a path nobody had verified.
+    //
+    // No case was found where that actually admits a read — an unresolvable
+    // anchor means everything beneath it is unresolvable too, so the candidate's
+    // own realpath fails first. It is fixed as a contract inconsistency, not as
+    // a demonstrated escape: a security predicate should not have a silent
+    // lexical mode, and the two resolvers must not disagree about failing closed.
+    //
+    // The RED here is the message: before the fix this threw
+    // 'no allowed root remains anchored', which is the wrong reason.
+    it('refuses an unresolvable anchor as an anchor failure, not a root-filter failure', () => {
+      const repo = join(root, 'Sourcecode', 'agenticapps', 'anchor-ghost-repo')
+      const skillRoot = join(repo, '.claude', 'skills')
+      mkdirSync(skillRoot, { recursive: true })
+      writeFileSync(join(skillRoot, 'SKILL.md'), 'skill')
+
+      expect(() =>
+        resolve(join(skillRoot, 'SKILL.md'), {
+          allowedNames: ['SKILL.md'],
+          roots: [skillRoot],
+          anchorTo: join(repo, 'no-such-directory'),
+        }),
+      ).toThrow(/anchor root not accessible/)
+    })
+
+    // The family roots remain exactly as permissive as before for every call
+    // that does NOT declare an anchor. That allowance is what lets the fleet
+    // scanners read across repositories at all.
+    it('leaves the family roots untouched for unanchored calls', () => {
+      const filePath = join(root, 'Sourcecode', 'neuroflash', 'CLAUDE.md')
+      writeFileSync(filePath, '# CLAUDE')
+      const unrelatedRepo = join(root, 'Sourcecode', 'agenticapps', 'unrelated')
+      mkdirSync(unrelatedRepo, { recursive: true })
+      const result = resolve(filePath, {
+        allowedNames: ['CLAUDE.md'],
+        roots: [unrelatedRepo],
+      })
+      expect(result.endsWith('CLAUDE.md')).toBe(true)
+    })
+  })
+
   it('resolver accepts path inside an allowed root with matching allowedNames', () => {
     const filePath = join(root, 'Sourcecode', 'agenticapps', 'CLAUDE.md')
     writeFileSync(filePath, '# CLAUDE')

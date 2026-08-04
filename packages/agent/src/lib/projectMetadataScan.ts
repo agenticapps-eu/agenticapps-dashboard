@@ -280,6 +280,9 @@ export async function parseCiWorkflowsForSentry(projectRoot: string): Promise<Ob
       real = await resolveAllowedNamed(filePath, {
         roots: [workflowsDir],
         extension: '.yml',
+        // workflowsDir is derived from projectRoot, so it is only a usable
+        // boundary while it is still inside it.
+        anchorTo: projectRoot,
       })
     } catch {
       // Wrong extension or path outside workflows dir — skip silently

@@ -16,8 +16,10 @@
  * Ref: CODEX HIGH-3, COV-02, INV-01.
  */
 import { realpathSync } from 'node:fs'
-import { resolve as pathResolve, sep, basename, join } from 'node:path'
+import { resolve as pathResolve, basename, join } from 'node:path'
 import { homedir } from 'node:os'
+
+import { isAnchoredUnder } from './paths.js'
 
 // ── PathViolation ─────────────────────────────────────────────────────────────
 
@@ -45,7 +47,22 @@ export class PathViolation extends Error {
  */
 export type PathResolver = (
   candidatePath: string,
-  opts: { allowedNames?: string[]; extension?: string; roots: string[] },
+  opts: {
+    allowedNames?: string[]
+    extension?: string
+    roots: string[]
+    /**
+     * The registered root that any DERIVED entry in `roots` must still lie
+     * under — pass it whenever a root is built from a path inside a repository
+     * (`<repo>/.claude/skills`, `<repo>/.github/workflows`) rather than being
+     * the repository root itself. Derived roots that have left it are dropped
+     * before the containment check.
+     *
+     * Applies to caller-supplied roots only; the family roots this resolver is
+     * bound to are a deliberate cross-family allowance and are never narrowed.
+     */
+    anchorTo?: string
+  },
 ) => string
 
 // ── CoverageResolverOptions ───────────────────────────────────────────────────
@@ -95,7 +112,12 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
 
   return (
     candidatePath: string,
-    resolverOpts: { allowedNames?: string[]; extension?: string; roots: string[] },
+    resolverOpts: {
+      allowedNames?: string[]
+      extension?: string
+      roots: string[]
+      anchorTo?: string
+    },
   ): string => {
     // Validate mutual exclusivity of allowedNames + extension
     if (resolverOpts.allowedNames && resolverOpts.extension) {
@@ -117,13 +139,44 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
     // Merge caller-supplied roots with the module-level allowed roots.
     // Caller supplies roots for the specific scanner's context (e.g. repo root);
     // the module-level roots provide the broader allow-list for cross-family reads.
-    const callerRoots = resolverOpts.roots.map(realpathSafe)
-    const mergedRoots = [...allowedRoots, ...callerRoots]
+    let callerRoots = resolverOpts.roots.map(realpathSafe)
+
+    // Anchor check. A root derived from inside a repository stops being a
+    // usable boundary once it has left that repository.
+    //
+    // An anchored call is an assertion that this read stays inside the named
+    // repository, so the module-level family roots do NOT apply to it. They are
+    // the cross-family allowance from `Named Allowed Roots For Fleet Scanners`,
+    // and leaving them in the candidate set would defeat the anchor whenever a
+    // single root survived the filter and the target sat under a family root —
+    // which is true of every repository in the fleet. Unanchored calls keep the
+    // allowance untouched.
+    let mergedRoots: string[]
+    if (resolverOpts.anchorTo !== undefined) {
+      // Fail closed, exactly as resolveAllowedNamed does. realpathSafe's lexical
+      // fallback is fine for candidate roots — an unresolvable root simply fails
+      // to match — but it is not safe for the anchor: comparing against a
+      // lexically-normalised path admits reads through an anchor that was never
+      // verified, which is the whole failure this change exists to prevent.
+      let realAnchor: string
+      try {
+        realAnchor = realpathSync(resolverOpts.anchorTo)
+      } catch {
+        throw new PathViolation(`anchor root not accessible: ${resolverOpts.anchorTo}`)
+      }
+      callerRoots = callerRoots.filter((root) => isAnchoredUnder(root, realAnchor))
+      if (callerRoots.length === 0) {
+        throw new PathViolation(
+          `no allowed root remains anchored to its registered root: ${realAnchor}`,
+        )
+      }
+      mergedRoots = callerRoots
+    } else {
+      mergedRoots = [...allowedRoots, ...callerRoots]
+    }
 
     // Assert real path falls under one of the allowed roots
-    const inRoot = mergedRoots.some(
-      (root) => real === root || real.startsWith(root + sep),
-    )
+    const inRoot = mergedRoots.some((root) => isAnchoredUnder(real, root))
     if (!inRoot) {
       throw new PathViolation(`outside allowed roots: ${real}`)
     }

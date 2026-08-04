@@ -284,6 +284,7 @@ function readDirectorySkills(
       skillDir = resolve(join(skillRoot, id), {
         allowedNames: [id],
         roots: [skillRoot],
+        anchorTo: hostRepoRoot,
       })
     } catch {
       return missingSkill(id)
@@ -294,6 +295,10 @@ function readDirectorySkills(
       skillPath = resolve(join(skillDir, 'SKILL.md'), {
         allowedNames: ['SKILL.md'],
         roots: [skillDir],
+        // Anchored to the repository, not merely to skillDir: a SKILL.md
+        // symlinked into a sibling repo lies under skillDir's parent family
+        // root, so anchoring one level up would still admit it.
+        anchorTo: hostRepoRoot,
       })
     } catch {
       return missingSkill(id)
