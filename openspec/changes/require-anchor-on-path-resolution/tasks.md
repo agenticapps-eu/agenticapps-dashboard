@@ -1,14 +1,20 @@
 ## 1. Baseline before changing anything
 
-- [ ] 1.1 Characterisation tests that pass on `main` unmodified, covering each
+- [x] 1.1 Characterisation tests that pass on `main` unmodified, covering each
   shape on **both** resolvers: an admitted path and a refused path for
   `resolveAllowedNamed` and for `PathResolver`. Include a `PathResolver` case
   that is admitted **only** by the family roots — that is the admission D2's
   first draft would have destroyed, and nothing currently pins it.
-- [ ] 1.2 Include the `<real>/missing/..` root case from D2 as a
+  → `packages/agent/src/lib/containmentAdmission.characterisation.test.ts`,
+  9 tests, green on unmodified `main`.
+- [x] 1.2 Include the `<real>/missing/..` root case from D2 as a
   characterisation test. It is admitted today via the lexical fallback; after
   this change it must still be admitted, because nothing moves to the anchored
   branch.
+- [x] 1.3 **Prove the two critical tests can fail.** Both were mutated to the
+  draft's design (`anchorTo` added to the call) and both went RED; reverting
+  restored green. Without this step 1.2 would have shipped asserting nothing —
+  see §5.
 
 ## 2. Enumerate before migrating
 
@@ -66,8 +72,32 @@
 
 ## 5. Findings recorded during execution
 
-<!-- 3.4's enumeration diff. Any site whose classification departs from the
-     table is named here with reasoning, never folded into the mechanical pass. -->
+**§1 — `join()` normalised the pathological path away, and the test asserted
+nothing.** The `<real>/missing/..` characterisation test was first written as
+`roots: [join(root, 'missing', '..')]`. `path.join` normalises internally, so
+that argument *is* `root` — a plain resolvable directory. The test passed for
+the wrong reason, and would have kept passing under the very design D2 rejects.
+
+It was caught only by the mandatory mutation step (1.3): mutating it to the
+draft's design failed to turn it RED, which is the signal that the fixture, not
+the code, was wrong. The root is now built by string concatenation, and the test
+asserts its own premise — `realpath` rejects, `resolve` returns `root` — before
+asserting admission. Both critical tests then went RED under mutation as they
+should.
+
+The lesson is narrower than "prove a test can fail": a fixture built with path
+helpers may not contain the pathology it names, because those helpers normalise.
+Every path-escape fixture in this change is therefore built by concatenation,
+not by `join`.
+
+**§1 — two distinct `PathViolation` classes exist** (`paths.ts:34` and
+`coverageResolver.ts:26`). An `instanceof` against the wrong one fails while the
+value really is a path violation, which reads as a behaviour change but is an
+import bug. Noted, not fixed — out of scope here.
+
+<!-- 3.4's enumeration diff goes here. Any site whose classification departs
+     from the table is named here with reasoning, never folded into the
+     mechanical pass. -->
 
 ## 6. Verification
 
