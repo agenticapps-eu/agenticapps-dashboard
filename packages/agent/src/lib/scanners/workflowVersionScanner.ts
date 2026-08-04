@@ -159,7 +159,11 @@ export function scanWorkflowVersionForRepo(
         // skillRoot is derived from repoAbsPath. Listing repoAbsPath beside it
         // does NOT bound it — roots are alternatives — so the anchor is what
         // stops a symlinked .claude from becoming the boundary.
-        anchorTo: repoAbsPath,
+        //
+        // Both roots share this one classification: each must lie under
+        // repoAbsPath, and repoAbsPath lying under itself is an identity rather
+        // than a second classification. See the change's D6.
+        containment: { kind: 'anchored', root: repoAbsPath },
       })
     } catch {
       // PathViolation or not accessible — try next candidate.

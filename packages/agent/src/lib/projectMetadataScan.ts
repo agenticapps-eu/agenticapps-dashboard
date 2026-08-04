@@ -272,7 +272,7 @@ export async function parseCiWorkflowsForSentry(projectRoot: string): Promise<Ob
     workflowsDir = await resolveAllowedNamed(candidateDir, {
       roots: [projectRoot],
       allowedNames: ['workflows'],
-      anchorTo: projectRoot,
+      containment: { kind: 'anchored', root: projectRoot },
     })
   } catch {
     return []
@@ -296,7 +296,7 @@ export async function parseCiWorkflowsForSentry(projectRoot: string): Promise<Ob
         extension: '.yml',
         // workflowsDir is derived from projectRoot, so it is only a usable
         // boundary while it is still inside it.
-        anchorTo: projectRoot,
+        containment: { kind: 'anchored', root: projectRoot },
       })
     } catch {
       // Wrong extension or path outside workflows dir — skip silently
