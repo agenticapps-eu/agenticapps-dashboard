@@ -6,6 +6,13 @@
  * refetch inside the window would be answered from that memo anyway — a longer
  * client stale time would only add a second layer of staleness the daemon
  * deliberately refused to keep.
+ *
+ * `refetchInterval` is what makes that true. `daemon-runtime` →
+ * `Polling, Not Push` binds the client to roughly a 5s cadence, and both this
+ * module and `service.ts` size the daemon's memo *by* that client. A stale
+ * time alone never polls — it only decides what a refetch is answered from —
+ * so without the interval the board sat on its mount-time read while two
+ * docblocks claimed a polling client justified the cache.
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 
@@ -33,6 +40,7 @@ export function useChangesFleet(): UseQueryResult<ChangesFleetResponse, Error> {
       return result.data
     },
     staleTime: 5_000,
+    refetchInterval: 5_000,
     refetchOnWindowFocus: false,
   })
 }

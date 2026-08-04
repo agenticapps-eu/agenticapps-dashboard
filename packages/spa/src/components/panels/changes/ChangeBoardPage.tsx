@@ -47,8 +47,11 @@ import {
 } from '@agenticapps/dashboard-shared'
 
 import { useChangesFleet } from '../../../lib/changesQueries.js'
+import { ApiError } from '../../../lib/api.js'
+import { SchemaDriftError } from '../../../lib/readinessQueries.js'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
+import { SchemaDriftState } from '../../SchemaDriftState.js'
 
 import { useFourColumnLayout } from './boardLayout.js'
 import { STAGE_LABELS, StageColumn } from './StageColumn.js'
@@ -117,6 +120,32 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
       >
         Retry
       </button>
+    </section>
+  )
+}
+
+/**
+ * The daemon answered, and it does not know this route. Deliberately not the
+ * error state: this dashboard ships from Pages and updates on deploy, while
+ * the daemon it reads is installed locally and updates when its owner says
+ * so — a build that knows the board talking to a daemon that does not is the
+ * ordinary case. `ErrorState` would blame the connection and leave the one
+ * action that fixes it unsaid.
+ */
+function DaemonOutdatedState(): ReactElement {
+  return (
+    <section
+      data-testid="board-daemon-outdated"
+      role="status"
+      className="rounded-card bg-card-bg p-6 shadow-card"
+    >
+      <h2 className="text-lg font-semibold text-text-primary">
+        This daemon does not have the change board.
+      </h2>
+      <p className="mt-2 max-w-prose text-sm text-text-tertiary">
+        The dashboard reached your daemon, but it is older than this board and
+        does not serve it. Update the daemon on this machine, then reload.
+      </p>
     </section>
   )
 }
@@ -371,7 +400,22 @@ export function ChangeBoardPage({
   let content: ReactElement
   let response: ChangesFleetResponse | undefined
 
-  if (board.isPending) {
+  if (board.error instanceof ApiError && board.error.status === 404) {
+    // The route is absent, not the daemon. `GET` on this path can only 404 by
+    // not being routed — the handler itself never answers 404.
+    content = <DaemonOutdatedState />
+  } else if (board.error instanceof SchemaDriftError) {
+    // Checked before the general error branch, which would otherwise name the
+    // wrong cause: the daemon answered, and it answered with a shape this
+    // build cannot read. `FleetPage` fixed this same collapse once already.
+    content = (
+      <SchemaDriftState
+        firstIssue={board.error.drift}
+        fullIssues={board.error.drift.issues}
+        onRetry={() => void board.refetch()}
+      />
+    )
+  } else if (board.isPending) {
     content = <LoadingState />
   } else if (board.isError || !board.data) {
     content = <ErrorState onRetry={() => void board.refetch()} />

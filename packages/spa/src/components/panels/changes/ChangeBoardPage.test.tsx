@@ -46,6 +46,8 @@ vi.mock('./boardLayout.js', async (importOriginal) => ({
 }))
 
 import { useChangesFleet } from '../../../lib/changesQueries.js'
+import { ApiError } from '../../../lib/api.js'
+import { SchemaDriftError } from '../../../lib/readinessQueries.js'
 import { ChangeBoardPage } from './ChangeBoardPage.js'
 
 const mockUseChangesFleet = vi.mocked(useChangesFleet)
@@ -658,6 +660,56 @@ describe('degradation', () => {
   it('says the daemon could not be reached when the query itself fails', () => {
     renderBoard(null, 'error')
     expect(screen.getByTestId('board-error')).toBeTruthy()
+  })
+
+  it('names an outdated daemon rather than an unreachable one when the route is absent', () => {
+    // A static SPA on Pages updates the moment it is deployed; the daemon is
+    // installed locally and updates when its owner says so. So a build that
+    // knows this route talking to a daemon that does not is the ordinary
+    // case, not an edge case. GET only 404s when the daemon does not route
+    // the path at all — the route itself never answers 404.
+    mockUseChangesFleet.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new ApiError(404, undefined, 'not_found'),
+      refetch: vi.fn(),
+    } as never)
+    render(<ChangeBoardPage />)
+
+    const outdated = screen.getByTestId('board-daemon-outdated')
+    expect(outdated.textContent).toMatch(/update/iu)
+    // Not the connectivity state: the daemon answered.
+    expect(screen.queryByTestId('board-error')).toBeNull()
+  })
+
+  it('still reports an unreachable daemon as unreachable, not as an outdated one', () => {
+    renderBoard(null, 'error')
+    expect(screen.queryByTestId('board-daemon-outdated')).toBeNull()
+  })
+
+  it('reports a schema mismatch as drift, not as a daemon that did not answer', () => {
+    // `project-dashboard` requires a wire mismatch to surface *as* schema drift.
+    // Collapsing it into the connectivity state names the wrong cause: the
+    // daemon answered, and it answered with a shape this build cannot read.
+    mockUseChangesFleet.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new SchemaDriftError({
+        path: 'cards.0.stage',
+        expected: 'propose | validate | execute | archive',
+        got: 'ship',
+        issues: [],
+      }),
+      refetch: vi.fn(),
+    } as never)
+    render(<ChangeBoardPage />)
+
+    expect(screen.getByText('Schema drift detected')).toBeTruthy()
+    // The measured field, not a reconstruction of it.
+    expect(screen.getByText('cards.0.stage')).toBeTruthy()
+    expect(screen.queryByTestId('board-error')).toBeNull()
   })
 
   it('shows a loading state while the first read is in flight', () => {

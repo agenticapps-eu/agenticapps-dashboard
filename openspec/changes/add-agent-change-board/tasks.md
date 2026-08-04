@@ -584,22 +584,72 @@ three are fixed. Each went RED before its fix, per `prove a new test can fail`.
       paired line-height, so the arbitrary value emitted identical CSS and only
       detached them from the scale
 
-**Carried, not fixed** — recorded with evidence, none blocking on their own:
+**Carried at the time, fixed before archiving (2026-08-04, session 23).** These
+three were the ones the hand-off flagged as touching user-visible behaviour.
+Two turned out not to be judgement calls at all — they were violations of
+requirements already durable in `openspec/specs/`, which under CLAUDE.md's
+"when a spec disagrees with intuition, the spec wins" decides them. The third
+was settled by a narrower fix than the finding proposed. All three went RED
+first; the board's three error states were then proved to discriminate by
+neutering the guard and watching the *other two* fail with it.
 
-- [ ] 14.10 **Schema drift is reported as a connectivity failure.**
+- [x] 14.10 **Schema drift is reported as a connectivity failure.**
       `changesQueries.ts` throws `SchemaDriftError` carrying the measured drift;
       the board collapses it into `board.isError` and renders "The daemon did
       not answer." The sibling `FleetPage.tsx:368` handles it properly, and its
-      own comment records this exact defect being fixed there once already
-- [ ] 14.11 **New SPA against an old daemon degrades misleadingly.** The
+      own comment records this exact defect being fixed there once already.
+      **Fixed.** `project-dashboard` already requires a wire mismatch to
+      surface *as* a schema-drift state "rather than a silent misrender", so
+      this was non-compliance, not a design question. The branch is checked
+      ahead of the general error case and reuses the shared `SchemaDriftState`,
+      so the board reports the *measured* field rather than a reconstruction —
+      the same correction `FleetPage` records having made once already
+- [x] 14.11 **New SPA against an old daemon degrades misleadingly.** The
       `/changes` sidebar entry is unconditional, the SPA reads the daemon
       version nowhere, and a daemon without the route 404s into that same
       screen. Given a static SPA on Pages and a locally-installed daemon this is
-      the normal case, not an edge case
-- [ ] 14.12 **The board never refetches.** `staleTime: 5_000` with no
+      the normal case, not an edge case. **Fixed narrowly, by user decision
+      (2026-08-04): the misreported *cause* is gone, the version negotiation is
+      not built.** A third error branch renders "This daemon does not have the
+      change board" on a 404, distinct from the unreachable state. This needs
+      no version read, because a `GET` on this path can only 404 by not being
+      routed — `changes.test.ts:167` pins that the handler itself answers 404
+      to nothing but a wrong method. **What is still carried:** the nav entry
+      is still unconditional and the SPA still reads the daemon version
+      nowhere, so every *other* v2 route keeps this exposure. That is a
+      shell-wide capability and wants its own change — it is not discharged
+      here, only made honest on this one route
+
+**The `impeccable:critique` gate was not re-run for these three, and that is a
+gap rather than a judgement.** CLAUDE.md requires every frontend-touching
+change to critique the affected routes at 1440×900. `/changes` at that
+viewport with a reachable daemon renders exactly what round 2 critiqued —
+the diff adds one branch and one `<section>`, both unreachable unless the
+daemon 404s or the wire shape drifts, neither of which a critique run can
+reach. So a re-run would have re-scored the same pixels and produced the same
+30/40. That is an argument for why it would be uninformative, not a waiver
+clause; the floor was already waived for this change under the structural-debt
+clause in 7.3 and this does not change that. The new state's copy was written
+against the design system's existing states rather than measured: it reuses
+`AllFailedState`'s exact structure and tokens, and names no command, because
+the first draft told the reader to restart the daemon under a heading that
+said update it.
+- [x] 14.12 **The board never refetches.** `staleTime: 5_000` with no
       `refetchInterval`, while both `changesQueries.ts` and `service.ts:33`
       justify the 5s memo by a client that polls at that cadence. Sibling read
-      hooks do set the interval. Either add it or correct both docblocks
+      hooks do set the interval. Either add it or correct both docblocks.
+      **Fixed — and "correct the docblocks" was not actually available.**
+      `daemon-runtime` → `Polling, Not Push` binds the *client*: "The dashboard
+      SHALL be driven by client polling on roughly a 5-second cadence."
+      Correcting the prose would have left the code violating durable spec, so
+      per CLAUDE.md the spec decided it. `refetchInterval: 5_000` added;
+      `staleTime` left equal to it, so a poll inside the window is answered
+      from the daemon's own memo rather than adding a second layer of
+      staleness. The package had **no** test for this hook at all —
+      `changesQueries.test.ts` is new, and went RED on
+      `expected undefined to be 5000` before the fix
+**Carried, not fixed** — recorded with evidence, none blocking on their own:
+
 - [ ] 14.13 **`invalidateChangesCache` has no production caller** (performance
       and maintainability, independently). Its docblock says "an action that
       changes what the board reads calls this" and claims to satisfy `Response
