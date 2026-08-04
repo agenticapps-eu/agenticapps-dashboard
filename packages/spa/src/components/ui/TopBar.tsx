@@ -15,7 +15,7 @@
 import { useState } from 'react'
 import type React from 'react'
 import { Link, useMatches } from '@tanstack/react-router'
-import { Cog, Keyboard, Search } from 'lucide-react'
+import { Cog, Keyboard, Menu, Search } from 'lucide-react'
 
 import { useFirstRunHint } from '../../lib/firstRunHint.js'
 import { useRegistryList } from '../../lib/registry.js'
@@ -27,7 +27,15 @@ import { KbdHint } from './KbdHint.js'
 import { Pill } from './Pill.js'
 import { StatusPill } from './StatusPill.js'
 
-export function TopBar(): React.JSX.Element {
+export function TopBar({
+  compact = false,
+  onOpenNav,
+}: {
+  /** Below the shell's compact boundary: controls shrink to their icons. */
+  compact?: boolean
+  /** Supplied only when the sidebar has left the grid. */
+  onOpenNav?: (() => void) | undefined
+} = {}): React.JSX.Element {
   // Cmd+K trigger: dispatches a synthetic keydown so the global CommandPalette listener opens.
   function openPalette(): void {
     const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
@@ -57,10 +65,30 @@ export function TopBar(): React.JSX.Element {
 
   return (
     <header
-      className="sticky top-0 flex items-center gap-3 border-b border-border-subtle bg-app-bg px-6"
+      // `min-w-0` so the bar can shrink below its content's natural width
+      // rather than forcing the page to scroll; `px-6` becomes `px-3` when
+      // compact, because 48px of horizontal padding is a tenth of a 390px
+      // viewport.
+      className={
+        compact
+          ? 'sticky top-0 flex min-w-0 items-center gap-2 border-b border-border-subtle bg-app-bg px-3'
+          : 'sticky top-0 flex min-w-0 items-center gap-3 border-b border-border-subtle bg-app-bg px-6'
+      }
       style={{ height: '60px', zIndex: 'var(--z-sticky)' }}
     >
-      <Breadcrumb />
+      {onOpenNav !== undefined && (
+        <button
+          type="button"
+          aria-label="Open navigation"
+          onClick={onOpenNav}
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <Menu size={16} aria-hidden="true" />
+        </button>
+      )}
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <Breadcrumb />
+      </div>
 
       <div role="status" aria-live="polite" className="flex items-center gap-2">
         {isProjectRoute && tags.length > 0 && (
@@ -75,25 +103,37 @@ export function TopBar(): React.JSX.Element {
         )}
       </div>
 
-      <span className="flex-1" aria-hidden="true" />
-
+      {/*
+        The label and the shortcut hint are what gave this bar a minimum width
+        wider than a 390px viewport. Compact drops both and keeps the accessible
+        name, which is the part a reader who cannot see the icon depends on —
+        and the keyboard hint is not useful on the widths that lose it.
+      */}
       <button
         type="button"
         onClick={openPalette}
         aria-label="Open command palette"
-        className="inline-flex items-center gap-2 rounded-md border border-border-subtle bg-card-bg px-3 py-1.5 text-sm text-text-secondary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className={
+          compact
+            ? 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border-subtle bg-card-bg text-text-secondary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+            : 'inline-flex shrink-0 items-center gap-2 rounded-md border border-border-subtle bg-card-bg px-3 py-1.5 text-sm text-text-secondary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+        }
       >
         <Search size={14} aria-hidden="true" />
-        <span>Search…</span>
-        <KbdHint />
+        {!compact && (
+          <>
+            <span>Search…</span>
+            <KbdHint />
+          </>
+        )}
       </button>
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           type="button"
           aria-label="Keyboard shortcuts"
           onClick={() => setManualOpen((o) => !o)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <Keyboard size={16} aria-hidden="true" />
         </button>
@@ -112,7 +152,7 @@ export function TopBar(): React.JSX.Element {
       <Link
         to="/settings"
         aria-label="Settings"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <Cog size={16} aria-hidden="true" />
       </Link>
