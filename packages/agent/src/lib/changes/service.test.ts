@@ -451,6 +451,78 @@ describe('the response cache', () => {
     expect((await readChangesFleet({ registryFile, now: 1_200 })).cards).toHaveLength(2)
   })
 
+  it('a scan that finishes after an invalidation does not restore the stale board', async () => {
+    // `invalidateChangesCache` clears the current value, but a scan already in
+    // flight holds a reading taken *before* the invalidation and writes it back
+    // when it settles. The next request inside the cadence then receives the
+    // board the invalidation existed to discard.
+    const root = await makeRepo(changeFiles('openspec/changes/add-thing'))
+    const registryFile = await makeRegistry([{ id: 'p1', name: 'one', root }])
+
+    const reader = await import('./changeReader.js')
+    const real = reader.readRepositoryChanges
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const spy = vi
+      .spyOn(reader, 'readRepositoryChanges')
+      .mockImplementationOnce(async (...args) => {
+        await gate
+        return real(...args)
+      })
+
+    const inFlight = readChangesFleet({ registryFile, now: 1_000 })
+    // Something changed what the board reads while the scan was running.
+    invalidateChangesCache()
+    release()
+    await inFlight
+
+    // The completed scan must not have re-populated the cache it was told to
+    // discard: the next read has to walk the repositories again.
+    await readChangesFleet({ registryFile, now: 1_100 })
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('a scan slower than the cadence still produces a usable cache entry', async () => {
+    // The cache was stamped with the time the scan *started*, so aggregation
+    // taking longer than one cadence produced an entry that was already expired
+    // when it was written — every poll then paid for a full walk, and the memo
+    // that exists to bound the filesystem work bounded nothing.
+    const root = await makeRepo(changeFiles('openspec/changes/add-thing'))
+    const registryFile = await makeRegistry([{ id: 'p1', name: 'one', root }])
+
+    const reader = await import('./changeReader.js')
+    const real = reader.readRepositoryChanges
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const spy = vi
+      .spyOn(reader, 'readRepositoryChanges')
+      .mockImplementationOnce(async (...args) => {
+        await gate
+        return real(...args)
+      })
+
+    // `Date.now` alone, not `useFakeTimers`: this file's bound tests need the
+    // real `setTimeout` that `withinBound` races, and freezing the whole timer
+    // system to move one clock took those tests down with it.
+    let clock = 1_000
+    vi.spyOn(Date, 'now').mockImplementation(() => clock)
+
+    // No injected `now`: this case is about the clock moving *during* the scan.
+    const inFlight = readChangesFleet({ registryFile })
+    clock = 1_000 + CHANGES_MEMO_TTL_MS + 1
+    release()
+    await inFlight
+
+    // Read again at the instant the scan completed. The reading is as fresh as
+    // a reading can be, so it must be served from the memo.
+    await readChangesFleet({ registryFile })
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
   it('a registry change is reflected without waiting for expiry', async () => {
     const a = await makeRepo(changeFiles('openspec/changes/from-a'))
     const b = await makeRepo(changeFiles('openspec/changes/from-b'))

@@ -142,15 +142,24 @@ ordered rules, where the first matching rule wins:
 1. Archived — **archive**
 2. Active, and missing any of `proposal.md`, a delta spec, or `tasks.md` —
    **propose**
-3. Artifact-complete, and any of: fewer than two reviewers whose latest verdict
-   approves; any reviewer whose latest verdict is a rejection; zero checklist
-   rows — **validate**
+3. Artifact-complete, and any of: fewer than two distinct approving reviewers;
+   any standing request for changes; zero checklist rows — **validate**
 4. The approving threshold met, checklist incomplete — **execute**
 5. The approving threshold met, checklist complete and non-empty — **archive**,
    marked `ready`
 
 A backlog entry SHALL classify as **propose**. `design.md` is optional and SHALL
 NOT affect any stage.
+
+**"Distinct approving" and "standing" are the reviewer requirement's terms, and
+recency lives in one place only: which *record* is read.** An earlier wording of
+rule 3 said "reviewers whose latest verdict approves", which contradicted
+`Two Approving Reviewers And No Standing Rejection` — that requirement forbids a
+last-section-wins rule in terms, because document order is not evidence of
+recency inside a single record. There is no "latest verdict" to consult. A
+request for changes anywhere in the selected record is standing; a reviewer
+absent from that record has no verdict at all. Recency is decided once, by
+selecting the most recently modified review record, and never again inside it.
 
 Two cards may therefore hold stage `archive` for different reasons, and the card
 SHALL make the difference legible without opening it: a rule-1 card carries

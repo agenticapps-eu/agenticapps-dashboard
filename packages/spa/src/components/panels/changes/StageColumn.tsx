@@ -99,7 +99,9 @@ export function StageColumn({
               aria-expanded={showAll}
               className="rounded-md px-2 py-2 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              {showAll ? 'Show fewer' : `Show all ${cards.length} archived`}
+              {/* Not "archived": this column also holds active changes marked
+                  ready, which are the ones that have *not* been filed. */}
+              {showAll ? 'Show fewer' : `Show all ${cards.length} in Archive`}
             </button>
           )}
         </div>

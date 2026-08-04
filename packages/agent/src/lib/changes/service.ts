@@ -91,11 +91,27 @@ export interface ChangesFleetOptions {
 
 interface CachedFleet {
   key: string
-  generatedAt: number
+  /**
+   * When the scan **finished**, which is the clock the TTL runs on.
+   *
+   * Deliberately not `response.generatedAt`, which is when the reading was
+   * *taken*. One number served both until CodeRabbit separated them on PR #98:
+   * a scan slower than one cadence wrote an entry that was already expired, so
+   * every poll paid for a full walk and the memo bounded nothing.
+   */
+  cachedAt: number
   response: ChangesFleetResponse
 }
 
 let cached: CachedFleet | null = null
+
+/**
+ * Bumped by every invalidation. A scan carries the generation it started under
+ * and declines to cache its result if that generation has moved, so a reading
+ * taken before an invalidation cannot be written back after it — which would
+ * restore exactly the board the invalidation existed to discard.
+ */
+let generation = 0
 
 /**
  * Discard the cached board so the next read recomputes it.
@@ -105,10 +121,12 @@ let cached: CachedFleet | null = null
  * new state without waiting for natural expiry.
  */
 export function invalidateChangesCache(): void {
+  generation += 1
   cached = null
 }
 
 export function _resetChangesCacheForTests(): void {
+  generation += 1
   cached = null
 }
 
@@ -245,10 +263,11 @@ export async function readChangesFleet(
   const entries = registryEntries(options)
   const key = cacheKey(entries)
 
-  if (cached && cached.key === key && now - cached.generatedAt < CHANGES_MEMO_TTL_MS) {
+  if (cached && cached.key === key && now - cached.cachedAt < CHANGES_MEMO_TTL_MS) {
     return cached.response
   }
 
+  const scanGeneration = generation
   const settled = await Promise.allSettled(
     entries.map((entry) => readRepository(entry, options)),
   )
@@ -269,6 +288,12 @@ export async function readChangesFleet(
     notices: readings.flatMap((reading) => reading.notices),
   }
 
-  cached = { key, generatedAt: now, response }
+  // An invalidation while this scan was in flight makes its reading stale by
+  // definition — it was taken before whatever prompted the invalidation.
+  // Returning it to *this* caller is correct; writing it back for the next one
+  // is not.
+  if (scanGeneration === generation) {
+    cached = { key, cachedAt: options.now ?? Date.now(), response }
+  }
   return response
 }

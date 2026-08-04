@@ -452,6 +452,30 @@ describe('the Archive column', () => {
     renderBoard(fleet({ cards: [archived('2026-07-01', 'only')] }))
     expect(screen.queryByRole('button', { name: /show all/iu })).toBeNull()
   })
+
+  it('does not call every card in the column archived, because they are not', () => {
+    // The column deliberately holds both readings: filed archive entries and
+    // active changes complete enough to file. Naming the total "archived"
+    // contradicts the requirement that the two stay distinguishable — and the
+    // ready card is precisely the one that has *not* been archived.
+    const many = Array.from({ length: 20 }, (_, index) =>
+      archived(`2026-07-${String(index + 1).padStart(2, '0')}`, `old-${index}`),
+    )
+    const ready = card({
+      stage: 'archive',
+      source: 'active',
+      ready: true,
+      sourceInstance: 'not-yet-filed',
+      changeName: 'not-yet-filed',
+      title: 'not-yet-filed',
+    })
+    renderBoard(fleet({ cards: [...many, ready] }))
+
+    const control = within(screen.getByTestId('stage-column-archive')).getByRole('button', {
+      name: /show all 21/iu,
+    })
+    expect(control.textContent).not.toMatch(/archived/iu)
+  })
 })
 
 describe('the repository filter', () => {
