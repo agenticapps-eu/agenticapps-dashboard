@@ -206,11 +206,21 @@ export type ChangesFleetResponse = z.infer<typeof ChangesFleetResponseSchema>
  * is idempotent, so the daemon can ship an ordered response and the board can
  * still order what it renders without the two ever being able to disagree.
  *
- * The four stage groups never interleave on screen, so a comparison across two
- * stages is only ever a tie-break to keep the order total.
+ * The four stage groups never interleave on screen, and they do not interleave
+ * in this order either — stage is the primary key. That is what makes the order
+ * transitive, and it is load-bearing rather than tidy: an earlier draft applied
+ * the archive rule to two archive cards and the `updatedAt` rule to every other
+ * pair, so a ready card, a dated card and a propose card could form a cycle
+ * (ready before dated by date, dated before propose by time, propose before
+ * ready by time). `Array.prototype.sort` over an intransitive comparator
+ * arranges by input order, so the archive *column* — the archive subsequence of
+ * a whole-fleet sort — came out mis-ordered against the very rule stated above.
  */
 export function compareChangeCards(left: ChangeCard, right: ChangeCard): number {
-  if (left.stage === 'archive' && right.stage === 'archive') {
+  if (left.stage !== right.stage) {
+    return CHANGE_STAGES.indexOf(left.stage) - CHANGE_STAGES.indexOf(right.stage)
+  }
+  if (left.stage === 'archive') {
     // A ready card has no entry date and sorts ahead of every dated card.
     if (left.archiveDate === null && right.archiveDate !== null) return -1
     if (left.archiveDate !== null && right.archiveDate === null) return 1

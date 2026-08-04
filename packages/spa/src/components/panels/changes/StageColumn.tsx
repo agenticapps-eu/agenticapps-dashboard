@@ -89,7 +89,7 @@ export function StageColumn({
           {visible.map((card) => (
             <ChangeCard key={card.id} card={card} onOpen={onOpen} />
           ))}
-          {(bounded || showAll) && stage === 'archive' && cards.length > ARCHIVE_VISIBLE_LIMIT && (
+          {stage === 'archive' && cards.length > ARCHIVE_VISIBLE_LIMIT && (
             // Toggles. The first draft was `setShowAll(true)` — a one-way door
             // that undid the bounding permanently the moment anyone used it,
             // while the sibling checklist disclosure toggled correctly.

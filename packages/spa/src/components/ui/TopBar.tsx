@@ -86,8 +86,8 @@ export function TopBar({
         <button
           type="button"
           aria-label={navOpen ? 'Navigation, open' : 'Open navigation'}
-          aria-expanded={navOpen ?? false}
-          aria-controls="shell-navigation-panel"
+          aria-expanded={navOpen}
+          aria-controls={navOpen ? 'shell-navigation-panel' : undefined}
           onClick={onOpenNav}
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >

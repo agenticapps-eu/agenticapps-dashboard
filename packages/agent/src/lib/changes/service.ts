@@ -44,8 +44,6 @@
  * `invalidateChangesCache` is the explicit lever the caching requirement's
  * scenario calls for.
  */
-import { statSync } from 'node:fs'
-
 import {
   cardKey,
   compareChangeCards,
@@ -56,7 +54,7 @@ import {
   type ChangesFleetResponse,
 } from '@agenticapps/dashboard-shared'
 
-import { readRegistry } from '../registry.js'
+import { isReachable, readRegistry } from '../registry.js'
 
 import * as reader from './changeReader.js'
 import { classifyChange } from './stage.js'
@@ -142,15 +140,6 @@ function registryEntries(options: ChangesFleetOptions): RegistryEntry[] {
  */
 function cacheKey(entries: readonly RegistryEntry[]): string {
   return entries.map((entry) => `${entry.id}\u0000${entry.root}`).join('\u0000\u0000')
-}
-
-/** Whether a registered root is a directory the daemon can see at all. */
-function isReachable(root: string): boolean {
-  try {
-    return statSync(root).isDirectory()
-  } catch {
-    return false
-  }
 }
 
 const TIMED_OUT = Symbol('changes-scan-timeout')

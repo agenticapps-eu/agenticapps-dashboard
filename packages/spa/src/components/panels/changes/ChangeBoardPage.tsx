@@ -86,7 +86,11 @@ function noticePhrase(notice: ChangeNotice): string {
 
 function LoadingState(): ReactElement {
   return (
-    <div aria-label="Loading the change board" className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+    // `role="status"` because `aria-label` is prohibited on the implicit
+    // `generic` role and is dropped from the accessibility tree — the name was
+    // present in the markup and absent to a screen reader. The board's other
+    // three states already carry it.
+    <div role="status" aria-label="Loading the change board" className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
       {[1, 2, 3, 4].map((col) => (
         <div key={col} className="flex flex-col gap-2">
           {[1, 2, 3].map((row) => (

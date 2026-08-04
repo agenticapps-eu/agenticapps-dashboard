@@ -32,7 +32,7 @@ function SourceBadge({ card }: { card: ChangeCardData }): ReactElement | null {
     return (
       <span
         data-testid="change-card-source-badge"
-        className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary"
+        className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-xs font-medium text-text-tertiary"
       >
         Backlog
       </span>
@@ -48,7 +48,7 @@ function SourceBadge({ card }: { card: ChangeCardData }): ReactElement | null {
     return (
       <span
         data-testid="change-card-source-badge"
-        className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary"
+        className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-xs font-medium text-text-tertiary"
       >
         Filed <span className="tabular-nums">{card.archiveDate}</span>
       </span>
@@ -58,7 +58,7 @@ function SourceBadge({ card }: { card: ChangeCardData }): ReactElement | null {
     return (
       <span
         data-testid="change-card-source-badge"
-        className="inline-flex items-center gap-1 rounded-md bg-status-success/10 px-1.5 py-0.5 text-[11px] font-medium text-status-success"
+        className="inline-flex items-center gap-1 rounded-md bg-status-success/10 px-1.5 py-0.5 text-xs font-medium text-status-success"
       >
         <span aria-hidden="true">●</span>
         Ready to archive

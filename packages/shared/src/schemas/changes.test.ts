@@ -8,6 +8,7 @@ import {
   ChangeStageSchema,
   ChangesFleetResponseSchema,
   cardKey,
+  compareChangeCards,
   fleetReadState,
 } from './changes.js'
 
@@ -313,5 +314,78 @@ describe('fleetReadState', () => {
         repositories: [{ id: 'a', name: 'a', read: 'ok', reason: null }],
       }),
     ).toBe('ok')
+  })
+})
+
+// ── the order both sides apply ──────────────────────────────────────────────
+
+describe('compareChangeCards', () => {
+  const at = (overrides: Record<string, unknown>) => ChangeCardSchema.parse(card(overrides))
+
+  /**
+   * The module claims one total order. A comparator that is not transitive is
+   * not an order at all, and `Array.prototype.sort` over one produces a result
+   * that depends on the input arrangement — so the daemon's ordered response
+   * and the board's re-sort of a filtered subset can disagree, which is exactly
+   * what the claim rules out.
+   */
+  it('is transitive across every triple of stages and archive shapes', () => {
+    const cards = [
+      at({ id: 'a', stage: 'archive', source: 'archive', archiveDate: null, updatedAt: 100 }),
+      at({ id: 'b', stage: 'archive', source: 'archive', archiveDate: '2026-01-01', updatedAt: 300 }),
+      at({ id: 'c', stage: 'propose', updatedAt: 200 }),
+      at({ id: 'd', stage: 'validate', updatedAt: 400 }),
+      at({ id: 'e', stage: 'archive', source: 'archive', archiveDate: '2026-03-03', updatedAt: 50 }),
+    ]
+
+    for (const left of cards) {
+      for (const middle of cards) {
+        for (const right of cards) {
+          if (compareChangeCards(left, middle) < 0 && compareChangeCards(middle, right) < 0) {
+            expect(compareChangeCards(left, right)).toBeLessThan(0)
+          }
+        }
+      }
+    }
+  })
+
+  it('is antisymmetric, and no two distinct cards compare equal', () => {
+    const cards = [
+      at({ id: 'a', stage: 'archive', source: 'archive', archiveDate: '2026-07-04', updatedAt: 1 }),
+      at({ id: 'b', stage: 'archive', source: 'archive', archiveDate: '2026-07-04', updatedAt: 9 }),
+      at({ id: 'c', stage: 'propose', updatedAt: 1 }),
+    ]
+    for (const left of cards) {
+      for (const right of cards) {
+        if (left.id === right.id) continue
+        expect(Math.sign(compareChangeCards(left, right)))
+          .toBe(-Math.sign(compareChangeCards(right, left)))
+        expect(compareChangeCards(left, right)).not.toBe(0)
+      }
+    }
+  })
+
+  /**
+   * The rule the module states in prose: a rule-5 `ready` card is the thing
+   * waiting to be filed, so it sorts ahead of every dated entry. It has to hold
+   * of the *rendered column*, which is the archive subsequence of a sort over
+   * the whole fleet — not merely of the two cards compared in isolation.
+   */
+  it('keeps a ready card ahead of every dated one after a whole-fleet sort', () => {
+    const ready = at({ id: 'c0', stage: 'archive', source: 'active', ready: true, archiveDate: null, updatedAt: 100 })
+    const filed = at({ id: 'c2', stage: 'archive', source: 'archive', archiveDate: '2026-01-03', updatedAt: 300 })
+    const open = at({ id: 'c1', stage: 'propose', updatedAt: 200 })
+
+    const column = [ready, open, filed]
+      .sort(compareChangeCards)
+      .filter((entry) => entry.stage === 'archive')
+
+    expect(column.map((entry) => entry.id)).toEqual(['c0', 'c2'])
+  })
+
+  it('orders the other three columns by modification time, most recent first', () => {
+    const older = at({ id: 'a', stage: 'validate', updatedAt: 1_000 })
+    const newer = at({ id: 'b', stage: 'validate', updatedAt: 9_000 })
+    expect([older, newer].sort(compareChangeCards).map((entry) => entry.id)).toEqual(['b', 'a'])
   })
 })

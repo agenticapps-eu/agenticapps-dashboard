@@ -506,6 +506,154 @@ one of round 1's own fixes.
       a row's first line only — the same grammar §2.5 mirrors deliberately.
       Joining continuation lines would be a divergence and belongs upstream
 
+## 14. Two-stage review disposition — stage 1 (2026-08-04, task 7.7)
+
+Stage 1 is gstack `/review`: the structured critical pass, six specialists
+dispatched in parallel (testing, security, api-contract, performance,
+maintainability, design), and a cross-model Codex adversarial pass. Codex's gate
+is **FAIL** — nine P1s, closing recommendation "Block the merge."
+
+Three defects were **verified by executing code**, not by reading it, and all
+three are fixed. Each went RED before its fix, per `prove a new test can fail`.
+
+- [x] 14.1 **`openspec/` as a symlink redefined the containment anchor**
+      (security specialist and Codex, independently — same line, different
+      models). `realpath(<root>/openspec)` became the one boundary `contained()`
+      checks against, so a registered repository whose only content is
+      `openspec -> /elsewhere` yielded full cards read from outside the root,
+      with `notices: []`. Every per-path guard passed, because each path really
+      did lie under the boundary the reader had adopted; the boundary was what
+      escaped. Reproduced against a temp repo before fixing. **This violates
+      `filesystem-access-policy`**, so per CLAUDE.md it was surfaced rather than
+      quietly patched: a new requirement, `A Containment Anchor Is Verified
+      Against Its Registered Root`, is added as a delta with three scenarios,
+      and the anchor is now checked against `realpath(root)`. The existing
+      symlink tests all covered symlinks *under* `openspec/`; none covered
+      `openspec` *being* one. Two tests added, including the control that an
+      `openspec` symlinked **within** its own root is still admitted
+- [x] 14.2 **A non-change directory silently deleted a real backlog card**
+      (Codex). `occupiedSlugs` was filled from every candidate directory under
+      `changes/` before any of them was known to be a change, so a scratch
+      directory `changes/scratch-notes/` removed the backlog entry
+      `## Scratch Notes` while contributing no card of its own — and emitted no
+      notice. Reproduced: the entry vanished from both sources with
+      `notices: []`. Slugs are now occupied where the record is pushed, on both
+      the active and archive sides, which is what upstream's rule actually says
+      ("already an active or archived *change*")
+- [x] 14.3 **`compareChangeCards` was not a total order** (found in the
+      structured pass, then independently by the testing and api-contract
+      specialists, who built a different cycle). The archive rule governed
+      archive/archive pairs and `updatedAt` governed every other pair, and the
+      two contradict: a ready card, a dated card and a propose card form a
+      cycle. Both `service.ts` and `ChangeBoardPage.tsx` sort the **whole fleet**
+      before grouping, so the cycle corrupted the rendered column — **1,956 of
+      4,000 random fleets left the Archive column mis-ordered against the rule
+      the module states in prose**, and a three-card fleet reproduces it. Stage
+      is now the primary key, which makes the order transitive and leaves every
+      within-column rule unchanged. The module's "one total order" claim is now
+      true rather than aspirational. Note the coverage hole that allowed it:
+      `packages/shared` had **no** test for the comparator, and the one test
+      that touched it used `[...cards].sort(compareChangeCards)` as its own
+      expected value — tautological, and same-stage only. Four tests added,
+      covering transitivity over every triple, antisymmetry, totality, and the
+      ready-ahead-of-dated rule asserted **of the rendered column**
+
+**Mechanical cleanups applied in the same pass** (verified, each one-line):
+
+- [x] 14.4 `isReachable` in `service.ts` was a character-for-character copy of
+      `registry.ts`'s export, in a module that already imported from it
+- [x] 14.5 `BacklogRecord.documentIndex` was written in four places and read in
+      zero — the wire contract at `changes.ts:16` records the decision to drop it
+- [x] 14.6 The loading state's `aria-label` sat on a bare `div`, where it is
+      dropped from the accessibility tree; the other three board states already
+      carry `role="status"`. Its test passed regardless, because
+      testing-library matches the attribute without checking the role
+- [x] 14.7 `aria-expanded={navOpen ?? false}` guarded a nullish the prop default
+      excludes; `aria-controls` dangled whenever the panel was closed, which is
+      the rule `StageRail` already follows in the same diff
+- [x] 14.8 `StageColumn`'s disclosure condition carried `(bounded || showAll)`,
+      a term that cannot be false when the other two hold
+- [x] 14.9 Three badges used `text-[11px]` where `--text-xs` is 11px with no
+      paired line-height, so the arbitrary value emitted identical CSS and only
+      detached them from the scale
+
+**Carried, not fixed** — recorded with evidence, none blocking on their own:
+
+- [ ] 14.10 **Schema drift is reported as a connectivity failure.**
+      `changesQueries.ts` throws `SchemaDriftError` carrying the measured drift;
+      the board collapses it into `board.isError` and renders "The daemon did
+      not answer." The sibling `FleetPage.tsx:368` handles it properly, and its
+      own comment records this exact defect being fixed there once already
+- [ ] 14.11 **New SPA against an old daemon degrades misleadingly.** The
+      `/changes` sidebar entry is unconditional, the SPA reads the daemon
+      version nowhere, and a daemon without the route 404s into that same
+      screen. Given a static SPA on Pages and a locally-installed daemon this is
+      the normal case, not an edge case
+- [ ] 14.12 **The board never refetches.** `staleTime: 5_000` with no
+      `refetchInterval`, while both `changesQueries.ts` and `service.ts:33`
+      justify the 5s memo by a client that polls at that cadence. Sibling read
+      hooks do set the interval. Either add it or correct both docblocks
+- [ ] 14.13 **`invalidateChangesCache` has no production caller** (performance
+      and maintainability, independently). Its docblock says "an action that
+      changes what the board reads calls this" and claims to satisfy `Response
+      Caching Cadences`; nothing calls it but its own test, and `writeRegistry`
+      invalidates the conformance and coverage caches but not this one. The
+      registry-content cache key covers registry mutations incidentally, so the
+      practical gap is narrow — the false spec claim is not
+- [ ] 14.14 **Unbounded aggregate response** (security, performance and Codex).
+      No fleet-level card or byte cap, and `parseChecklist` has no row cap
+      against a 1 MiB `tasks.md`. Measured: 216,902 bytes for the current 60
+      cards, ~4.4 KB per record, dominated by checklist text the card does not
+      render. Extends carried item 12.7 with numbers
+- [ ] 14.15 **No request coalescing** (performance and Codex; carried since
+      round 1 as 9.17 / 11.19 / 12.7). Now measured: four concurrent requests
+      cost 2.49x the wall time and 4x the filesystem work
+- [ ] 14.16 **The corpus walk is serial.** ~35 sequential syscalls per change
+      directory, benchmarked at 10.64 ms serial vs 3.52 ms at concurrency 8 on
+      this repository's own tree
+- [ ] 14.17 **`statSync` runs on the event loop** inside the request path and
+      deliberately *outside* the bound, so the one call that can hang hardest is
+      the only unbounded one. Precedented elsewhere in the daemon
+- [ ] 14.18 **The evidence parsers are not fence-aware** (Codex). Reviewer
+      headings, verdicts and checklist rows inside fenced examples are counted,
+      so a `tasks.md` holding only a fenced completed example plus a `REVIEWS.md`
+      holding two fenced approvals can classify as ready to archive. Note
+      `parseBacklog` *is* fence-aware, so this is an inconsistency within the
+      mirrored parsers, not a uniform upstream property — worth checking
+      upstream before diverging
+- [ ] 14.19 **Invalid archive dates sort as real ones** (Codex). Both
+      `archivedSlug` and the wire schema check only `YYYY-MM-DD` *shape*, so
+      `2026-99-99-release` displays as a filed date and sorts ahead of every
+      genuine 2026 entry
+- [ ] 14.20 **`changeReader.test.ts` asserts against the live tree.** It
+      requires `toContain('add-agent-change-board')` from this repository's own
+      `openspec/changes/`, so `/opsx:archive` — the literal next step — turns it
+      red on main. Fix before archiving, not after
+- [ ] 14.21 Test-quality gaps the testing specialist named that this pass did
+      not close: `updatedAt` asserted only `> 0` (the max-of-mtimes rule is
+      unpinned, and it is the sort key for three columns),
+      `backlogSlug('A thing') === backlogSlug('A thing')`, a `typeof … ===
+      'boolean'` on a value the return type guarantees, `ARCHIVE_VISIBLE_LIMIT`
+      never imported by the test that bounds it, no `boardLayout`/`shellLayout`
+      tests, no `changesQueries` test, and five of six notice kinds unrendered
+- [ ] 14.22 **Out of diff, flagged not fixed:** `resolveAllowed` in
+      `packages/agent/src/lib/paths.ts` realpaths each allowed subdir without
+      re-anchoring to the realpath of the project root — the same shape as 14.1.
+      Pre-existing, so out of scope for this branch; it should get its own change
+
+**Design came back clean**, which is worth recording because two rounds did not:
+all 21 referenced tokens exist in `tokens.css` in both appearances, the two
+invented tokens are gone, the drawer satisfies the full dialog contract
+(`role`/`aria-modal`/focus move/focus restore/Escape/Tab trap/scrim), every
+interactive element is a real control, and the board cannot reintroduce
+horizontal overflow. One gap: `border-status-warning/40` is the sole pairing
+`verify-contrast.test.ts` does not assert, and it composites to 1.80:1 in light
+against a 3.0 non-text floor.
+
+**The shell fix is scoped.** `TopBar`, `Sidebar` and `AppShellV2` carry only
+overflow-related edits plus the one new nav entry — no unrelated restyling,
+which was the Surgical Changes risk on this branch.
+
 ## Out of scope
 
 - [ ] Do NOT render live agent-session counts, and do NOT add the host adapters

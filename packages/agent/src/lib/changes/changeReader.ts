@@ -30,6 +30,10 @@
  *    narrower root is the point: a symlink under `openspec/` resolving to
  *    `.env` or `.git/config` passes a root-scoped check and fails this one. The
  *    board is entitled to a repository's OpenSpec tree, not to its repository.
+ *    **The anchor itself is checked against the root's realpath first**, which
+ *    this guard cannot do for itself: `openspec` *being* a symlink out of the
+ *    repository redefines containment instead of violating it, so every
+ *    per-path check below passes while the whole tree is somewhere else.
  * 3. A regular-file check and a **pre-read size cap** against
  *    `MAX_CHANGE_FILE_BYTES`, both made against **the open file descriptor**
  *    rather than re-resolved from the path. The cap is checked before the read,
@@ -163,7 +167,6 @@ function closesFence(line: string, fence: { character: '`' | '~'; length: number
 export interface BacklogRecord {
   changeName: string
   title: string
-  documentIndex: number
 }
 
 /**
@@ -175,11 +178,10 @@ export function parseBacklog(markdown: string): {
   records: BacklogRecord[]
   notices: RepositoryNotice[]
 } {
-  interface Section { title: string; documentIndex: number; firstBodyLine?: string }
+  interface Section { title: string; firstBodyLine?: string }
   const sections: Section[] = []
   let current: Section | undefined
   let fence: { character: '`' | '~'; length: number } | undefined
-  let headingIndex = 0
 
   for (const line of markdown.split(/\r?\n/u)) {
     if (fence) {
@@ -194,11 +196,7 @@ export function parseBacklog(markdown: string): {
 
     const heading = /^##[ \t]+(.+?)\s*$/u.exec(line)
     if (heading) {
-      current = {
-        title: stripClosingHeadingDecoration(heading[1]!),
-        documentIndex: headingIndex,
-      }
-      headingIndex += 1
+      current = { title: stripClosingHeadingDecoration(heading[1]!) }
       sections.push(current)
       continue
     }
@@ -222,7 +220,7 @@ export function parseBacklog(markdown: string): {
       continue
     }
     seen.add(changeName)
-    records.push({ changeName, title: section.title, documentIndex: section.documentIndex })
+    records.push({ changeName, title: section.title })
   }
   return { records, notices }
 }
@@ -522,6 +520,16 @@ export async function readRepositoryChanges(
   let openspecReal: string
   try {
     openspecReal = await realpath(join(root, 'openspec'))
+    // The anchor is checked against the root's own realpath, because every
+    // other guard here is made *against* this anchor and so cannot catch it
+    // being wrong. `openspec` being a symlink out of the repository redefines
+    // containment rather than violating it: each path really does lie under the
+    // boundary, and the boundary is another tree. `filesystem-access-policy` ›
+    // `A Containment Anchor Is Verified Against Its Registered Root`.
+    const rootReal = await realpath(root)
+    if (openspecReal !== rootReal && !openspecReal.startsWith(rootReal + sep)) {
+      return { records, notices, paths }
+    }
   } catch {
     // No `openspec/` — or one we cannot resolve. Silent, per the requirement:
     // a repository without OpenSpec contributes nothing and is not an error.
@@ -548,7 +556,6 @@ export async function readRepositoryChanges(
   const activeCandidates = activeListing.entries
     .filter((entry) => entry.directory && entry.name !== 'archive')
     .sort(byName)
-  for (const entry of activeCandidates) occupiedSlugs.add(backlogSlug(entry.name))
 
   const admittedActive = activeCandidates.slice(0, MAX_SOURCE_RECORDS)
   if (activeCandidates.length > admittedActive.length) {
@@ -574,6 +581,12 @@ export async function readRepositoryChanges(
     if (evidence.evidenceLimited && !evidence.malformed) {
       notices.push({ source: 'evidence', kind: 'evidence-limited', changeName: entry.name })
     }
+    // Occupied here rather than over every candidate directory: deduplication
+    // is "a backlog entry whose slug is already an active or archived
+    // *change*", and a directory that holds no artifacts is not one. Marking it
+    // earlier let a scratch directory under `changes/` silently delete a real
+    // backlog card while contributing none of its own.
+    occupiedSlugs.add(backlogSlug(entry.name))
     records.push({
       source: 'active',
       sourceInstance: entry.name,
@@ -598,7 +611,6 @@ export async function readRepositoryChanges(
       continue
     }
     validArchives.push({ name: entry.name, slug })
-    occupiedSlugs.add(slug)
   }
   // Date-descending, which is the order the Archive column renders.
   validArchives.sort((left, right) => (right.name < left.name ? -1 : right.name > left.name ? 1 : 0))
@@ -631,6 +643,9 @@ export async function readRepositoryChanges(
     if (evidence.evidenceLimited && !evidence.malformed) {
       notices.push({ source: 'evidence', kind: 'evidence-limited', changeName: entry.slug })
     }
+    // Same rule as the active side: a dated directory holding no artifacts is
+    // reported above and does not occupy its slug, because it is not a change.
+    occupiedSlugs.add(entry.slug)
     records.push({
       source: 'archive',
       sourceInstance: entry.name,

@@ -542,6 +542,26 @@ describe('identity', () => {
     const root = await makeRepo(changeFiles('openspec/changes/add-thing'))
     expect((await readRepositoryChanges(root)).records[0]!.sourceInstance).toBe('add-thing')
   })
+
+  // Deduplication is "a backlog entry whose slug is already an active or
+  // archived *change*". A directory that is not a change is not a change, so it
+  // cannot occupy the slug — otherwise a scratch directory silently deletes a
+  // real backlog card and nothing reports it.
+  it('does not let a non-change directory occupy a backlog entry’s slug', async () => {
+    const root = await makeRepo({
+      ...changeFiles('openspec/changes/real-change'),
+      'openspec/changes/scratch-notes/notes.txt': 'just my notes\n',
+      'openspec/BACKLOG.md': '## Scratch Notes\n\nA real backlog item.\n',
+    })
+
+    const { records } = await readRepositoryChanges(root)
+    // The scratch directory contributes no card of its own …
+    expect(records.filter((r) => r.source === 'active').map((r) => r.changeName))
+      .toEqual(['real-change'])
+    // … so it must not have removed the backlog entry either.
+    expect(records.filter((r) => r.source === 'backlog').map((r) => r.changeName))
+      .toEqual(['scratch-notes'])
+  })
 })
 
 // ── 3.8 the per-source bound ────────────────────────────────────────────────
@@ -731,6 +751,39 @@ describe('containment', () => {
     const { records, notices } = await readRepositoryChanges(root)
     expect(records).toEqual([])
     expect(notices).toContainEqual({ source: 'backlog', kind: 'rejected', admitted: 0 })
+  })
+
+  // The cases above are all symlinks *under* `openspec/`, checked against the
+  // anchor. These two are about the anchor itself: `openspec` *being* a symlink
+  // redefines the boundary every other check is made against, so each per-path
+  // check passes while the whole tree is outside the repository.
+  // `filesystem-access-policy` › `A Containment Anchor Is Verified Against Its
+  // Registered Root`.
+  it('reads nothing when openspec/ is a symlink escaping the repository', async () => {
+    const outside = await makeRepo({
+      'changes/leaked-change/proposal.md': '# why\n',
+      'changes/leaked-change/tasks.md': '- [ ] SECRET-TASK-TEXT\n',
+      'changes/leaked-change/specs/thing/spec.md': '## ADDED Requirements\n',
+      'BACKLOG.md': '## Leaked backlog entry\n\nbody\n',
+    })
+    const root = await mkdtemp(join(tmpdir(), 'change-board-'))
+    temps.push(root)
+    await symlink(outside, join(root, 'openspec'), 'dir')
+
+    const { records } = await readRepositoryChanges(root)
+    expect(records).toEqual([])
+  })
+
+  it('still reads an openspec/ symlinked within the same repository', async () => {
+    // The control: the anchor moved, but not out of the root, so the repository
+    // is still describing its own corpus and the rule must not refuse it.
+    const root = await makeRepo({
+      ...changeFiles('real/openspec/changes/add-thing'),
+    })
+    await symlink(join(root, 'real/openspec'), join(root, 'openspec'), 'dir')
+
+    const { records } = await readRepositoryChanges(root)
+    expect(find(records, 'add-thing')).toBeDefined()
   })
 })
 
