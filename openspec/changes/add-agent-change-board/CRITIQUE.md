@@ -184,20 +184,76 @@ page scroll 900px · horizontal overflow 0.
   Same root cause as the badge pills reading as plain text: every "subtle
   surface" in this palette sits within ~1.1:1 of `card-bg`.
 
-## The score, and what it would take
+## Round 3 — 30/40 (75%), and a correction to how this record framed itself
 
-| Round | Composite | Against floor 80 |
+**Fixed in round 3:** an over-correction round 2 introduced. Suppressing
+"Changes requested" was right on the *card* — "this holds the change at Validate"
+is false once a change is filed — but deleting it from the *drawer* too lost an
+audit-relevant fact: that a reviewer objected and the change was archived anyway.
+The drawer now records it in the past tense rather than claiming it in the
+present.
+
+**Verified in round 3, with no functional regressions across all seven round-2
+changes:** Escape closes and the URL cleans, focus returns to the originating
+card, the scrim dismisses, "Show fewer" reverses, one `aria-controls` and **zero
+dangling IDREFs**, chips 28.7px with a border on the selected one, both replaced
+tokens resolving to real colours and both former ones confirmed dead
+(`rgba(0,0,0,0)` and `rgb(31,27,46)`), zero em dashes in `<main>`.
+
+### The framing was wrong, and the assessment said so
+
+This record filed "the board cannot rank" as **structural debt**. That is not
+accurate, and the correction belongs here rather than in a later session:
+
+> `updatedAt` is on all 60 records the page already holds and is rendered
+> nowhere. `reviewerVendors` already distinguishes exactly 1 of 12 Validate cards
+> and is visible only one drawer at a time. Rendering an age and an approval
+> count is **finishing the capability that shipped**, not opening a new product
+> question — and calling it structural makes it easier to keep not doing.
+
+It also pointed out that the argument used to kill the false archived flag — *a
+warning that is always wrong teaches you to ignore warnings* — applies unchanged
+to a true warning firing on 12 of 12 cards, and was not applied. And that ~45% of
+the board box being empty is one grid attribute in a file this change already
+edits, not debt at all.
+
+**Accepted.** Of the three deferrals, only one is genuinely an open product
+question:
+
+| Deferral | Actual cost | Honest label |
 |---|---|---|
-| 1 | 55 (22/40) | −25 |
-| 2 | 67.5 (27/40) | −12.5 |
+| Ranking (age, approval count) | Data already on the wire; a card row | **Cheap. Unfinished, not structural.** |
+| Density (~45% empty at 1440) | One `gridTemplateColumns` value | **Cheap.** |
+| Drawer actions | Needs a `POST /open` call and a decision about what the board is *for* | Genuinely open |
 
-Both rounds of fixes were behavioural and semantic: accessibility, correctness,
-labelling, bounding. Heuristics 7 (flexibility and efficiency) and 8 (aesthetic
-and minimalist) did not move, and they are what caps the total — the board still
-cannot rank, cannot act, and spends 40% of its area on nothing.
+## The score
 
-**Closing that gap is a product decision about what this board is for**, not a
-defect list. It is recorded here rather than guessed at.
+| Round | Composite | Against floor 80 | What moved |
+|---|---|---|---|
+| 1 | 55 (22/40) | −25 | — |
+| 2 | 67.5 (27/40) | −12.5 | H3 +3, H4 +2, H2 +1, H6 +1 |
+| 3 | **75 (30/40)** | **−5** | H3 +1, H4 +1, H2 +1 |
+
+Every round's fixes were behavioural, semantic and correctness work.
+**Heuristics 7 and 8 have not moved once across three rounds** — none of the
+changes touched ranking, action or density, and they are the entire remaining
+gap.
+
+**Waived under the structural-debt clause by user decision, 2026-08-04**, with
+the label above corrected: two of the three residual items are cheap and
+additive rather than structural, and the record should not have implied
+otherwise.
+
+### Is the surface useful, or decorative?
+
+The assessment's verdict, recorded because it is the question a waiver has to
+answer: **useful, not decorative.** "Validate 12, Execute 2, Propose 1, Archive
+45" across three repositories costs three terminals and three directories to get
+otherwise, arrives in under three seconds, and is now *correct*, which it was not
+two rounds ago. The deep links survive reload, so it works as an addressing
+scheme even where it falls short as a work queue. Nothing shipped needs undoing
+to close the gap — the card is an explicitly growable column flex, the drawer has
+a natural footer slot, and the grid is one attribute.
 
 ---
 

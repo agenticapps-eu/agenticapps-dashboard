@@ -483,14 +483,24 @@ one of round 1's own fixes.
 
 **Carried — these are product decisions, not defects:**
 
+- [x] 13.16a **Round 3 found an over-correction in 13.8's fix.** Suppressing "Changes requested" was right on the card, but deleting it from the *drawer* lost an audit-relevant fact — that a reviewer objected and the change was archived anyway. The drawer now records it in the past tense instead of claiming it in the present, so the reader no longer gets a false negative on "did anything ship over an objection?"
 - [ ] 13.16 The drawer is a dead end: two focusables and no action, on a surface
       whose job is triage. `POST /open` already exists in this product. A footer
       action row is three links and no new data, but it is a scope decision
-- [ ] 13.17 The board cannot rank. Twelve Validate cards are stuck for one
+- [ ] 13.17 **The board cannot rank — and this is unfinished work, not
+      structural debt.** The round-3 assessment challenged this record's own
+      framing and was right: `updatedAt` is on all 60 wire records and rendered
+      nowhere, and `reviewerVendors` already separates 1 of 12 Validate cards
+      while being visible one drawer at a time. Rendering an age and an approval
+      count finishes the capability that shipped rather than opening a product
+      question, and labelling it "structural" makes it easier to keep not doing.
+      Note also that the argument used to kill the false archived flag — a
+      warning that is always wrong teaches you to ignore warnings — applies
+      unchanged to a *true* warning firing on 12 of 12 cards. Original wording:
+      the board cannot rank. Twelve Validate cards are stuck for one
       reason and nothing says which to unstick first — approvals, request counts
       and age are all already on the wire record and none is on the card
-- [ ] 13.18 ~40% of the board is empty at 1440: `repeat(4, minmax(0,1fr))` gives
-      a one-card column the same quarter of the screen as a twelve-card one
+- [ ] 13.18 **~45% of the board box is empty at 1440** (measured in round 3, worse than the ~40% first recorded): `repeat(4, minmax(0,1fr))` gives a one-card column the same quarter of the screen as a twelve-card one. Also cheap — one `gridTemplateColumns` value in a file this change already edits. Not debt
 - [ ] 13.19 Checklist rows render line one of a multi-line task, so several end
       mid-sentence. **Inherited from upstream's `parseChecklist`**, which matches
       a row's first line only — the same grammar §2.5 mirrors deliberately.

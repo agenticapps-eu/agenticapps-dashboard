@@ -156,6 +156,39 @@ describe('the drawer', () => {
     expect(reviewers.textContent).toContain('REVIEWS-round-3.md')
   })
 
+  // The card-level suppression is right: "this holds the change at Validate" is
+  // false for a filed change. Deleting the fact from the drawer too was an
+  // over-correction — that a reviewer objected and the change was archived
+  // anyway is audit-relevant, and the drawer is where it belongs.
+  it('records a past objection on an archived change, in the past tense', () => {
+    routerState.search = { repo: 'repo-1', source: 'archive', change: '2026-08-03-filed' }
+    renderRoute([
+      card({
+        source: 'archive',
+        sourceInstance: '2026-08-03-filed',
+        changeName: 'filed',
+        title: 'filed',
+        stage: 'archive',
+        archiveDate: '2026-08-03',
+        hasRequestChanges: true,
+      }),
+    ])
+
+    const reviewers = within(screen.getByTestId('change-drawer')).getByTestId('drawer-reviewers')
+    expect(reviewers.textContent).toMatch(/changes were requested/iu)
+    expect(reviewers.textContent).toMatch(/archived anyway/iu)
+    // Not the present-tense claim, which is false once a change is filed.
+    expect(reviewers.textContent).not.toMatch(/holds the change at Validate/iu)
+  })
+
+  it('keeps the present-tense claim on an active change', () => {
+    routerState.search = { repo: 'repo-1', source: 'active', change: 'add-thing' }
+    renderRoute([card({ hasRequestChanges: true })])
+    expect(
+      within(screen.getByTestId('change-drawer')).getByTestId('drawer-reviewers').textContent,
+    ).toMatch(/holds the change at Validate/iu)
+  })
+
   it('states when a change carries no review record at all', () => {
     routerState.search = { repo: 'repo-1', source: 'active', change: 'add-thing' }
     renderRoute([card({ reviewerVendors: [], hasRequestChanges: false, reviewRecord: null })])

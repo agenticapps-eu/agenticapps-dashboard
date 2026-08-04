@@ -93,9 +93,18 @@ function Reviewers({ card }: { card: ChangeCard }): ReactElement {
               ? 'No approving reviewers.'
               : `Approved by ${card.reviewerVendors.join(', ')}.`}
           </span>
-          {card.hasRequestChanges && card.source !== 'archive' && (
+          {/*
+            The card suppresses this on an archived change, because "holds the
+            change at Validate" is false once it is filed. Suppressing it *here*
+            too was an over-correction: that a reviewer objected and the change
+            was archived anyway is audit-relevant, and the drawer is where it
+            belongs. Past tense, so it records rather than claims.
+          */}
+          {card.hasRequestChanges && (
             <span className="text-status-warning">
-              Changes requested. This holds the change at Validate however many others approve.
+              {card.source === 'archive'
+                ? 'Changes were requested by a reviewer, and this change was archived anyway.'
+                : 'Changes requested. This holds the change at Validate however many others approve.'}
             </span>
           )}
           <span className="text-xs text-text-tertiary">Read from {card.reviewRecord}</span>
