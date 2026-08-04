@@ -58,7 +58,7 @@ function SourceBadge({ card }: { card: ChangeCardData }): ReactElement | null {
     return (
       <span
         data-testid="change-card-source-badge"
-        className="inline-flex items-center gap-1 rounded-md bg-status-success-bg px-1.5 py-0.5 text-[11px] font-medium text-status-success"
+        className="inline-flex items-center gap-1 rounded-md bg-status-success/10 px-1.5 py-0.5 text-[11px] font-medium text-status-success"
       >
         <span aria-hidden="true">●</span>
         Ready to archive
@@ -117,7 +117,14 @@ export function ChangeCard({
               tasks
             </span>
           )}
-          {card.hasRequestChanges && (
+          {/*
+            Never on an archived card. Rule 1 wins outright for an archive
+            entry, so the reviewer clause never runs and nothing is being held
+            anywhere — verified against the live registry, where 5 of 45
+            archived cards carried the flag while being filed and complete. A
+            warning that is false teaches the reader to ignore warnings.
+          */}
+          {card.hasRequestChanges && card.source !== 'archive' && (
             <span className="text-status-warning">Changes requested</span>
           )}
           {card.evidenceLimited && (

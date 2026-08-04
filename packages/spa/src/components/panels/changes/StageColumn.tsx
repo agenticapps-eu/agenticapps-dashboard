@@ -89,13 +89,17 @@ export function StageColumn({
           {visible.map((card) => (
             <ChangeCard key={card.id} card={card} onOpen={onOpen} />
           ))}
-          {bounded && (
+          {(bounded || showAll) && stage === 'archive' && cards.length > ARCHIVE_VISIBLE_LIMIT && (
+            // Toggles. The first draft was `setShowAll(true)` — a one-way door
+            // that undid the bounding permanently the moment anyone used it,
+            // while the sibling checklist disclosure toggled correctly.
             <button
               type="button"
-              onClick={() => setShowAll(true)}
+              onClick={() => setShowAll((open) => !open)}
+              aria-expanded={showAll}
               className="rounded-md px-2 py-2 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              Show all {cards.length} archived
+              {showAll ? 'Show fewer' : `Show all ${cards.length} archived`}
             </button>
           )}
         </div>

@@ -217,12 +217,14 @@ describe('the paged layout', () => {
         cards: [
           card({ stage: 'propose', sourceInstance: 'p', changeName: 'p', title: 'p' }),
           card({ stage: 'execute', sourceInstance: 'e', changeName: 'e', title: 'e' }),
+          card({ stage: 'execute', sourceInstance: 'e2', changeName: 'e2', title: 'e2' }),
         ],
       }),
     )
 
     const rail = screen.getByTestId('stage-rail')
-    // Opens on the fullest non-Archive stage, not unconditionally on Propose.
+    // Two execute cards against one propose, so "fullest" is unambiguous here
+    // rather than resolved by the tie-break.
     expect(within(column('execute')).getByText('e')).toBeTruthy()
 
     fireEvent.click(within(rail).getByRole('tab', { name: /Propose/u }))
@@ -313,6 +315,85 @@ describe('the stage rail as a tab widget', () => {
   })
 })
 
+// ── critique round 2: defects the first round's own fixes introduced ────────
+
+describe('the paged layout default', () => {
+  beforeEach(() => {
+    layout.fourColumn = false
+  })
+
+  // The comment said "the fullest stage that is not Archive"; the code was
+  // `.find(counts[c] > 0)` over ['execute','validate','propose'], which is
+  // *latest non-empty*. On the live fleet that opened Execute (2) over
+  // Validate (12). The earlier test passed because its fixture had exactly one
+  // non-empty stage, so both readings agreed — the §2.11 vacuity again.
+  it('opens on the fullest non-Archive stage, not the latest non-empty one', () => {
+    const many = (stage: ChangeStage, count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        card({ stage, sourceInstance: `${stage}-${index}`, changeName: `${stage}-${index}`, title: `${stage}-${index}` }),
+      )
+    renderBoard(
+      fleet({ cards: [...many('propose', 1), ...many('validate', 12), ...many('execute', 2)] }),
+    )
+    expect(screen.getByTestId('stage-column-validate')).toBeTruthy()
+    expect(screen.queryByTestId('stage-column-execute')).toBeNull()
+  })
+
+  it('ignores Archive however full it is, because it is finished work', () => {
+    const archived = Array.from({ length: 30 }, (_, index) =>
+      card({
+        stage: 'archive',
+        source: 'archive',
+        archiveDate: '2026-07-01',
+        sourceInstance: `2026-07-01-a${index}`,
+        changeName: `a${index}`,
+        title: `a${index}`,
+      }),
+    )
+    renderBoard(fleet({ cards: [...archived, card({ stage: 'propose' })] }))
+    expect(screen.getByTestId('stage-column-propose')).toBeTruthy()
+  })
+
+  it('points each tab only at a panel that exists', () => {
+    // Three of four `aria-controls` were dangling IDREFs, because only the
+    // selected stage's panel is in the DOM.
+    renderBoard(fleet({ cards: [card({ stage: 'validate' })] }))
+    for (const tab of within(screen.getByTestId('stage-rail')).getAllByRole('tab')) {
+      const controls = tab.getAttribute('aria-controls')
+      if (controls !== null) expect(document.getElementById(controls)).toBeTruthy()
+    }
+  })
+})
+
+describe('an archived card', () => {
+  const filed = (overrides = {}) =>
+    card({
+      stage: 'archive',
+      source: 'archive',
+      archiveDate: '2026-08-03',
+      sourceInstance: '2026-08-03-filed',
+      changeName: 'filed',
+      title: 'filed',
+      hasRequestChanges: true,
+      completedChecklist: 40,
+      totalChecklist: 40,
+      ...overrides,
+    })
+
+  // Verified against the live registry: 5 of 45 archived cards carry
+  // `hasRequestChanges`. Rule 1 wins outright for an archived card and the
+  // reviewer clause never runs, so the flag is not merely noisy — it is false.
+  it('does not claim changes are requested, because that cannot hold it anywhere', () => {
+    renderBoard(fleet({ cards: [filed()] }))
+    expect(screen.queryByText(/changes requested/iu)).toBeNull()
+  })
+
+  it('still shows the flag on an active card', () => {
+    renderBoard(fleet({ cards: [card({ stage: 'validate', hasRequestChanges: true })] }))
+    expect(screen.getByText(/changes requested/iu)).toBeTruthy()
+  })
+})
+
 // ── round-4 critique: the Archive column is bounded and the fleet filterable ─
 
 describe('the Archive column', () => {
@@ -348,6 +429,21 @@ describe('the Archive column', () => {
     expect(
       within(screen.getByTestId('stage-column-archive')).getAllByTestId('change-card-name'),
     ).toHaveLength(20)
+  })
+
+  it('can be collapsed again after expanding', () => {
+    // `setShowAll(true)` was a one-way door, while the sibling checklist
+    // disclosure correctly toggles.
+    const many = Array.from({ length: 20 }, (_, index) =>
+      archived(`2026-07-${String(index + 1).padStart(2, '0')}`, `old-${index}`),
+    )
+    renderBoard(fleet({ cards: many }))
+
+    fireEvent.click(screen.getByRole('button', { name: /show all 20/iu }))
+    fireEvent.click(screen.getByRole('button', { name: /show fewer/iu }))
+    expect(
+      within(screen.getByTestId('stage-column-archive')).getAllByTestId('change-card-name').length,
+    ).toBeLessThan(20)
   })
 
   it('does not offer a control when everything already fits', () => {

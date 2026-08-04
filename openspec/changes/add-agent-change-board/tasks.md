@@ -76,12 +76,12 @@ waiting for it.
 
 ## 7. Verify
 
-- [ ] 7.1 `pnpm --filter @agenticapps/dashboard-shared test`, `pnpm --filter @agenticapps/dashboard-agent test`, and the SPA suite green — run per package, not `pnpm -r test`
-- [ ] 7.2 `pnpm -r typecheck` clean and `pnpm lint` with zero errors
+- [x] 7.1 Green per package, not `pnpm -r test`: shared **496**, agent **1737** (+1 skipped), SPA **1620**. One agent run showed a single failure in `routes/conformance.test.ts` Test 11 that did not reproduce in isolation or on a clean full re-run — recorded as a flake rather than passed over silently, and worth a look if it recurs
+- [x] 7.2 `pnpm -r typecheck` clean; `pnpm lint` **0 errors** (222 pre-existing warnings, unchanged in kind). One error was introduced and fixed en route: an effect calling `setState` synchronously, replaced with React's documented adjust-state-during-render pattern
 - [ ] 7.3 `impeccable:critique` at 1440×900 against `/changes`, composite ≥ 80, artifact committed
 - [x] 7.4 **Verified against the live daemon and the real registry**, which is what caught the shell defect in 5.9. `GET /api/v2/changes/fleet` answers 401 unauthenticated and 200 with the bearer token; 60 cards across 3 registered repositories, 0 notices. The board classifies **its own change** correctly — `add-agent-change-board` sits in Validate with `hasRequestChanges: true` and 99/119 checklist rows, read from `REVIEWS.md`. Mocked responses would not have shown either the status codes or the overflow
 - [x] 7.5 `openspec validate --all` green
-- [ ] 7.6 Two other-vendor plan reviews recorded in `REVIEWS.md`; findings verified against the code before being acted on, and refutations argued with the check rather than the opinion. **The first round is done and its disposition is §9** — re-run after these revisions, because the reviewed artifacts have changed materially
+- [x] 7.6 **Round 4 run and disposed in §12** — the first round with code to read. gemini and codex REQUEST-CHANGES; opencode's record truncated with no `VERDICT:` line, so it counts as absent, which is this change's own reviewer rule applied to its own evidence. Four findings confirmed and fixed (a TOCTOU, an unreachable scenario, two places the spec contradicted the code), one refuted with the check, two carried. Every finding was verified against the source before being acted on
 - [ ] 7.7 Two-stage review before merge
 
 ## 8. Hand back to `retire-v1-surfaces`
@@ -400,6 +400,101 @@ the reviewer rule this change specifies, applied to its own evidence.
       is unspecified. The implementation renders a `role="status"` banner above
       the board; the specification says only "states that the change was not
       found". Worth pinning, and not a defect
+
+## 13. Design critique disposition — rounds 1 and 2 (2026-08-04)
+
+Two isolated assessments per round, neither able to see the other's output. Full
+record in `CRITIQUE.md`.
+
+**Round 1 scored 22/40 (composite 55) against a floor of 32/40 (80).** Both
+assessments independently reached the same two findings: the drawer was a
+landmark (`role` null, `aria-modal` null, computed `complementary`) behaving as a
+modal with no Escape, no focus management, no scrim and its close control at tab
+stop 79 of 80; and the stage rail declared `role="tablist"` with no
+`aria-controls`, zero `tabpanel`s in the document and no arrow-key handling —
+announcing a pattern it did not implement.
+
+- [x] 13.1 Drawer given the dialog contract it was claiming: `role="dialog"`,
+      `aria-modal`, focus in on open and restored to the originating card on
+      close, Tab trapped both directions, Escape, dismissing scrim, close target
+      24×24 → 32×32 and first in the panel's tab order
+- [x] 13.2 Checklist showed all 129 rows completed-first — 8,282px, with the
+      first outstanding row 4,760px down — and rendered literal backticks and
+      asterisks. Now outstanding-only by default (21 rows, 1,206px) with the rest
+      behind a disclosure that states its count, and inline code and bold
+      tokenised into real elements by a recursive tokeniser that never touches
+      `innerHTML`
+- [x] 13.3 Stage rail made a real tab widget; the duplicate column heading it
+      rendered eight pixels beneath itself is dropped in the paged layout
+- [x] 13.4 Archive held 45 of 60 cards — 75% of the board given to work that by
+      definition is not in flight. Bounded to 10 with the withheld count stated,
+      plus a repository filter. Live page scroll 4,687px → 900px
+- [x] 13.5 Counts labelled and suppressed at 0 of 0 (15 archive cards were
+      rendering a ratio counting nothing); `Filed <date>` and `● Ready to
+      archive` so the two archive readings differ in shape rather than only in
+      wording; `Partly read` in the text rather than a mouse-only `title`
+- [x] 13.6 Reduced-motion guard on the loading skeleton, matching the
+      `motion-reduce:` convention `ManualPairForm` already ships; `aria-expanded`
+      and Escape on the compact navigation panel
+
+**Round 2 scored 27/40 (67.5%). Still below floor**, and it found a defect in
+one of round 1's own fixes.
+
+- [x] 13.7 **The paged layout opens on the wrong stage, and the code contradicts
+      its own comment.** The comment says "the fullest stage that is not
+      Archive"; the code is `['execute','validate','propose'].find(c => counts[c] > 0)`,
+      which is *latest non-empty*. On the live fleet it selects Execute (2 cards)
+      over Validate (12). **The existing test passes with the wrong behaviour**,
+      because its fixture has only one non-empty stage — the same vacuity the
+      §2.11 revert check exists to catch, missed here
+- [x] 13.8 **"Changes requested" renders on archived cards, where it is false.**
+      Verified against the live registry: 5 of 45 archived cards carry
+      `hasRequestChanges`, so `fix-readiness-sanitiser-colon-hazard` — filed,
+      40/40 — shows the amber flag, and its drawer asserts "this holds the change
+      at Validate however many others approve". Rule 1 wins outright for an
+      archived card and the reviewer clause never runs, so the sentence is not
+      merely noisy but wrong
+- [x] 13.9 "Show all N archived" is `setShowAll(true)` — one-way, while the
+      sibling checklist disclosure correctly toggles
+- [x] 13.10 Em dashes in rendered UI copy ("proposal.md — present"), which the
+      design skill's own copy rules ban
+- [x] 13.11 Repository-filter chips were 22.7px tall, **below the 24px WCAG
+      2.5.8 floor**, and selection was signalled by hue and font weight alone
+      (the selected tint is 1.16:1 against the surface). Now `py-1.5` at 29px
+      measured, with a border on the selected chip. Its placement as a
+      card-surfaced band is left as recorded — that is composition, and it goes
+      with 13.18
+
+**Two defects the second assessment found that live data could not show:**
+
+- [x] 13.12a **`--color-status-success-bg` does not exist.** The `● Ready to
+      archive` badge used `bg-status-success-bg`, which computes to
+      `rgba(0,0,0,0)` — no fill at all. Invisible in testing because **0 of 60
+      cards in the live fleet have `ready: true`**. Now `bg-status-success/10`,
+      the convention `Toast`, `CodeIntelligencePage` and `ManualPairForm`
+      already use. Verified in the browser: resolves to a real green at 0.1
+      alpha
+- [x] 13.12b **`--color-status-warning-border` does not exist either.**
+      `DegradedNotice` used it and fell back to `currentColor`, so a degraded
+      board would have drawn a text-coloured hairline instead of a warning
+      border. Unreachable in live data because no repository is failing. Now
+      `border-status-warning/40`. Both were plausible-looking token names I
+      invented rather than checked
+
+**Carried — these are product decisions, not defects:**
+
+- [ ] 13.16 The drawer is a dead end: two focusables and no action, on a surface
+      whose job is triage. `POST /open` already exists in this product. A footer
+      action row is three links and no new data, but it is a scope decision
+- [ ] 13.17 The board cannot rank. Twelve Validate cards are stuck for one
+      reason and nothing says which to unstick first — approvals, request counts
+      and age are all already on the wire record and none is on the card
+- [ ] 13.18 ~40% of the board is empty at 1440: `repeat(4, minmax(0,1fr))` gives
+      a one-card column the same quarter of the screen as a twelve-card one
+- [ ] 13.19 Checklist rows render line one of a multi-line task, so several end
+      mid-sentence. **Inherited from upstream's `parseChecklist`**, which matches
+      a row's first line only — the same grammar §2.5 mirrors deliberately.
+      Joining continuation lines would be a divergence and belongs upstream
 
 ## Out of scope
 

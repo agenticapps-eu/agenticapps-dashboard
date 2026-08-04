@@ -144,7 +144,7 @@ function AllFailedState({
       <ul className="mt-3 flex flex-col gap-1 text-sm text-text-secondary">
         {repositories.map((repo) => (
           <li key={repo.id}>
-            {repo.name} — {repo.reason === null ? 'could not be read' : FAILURE_PHRASES[repo.reason]}
+            {repo.name}: {repo.reason === null ? 'could not be read' : FAILURE_PHRASES[repo.reason]}
           </li>
         ))}
       </ul>
@@ -180,14 +180,14 @@ function DegradedNotice({
     <section
       data-testid="board-degraded"
       role="status"
-      className="rounded-card border border-status-warning-border bg-card-bg px-4 py-3"
+      className="rounded-card border border-status-warning/40 bg-card-bg px-4 py-3"
     >
       <p className="flex items-start gap-2 text-sm text-text-secondary">
         <AlertTriangle size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-status-warning" />
         <span>
           This board is incomplete.{' '}
           {failed
-            .map((repo) => `${repo.name} ${repo.reason === null ? 'could not be read' : FAILURE_PHRASES[repo.reason]}`)
+            .map((repo) => `${repo.name}: ${repo.reason === null ? 'could not be read' : FAILURE_PHRASES[repo.reason]}`)
             .join('; ')}
           .
         </span>
@@ -258,7 +258,9 @@ function StageRail({
             type="button"
             role="tab"
             aria-selected={active}
-            aria-controls={`stage-panel-${stage}`}
+            // Only on the selected tab: the other three panels are not in the
+            // DOM, and a dangling IDREF is worse than an absent attribute.
+            aria-controls={active ? `stage-panel-${stage}` : undefined}
             // Roving: one tab in the sequence, arrows move between them.
             tabIndex={active ? 0 : -1}
             onKeyDown={(event) => onKeyDown(event, index)}
@@ -294,10 +296,14 @@ function RepositoryFilter({
   selected: string | null
   onSelect: (repositoryId: string | null) => void
 }): ReactElement {
+  // `py-1.5` clears the 24px AA tap-target floor, which `py-1` missed at 22.7px.
+  // The selected chip carries a border as well as a tint: the tint alone is
+  // 1.16:1 against the surrounding surface, so selection was signalled by hue
+  // and font weight and nothing else.
   const chip = (active: boolean) =>
     active
-      ? 'rounded-md bg-accent-bg px-2.5 py-1 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
-      : 'rounded-md px-2.5 py-1 text-xs font-medium text-text-tertiary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+      ? 'rounded-md border border-accent bg-accent-bg px-2.5 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+      : 'rounded-md border border-transparent px-2.5 py-1.5 text-xs font-medium text-text-tertiary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
 
   return (
     <div
@@ -380,12 +386,16 @@ export function ChangeBoardPage({
       archive: grouped.archive.length,
     }
 
-    // The paged layout opened on `propose` unconditionally, which on this fleet
-    // is the emptiest column — one card against Archive's forty-five. Default to
-    // the fullest stage that is not Archive, since Archive is finished work.
-    const fallback =
-      (['execute', 'validate', 'propose'] as const).find((candidate) => counts[candidate] > 0)
-      ?? 'propose'
+    // The fullest stage that is not Archive — Archive is finished work, and
+    // opening on it would answer a question nobody asked.
+    //
+    // This said "fullest" and did `.find(counts[c] > 0)`, which is *latest
+    // non-empty*: on the live fleet it opened Execute (2 cards) over Validate
+    // (12). The test that was meant to cover it had one non-empty stage, so
+    // both readings agreed and it passed either way.
+    const fallback = (['propose', 'validate', 'execute'] as const).reduce(
+      (best, candidate) => (counts[candidate] > counts[best] ? candidate : best),
+    )
     const selectedStage = stage ?? fallback
 
     if (state === 'all-failed') {

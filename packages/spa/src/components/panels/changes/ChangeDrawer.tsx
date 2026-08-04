@@ -58,16 +58,16 @@ function Artifacts({ card }: { card: ChangeCard }): ReactElement {
   return (
     <ul data-testid="drawer-artifacts" className="flex flex-col gap-1 text-sm">
       <li className={artifacts.proposal === 'ready' ? 'text-text-primary' : 'text-status-warning'}>
-        proposal.md — {artifacts.proposal === 'ready' ? 'present' : 'missing'}
+        proposal.md: {artifacts.proposal === 'ready' ? 'present' : 'missing'}
       </li>
       <li className={artifacts.tasks === 'ready' ? 'text-text-primary' : 'text-status-warning'}>
-        tasks.md — {artifacts.tasks === 'ready' ? 'present' : 'missing'}
+        tasks.md: {artifacts.tasks === 'ready' ? 'present' : 'missing'}
       </li>
       <li className={artifacts.deltaSpecCount > 0 ? 'text-text-primary' : 'text-status-warning'}>
-        delta specs — <span className="tabular-nums">{artifacts.deltaSpecCount}</span>
+        delta specs: <span className="tabular-nums">{artifacts.deltaSpecCount}</span>
       </li>
       <li className="text-text-secondary">
-        design.md — {artifacts.design === 'ready' ? 'present' : 'optional, not present'}
+        design.md: {artifacts.design === 'ready' ? 'present' : 'optional, not present'}
       </li>
     </ul>
   )
@@ -93,9 +93,9 @@ function Reviewers({ card }: { card: ChangeCard }): ReactElement {
               ? 'No approving reviewers.'
               : `Approved by ${card.reviewerVendors.join(', ')}.`}
           </span>
-          {card.hasRequestChanges && (
+          {card.hasRequestChanges && card.source !== 'archive' && (
             <span className="text-status-warning">
-              Changes requested — this holds the change at Validate however many others approve.
+              Changes requested. This holds the change at Validate however many others approve.
             </span>
           )}
           <span className="text-xs text-text-tertiary">Read from {card.reviewRecord}</span>
@@ -257,7 +257,7 @@ export function ChangeDrawer({
                 type="button"
                 onClick={() => setShowCompleted((open) => !open)}
                 aria-expanded={showCompleted}
-                className="self-start rounded-md px-2 py-1 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="self-start rounded-md px-2 py-1.5 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 {showCompleted ? 'Hide' : 'Show'} {done.length} completed
               </button>
