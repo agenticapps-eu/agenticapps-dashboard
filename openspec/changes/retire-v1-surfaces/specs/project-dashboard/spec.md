@@ -2,11 +2,22 @@
 
 ### Requirement: Retired Locations Have An Explicit Transition
 
-Known SPA transitions SHALL come from one explicit migration manifest.
-`/coverage`, `/observability/skill-drift`, and `/observability/conformance` SHALL
-redirect to the fleet surface. `/code-intelligence` SHALL redirect to the fleet
-surface. `/projects/:id` SHALL redirect to `/repos/:id`, preserving the
-registered-project identifier.
+Known SPA transitions SHALL come from one explicit migration manifest. The root
+location `/`, `/coverage`, `/observability/skill-drift`, and
+`/observability/conformance` SHALL redirect to the fleet surface.
+`/code-intelligence` SHALL redirect to the fleet surface. `/projects/:id` SHALL
+redirect to `/repos/:id`, preserving the registered-project identifier.
+
+**`/` is named because it is the one retired location nobody thinks to
+enumerate.** It rendered the withdrawn multi-project home, so after the cutover
+it is neither a surviving surface nor an unknown location, and the not-found
+clause below does not reach it. Left unnamed, the product's bare origin — its
+most likely entry point — would be the single URL whose behaviour nothing
+specifies. Redirecting rather than re-hosting the fleet at `/` keeps `/fleet` the
+canonical location `add-repo-readiness` shipped; a withdrawal change is the wrong
+place to move a surface that is working. The existing redirect from `/` to the
+onboarding surface for a visitor with no pairing SHALL be preserved: this
+requirement governs where a paired visitor lands, not whether pairing is checked.
 
 **A retired location carrying a repo identifier SHALL redirect to that repo's
 detail surface, not to the fleet.** `/projects/:id/coverage` and any other
@@ -41,6 +52,16 @@ A removed API MUST NOT retain a compatibility stub or synthetic payload.
 - **WHEN** a user navigates to a known retired SPA location carrying no repo identifier
 - **THEN** the application redirects to the fleet surface
 - **AND** it does not render a blank shell or a withdrawn page.
+
+#### Scenario: The bare origin lands on the fleet
+- **WHEN** a paired user opens the application at `/`
+- **THEN** the application redirects to the fleet surface
+- **AND** it does not render the withdrawn multi-project home or a blank shell.
+
+#### Scenario: The origin still gates on pairing
+- **WHEN** a user with no pairing opens the application at `/`
+- **THEN** the application redirects to the onboarding surface as before
+- **AND** the fleet redirect does not bypass the pairing check.
 
 #### Scenario: A degraded spec read is visible, not silent
 - **WHEN** the CLI and tree readers return different values for a project whose spec is non-conformant

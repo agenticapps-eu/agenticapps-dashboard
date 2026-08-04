@@ -89,12 +89,18 @@ restated as a new standing requirement in surviving `project-dashboard`; it does
 not keep `optional-integrations` alive.
 
 **Capability count, stated precisely.** This change alone takes the slot from
-**12 to 7**. It reaches 9 in combination with the two capabilities added by
-`add-repo-readiness` and `add-workflow-fleet-conformance`, and 10 once an
-agent-change capability is proposed and added — `add-agent-board`, which was to
-supply it, was withdrawn on 2026-07-28. The earlier phrasing "12 → 10" invited a
-reader checking this change in isolation to find a number that does not follow
-from it.
+**12 to 7** — the figure a reader gets by checking it against the twelve
+capabilities ratified on 2026-07-26, and the reason the earlier phrasing
+"12 → 10" invited a number that does not follow from this change read in
+isolation.
+
+**Measured 2026-08-04: the slot holds 15, and this change takes it to 10.** All
+three capabilities this paragraph once treated as pending have landed —
+`add-repo-readiness` and `add-workflow-fleet-conformance` supplied two, and
+`add-agent-change-board`, archived on 2026-08-04, supplied the agent-change
+capability recorded here as unproposed after `add-agent-board` was withdrawn on
+2026-07-28. 15 − 5 withdrawn = **10**, which is the figure this paragraph
+predicted before any of them existed.
 
 The distinction is worth keeping visible: a capability that ends and a capability
 that is cut back are different statements about the product, and only the second

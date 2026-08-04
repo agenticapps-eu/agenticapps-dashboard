@@ -147,8 +147,12 @@ relying on archive archaeology, while `optional-integrations` can truthfully end
 
 Known v1 SPA locations may remain in bookmarks. They redirect to the fleet
 surface so a user reaches a valid product surface rather than a blank shell.
-The transition manifest maps the four retired legacy surface routes to fleet and
-maps `/projects/:id` to `/repos/:id` so project context is retained.
+The transition manifest maps the five retired legacy surface routes to fleet and
+maps `/projects/:id` to `/repos/:id` so project context is retained. The fifth is
+the root location `/`, added 2026-08-04: it rendered the withdrawn multi-project
+home, so it is a retired location like the other four rather than a surviving
+surface, and enumerating only the four named pages left the bare origin — the
+product's most likely entry point — as the one URL with no specified behaviour.
 Removed daemon APIs are different: keeping compatibility handlers would preserve
 the withdrawn product surface. They return not-found and expose no stub payload.
 That includes the daemon-hosted knowledge-graph viewer's asset and read URLs:

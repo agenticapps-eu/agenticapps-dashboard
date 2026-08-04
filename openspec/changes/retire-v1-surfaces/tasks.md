@@ -14,23 +14,35 @@ point in the retained window already uses the post-cutover column set. There is
 no outstanding recomputation gate and no atomicity constraint left to honour.
 See design §9.
 
-**The agent-change surface is a further prerequisite and is not yet proposed.**
-`add-agent-board` was withdrawn on 2026-07-28. This cutover MUST NOT run until a
-replacement agent-change surface is proposed, implemented, and available — the
-upstream `ChangeCard` contract being stable is necessary but not sufficient. The
-surface counts below are stated for the three surfaces that exist today and MUST
-be restated when the replacement lands.
+**The agent-change surface prerequisite is discharged (2026-08-04).** This block
+previously blocked the cutover until a replacement for the withdrawn
+`add-agent-board` existed. `add-agent-change-board` archived on 2026-08-04:
+`openspec/specs/agent-change-board/` is durable spec and `/changes` is wired in
+the router. That block required the surface counts to be restated when the
+replacement landed, so they are restated here: **the four post-cutover content
+surfaces are fleet, repo detail, workflow conformance, and the agent-change
+board.** No prerequisite remains outstanding.
+
 The spec deltas in this change are written now, alongside the v2 changes, so the
-slot never carries two truths — but nothing here is applied until the
-replacements stand.
+slot never carries two truths. Every replacement they depend on now stands.
 
 ## 1. Cutover · AGE-473
 
-- [ ] Delete the old SPA package
-- [ ] Rename the v2 SPA package to the original name and package identifier
-- [ ] Update the workspace file, the build config, and the deploy build command
-- [ ] Verify the deployment serves v2, pairing works, and every post-cutover surface loads — fleet, repo detail, and workflow conformance today, plus the agent-change surface once it is proposed and implemented
-- [ ] Implement one migration manifest enumerating the four retired legacy surface routes → fleet, `/projects/:id` → `/repos/:id`, and every removed daemon API; unknown locations and APIs listed there return not-found
+**Corrected 2026-08-04: v2 was built in place, not in a second package.** This
+section previously opened with "delete the old SPA package", "rename the v2 SPA
+package to the original name" and "update the workspace file". No second SPA
+package was ever created — `packages/spa/package.json` is the only SPA manifest
+ever added to this repo, v1 and v2 locations coexist inside it, and `AppShellV2`
+is already the live shell for both. `design.md` §8 always described the real
+shape ("Known v1 SPA locations … redirect to the fleet"); it was this list that
+carried the two-package premise. The cutover is a withdrawal of locations from
+one package, and the workspace file changes in §6 for the linter and observer
+packages, not for a SPA rename.
+
+- [ ] Withdraw the six v1 locations from `packages/spa` — `/` (`MultiProjectHome`), `/projects/$projectId`, `/coverage`, `/observability/skill-drift`, `/observability/conformance`, `/code-intelligence` — removing their route definitions, lazy modules, and every component whose only consumer is one of them
+- [ ] Reduce the sidebar to the two groups §3 requires: remove the `Observability` and `Code Intelligence` sections and the per-project entries under `WORKSPACE`
+- [ ] Verify the deployment serves v2, pairing works, and all four post-cutover surfaces load — fleet, repo detail, workflow conformance, and the agent-change board
+- [ ] Implement one migration manifest enumerating the five retired legacy surface routes → fleet (`/`, `/coverage`, `/observability/skill-drift`, `/observability/conformance`, `/code-intelligence`), `/projects/:id` → `/repos/:id`, and every removed daemon API; unknown locations and APIs listed there return not-found. `/` keeps its existing unpaired-visitor redirect to `/onboarding`
 - [ ] Remove authored help pages, widget dispatch entries, contextual links, and keyboard-shortcut targets whose only destination is a retired surface; audit that every surviving contextual link resolves to an authored page and any specified anchor
 - [ ] Author or update one help page for each post-cutover content surface — fleet, repo detail, and workflow conformance, plus the agent-change surface once it exists — and verify each explains that surface's vocabulary; retain the cross-cutting shortcut reference
 - [ ] **One commit.** The cutover deletes; a revert of that single commit is the rollback
