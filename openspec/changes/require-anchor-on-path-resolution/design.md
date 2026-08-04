@@ -77,8 +77,19 @@ this change removes.
 type Containment =
   | { kind: 'anchored'; root: string }
   | { kind: 'repository-root' }
-  | { kind: 'daemon-named'; reason: string }
+  | { kind: 'daemon-named'; rootId: WorkflowMachineRootId; reason: string }
 ```
+
+`daemon-named` carries an **enumerated** root identity, not free text. Review
+round 2 was right that `{ reason: string }` alone would let any root at all skip
+anchoring on the strength of any non-empty string — an unbounded exemption
+wearing the appearance of a decision. `WorkflowMachineRootId` already exists
+(`workflowArtifactScanner.declare.ts:74-79`) and call sites already know their
+id, since `workflowScan.ts:194` indexes `configuredMachineRoots[rootId]`. The
+resolver verifies the supplied root matches the root registered for that id, so
+the hatch is bounded by construction rather than by convention, and `reason`
+becomes a per-root rationale rather than a place to type anything. A blank or
+whitespace reason is rejected.
 
 *Alternative considered:* `anchorTo: string | null`. Rejected: `null` records
 only that someone typed `null`, and cannot distinguish "the roots are repository
@@ -125,6 +136,17 @@ better one — the entire class of behavioural risk the draft spent its risk
 budget on does not arise. It also makes the "admission unchanged" scenario in
 the spec delta true unconditionally, where the draft contradicted it.
 
+**What `repository-root` therefore does not mean.** Review round 2 caught the
+spec claiming daemon-named was "the only case that widens reach beyond a
+repository". On `makeCoverageResolver` that is false: the unanchored branch
+merges the standing family roots, so a `repository-root` read there is admitted
+under those roots too. The family roots are the same second-order effect that
+falsified the draft twice, surfacing a third time — in the prose rather than the
+code. A declaration names the boundary the caller supplied; it is not a claim
+that the resolution is confined to it. Only `anchored` confines. The spec now
+says so, and this is the one place where the union's names are actively
+misleading if read casually.
+
 ### D3 — Commit sequencing that compiles at every step
 
 The draft's three commits could not build: commit 1 made the field required
@@ -133,6 +155,12 @@ defeated. Corrected sequence:
 
 1. **Add** `containment` as optional alongside `anchorTo`, with the union type
    and the unanchored/anchored mapping of D2. Compiles; nothing changes.
+   Supplying **both** `anchorTo` and `containment` in the same call is rejected
+   as a `PathViolation`, in the manner `allowedNames` and `extension` are
+   already mutually exclusive. Round 2 was right that a transitional API
+   accepting two mechanisms invites a call that sets a contradictory pair and
+   silently obeys one of them; the migration window is exactly when that would
+   go unnoticed.
 2. **Migrate** all 24 sites to `containment`, in three reviewable slices by
    shape (`anchored` ×6, `repository-root`, `daemon-named`). Compiles at each
    slice; admission unchanged throughout, which §1.1's characterisation tests
@@ -171,6 +199,14 @@ Two responses, and neither is "the type system handles it":
   relabelled (task 4.2). It is a regression guard on #100's fix, which is the
   concrete thing at risk.
 
+Round 2 noted that the spec promised more than that test delivers: the scenario
+read as though *any* anchored boundary resisted reclassification, while the test
+names six. The scenario is now scoped to the boundaries the coverage names, with
+a second scenario putting the obligation where it can actually be met — a newly
+anchored boundary joins the coverage as part of being anchored. Claiming
+automatic protection for sites that do not exist yet would be the same kind of
+unenforceable THEN this decision exists to remove.
+
 ### D6 — Heterogeneous `roots` arrays
 
 `roots` is an array while `containment` classifies the whole call, so a call
@@ -180,6 +216,22 @@ rule is a stated prohibition: a call's roots SHALL share one classification, and
 a site needing two SHALL be split into two calls. A prohibition beats per-root
 classification here because splitting is always available and costs nothing,
 while per-root typing would complicate all 24 sites to serve zero of them.
+
+Round 2 asked how a split preserves admission. It does so because supplied roots
+are **already** alternatives and the result does not depend on which one
+matched: both resolvers test `mergedRoots.some(root => isAnchoredUnder(real,
+root))` and then `return real`, the candidate's own realpath. Matching is
+therefore order-independent and the return value is root-independent, so
+recombining the split resolutions as a logical OR — admitted if any admits —
+reproduces the original admission exactly. The spec states that recombination
+rule so a split cannot be done some other way and still called equivalent.
+
+Round 2's accompanying concerns about *root priority* and *which candidate is
+returned* are refuted by the same two lines: there is no priority in a `some()`,
+and no candidate selection in a function that returns the path it was given.
+What genuinely does change across a split is the caller's error handling — two
+`PathViolation`s to consider instead of one — which is a caller concern and not
+an admission one.
 
 ### D7 — The normative scope
 

@@ -55,6 +55,14 @@
   This replaces the draft's 4.4, whose premise D2 disproved.
 - [ ] 4.5 A helper that relays a resolver carries the caller's classification
   rather than choosing one (D8).
+- [ ] 4.6 `daemon-named` naming a root that is not the one registered for its
+  `rootId` is rejected, and a blank or whitespace `reason` is rejected. The
+  escape hatch must be bounded by the type and the check, not by convention.
+- [ ] 4.7 Supplying both `anchorTo` and `containment` during the migration
+  window raises `PathViolation` rather than silently obeying one.
+- [ ] 4.8 A `repository-root` read on `makeCoverageResolver` is still admitted
+  under the standing family roots — the reach a declaration does not narrow.
+  This is the admission round 2 found the spec misdescribing; pin it.
 
 ## 5. Findings recorded during execution
 
@@ -76,8 +84,53 @@
   `--implementing-host claude`, `REVIEW_TIMEOUT=540`. Three reviewers counted:
   gemini APPROVE, codex REQUEST-CHANGES, opencode REQUEST-CHANGES. The raised
   timeout worked — opencode landed this time, having been lost at 540s in #100.
-- [ ] 7.2 Re-run after these revisions and address round 2.
+- [x] 7.2 **Round 2 run** — same producer and timeout. gemini APPROVE (reversing
+  nothing: it had approved round 1 too, and its round-2 notes single out the D2
+  reversal and the compiler-as-authority shift as the right lessons). codex
+  REQUEST-CHANGES with six findings. opencode produced no verdict line and was
+  correctly not counted — a different failure from the timeout that lost it in
+  #100, and one the producer's 1.2.0 predicate caught rather than published.
 - [ ] 7.3 Preserve prior rounds as `REVIEWS-round-N.md` before re-running.
+
+### Round 2 dispositions
+
+*Confirmed and fixed:*
+
+- **`repository-root` is not an identity on `makeCoverageResolver`** (codex).
+  Confirmed at `coverageResolver.ts:191` — the unanchored branch tests against
+  `mergedRoots`, which includes the standing family roots. The spec's claim that
+  daemon-named was "the only case that widens reach beyond a repository" was
+  therefore false. The family roots have now falsified three separate claims in
+  this change; the spec states plainly that a declaration names the boundary
+  supplied and is not a claim of confinement, and task 4.8 pins the admission.
+- **`daemon-named` accepted arbitrary roots** (codex). Real: `{ reason: string }`
+  constrains nothing, so any root could skip anchoring given any non-empty
+  string. Now carries `rootId: WorkflowMachineRootId` — the enumeration already
+  exists at `workflowArtifactScanner.declare.ts:74-79`, and call sites already
+  hold the id (`workflowScan.ts:194`). The resolver checks the supplied root
+  against the root registered for that id.
+- **A blank `reason` satisfied "records why"** (codex). Rejected now, and
+  largely subsumed by the above: `reason` became a per-root rationale rather
+  than free text.
+- **The transitional API accepted `anchorTo` and `containment` together**
+  (codex). Now a `PathViolation`, mirroring the existing
+  `allowedNames`/`extension` exclusivity. Task 4.7.
+- **The reclassification scenario promised more than the test delivers**
+  (codex). Scoped to the boundaries the coverage names, plus a scenario putting
+  the obligation on newly anchored boundaries to join that coverage.
+
+*Confirmed in part, refuted in part:*
+
+- **"Splitting heterogeneous root arrays is underspecified"** (codex). The
+  narrow point is accepted: the delta now states the recombination rule — split
+  resolutions recombine as alternatives, admitted if any admits. The
+  accompanying claims that a split can *alter root priority* or change *which
+  candidate is returned* are refuted by the implementation: both resolvers test
+  `mergedRoots.some(...)`, which is order-independent, and both `return real`,
+  the candidate's own realpath, which does not depend on the matching root
+  (`paths.ts:230,241`; `coverageResolver.ts:191,205`). What does change is the
+  caller's error handling — two `PathViolation`s rather than one — which is not
+  an admission concern.
 
 ### Round 1 dispositions
 
