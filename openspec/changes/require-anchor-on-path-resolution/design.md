@@ -1,56 +1,77 @@
 ## Context
 
-`anchorTo?: string` exists on two resolvers today — `resolveAllowedNamed` in
-`paths.ts` (async) and the `PathResolver` returned by `makeCoverageResolver` in
+`anchorTo?: string` exists on two resolvers — `resolveAllowedNamed` in `paths.ts`
+(async) and the `PathResolver` returned by `makeCoverageResolver` in
 `coverageResolver.ts` (sync). Both were added by
 `anchor-allowed-subdirs-to-root`, which anchored six boundaries and left the
-field optional at the other 22 non-test sites.
+field optional everywhere else.
 
-Surveyed on `main` at `dcc5d13`, the 28 non-test sites fall into three shapes:
+### The inventory, re-derived after review round 1 falsified it
 
-| Shape | Sites | What the anchor does |
-|---|---|---|
-| `roots: [projectRoot]` — the root **is** the repository root | 22 | identity; the root cannot leave itself |
-| `roots: [<derived>]` — `workflowsDir`, `skillRoot`, `skills/` | 6 | the live check; all six anchored by #100 |
-| daemon-named machine/family roots | see D4 | must **not** anchor (D8 of the prior change) |
+The first draft of this document claimed 28 `resolveAllowedNamed` sites and
+placed all six anchored ones in the two scanner files. Both claims were wrong,
+and the error is instructive enough to keep rather than quietly correct: the
+count came from `grep -c` on the *identifier*, which counts imports, JSDoc
+mentions and the function definition alongside actual calls. 16 of the 28 were
+not call sites. A document whose central method is "the survey is re-derived,
+not trusted" (D3.3) had itself trusted a survey.
 
-The third shape does not currently appear as an `anchorTo`-bearing option object
-at all — it is expressed by *omission*, which is precisely the ambiguity this
-change removes.
+Counted as invocations on `main` at `dcc5d13`:
 
-The security requirement itself is unchanged and already durable: `A Containment
-Anchor Is Verified Against Its Registered Root` in `filesystem-access-policy`.
-This change is about making a call site unable to stay silent about it.
+| Resolver | Call sites | Anchored today | Where the anchored ones are |
+|---|---|---|---|
+| `resolveAllowedNamed(` | 12 | 2 | `projectMetadataScan.ts:275,299` |
+| `PathResolver` — `resolve(…, { roots })` | 12 | 4 | `workflowFleetScanner.ts` ×3, `workflowVersionScanner.ts` ×1 |
+| **Total** | **24** | **6** | |
+
+The scanner files hold four of the six and call `resolveAllowedNamed` **zero**
+times — they are `PathResolver` consumers. That distinction was invisible in the
+original count and matters, because the two resolvers do not treat an anchor
+alike (D2).
+
+This second count keys on `roots:` again, which D6a of the prior change already
+recorded as unsound — it cannot see a site that builds its options indirectly.
+That is why D3.3 makes the type checker, not this table, the authority.
+
+### The three shapes
+
+- The root **is** a repository root (`roots: [projectRoot]`) — the common case.
+- The root is **derived** from a path inside a repository (`workflowsDir`,
+  `skillRoot`, `skills/`) — the live check; all six anchored by #100.
+- The root is a **daemon-named machine root**, deliberately outside every
+  repository. There are five: `agenticapps-bin`, `claude-skills`,
+  `codex-skills`, `opencode-skills`, `pi-skills`
+  (`workflowArtifactScanner.declare.ts:74-79`).
+
+The third shape is currently expressed by *omission*, which is the ambiguity
+this change removes.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Every path-resolution site states its containment classification, enforced by
-  the type checker rather than by review attention.
-- The deliberate non-anchor (D8's machine roots) carries a written reason, so it
-  is auditable and greppable instead of merely absent.
-- Runtime admission is unchanged: no path the daemon reads today becomes
-  refused, and no path it refuses today becomes readable. D2 is the single
-  place this could move, and it is bounded there.
+- Every resolution site in scope states its containment classification, enforced
+  by the type checker rather than by review attention.
+- The classification that widens reach beyond a repository carries a written
+  reason, so it is auditable and greppable rather than merely absent.
+- **Admission is unchanged at every site.** After review round 1, this is not an
+  aspiration but the design's central constraint — see D2.
 
 **Non-Goals:**
 
-- Closing TOCTOU. The anchor is verified at realpath time and the symlink can
-  still be swapped before the read; `routes/read.ts`'s `O_NOFOLLOW` +
-  re-`realpath` remain the only mitigations, and this change neither adds to
-  nor subtracts from them. Carried forward unchanged from #100.
-- Changing `resolveAllowed` (the `ALLOWED_SUBDIRS` path). It already anchors
-  unconditionally against `realProjectRoot` — there is no optional field to make
-  required, so there is nothing here for it.
-- Any new refusal vocabulary, wire shape, or SPA state. `PathViolation` → 422
-  stays exactly as it is.
+- Making declarations *correct*. The type system forces a variant, not the right
+  variant. This is stated plainly in the spec delta rather than implied away;
+  D5 supplies the compensating test.
+- Closing TOCTOU. Unchanged from #100: `routes/read.ts`'s `O_NOFOLLOW` +
+  re-`realpath` remain the only mitigations.
+- Changing `resolveAllowed` (the `ALLOWED_SUBDIRS` path), which already anchors
+  unconditionally, or the family roots bound inside `makeCoverageResolver`,
+  which are the resolver's own. D7 states the normative scope so "every
+  resolution site" does not overclaim.
 
 ## Decisions
 
-### D1 — A required three-variant union, not a required nullable field
-
-`containment` is required and discriminated:
+### D1 — A required three-variant union
 
 ```ts
 type Containment =
@@ -59,121 +80,162 @@ type Containment =
   | { kind: 'daemon-named'; reason: string }
 ```
 
-*Alternative considered:* `anchorTo: string | null` — the smallest diff, and it
-does force the decision. Rejected because `null` records only that someone typed
-`null`. It cannot distinguish "the root is the repo root, so anchoring is an
-identity" from "this root is deliberately outside every repository", and those
-are different security claims. The second needs justification; the first does
-not. A union that cannot express one as the other is the point.
+*Alternative considered:* `anchorTo: string | null`. Rejected: `null` records
+only that someone typed `null`, and cannot distinguish "the roots are repository
+roots, so anchoring is an identity" from "this root deliberately lies outside
+every repository". Those are different security claims and only the second needs
+justification.
 
-*Alternative considered:* a two-variant union with a bare `'daemon-named-root'`
-marker. Rejected for the same reason at lower cost: it separates the two claims
-but still records no reason, and D8's rationale would stay in an archived design
-document instead of next to the code it governs.
+*Alternative considered:* two variants with a bare marker. Rejected: it
+separates the claims but records no reason, leaving D8's rationale in an
+archived design document that a future reader of `workflowArtifactScanner` has
+no cause to open.
 
-The `reason` string is not decorative. D8 was refuted evidence — 33 of 98 and 13
-of 14 entries under the skills roots are install symlinks, so anchoring would
-report all of them missing. That finding currently survives only in
-`openspec/changes/archive/2026-08-04-anchor-allowed-subdirs-to-root/design.md`.
-A future reader of `workflowArtifactScanner` has no way to reach it.
+### D2 — No variant changes admission; `repository-root` maps to the existing unanchored branch
 
-### D2 — `repository-root` fails closed, and the behaviour delta is bounded
+**This decision reverses the first draft, which review round 1 falsified twice.**
 
-`{ kind: 'repository-root' }` anchors to the roots themselves, which means it
-adopts the anchored branch's fail-closed semantics: a root that cannot be
-realpath'd is **dropped**, where an unanchored call today falls back to comparing
-the lexical `resolve(r)`.
+The draft had `repository-root` adopt the *anchored* branch's semantics, and
+argued the resulting fallback removal was unreachable. Both halves were wrong:
 
-That is a genuine behaviour change on paper, so it is stated rather than
-buried. Its reachability is bounded by an argument round 1 already established
-against the sync resolver: `realpath(candidatePath)` resolves the entire chain
-including the root, so a candidate cannot resolve while its own parent root does
-not. An unresolvable root therefore implies an unresolvable candidate, which
-throws at the earlier `realpath` call before any root comparison happens.
+1. **The unreachability argument is false.** With `root = <real>/missing/..`,
+   `realpath(root)` throws ENOENT while `resolve(root)` normalises to `<real>`,
+   under which the candidate resolves and is admitted today. Anchoring drops the
+   root and refuses. Verified by direct probe, not by reasoning — the inherited
+   round-1 claim ("an unresolvable root implies an unresolvable candidate") holds
+   only when the root's unresolvability survives lexical normalisation, and `..`
+   is exactly the case where it does not.
+2. **It ignored the family roots.** `coverageResolver.ts:186` merges
+   `[...allowedRoots, ...callerRoots]` on the unanchored path and uses
+   `callerRoots` alone on the anchored one. Sending `repository-root` down the
+   anchored branch would silently strip the cross-family allowance from scanners
+   that depend on it. Round 1 put the dilemma precisely: removing them changes
+   admission, retaining them would violate the rule that ambient authority
+   cannot rescue an anchored read.
 
-The lexical fallback is, on that argument, unreachable in the admitting
-direction. It is being removed at 22 sites on the strength of it, so the
-argument gets a test rather than a footnote (task 4.4): construct an unresolvable
-root and assert the refusal is identical before and after. If the test shows a
-reachable difference, D2 is wrong and `repository-root` must instead preserve the
-unanchored branch verbatim — the fallback decision, not the classification, is
-what would change.
+The dilemma dissolves once `repository-root` stops meaning "anchor to yourself".
+It maps to the **existing unanchored branch, byte-for-byte**, and is purely a
+declaration: *these roots are repository roots; anchoring would be an identity;
+behaviour is deliberately unchanged.* `daemon-named` maps there too. Only
+`anchored` takes the anchored branch, and only the six sites already on it.
 
-### D3 — Keeping a 28-site mechanical diff reviewable
+So the executable content of this change is exactly: a required field, and
+nothing else. That is a smaller change than the draft described and a strictly
+better one — the entire class of behavioural risk the draft spent its risk
+budget on does not arise. It also makes the "admission unchanged" scenario in
+the spec delta true unconditionally, where the draft contradicted it.
 
-This is the objection that deferred the work in the first place: a wide,
-near-identical diff is where a real change hides. Three constraints:
+### D3 — Commit sequencing that compiles at every step
 
-1. **The three shapes land as three commits**, in this order — the type change
-   plus the six already-anchored sites (semantics unchanged, only spelling);
-   then the 22 `repository-root` sites (D2's fallback removal, the only
-   behavioural commit); then `daemon-named` with its reasons. A reviewer can
-   read commit 2 alone and see the entire behavioural surface.
-2. **No site changes classification silently.** Any site whose classification is
-   not the one the survey table predicts is called out in `tasks.md` §5 with its
-   reasoning, not folded into the mechanical pass.
-3. **The survey is re-derived, not trusted.** The counts above came from a grep
-   on `resolveAllowedNamed` and `PathResolver`. D6a of the prior change recorded
-   that grepping for the `roots:` property name misses a site that builds its
-   options indirectly — which is how the `skills/` escape was missed. Task 2.1
-   re-derives the list from the type checker instead: make the field required,
-   and let every error location be the enumeration.
+The draft's three commits could not build: commit 1 made the field required
+while 18 sites still omitted it. Bisect and per-commit CI would both have been
+defeated. Corrected sequence:
 
-Point 3 is the real method here. The compiler is a sounder enumerator than any
-grep, and this change's chief benefit is that it makes the compiler capable of
-answering the question at all.
+1. **Add** `containment` as optional alongside `anchorTo`, with the union type
+   and the unanchored/anchored mapping of D2. Compiles; nothing changes.
+2. **Migrate** all 24 sites to `containment`, in three reviewable slices by
+   shape (`anchored` ×6, `repository-root`, `daemon-named`). Compiles at each
+   slice; admission unchanged throughout, which §1.1's characterisation tests
+   assert.
+3. **Remove** `anchorTo` and make `containment` required. The commit that closes
+   the hole, and by then a one-line type change.
 
-### D4 — Which sites are `daemon-named`
+D3.3 stands and is now the only enumeration authority: after step 3, every
+undeclared site is a compiler error. The grep produced two wrong tables in this
+document already; the compiler cannot.
 
-The family roots bound into `makeCoverageResolver`
-(`~/Sourcecode/{agenticapps,factiv,neuroflash}` and the `claude-workflow`
-migrations directory) are already documented as "a deliberate cross-family
-allowance [that is] never narrowed", and are bound at resolver construction
-rather than passed per call — they are the resolver's own roots, not a caller's.
-They therefore keep their current treatment and are *not* what `daemon-named`
-classifies.
+### D4 — What `daemon-named` classifies
 
-`daemon-named` classifies a **caller-supplied** root that lies outside every
-repository: `workflowArtifactScanner`'s `~/.claude/skills` and `~/.codex/skills`
-machine roots. Task 3.1 confirms this split against the code before the
-classification is applied, because the distinction between "the resolver's bound
-roots" and "a root the caller passed" is exactly the kind of thing the prior
-change's enumeration got wrong once already.
+Five machine roots, not the two the draft named: `agenticapps-bin`,
+`claude-skills`, `codex-skills`, `opencode-skills`, `pi-skills`. Their reasons
+come from D8's evidence — symlinking skills into these directories *is* the
+install mechanism, and 33 of 98 and 13 of 14 entries are such symlinks, so
+anchoring would report all of them missing.
+
+The family roots bound into `makeCoverageResolver` are **not** classified by
+this union. They are the resolver's own roots, not a caller's, and no call site
+passes them. D7 covers them.
+
+### D5 — Declaration correctness is not claimed, and is compensated
+
+The union forces *a* variant, not the right one. Any of the six derived sites
+could be relabelled `repository-root`, compile cleanly, and silently revert
+#100's fix — the exact failure class this change exists to close. Round 1 was
+right that the draft conceded this in prose and then supplied no mechanism.
+
+Two responses, and neither is "the type system handles it":
+
+- The spec delta says what is actually enforced — a declaration is required, not
+  that it is true — rather than asserting an unenforceable THEN.
+- A test pins the six derived sites as `anchored` and fails if any is
+  relabelled (task 4.2). It is a regression guard on #100's fix, which is the
+  concrete thing at risk.
+
+### D6 — Heterogeneous `roots` arrays
+
+`roots` is an array while `containment` classifies the whole call, so a call
+mixing a repository root with a derived one has no honest single classification.
+No such call exists today (task 2.4 verifies this rather than assuming it). The
+rule is a stated prohibition: a call's roots SHALL share one classification, and
+a site needing two SHALL be split into two calls. A prohibition beats per-root
+classification here because splitting is always available and costs nothing,
+while per-root typing would complicate all 24 sites to serve zero of them.
+
+### D7 — The normative scope
+
+"Every resolution site" overclaims. The requirement covers **caller-supplied
+roots passed to `resolveAllowedNamed` and to `PathResolver`**. It does not cover:
+
+- `resolveAllowed`, which anchors unconditionally against `realProjectRoot` —
+  there is no optional field to make required.
+- The family roots bound inside `makeCoverageResolver`, which are not passed by
+  any caller and are governed by `Named Allowed Roots For Fleet Scanners`.
+
+Both exclusions are in the spec text, not just here, so the requirement cannot
+be read as covering boundaries it does not reach.
+
+### D8 — Classification must reach helpers that relay a resolver
+
+`readSkillVersions` (`readiness/workflowDeriver.ts:193`) is called with
+`[hostRepo]` at :184 and with `[machineRoot]` at :287 — one helper, two
+classifications. A required field on the resolver does not by itself say how the
+right classification arrives there, and round 1 was right that the draft never
+addressed it.
+
+Helpers that relay a resolver take `containment` as a parameter and pass it
+through; they SHALL NOT synthesise one. A helper that picks its own
+classification would let a machine-root call arrive labelled as a repository
+root, which is D5's failure mode reintroduced one layer up. Task 2.5 enumerates
+the relaying helpers from the compiler errors of step 3 rather than by grep.
 
 ## Risks / Trade-offs
 
-- **A mechanical diff conceals a real change** → D3: three commits split by
-  shape, with the single behavioural commit isolated; any classification that
-  departs from the survey is named in `tasks.md` rather than absorbed.
-- **D2's fallback removal is reachable after all** → task 4.4 tests it directly
-  before the 22 sites are converted, and D2 states what changes if the test
-  disagrees. The argument is inherited from a round-1 finding, so it is
-  second-hand evidence until this change re-proves it.
-- **`reason` strings decay into "because"** → the three initial reasons are
-  written from D8's actual evidence (the 33-of-98 and 13-of-14 counts), which
-  sets the standard. This is a convention, not an enforcement; nothing checks
-  that a reason is true.
-- **Wider churn than the security content warrants** → accepted and deliberate.
-  The alternative is the status quo, in which the security content is
-  unreviewable because absence carries no signal.
+- **A declaration is not a correct declaration** → D5: scope the spec to what is
+  enforced, and pin #100's six sites with a test. Residual and stated: nothing
+  detects a *new* site misclassified from birth.
+- **`reason` strings decay into "because"** → the five initial reasons are
+  written from D8's counts, setting the standard. Nothing checks a reason is
+  true; the spec says so rather than implying otherwise.
+- **The inventory is wrong again** → it was wrong twice already in this document.
+  D3.3 moves the authority to the compiler; §5 records the diff between what the
+  compiler finds and this table, whichever way it falls.
+- **Wide mechanical churn** → smaller than the draft claimed (24 sites, no
+  behaviour change), and D3's sequencing keeps every commit building.
 
 ## Migration Plan
 
-Internal API only — no deployed contract, no persisted data, no rollback
-window. `packages/shared` and `packages/spa` are untouched, so the daemon and
-SPA cannot skew. Reverting is `git revert` of the three commits.
+Internal API only — no deployed contract, no persisted data, no rollback window.
+`packages/shared` and `packages/spa` are untouched. Reverting is `git revert` of
+the three commits, in reverse order.
 
 ## Open Questions
 
-- **Should `resolveAllowed` gain the same explicitness?** It anchors
-  unconditionally today, so there is nothing optional to require — but that
-  means the two resolvers now express containment in two different vocabularies.
-  Left alone here deliberately; worth revisiting only if a third resolver
-  appears.
-- **Does the compiler-as-enumerator method (D3.3) actually find a site the grep
-  missed?** If it does, that is the strongest possible evidence for this change
-  and belongs in the tasks record. If it does not, the grep is corroborated but
-  the method is still the sounder one to have used.
-- **Carried unresolved from #100:** TOCTOU (above, explicit non-goal), and the
-  load-sensitive `changeReader` bound tests, which are unrelated to these
-  resolvers — no import path connects them — and belong with the bounds work.
+- **Does the compiler find a site the grep missed?** Given the grep has now
+  produced two wrong tables, this is no longer a curiosity — it is the main
+  evidence this change offers about its own necessity. Recorded in §5 either way.
+- **Should the two resolvers converge?** They express containment in two
+  vocabularies and differ on ambient authority (D2). Out of scope; worth
+  revisiting if a third resolver appears.
+- **Carried from #100:** TOCTOU (explicit non-goal), and the load-sensitive
+  `changeReader` bound tests, unrelated to these resolvers — no import path
+  connects them.

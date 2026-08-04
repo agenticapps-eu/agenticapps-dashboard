@@ -21,23 +21,34 @@ deferred work.
 
 - **BREAKING (internal API):** `anchorTo?: string` on `ResolveAllowedNamedOpts`
   and on `coverageResolver`'s `PathResolver` is replaced by a **required**
-  `containment` field. Every one of the 28 non-test resolution sites must now
-  state its containment intent; omission stops compiling.
+  `containment` field. All 24 non-test resolution sites must now state their
+  containment intent; omission stops compiling.
 - The field is a three-variant discriminated union, so the statement is a
   classification rather than a value that can be defaulted:
   - `{ kind: 'anchored', root }` — the root is **derived** from a path inside a
     repository and must still lie under `root`. The six sites #100 fixed.
   - `{ kind: 'repository-root' }` — the roots **are** repository roots, so the
     anchor is the root itself and the check is an identity.
-  - `{ kind: 'daemon-named', reason }` — a machine or family root that
-    deliberately lies outside any repository (design D8: symlinking skills into
-    `~/.claude/skills` *is* the install mechanism, and anchoring would report 33
-    of 98 entries missing). The `reason` string is mandatory, which makes every
-    deliberate non-anchor self-documenting and greppable.
-- No new refusal is intended at runtime. This converts an opt-in boundary into a
-  compile-time one; it does not tighten what the daemon admits. One deliberate
-  exception is decided in design (D2, unresolvable repository roots) and is
-  called out below because it is the only place where behaviour can move.
+  - `{ kind: 'daemon-named', reason }` — one of the five machine roots that
+    deliberately lie outside every repository (`agenticapps-bin`,
+    `claude-skills`, `codex-skills`, `opencode-skills`, `pi-skills`). Symlinking
+    skills into them *is* the install mechanism, and anchoring would report 33 of
+    98 and 13 of 14 entries missing. The `reason` string is mandatory, which
+    makes every deliberate non-anchor self-documenting and greppable.
+- **Admission is unchanged at every site.** `anchored` routes to the existing
+  anchored code path and `repository-root` / `daemon-named` route to the existing
+  unanchored one, byte-for-byte. The executable content of this change is a
+  required field and nothing else.
+- What this does **not** do is make declarations *correct*. The type system
+  forces a variant, not the right variant, and a derived boundary relabelled as
+  a repository root would compile. That limit is stated in the spec rather than
+  implied away, and regression coverage pins the six boundaries #100 anchored.
+
+An earlier draft of this proposal had `repository-root` adopt fail-closed
+anchoring semantics. Plan review round 1 falsified that in two independent ways
+— a reachable admission change via `<root>/missing/..`, and the silent loss of
+`makeCoverageResolver`'s cross-family roots — and the design was reversed
+accordingly. See `tasks.md` round-1 dispositions.
 
 ## Capabilities
 
@@ -62,17 +73,25 @@ None.
 
 - `packages/agent/src/lib/paths.ts` — `ResolveAllowedNamedOpts`, `resolveAllowedNamed`.
 - `packages/agent/src/lib/coverageResolver.ts` — `PathResolver`, `makeCoverageResolver`.
-- 28 non-test call sites across `projectMetadataScan.ts` (13),
-  `coverageResolver.ts` (4), `readiness/readinessFile.ts` (3),
-  `scanners/claudeMdScanner.ts` (2), `readiness/fingerprint.ts` (2),
-  `readiness/coverageDeriver.ts` (2), `paths.ts` (2); plus the six already
-  anchored in `scanners/workflowFleetScanner.ts` and
-  `scanners/workflowVersionScanner.ts`. 55 sites including tests.
-- `workflowArtifactScanner` is the D8 case and becomes `daemon-named` with its
-  reason recorded — the first time that decision is written down in code rather
-  than living only in an archived design document.
+- **24 non-test resolution sites**, counted as invocations rather than as
+  mentions of the identifier:
+  - 12 `resolveAllowedNamed(` calls — `projectMetadataScan.ts` (8),
+    `readiness/readinessFile.ts` (2), `readiness/fingerprint.ts` (1),
+    `readiness/coverageDeriver.ts` (1). Two of these are already anchored.
+  - 12 `PathResolver` invocations — `workflowFleetScanner.ts` (4),
+    `workflowArtifactScanner.ts` (3), `coreSpecVersionScanner.ts` (2),
+    `overrideSentinelScanner.ts` (1), `workflowVersionScanner.ts` (1),
+    `workflowScan.ts` (1). Four of these are already anchored, and none of these
+    files calls `resolveAllowedNamed` at all.
+- Helpers that relay a resolver — `readSkillVersions` is the confirmed case,
+  serving a repository root at `workflowDeriver.ts:184` and a machine root at
+  `:287` — gain a `containment` parameter rather than choosing a classification
+  (design D8).
+- The five machine roots in `workflowArtifactScanner` become `daemon-named` with
+  their reasons recorded — the first time that decision is written in code
+  rather than living only in an archived design document.
 - No wire-schema change, no SPA change, no new daemon route. `packages/shared`
   and `packages/spa` are untouched.
-- **Risk, stated up front:** the churn is wide and mostly mechanical, which is
-  exactly the condition under which a real change hides among 28 identical ones.
-  Design D3 records how the diff is kept reviewable.
+- **Risk, stated up front:** the churn is mechanical, which is the condition
+  under which a real change hides among identical ones. Design D3 sequences it
+  so every commit builds and the migration is reviewable in slices by shape.
