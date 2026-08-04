@@ -18,14 +18,21 @@
 
 ## 2. Enumerate before migrating
 
-- [ ] 2.1 Re-confirm the corrected inventory on current `main`: 12
+- [x] 2.1 Re-confirm the corrected inventory on current `main`: 12
   `resolveAllowedNamed(` call sites, 12 `PathResolver` invocations with `roots:`,
-  6 anchored (2 + 4). Record drift.
-- [ ] 2.4 Verify D6's premise that no call today passes a heterogeneous `roots`
-  array. If one exists, it is split before step 3 begins, not during.
-- [ ] 2.5 Enumerate the helpers that relay a `PathResolver` (`readSkillVersions`
-  is known; `resolveFile` and the `*.declare.ts` signatures are candidates) and
-  confirm which serve more than one classification.
+  6 anchored (2 + 4). Confirmed, no drift.
+- [x] 2.4 Verify D6's premise that no call today passes a heterogeneous `roots`
+  array. **One multi-root call exists** —
+  `workflowVersionScanner.ts:158`, `roots: [skillRoot, repoAbsPath]` — and on
+  inspection it is *not* heterogeneous in the sense D6 prohibits. See §5.
+- [x] 2.5 Enumerate the helpers that relay a `PathResolver`. Confirmed
+  relaying-with-roots helpers: `readSkillVersions` and `readStamp`
+  (`readiness/workflowDeriver.ts:195,331`) and the local `resolveFile`
+  (`scanners/claudeMdScanner.ts:76`). Of these only `readSkillVersions` is
+  called with two different classifications (`[hostRepo]` at :184,
+  `[machineRoot]` at :287), so it is the one that must take `containment` as a
+  parameter under D8; the other two serve a single classification each and take
+  it for symmetry rather than necessity.
 
 ## 3. Implement in three commits, each of which builds (D3)
 
@@ -111,6 +118,25 @@ is enforced is the enumeration — five ids, no free text — and a non-empty
 reason. Whether the id matches its root is covered per site by test. That is
 weaker than round 2 asked for and is recorded as such rather than delivered as
 if it were the same thing.
+
+**§2.4 — D6's premise was wrong as worded, and right as intended.** Design D6
+says "no such call exists today". One does: `workflowVersionScanner.ts:158`
+passes `roots: [skillRoot, repoAbsPath]`, where `skillRoot` is derived
+(`<repo>/.claude/skills`) and `repoAbsPath` is the repository root itself — two
+shapes in one `roots` array.
+
+It is nonetheless **not** heterogeneous in the sense D6 prohibits. Both roots
+are required to lie under the same `repoAbsPath`, so the call has one honest
+classification, `anchored { root: repoAbsPath }`; what differs between the roots
+is only that one of them happens to *equal* the anchor, which is an identity,
+not a second classification. No split is needed and none is made.
+
+D6's wording is corrected accordingly: the prohibition is on roots that would
+need *different anchors*, not on roots of different provenance. This call is
+also the one #100's D7 already flagged as the site where the anchor is
+decorative in production — `repoAbsPath` always survives the filter — so it is
+the most-examined call in the set and its classification should be stated
+rather than inferred.
 
 <!-- 3.4's enumeration diff goes here. Any site whose classification departs
      from the table is named here with reasoning, never folded into the

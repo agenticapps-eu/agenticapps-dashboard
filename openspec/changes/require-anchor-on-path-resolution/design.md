@@ -228,9 +228,17 @@ unenforceable THEN this decision exists to remove.
 
 `roots` is an array while `containment` classifies the whole call, so a call
 mixing a repository root with a derived one has no honest single classification.
-No such call exists today (task 2.4 verifies this rather than assuming it). The
-rule is a stated prohibition: a call's roots SHALL share one classification, and
-a site needing two SHALL be split into two calls. A prohibition beats per-root
+**Corrected by task 2.4.** One multi-root call does exist —
+`workflowVersionScanner.ts:158`, `roots: [skillRoot, repoAbsPath]` — mixing a
+derived root with the repository root it derives from. It is not heterogeneous
+in the sense that matters: both roots are required to lie under the same
+`repoAbsPath`, so the call has one honest classification and one of its roots
+merely coincides with the anchor. The prohibition is therefore on roots that
+would need *different anchors*, not on roots of different provenance. No call
+today needs two anchors.
+
+The rule is a stated prohibition: a call's roots SHALL share one classification,
+and a site needing two SHALL be split into two calls. A prohibition beats per-root
 classification here because splitting is always available and costs nothing,
 while per-root typing would complicate all 24 sites to serve zero of them.
 
