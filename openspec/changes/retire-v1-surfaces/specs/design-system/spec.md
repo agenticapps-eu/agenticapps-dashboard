@@ -42,6 +42,22 @@ The row-count figure is retained as the **intent** the height is chosen to serve
 — roughly a fifteen-row working set at the reference viewport in a typical
 browser — and SHALL NOT be used as the pass condition.
 
+**The density clause binds list and table surfaces; the fit and alignment
+clauses bind every surface.** The scoping is stated rather than inferred,
+because `add-agent-change-board` adds a kanban board of cards and the sentence
+"every row is the same height, rather than a card-sized block" reads as
+anti-card in general. It is not: it governs surfaces whose unit of information
+is a **row**, where a card-sized block is a density regression against a
+directly comparable alternative. A kanban column's unit is a card, chosen over
+a dense table deliberately and with the trade-off recorded (that change's design
+decision 6 — stage as a *place* rather than a value scanned for, matching the
+terminal board this fleet already uses).
+
+What the board is **not** exempt from, and must satisfy: no page-level
+horizontal scrolling at either verification viewport, and tabular figures on its
+numeric values so counts align between cards. Both are asserted in that change's
+own tests. The exemption is from uniform row height alone.
+
 The **reference viewport** for density guarantees is 1440×900, matching the
 design critique. Responsive fit SHALL also be verified at the smallest declared
 breakpoint; a width breakpoint alone is not used to assert vertical fit. The
@@ -52,6 +68,12 @@ verification viewport is 390×844.
 - **WHEN** a row on a list or table surface is measured
 - **THEN** its height is at or below the declared maximum
 - **AND** every row is the same height, rather than a card-sized block.
+
+#### Scenario: A card surface is bound by fit and alignment but not by row height
+- **WHEN** a surface whose unit of information is a card rather than a row renders, such as the lifecycle change board
+- **THEN** the uniform-row-height requirement does not apply to it
+- **AND** it still fits without page-level horizontal scrolling at every declared verification viewport
+- **AND** its numeric values still use tabular figures.
 
 #### Scenario: Density does not depend on the viewer's browser furniture
 - **WHEN** the same surface is rendered with a bookmarks bar open, at a non-default OS font scale, or at a zoom level other than 100%

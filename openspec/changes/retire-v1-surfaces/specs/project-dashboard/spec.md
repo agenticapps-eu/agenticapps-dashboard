@@ -179,10 +179,25 @@ consumer.
 
 **Migration**: Superseded by `The Spec Check Consumes The Existing OpenSpec
 Reader` in `repo-readiness`. Open-change counts and task ratios appear in the
-`spec` check's cell and its detail block. Affected-capability derivation and
-archived-change ordering have no successor because v2 renders neither. The
-zero-padded archive-name rule governed chronological display; withdrawing it
-does not rename, reorder, or delete archive directories.
+`spec` check's cell and its detail block. Affected-capability derivation has no
+successor because no v2 surface renders it.
+
+**Archived-change ordering does have a successor, and this text used to say it
+did not.** `add-agent-change-board` renders archived changes as cards in the
+board's Archive column, ordered by entry date most recent first — so
+"no successor because v2 renders neither" is now false of the ordering half.
+Corrected here rather than left, because the justification for withdrawing the
+value was the absence of a consumer and there is one.
+
+What that board does **not** need is *this reader* to do the ordering. It reads
+`openspec/changes/archive/` independently (design decision 3 of that change: the
+hybrid reader is on the `spec` check's hot path and must not pay for board
+data), orders on the full dated `YYYY-MM-DD-<slug>` basename, and reports what
+it withheld. So the withdrawal from *this* reader stands; only the stated reason
+changes. The zero-padded archive-name rule likewise governed chronological
+display here; withdrawing it does not rename, reorder, or delete archive
+directories, and the board's own `archivedSlug` requires the same dated shape
+independently.
 
 ### Requirement: Capability Panel
 
