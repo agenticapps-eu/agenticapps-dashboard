@@ -54,6 +54,17 @@ export function AppShellV2(): React.JSX.Element {
     if (!compact) setNavOpen(false)
   }
 
+  // Escape closes the panel, matching the drawer. An overlay you can open and
+  // not dismiss from the keyboard is the defect this pairs with.
+  React.useEffect(() => {
+    if (!navOpen) return undefined
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') setNavOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [navOpen])
+
   return (
     <ToastProvider>
       <div
@@ -72,7 +83,8 @@ export function AppShellV2(): React.JSX.Element {
         <div className="flex min-w-0 min-h-0 flex-col">
           <TopBar
             compact={compact}
-            onOpenNav={compact ? () => setNavOpen(true) : undefined}
+            navOpen={navOpen}
+            onOpenNav={compact ? () => setNavOpen((open) => !open) : undefined}
           />
           <div data-slot="banner-mount">
             <RepairBanner />
@@ -82,7 +94,11 @@ export function AppShellV2(): React.JSX.Element {
           </main>
         </div>
         {compact && navOpen && (
-          <div className="fixed inset-0 flex" style={{ zIndex: 'var(--z-overlay)' }}>
+          <div
+            id="shell-navigation-panel"
+            className="fixed inset-0 flex"
+            style={{ zIndex: 'var(--z-overlay)' }}
+          >
             {/* Dismiss by tapping away, which is the gesture a panel like this
                 teaches. Presentational: the labelled close button below is the
                 accessible control. */}

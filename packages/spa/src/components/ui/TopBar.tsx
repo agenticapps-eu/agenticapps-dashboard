@@ -29,12 +29,15 @@ import { StatusPill } from './StatusPill.js'
 
 export function TopBar({
   compact = false,
+  navOpen = false,
   onOpenNav,
 }: {
   /** Below the shell's compact boundary: controls shrink to their icons. */
   compact?: boolean
   /** Supplied only when the sidebar has left the grid. */
   onOpenNav?: (() => void) | undefined
+  /** Whether the navigation panel is currently open, for the toggle's state. */
+  navOpen?: boolean
 } = {}): React.JSX.Element {
   // Cmd+K trigger: dispatches a synthetic keydown so the global CommandPalette listener opens.
   function openPalette(): void {
@@ -77,9 +80,14 @@ export function TopBar({
       style={{ height: '60px', zIndex: 'var(--z-sticky)' }}
     >
       {onOpenNav !== undefined && (
+        // The label and `aria-expanded` both track state: a toggle that always
+        // says "Open navigation" tells a screen-reader user nothing about what
+        // pressing it just did.
         <button
           type="button"
-          aria-label="Open navigation"
+          aria-label={navOpen ? 'Navigation, open' : 'Open navigation'}
+          aria-expanded={navOpen ?? false}
+          aria-controls="shell-navigation-panel"
           onClick={onOpenNav}
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-card-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >

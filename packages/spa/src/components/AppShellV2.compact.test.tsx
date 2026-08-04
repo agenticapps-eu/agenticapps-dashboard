@@ -153,6 +153,27 @@ describe('the compact shell', () => {
     expect(screen.getByRole('button', { name: /open command palette/iu })).toBeTruthy()
   })
 
+  // Assessment B: the toggle exposed no state — no aria-expanded, no
+  // aria-controls, and its label stayed "Open navigation" while the panel was
+  // open.
+  it('exposes whether the navigation is open', () => {
+    renderShell()
+    const toggle = screen.getByRole('button', { name: /open navigation/iu })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(toggle)
+    expect(
+      screen.getByRole('button', { name: /navigation/iu, expanded: true }),
+    ).toBeTruthy()
+  })
+
+  it('closes the navigation on Escape', () => {
+    renderShell()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation/iu }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByLabelText('Primary navigation')).toBeNull()
+  })
+
   it('still renders the main content region', () => {
     renderShell()
     expect(screen.getByTestId('outlet')).toBeTruthy()

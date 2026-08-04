@@ -30,25 +30,38 @@ import type { ChangeCard as ChangeCardData } from '@agenticapps/dashboard-shared
 function SourceBadge({ card }: { card: ChangeCardData }): ReactElement | null {
   if (card.source === 'backlog') {
     return (
-      <span className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary">
+      <span
+        data-testid="change-card-source-badge"
+        className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary"
+      >
         Backlog
       </span>
     )
   }
-  // The two archive readings, made legible without opening the card: a filed
-  // entry shows the date it was filed, and an active change complete enough to
-  // archive shows that it is only ready to be.
+  // The two archive readings, made legible without opening the card. Both used
+  // to occupy this slot with identical geometry, so a bare date and a state
+  // read the same — and a reader who only ever saw dates (every archive card in
+  // the live fleet) had no reason to expect the other. `Filed` says what the
+  // date is a date *of*, and `Ready` is given a dot so the two differ in shape
+  // and not only in words.
   if (card.source === 'archive' && card.archiveDate !== null) {
     return (
-      <span className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-text-tertiary">
-        {card.archiveDate}
+      <span
+        data-testid="change-card-source-badge"
+        className="rounded-md bg-card-bg-hover px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary"
+      >
+        Filed <span className="tabular-nums">{card.archiveDate}</span>
       </span>
     )
   }
   if (card.ready) {
     return (
-      <span className="rounded-md bg-status-success-bg px-1.5 py-0.5 text-[11px] font-medium text-status-success">
-        Ready
+      <span
+        data-testid="change-card-source-badge"
+        className="inline-flex items-center gap-1 rounded-md bg-status-success-bg px-1.5 py-0.5 text-[11px] font-medium text-status-success"
+      >
+        <span aria-hidden="true">●</span>
+        Ready to archive
       </span>
     )
   }
@@ -88,26 +101,31 @@ export function ChangeCard({
           <SourceBadge card={card} />
         </span>
 
-        <span className="flex items-center gap-2 text-xs text-text-secondary">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
           {/*
-            Tabular figures so 48/119 and 1/9 line their digits up between
-            cards — the counts are meant to be compared down a column.
+            Labelled, because the accessibility tree announced a bare "108/129"
+            while every other datum on the card says what it is. Suppressed
+            entirely at 0 of 0 — fifteen archive cards were rendering a ratio
+            that counted nothing. Tabular figures so the numbers line up down a
+            column, which is the only reason to put them on a card at all.
           */}
-          <span data-testid="change-card-counts" className="tabular-nums">
-            {card.completedChecklist}/{card.totalChecklist}
-          </span>
+          {card.totalChecklist > 0 && (
+            <span data-testid="change-card-counts">
+              <span className="tabular-nums">
+                {card.completedChecklist}/{card.totalChecklist}
+              </span>{' '}
+              tasks
+            </span>
+          )}
           {card.hasRequestChanges && (
             <span className="text-status-warning">Changes requested</span>
           )}
           {card.evidenceLimited && (
-            <span
-              data-testid="change-card-evidence-limited"
-              className="text-text-tertiary"
-              // Said in words as well as marked, because a card whose evidence
-              // was bounded is showing a partial reading and should say so.
-              title="Some of this change's evidence was not read"
-            >
-              Partial
+            // Glossed in the text rather than in a `title`, which is
+            // mouse-only and invisible to keyboard and touch — and this fleet
+            // is read from an iPad over Tailscale.
+            <span data-testid="change-card-evidence-limited" className="text-text-tertiary">
+              Partly read
             </span>
           )}
         </span>

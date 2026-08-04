@@ -90,7 +90,7 @@ function LoadingState(): ReactElement {
       {[1, 2, 3, 4].map((col) => (
         <div key={col} className="flex flex-col gap-2">
           {[1, 2, 3].map((row) => (
-            <div key={row} className="h-20 animate-pulse rounded-card bg-card-bg" />
+            <div key={row} className="h-20 animate-pulse motion-reduce:animate-none rounded-card bg-card-bg" />
           ))}
         </div>
       ))}
@@ -227,6 +227,21 @@ function StageRail({
   selected: ChangeStage
   onSelect: (stage: ChangeStage) => void
 }): ReactElement {
+  // A real tab widget, not the ARIA of one. The first draft declared
+  // `role="tablist"` with no `aria-controls`, no `tabpanel` anywhere in the
+  // document, every tab in the tab sequence, and no arrow-key handling — it
+  // announced a pattern and behaved as four buttons, which is worse than
+  // claiming nothing.
+  function onKeyDown(event: React.KeyboardEvent, index: number): void {
+    const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
+    if (delta === 0) return
+    event.preventDefault()
+    // Wraps at both ends rather than dead-ending, per the APG.
+    const next = CHANGE_STAGES[(index + delta + CHANGE_STAGES.length) % CHANGE_STAGES.length]!
+    onSelect(next)
+    document.getElementById(`stage-tab-${next}`)?.focus()
+  }
+
   return (
     <div
       data-testid="stage-rail"
@@ -234,14 +249,19 @@ function StageRail({
       aria-label="Lifecycle stage"
       className="flex gap-1 overflow-x-auto rounded-card bg-card-bg p-1"
     >
-      {CHANGE_STAGES.map((stage) => {
+      {CHANGE_STAGES.map((stage, index) => {
         const active = stage === selected
         return (
           <button
             key={stage}
+            id={`stage-tab-${stage}`}
             type="button"
             role="tab"
             aria-selected={active}
+            aria-controls={`stage-panel-${stage}`}
+            // Roving: one tab in the sequence, arrows move between them.
+            tabIndex={active ? 0 : -1}
+            onKeyDown={(event) => onKeyDown(event, index)}
             onClick={() => onSelect(stage)}
             className={
               active
@@ -253,6 +273,56 @@ function StageRail({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * Which repositories the board is showing.
+ *
+ * Three repositories plus "All" is four options, inside the visible-options
+ * budget — and it is the difference between "what needs me in cparx" being a
+ * question you answer and one you scroll for. Hidden below two repositories,
+ * where it would only ever restate the board.
+ */
+function RepositoryFilter({
+  repositories,
+  selected,
+  onSelect,
+}: {
+  repositories: readonly ChangeRepositoryStatus[]
+  selected: string | null
+  onSelect: (repositoryId: string | null) => void
+}): ReactElement {
+  const chip = (active: boolean) =>
+    active
+      ? 'rounded-md bg-accent-bg px-2.5 py-1 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+      : 'rounded-md px-2.5 py-1 text-xs font-medium text-text-tertiary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+
+  return (
+    <div
+      data-testid="repository-filter"
+      className="flex flex-wrap items-center gap-1 rounded-card bg-card-bg p-1"
+    >
+      <button
+        type="button"
+        aria-pressed={selected === null}
+        onClick={() => onSelect(null)}
+        className={chip(selected === null)}
+      >
+        All repositories
+      </button>
+      {repositories.map((repo) => (
+        <button
+          key={repo.id}
+          type="button"
+          aria-pressed={selected === repo.id}
+          onClick={() => onSelect(repo.id)}
+          className={chip(selected === repo.id)}
+        >
+          {repo.name}
+        </button>
+      ))}
     </div>
   )
 }
@@ -283,7 +353,8 @@ export function ChangeBoardPage({
 } = {}): ReactElement {
   const board = useChangesFleet()
   const fourColumn = useFourColumnLayout()
-  const [selectedStage, setSelectedStage] = useState<ChangeStage>('propose')
+  const [stage, setStage] = useState<ChangeStage | null>(null)
+  const [repositoryId, setRepositoryId] = useState<string | null>(null)
 
   const open = (card: ChangeCardData): void => onOpenCard?.(card)
 
@@ -297,13 +368,25 @@ export function ChangeBoardPage({
   } else {
     response = board.data
     const state = fleetReadState(response)
-    const grouped = groupByStage(response.cards)
+    const visibleCards =
+      repositoryId === null
+        ? response.cards
+        : response.cards.filter((card) => card.repositoryId === repositoryId)
+    const grouped = groupByStage(visibleCards)
     const counts = {
       propose: grouped.propose.length,
       validate: grouped.validate.length,
       execute: grouped.execute.length,
       archive: grouped.archive.length,
     }
+
+    // The paged layout opened on `propose` unconditionally, which on this fleet
+    // is the emptiest column — one card against Archive's forty-five. Default to
+    // the fullest stage that is not Archive, since Archive is finished work.
+    const fallback =
+      (['execute', 'validate', 'propose'] as const).find((candidate) => counts[candidate] > 0)
+      ?? 'propose'
+    const selectedStage = stage ?? fallback
 
     if (state === 'all-failed') {
       content = <AllFailedState repositories={response.repositories} />
@@ -315,14 +398,19 @@ export function ChangeBoardPage({
           className="grid items-start gap-4"
           style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
         >
-          {CHANGE_STAGES.map((stage) => (
-            <StageColumn key={stage} stage={stage} cards={grouped[stage]} onOpen={open} />
+          {CHANGE_STAGES.map((each) => (
+            <StageColumn key={each} stage={each} cards={grouped[each]} onOpen={open} />
           ))}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <StageRail counts={counts} selected={selectedStage} onSelect={setSelectedStage} />
-          <StageColumn stage={selectedStage} cards={grouped[selectedStage]} onOpen={open} />
+          <StageRail counts={counts} selected={selectedStage} onSelect={setStage} />
+          <StageColumn
+            stage={selectedStage}
+            cards={grouped[selectedStage]}
+            onOpen={open}
+            paged={true}
+          />
         </div>
       )
     }
@@ -340,6 +428,13 @@ export function ChangeBoardPage({
       {/* Above the board, not inside it: an incomplete board is a fact about
           the whole reading, not about any one column. */}
       {degraded && <DegradedNotice repositories={response!.repositories} />}
+      {response !== undefined && response.repositories.length > 1 && (
+        <RepositoryFilter
+          repositories={response.repositories}
+          selected={repositoryId}
+          onSelect={setRepositoryId}
+        />
+      )}
       {response !== undefined && response.notices.length > 0 && (
         <NoticeList notices={response.notices} />
       )}

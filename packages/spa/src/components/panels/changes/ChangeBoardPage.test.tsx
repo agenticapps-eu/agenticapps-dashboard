@@ -222,11 +222,12 @@ describe('the paged layout', () => {
     )
 
     const rail = screen.getByTestId('stage-rail')
-    expect(within(column('propose')).getByText('p')).toBeTruthy()
-
-    fireEvent.click(within(rail).getByRole('tab', { name: /Execute/u }))
+    // Opens on the fullest non-Archive stage, not unconditionally on Propose.
     expect(within(column('execute')).getByText('e')).toBeTruthy()
-    expect(screen.queryByTestId('stage-column-propose')).toBeNull()
+
+    fireEvent.click(within(rail).getByRole('tab', { name: /Propose/u }))
+    expect(within(column('propose')).getByText('p')).toBeTruthy()
+    expect(screen.queryByTestId('stage-column-execute')).toBeNull()
   })
 
   it('still states that the selected stage is empty', () => {
@@ -239,6 +240,159 @@ describe('the paged layout', () => {
     layout.fourColumn = true
     renderBoard(fleet({ cards: [card()] }))
     expect(screen.queryByTestId('stage-rail')).toBeNull()
+  })
+})
+
+// ── round-4 critique: the rail is a real tab widget or none at all ─────────
+
+describe('the stage rail as a tab widget', () => {
+  beforeEach(() => {
+    layout.fourColumn = false
+  })
+
+  const railAnd = () => {
+    renderBoard(
+      fleet({ cards: [card({ stage: 'propose' }), card({ stage: 'execute' })] }),
+    )
+    return screen.getByTestId('stage-rail')
+  }
+
+  // Measured: role="tablist" with no aria-controls, zero tabpanels in the
+  // document, all four tabs tabbable, and ArrowRight doing nothing. It
+  // announced itself as a tab widget and behaved as four buttons.
+  it('points each tab at the panel it controls', () => {
+    const rail = railAnd()
+    const tab = within(rail).getByRole('tab', { selected: true })
+    const controls = tab.getAttribute('aria-controls')
+
+    expect(controls).toBeTruthy()
+    const panel = document.getElementById(controls!)
+    expect(panel).toBeTruthy()
+    expect(panel!.getAttribute('role')).toBe('tabpanel')
+    expect(panel!.getAttribute('aria-labelledby')).toBe(tab.id)
+  })
+
+  it('keeps exactly one tab in the tab sequence', () => {
+    const rail = railAnd()
+    const tabs = within(rail).getAllByRole('tab')
+    expect(tabs.filter((tab) => tab.tabIndex === 0)).toHaveLength(1)
+    expect(tabs.find((tab) => tab.getAttribute('aria-selected') === 'true')!.tabIndex).toBe(0)
+  })
+
+  it('moves between stages with the arrow keys', () => {
+    const rail = railAnd()
+    fireEvent.click(within(rail).getByRole('tab', { name: /Propose/u }))
+    const tabs = within(rail).getAllByRole('tab')
+
+    fireEvent.keyDown(tabs[0]!, { key: 'ArrowRight' })
+    expect(within(rail).getByRole('tab', { selected: true }).textContent).toContain('Validate')
+
+    fireEvent.keyDown(within(rail).getByRole('tab', { selected: true }), { key: 'ArrowLeft' })
+    expect(within(rail).getByRole('tab', { selected: true }).textContent).toContain('Propose')
+  })
+
+  it('wraps at both ends rather than dead-ending', () => {
+    const rail = railAnd()
+    fireEvent.click(within(rail).getByRole('tab', { name: /Propose/u }))
+    // Left from the first stage lands on the last, rather than dead-ending.
+    fireEvent.keyDown(within(rail).getByRole('tab', { selected: true }), { key: 'ArrowLeft' })
+    expect(within(rail).getByRole('tab', { selected: true }).textContent).toContain('Archive')
+  })
+
+  // The rail already names the stage and its count; the column heading beneath
+  // repeated both, 8px apart.
+  it('does not repeat the stage heading beneath itself', () => {
+    railAnd()
+    expect(screen.queryAllByTestId('stage-heading')).toHaveLength(0)
+  })
+
+  it('opens on a stage that has cards rather than always on Propose', () => {
+    // Hard-coded `propose` landed the phone layout on the emptiest column.
+    renderBoard(fleet({ cards: [card({ stage: 'execute' })] }))
+    expect(screen.getByTestId('stage-column-execute')).toBeTruthy()
+  })
+})
+
+// ── round-4 critique: the Archive column is bounded and the fleet filterable ─
+
+describe('the Archive column', () => {
+  const archived = (date: string, name: string) =>
+    card({
+      stage: 'archive',
+      source: 'archive',
+      archiveDate: date,
+      sourceInstance: `${date}-${name}`,
+      changeName: name,
+      title: name,
+    })
+
+  it('shows only the most recent entries, and says how many it is holding back', () => {
+    // 45 of 60 cards were archived: a 4,537px column beside a 128px one, all of
+    // it work that by definition is not in flight.
+    const many = Array.from({ length: 20 }, (_, index) =>
+      archived(`2026-07-${String(index + 1).padStart(2, '0')}`, `old-${index}`),
+    )
+    renderBoard(fleet({ cards: many }))
+
+    const column = screen.getByTestId('stage-column-archive')
+    expect(within(column).getAllByTestId('change-card-name').length).toBeLessThan(20)
+    expect(within(column).getByRole('button', { name: /show all 20/iu })).toBeTruthy()
+  })
+
+  it('shows them all on request', () => {
+    const many = Array.from({ length: 20 }, (_, index) =>
+      archived(`2026-07-${String(index + 1).padStart(2, '0')}`, `old-${index}`),
+    )
+    renderBoard(fleet({ cards: many }))
+    fireEvent.click(screen.getByRole('button', { name: /show all 20/iu }))
+    expect(
+      within(screen.getByTestId('stage-column-archive')).getAllByTestId('change-card-name'),
+    ).toHaveLength(20)
+  })
+
+  it('does not offer a control when everything already fits', () => {
+    renderBoard(fleet({ cards: [archived('2026-07-01', 'only')] }))
+    expect(screen.queryByRole('button', { name: /show all/iu })).toBeNull()
+  })
+})
+
+describe('the repository filter', () => {
+  const inRepo = (repositoryId: string, name: string) =>
+    card({ repositoryId, sourceInstance: name, changeName: name, title: name, stage: 'validate' })
+
+  it('offers one chip per repository plus an all-repositories default', () => {
+    renderBoard(
+      fleet({
+        cards: [inRepo('a', 'from-a'), inRepo('b', 'from-b')],
+        repositories: [
+          { id: 'a', name: 'alpha', read: 'ok', reason: null },
+          { id: 'b', name: 'beta', read: 'ok', reason: null },
+        ],
+      }),
+    )
+    const filter = screen.getByTestId('repository-filter')
+    expect(within(filter).getAllByRole('button')).toHaveLength(3)
+  })
+
+  it('narrows the board to one repository', () => {
+    renderBoard(
+      fleet({
+        cards: [inRepo('a', 'from-a'), inRepo('b', 'from-b')],
+        repositories: [
+          { id: 'a', name: 'alpha', read: 'ok', reason: null },
+          { id: 'b', name: 'beta', read: 'ok', reason: null },
+        ],
+      }),
+    )
+    fireEvent.click(within(screen.getByTestId('repository-filter')).getByRole('button', { name: 'beta' }))
+
+    expect(screen.getByText('from-b')).toBeTruthy()
+    expect(screen.queryByText('from-a')).toBeNull()
+  })
+
+  it('stays out of the way when there is only one repository', () => {
+    renderBoard(fleet({ cards: [inRepo('a', 'only')] }))
+    expect(screen.queryByTestId('repository-filter')).toBeNull()
   })
 })
 
@@ -268,6 +422,33 @@ describe('a change name', () => {
     expect(screen.getByTestId('change-card-name').textContent).toHaveLength(long.length)
   })
 
+  it('labels the checklist ratio rather than announcing a bare fraction', () => {
+    // The a11y tree read "108/129" with nothing saying what it counted, while
+    // every other datum on the card self-describes.
+    renderBoard(fleet({ cards: [card({ completedChecklist: 48, totalChecklist: 119 })] }))
+    const counts = screen.getByTestId('change-card-counts')
+    expect(counts.textContent).toMatch(/tasks/iu)
+    expect(counts.textContent).toContain('48')
+    expect(counts.textContent).toContain('119')
+  })
+
+  it('shows no ratio at all when a change has no checklist', () => {
+    // 15 of 45 archive cards rendered a meaningless `0/0`.
+    renderBoard(fleet({ cards: [card({ completedChecklist: 0, totalChecklist: 0 })] }))
+    expect(screen.queryByTestId('change-card-counts')).toBeNull()
+  })
+
+  it('says what the archive date is a date of', () => {
+    renderBoard(
+      fleet({
+        cards: [
+          card({ stage: 'archive', source: 'archive', archiveDate: '2026-08-02', sourceInstance: '2026-08-02-x' }),
+        ],
+      }),
+    )
+    expect(screen.getByTestId('change-card-source-badge').textContent).toMatch(/filed/iu)
+  })
+
   it('renders counts with tabular figures so digits align between cards', () => {
     renderBoard(
       fleet({
@@ -278,7 +459,9 @@ describe('a change name', () => {
       }),
     )
     for (const node of screen.getAllByTestId('change-card-counts')) {
-      expect(node.className).toContain('tabular-nums')
+      // On the numerals themselves — the word "tasks" beside them must not be
+      // forced into tabular figures.
+      expect(node.querySelector('.tabular-nums')).toBeTruthy()
     }
   })
 })
@@ -422,9 +605,12 @@ describe('the Archive column', () => {
       `change-card-${cardKey('repo-1', 'archive', '2026-07-04-filed')}`,
     )
 
-    // The difference is legible without opening either card.
-    expect(within(readyCard).getByText('Ready')).toBeTruthy()
-    expect(within(filedCard).queryByText('Ready')).toBeNull()
+    // The difference is legible without opening either card, and each badge
+    // says what it means rather than leaving a bare date to be interpreted.
+    expect(within(readyCard).getByTestId('change-card-source-badge').textContent)
+      .toMatch(/ready to archive/iu)
+    expect(within(filedCard).getByTestId('change-card-source-badge').textContent)
+      .toMatch(/filed/iu)
     expect(within(filedCard).getByText(/2026-07-04/u)).toBeTruthy()
   })
 })

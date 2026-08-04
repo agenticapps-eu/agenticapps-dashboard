@@ -1,20 +1,34 @@
 /**
  * ChangeDrawer.tsx — one change's detail, over the board.
  *
- * Over rather than instead of: the board stays rendered behind it, so the
- * reader keeps the context they selected from. Everything here is already on
- * the card's wire record — the drawer performs no second read, so opening one
- * costs nothing and cannot fail on its own.
+ * Everything here is already on the card's wire record — the drawer performs no
+ * second read, so opening one costs nothing and cannot fail on its own.
+ *
+ * ## It is a dialog, and now says so
+ *
+ * The first draft was an `<aside>` with an `aria-label`, positioned fixed: a
+ * *landmark* that behaved like a modal. Measured, it had no `role`, no
+ * `aria-modal`, no scrim, no Escape handler, it never moved focus, and its close
+ * control was the 79th of 80 tab stops because the panel is last in the DOM. A
+ * keyboard or screen-reader user had no exit short of browser Back.
+ *
+ * It now declares `role="dialog"` and `aria-modal`, moves focus to the close
+ * control on open and returns it to the card that opened it, traps Tab, closes
+ * on Escape, and has a scrim that dismisses on click. The docblock used to claim
+ * the board "stays visible behind it" — that was written from the source rather
+ * than from a rendered page, and at 390px the panel covered everything. The
+ * scrim is what makes the sentence true rather than aspirational.
  *
  * Constraints (D-5.1-10):
  * - NO cn()/clsx/CVA — inline className strings only
  * - NO hex literals — token names only
  */
-import type { ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { X } from 'lucide-react'
 
 import type { ChangeCard } from '@agenticapps/dashboard-shared'
 
+import { ChecklistRow } from './ChecklistRow.js'
 import { STAGE_LABELS } from './StageColumn.js'
 
 const SOURCE_LABELS: Record<ChangeCard['source'], string> = {
@@ -98,9 +112,71 @@ export function ChangeDrawer({
   card: ChangeCard
   onClose: () => void
 }): ReactElement {
+  const panel = useRef<HTMLDivElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
+  const [showCompleted, setShowCompleted] = useState(false)
+
+  const outstanding = card.checklist.filter((row) => !row.completed)
+  const done = card.checklist.filter((row) => row.completed)
+
+  // Focus moves in on open and returns to whatever opened it on close. Without
+  // this the close control was the 79th of 80 tab stops, because the drawer is
+  // last in the DOM and nothing had moved the caret.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    closeButton.current?.focus()
+    return () => opener?.focus?.()
+  }, [card.id])
+
+  // Escape closes, and Tab is kept inside the panel while it is open — the two
+  // halves of the dialog contract this was missing.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab' || panel.current === null) return
+      const focusable = [
+        ...panel.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((node) => node.offsetParent !== null || node === closeButton.current)
+      if (focusable.length === 0) return
+      const first = focusable[0]!
+      const last = focusable[focusable.length - 1]!
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   return (
-    <aside
+    <>
+    {/*
+      A scrim, which the first draft had none of at any width. It also makes the
+      docblock's claim honest: the board is visible *behind* the drawer rather
+      than merely still mounted.
+    */}
+    <div
+      data-testid="change-drawer-backdrop"
+      onClick={onClose}
+      aria-hidden="true"
+      className="fixed inset-0 bg-app-bg opacity-60"
+      style={{ zIndex: 'var(--z-overlay)' }}
+    />
+    <div
+      ref={panel}
       data-testid="change-drawer"
+      role="dialog"
+      aria-modal="true"
       aria-label={`Detail for ${card.title}`}
       className="fixed right-0 top-0 flex h-screen w-full max-w-md flex-col gap-4 overflow-y-auto border-l border-border-subtle bg-card-bg p-5 shadow-card"
       style={{ zIndex: 'var(--z-overlay)' }}
@@ -114,11 +190,17 @@ export function ChangeDrawer({
           </h2>
           <span className="text-xs text-text-tertiary">{card.repositoryName}</span>
         </div>
+        {/*
+          First in the panel's tab order and 32px square. It was 24x24 — exactly
+          the WCAG 2.5.8 minimum with no margin — and the last tab stop on the
+          page.
+        */}
         <button
+          ref={closeButton}
           type="button"
           aria-label="Close detail"
           onClick={onClose}
-          className="rounded-md p-1 text-text-tertiary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-card-bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X size={16} aria-hidden="true" />
         </button>
@@ -147,29 +229,40 @@ export function ChangeDrawer({
         <Reviewers card={card} />
       </Field>
 
-      <Field label={`Checklist (${card.completedChecklist}/${card.totalChecklist})`}>
+      <Field label={`Checklist (${card.completedChecklist} of ${card.totalChecklist} done)`}>
         {card.checklist.length === 0 ? (
           <span className="text-text-secondary">
             No checklist rows — which is why this change cannot leave Validate.
           </span>
         ) : (
-          <ul data-testid="drawer-checklist" className="flex flex-col gap-1">
-            {card.checklist.map((row, index) => (
-              <li
-                key={`${index}-${row.text}`}
-                className={
-                  row.completed
-                    ? 'flex gap-2 text-sm text-text-tertiary line-through'
-                    : 'flex gap-2 text-sm text-text-primary'
-                }
+          <div className="flex flex-col gap-2">
+            {/*
+              What is left, not what is finished. The unfiltered list ran to
+              8,282px on this repository's own change, with the first incomplete
+              row 4,760px down — five screens of struck-through text before the
+              first thing anyone still has to do.
+            */}
+            {outstanding.length === 0 ? (
+              <p data-testid="drawer-checklist-all-done" className="text-sm text-status-success">
+                Every checklist row is complete.
+              </p>
+            ) : null}
+            <ul data-testid="drawer-checklist" className="flex flex-col gap-1">
+              {(showCompleted ? card.checklist : outstanding).map((row, index) => (
+                <ChecklistRow key={`${index}-${row.text}`} text={row.text} completed={row.completed} />
+              ))}
+            </ul>
+            {done.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowCompleted((open) => !open)}
+                aria-expanded={showCompleted}
+                className="self-start rounded-md px-2 py-1 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                <span aria-hidden="true">{row.completed ? '✓' : '·'}</span>
-                {/* Rendered as text, never as markup: the row is prose from a
-                    file this daemon does not control. */}
-                <span>{row.text}</span>
-              </li>
-            ))}
-          </ul>
+                {showCompleted ? 'Hide' : 'Show'} {done.length} completed
+              </button>
+            )}
+          </div>
         )}
       </Field>
 
@@ -178,6 +271,7 @@ export function ChangeDrawer({
           Some of this change&rsquo;s evidence was not read, so this detail is partial.
         </p>
       )}
-    </aside>
+    </div>
+    </>
   )
 }

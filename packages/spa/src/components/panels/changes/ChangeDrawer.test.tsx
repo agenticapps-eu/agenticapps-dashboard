@@ -164,14 +164,18 @@ describe('the drawer', () => {
     expect(reviewers.textContent).toMatch(/no review/iu)
   })
 
-  it('carries the checklist rows and their completion', () => {
+  it('carries the outstanding checklist rows, with the completed ones on request', () => {
     routerState.search = { repo: 'repo-1', source: 'active', change: 'add-thing' }
     renderRoute([card()])
 
     const checklist = within(screen.getByTestId('change-drawer')).getByTestId('drawer-checklist')
-    expect(within(checklist).getByText('read the upstream reader')).toBeTruthy()
+    // What is left, by default — see the checklist describe block below.
     expect(within(checklist).getByText('write the failing test')).toBeTruthy()
-    expect(within(checklist).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(checklist).queryByText('read the upstream reader')).toBeNull()
+    expect(within(checklist).getAllByRole('listitem')).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /1 completed/iu }))
+    expect(within(checklist).getByText('read the upstream reader')).toBeTruthy()
   })
 
   it('shows the full change name even when the card elides it', () => {
@@ -195,6 +199,143 @@ describe('the drawer', () => {
         search: { repo: undefined, source: undefined, change: undefined },
       }),
     )
+  })
+})
+
+// ── round-4 critique: the drawer is a dialog, not a landmark ────────────────
+
+describe('the drawer as a dialog', () => {
+  const open = () => {
+    routerState.search = { repo: 'repo-1', source: 'active', change: 'add-thing' }
+    renderRoute([card()])
+    return screen.getByTestId('change-drawer')
+  }
+
+  // Assessment B measured `role: null`, `aria-modal: null`, computed role
+  // `complementary` — a landmark that behaves like a modal.
+  it('declares itself a modal dialog', () => {
+    const drawer = open()
+    expect(drawer.getAttribute('role')).toBe('dialog')
+    expect(drawer.getAttribute('aria-modal')).toBe('true')
+  })
+
+  it('moves focus into itself on open', () => {
+    const drawer = open()
+    expect(drawer.contains(document.activeElement)).toBe(true)
+  })
+
+  // Measured: the close button was the 79th of 80 tab stops at 1440, because
+  // the drawer is last in the DOM and nothing moved focus.
+  it('puts the close control within the first few tab stops', () => {
+    const drawer = open()
+    const tabbable = [...drawer.querySelectorAll<HTMLElement>('button, [href], [tabindex]')]
+    expect(tabbable.indexOf(screen.getByRole('button', { name: /close detail/iu }))).toBeLessThan(2)
+  })
+
+  it('closes on Escape', () => {
+    open()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(routerState.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: { repo: undefined, source: undefined, change: undefined },
+      }),
+    )
+  })
+
+  it('has a backdrop that dismisses it', () => {
+    open()
+    const backdrop = screen.getByTestId('change-drawer-backdrop')
+    fireEvent.click(backdrop)
+    expect(routerState.navigate).toHaveBeenCalled()
+  })
+
+  it('gives the close control a target big enough to hit', () => {
+    open()
+    // 24x24 was exactly the WCAG 2.5.8 floor with no margin. h-8 w-8 is 32.
+    const close = screen.getByRole('button', { name: /close detail/iu })
+    expect(close.className).toMatch(/\bh-8\b/u)
+    expect(close.className).toMatch(/\bw-8\b/u)
+  })
+})
+
+// ── round-4 critique: the checklist is a summary, not an archive dig ────────
+
+describe('the drawer checklist', () => {
+  const many = Array.from({ length: 20 }, (_, index) => ({
+    text: `row ${index}`,
+    completed: index < 17,
+  }))
+
+  const openWith = (checklist: typeof many) => {
+    routerState.search = { repo: 'repo-1', source: 'active', change: 'add-thing' }
+    renderRoute([
+      card({
+        checklist,
+        completedChecklist: checklist.filter((row) => row.completed).length,
+        totalChecklist: checklist.length,
+      }),
+    ])
+  }
+
+  // Measured: 119 rows, 8282px tall, first incomplete row 4760px down. The
+  // drawer's job is "what is left", and it answered with the finished work.
+  it('shows the incomplete rows and hides the completed ones behind a control', () => {
+    openWith(many)
+    const checklist = screen.getByTestId('drawer-checklist')
+
+    expect(within(checklist).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(checklist).getByText('row 17')).toBeTruthy()
+    expect(within(checklist).queryByText('row 0')).toBeNull()
+    expect(screen.getByRole('button', { name: /17 completed/iu })).toBeTruthy()
+  })
+
+  it('reveals the completed rows on request', () => {
+    openWith(many)
+    fireEvent.click(screen.getByRole('button', { name: /17 completed/iu }))
+    expect(within(screen.getByTestId('drawer-checklist')).getAllByRole('listitem')).toHaveLength(20)
+  })
+
+  it('offers no disclosure when nothing is completed', () => {
+    openWith([{ text: 'only row', completed: false }])
+    expect(screen.queryByRole('button', { name: /completed/iu })).toBeNull()
+    expect(within(screen.getByTestId('drawer-checklist')).getAllByRole('listitem')).toHaveLength(1)
+  })
+
+  it('says so when every row is complete rather than showing an empty list', () => {
+    openWith([{ text: 'done', completed: true }])
+    expect(screen.getByTestId('drawer-checklist-all-done')).toBeTruthy()
+  })
+
+  // Rows carried literal backticks and ** on screen because the text is
+  // rendered as text (correct for safety) and never tokenised.
+  it('renders inline code and emphasis as elements, not as literal punctuation', () => {
+    openWith([{ text: 'read `reader.ts` and **ADR 0008**', completed: false }])
+    const row = within(screen.getByTestId('drawer-checklist')).getAllByRole('listitem')[0]!
+
+    expect(within(row).getByText('reader.ts').tagName).toBe('CODE')
+    expect(within(row).getByText('ADR 0008').tagName).toBe('STRONG')
+    expect(row.textContent).not.toContain('`')
+    expect(row.textContent).not.toContain('**')
+  })
+
+  it('renders inline code nested inside bold', () => {
+    // A real row from this change's own tasks.md. A single flat pass left the
+    // `**` on screen because the code span matched first.
+    openWith([{ text: '**recorded in `changes.ts` docblock:** and more', completed: false }])
+    const row = within(screen.getByTestId('drawer-checklist')).getAllByRole('listitem')[0]!
+
+    expect(within(row).getByText('changes.ts').tagName).toBe('CODE')
+    expect(row.querySelector('strong')?.querySelector('code')).toBeTruthy()
+    expect(row.textContent).not.toContain('**')
+  })
+
+  // The tokeniser must not become an HTML injection route: it builds elements,
+  // it never sets innerHTML.
+  it('renders markup in a row as text, never as markup', () => {
+    openWith([{ text: 'beware <img src=x onerror=alert(1)>', completed: false }])
+    const row = within(screen.getByTestId('drawer-checklist')).getAllByRole('listitem')[0]!
+    expect(row.querySelector('img')).toBeNull()
+    expect(row.textContent).toContain('<img src=x onerror=alert(1)>')
   })
 })
 
