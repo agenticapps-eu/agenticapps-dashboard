@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync, symlinkSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -18,7 +18,7 @@ import {
   scanWorkflowVersionForRepo,
   compareSemver,
 } from './workflowVersionScanner.js'
-import { PathViolation } from '../coverageResolver.js'
+import { PathViolation, makeCoverageResolver } from '../coverageResolver.js'
 import type { PathResolver } from '../coverageResolver.js'
 
 let tmpDir: string
@@ -146,6 +146,53 @@ describe('compareSemver', () => {
 // ── scanWorkflowVersionForRepo ────────────────────────────────────────────────
 
 describe('scanWorkflowVersionForRepo', () => {
+  // anchor-allowed-subdirs-to-root task 4.2.
+  //
+  // Deliberately uses the REAL resolver, not makePermissiveResolver: the
+  // permissive double ignores opts entirely, so it would report success whether
+  // or not the call site anchors, and the test would assert nothing.
+  //
+  // The call site passes `roots: [skillRoot, repoAbsPath]`, which reads as
+  // though the second entry bounded the first. It does not — roots are
+  // alternatives, so an escaped skillRoot admits its own target regardless.
+  describe('when .claude is a symlink out of the repository', () => {
+    function makeEscapingRepo(): { repoDir: string; outside: string } {
+      const repoDir = join(tmpDir, 'repo')
+      mkdirSync(repoDir, { recursive: true })
+      const outside = realpathSync(mkdtempSync(join(tmpdir(), 'wvs-anchor-outside-')))
+      writeSkillMd(join(outside, 'skills', 'agentic-apps-workflow', 'SKILL.md'), {
+        name: 'agentic-apps-workflow',
+        version: '1.8.0',
+      })
+      symlinkSync(outside, join(repoDir, '.claude'), 'dir')
+      return { repoDir, outside }
+    }
+
+    it('reports the skill missing rather than reading the escaped SKILL.md', () => {
+      const { repoDir, outside } = makeEscapingRepo()
+      try {
+        const resolve = makeCoverageResolver({ sourcecodeRoot: join(tmpDir, 'Sourcecode') })
+        const result = scanWorkflowVersionForRepo(repoDir, '1.8.0', resolve)
+        expect(result.state).toBe('missing')
+        expect(result.installedVersion).toBeNull()
+      } finally {
+        rmSync(outside, { recursive: true, force: true })
+      }
+    })
+
+    it('still finds an ordinary in-repo SKILL.md through the real resolver', () => {
+      const repoDir = join(tmpDir, 'ordinary-repo')
+      writeSkillMd(join(repoDir, '.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md'), {
+        name: 'agentic-apps-workflow',
+        version: '1.8.0',
+      })
+      const resolve = makeCoverageResolver({ sourcecodeRoot: join(tmpDir, 'Sourcecode') })
+      const result = scanWorkflowVersionForRepo(repoDir, '1.8.0', resolve)
+      expect(result.state).toBe('fresh')
+      expect(result.installedVersion).toBe('1.8.0')
+    })
+  })
+
   it('CASE-1 EQUAL: returns state=fresh + detail=equal when installed === head', () => {
     const repoDir = join(tmpDir, 'repo')
     const skillPath = join(repoDir, '.claude', 'skills', 'agentic-apps-workflow', 'SKILL.md')

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { basename, join, sep } from 'node:path'
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { PathViolation } from '../coverageResolver.js'
+import { PathViolation, makeCoverageResolver } from '../coverageResolver.js'
 import type { PathResolver } from '../coverageResolver.js'
 import {
   WORKFLOW_FLEET,
@@ -281,5 +281,121 @@ describe('scanWorkflowHostSkills', () => {
         version: '0.4.0',
       },
     ])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// anchor-allowed-subdirs-to-root tasks 4.3 and 4.4.
+//
+// These use the REAL resolver and the production directory layout — repos under
+// a family root — on purpose. makeResolver() above bounds everything to one
+// root and ignores opts, so an escape test written against it would pass
+// whether or not the call site anchors. And with the repos placed outside the
+// family roots, the merged family allowance never fires and the test would
+// again prove nothing. Only this shape exercises what the fleet actually does.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('scanWorkflowHostSkills — escaping skill directories', () => {
+  function makeFleetLayout(): {
+    repo: string
+    otherRepo: string
+    resolve: PathResolver
+  } {
+    const sourcecodeRoot = join(tmpDir, 'Sourcecode')
+    const family = join(sourcecodeRoot, 'agenticapps')
+    const repo = join(family, 'codex-workflow')
+    const otherRepo = join(family, 'other-repo')
+    mkdirSync(join(repo, 'skills'), { recursive: true })
+    mkdirSync(otherRepo, { recursive: true })
+    return { repo, otherRepo, resolve: makeCoverageResolver({ sourcecodeRoot }) }
+  }
+
+  function writeSkillAt(fullPath: string, name: string, declarations: string[]): void {
+    mkdirSync(join(fullPath, '..'), { recursive: true })
+    writeFileSync(
+      fullPath,
+      `---\nname: ${name}\n${declarations.join('\n')}\n---\n\n# ${name}\n`,
+    )
+  }
+
+  // Task 4.3 — the skill DIRECTORY under skills/ is a symlink to another repo.
+  it('does not adopt a skill directory symlinked into a sibling repository', () => {
+    const { repo, otherRepo, resolve } = makeFleetLayout()
+    // The target directory carries the SAME basename, so the name check passes
+    // and the anchor is the only thing that can refuse this.
+    writeSkillAt(
+      join(otherRepo, 'agentic-apps-workflow', 'SKILL.md'),
+      'agentic-apps-workflow',
+      ['implements_spec: 1.0.0'],
+    )
+    symlinkSync(
+      join(otherRepo, 'agentic-apps-workflow'),
+      join(repo, 'skills', 'agentic-apps-workflow'),
+      'dir',
+    )
+
+    const result = scanWorkflowHostSkills('codex-workflow', repo, '1.0.0', resolve)
+
+    const primary = result.skills.find((s) => s.id === 'agentic-apps-workflow')
+    expect(primary?.version).toBeNull()
+  })
+
+  // Task 4.4 — the skill directory is genuine; SKILL.md inside it is the
+  // symlink. Anchoring to skillRoot alone would still admit this, because the
+  // target sits under a family root. The anchor must name the repository.
+  it('does not read a SKILL.md symlinked into a sibling repository', () => {
+    const { repo, otherRepo, resolve } = makeFleetLayout()
+    writeSkillAt(join(otherRepo, 'SKILL.md'), 'agentic-apps-workflow', [
+      'implements_spec: 1.0.0',
+    ])
+    mkdirSync(join(repo, 'skills', 'agentic-apps-workflow'), { recursive: true })
+    symlinkSync(
+      join(otherRepo, 'SKILL.md'),
+      join(repo, 'skills', 'agentic-apps-workflow', 'SKILL.md'),
+    )
+
+    const result = scanWorkflowHostSkills('codex-workflow', repo, '1.0.0', resolve)
+
+    const primary = result.skills.find((s) => s.id === 'agentic-apps-workflow')
+    expect(primary?.version).toBeNull()
+  })
+
+  // Found by the codex reviewer in round 2, and missed by the tests above: they
+  // symlink a skill directory *under* skills/, so they never exercise skills/
+  // ITSELF being the symlink. That resolution is unanchored, so the family roots
+  // admit it, and the directory is then enumerated — foreign entry names reach
+  // the output as skill ids before any child read is anchored.
+  it('does not enumerate a skills root symlinked into a sibling repository', () => {
+    const { repo, otherRepo, resolve } = makeFleetLayout()
+    mkdirSync(join(otherRepo, 'skills', 'not-this-repos-skill'), { recursive: true })
+    writeSkillAt(
+      join(otherRepo, 'skills', 'not-this-repos-skill', 'SKILL.md'),
+      'not-this-repos-skill',
+      ['implements_spec: 1.0.0'],
+    )
+    rmSync(join(repo, 'skills'), { recursive: true, force: true })
+    symlinkSync(join(otherRepo, 'skills'), join(repo, 'skills'), 'dir')
+
+    const result = scanWorkflowHostSkills('codex-workflow', repo, '1.0.0', resolve)
+
+    const surfaced = [
+      ...result.skills.map((s) => s.id),
+      ...result.unknowns.map((u) => u.id),
+    ]
+    expect(surfaced).not.toContain('not-this-repos-skill')
+  })
+
+  it('control — an ordinary in-repo skill directory is read normally', () => {
+    const { repo, resolve } = makeFleetLayout()
+    writeSkillAt(
+      join(repo, 'skills', 'agentic-apps-workflow', 'SKILL.md'),
+      'agentic-apps-workflow',
+      ['implements_spec: 1.0.0'],
+    )
+
+    const result = scanWorkflowHostSkills('codex-workflow', repo, '1.0.0', resolve)
+
+    const primary = result.skills.find((s) => s.id === 'agentic-apps-workflow')
+    expect(primary?.version).toBe('1.0.0')
   })
 })

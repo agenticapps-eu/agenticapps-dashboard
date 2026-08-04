@@ -20,6 +20,7 @@ import {
   readdirSync,
   realpathSync,
   chmodSync,
+  symlinkSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -187,6 +188,25 @@ describe('POST /api/projects/:id/open', () => {
       const res = await open(id, path)
       expect(res.status).toBe(422)
     }
+    expect(spawnMock).not.toHaveBeenCalled()
+  })
+
+  // anchor-allowed-subdirs-to-root task 1.5. The route's own guarantee is the
+  // spawn boundary, so that is what is asserted: nothing under the escaped
+  // target is ever handed to the editor.
+  it('refuses a path under an allow-listed directory that is itself an escaping symlink', async () => {
+    const root = makeProject()
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'open-anchor-outside-')))
+    cleanups.push(() => rmSync(outside, { recursive: true, force: true }))
+    writeFileSync(join(outside, 'secrets.txt'), 'outside\n')
+    rmSync(join(root, 'openspec'), { recursive: true, force: true })
+    symlinkSync(outside, join(root, 'openspec'), 'dir')
+    const id = await register(root)
+
+    const res = await open(id, 'openspec/secrets.txt')
+
+    expect(res.status).toBe(422)
+    expect((await res.json() as { error: string }).error).toBe('path_not_allowed')
     expect(spawnMock).not.toHaveBeenCalled()
   })
 

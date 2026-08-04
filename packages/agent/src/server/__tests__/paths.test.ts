@@ -2,7 +2,8 @@
  * Mandatory TDD case — spec line 616.
  * describe 'path-allow-list-rejects-traversal' name is the acceptance gate.
  */
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -198,6 +199,83 @@ describe('path-allow-list-allows-openspec', () => {
     expect(res.status).toBe(422)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('path_not_allowed')
+  })
+})
+
+/**
+ * anchor-allowed-subdirs-to-root task 1.4 — the allow-listed directory being
+ * ITSELF a symlink out of the project. Every per-path check passes here, because
+ * each path really does lie under the boundary the route adopted; the boundary
+ * is what escaped. Refusal is per-path (design D5): the project stays readable
+ * for paths that do not depend on the escaped anchor.
+ */
+describe('path-allow-list-rejects-escaping-anchor', () => {
+  let cleanup: () => void
+  let projectCleanup: () => void
+  let projectId: string
+  let registryFile: string
+
+  beforeEach(async () => {
+    const tmp = makeTmpHome()
+    cleanup = tmp.cleanup
+    registryFile = join(tmp.configDir, 'registry.json')
+    const authFile = join(tmp.configDir, 'auth.json')
+    const fresh = ensureAuthFile(authFile)
+    setActiveToken(fresh.token)
+
+    const proj = makeTmpProject()
+    projectCleanup = proj.cleanup
+    // Replace the real .claude directory with a symlink pointing outside.
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'agentic-route-outside-')))
+    writeFileSync(join(outside, 'secrets.txt'), 'SENTINEL-OUTSIDE-THE-PROJECT')
+    rmSync(join(proj.root, '.claude'), { recursive: true, force: true })
+    symlinkSync(outside, join(proj.root, '.claude'), 'dir')
+    const priorCleanup = projectCleanup
+    projectCleanup = () => {
+      priorCleanup()
+      rmSync(outside, { recursive: true, force: true })
+    }
+
+    const result = await addProject(proj.root, {}, registryFile)
+    projectId = result.entry.id
+  })
+
+  afterEach(() => {
+    cleanup()
+    projectCleanup()
+  })
+
+  it('GET a file under an escaping .claude returns 422 path_not_allowed', async () => {
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request(
+      `http://127.0.0.1:5193/api/projects/${projectId}/read?path=.claude/secrets.txt`,
+      { headers: authHeaders(token) },
+    )
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe('path_not_allowed')
+  })
+
+  it('the escaped file content appears nowhere in the response', async () => {
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request(
+      `http://127.0.0.1:5193/api/projects/${projectId}/read?path=.claude/secrets.txt`,
+      { headers: authHeaders(token) },
+    )
+    expect(await res.text()).not.toContain('SENTINEL-OUTSIDE-THE-PROJECT')
+  })
+
+  it('the project stays readable for paths that do not depend on the escaped anchor', async () => {
+    const app = createApp({ registryFile })
+    const token = getActiveToken()
+    const res = await app.request(
+      `http://127.0.0.1:5193/api/projects/${projectId}/read?path=.planning/PROJECT.md`,
+      { headers: authHeaders(token) },
+    )
+    expect(res.status).toBe(200)
   })
 })
 

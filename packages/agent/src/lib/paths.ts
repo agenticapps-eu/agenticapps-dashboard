@@ -39,6 +39,34 @@ export class PathViolation extends Error {
 }
 
 /**
+ * Whether an already-realpath'd containment boundary still lies at, or under,
+ * an already-realpath'd repository root.
+ *
+ * PRECONDITION — both arguments MUST be canonical realpaths, obtained from
+ * `realpath`/`realpathSync` on the same machine. This is pure string work and
+ * verifies nothing itself: it cannot tell a canonical path from a lexically
+ * normalised one, so passing an unresolved path silently weakens every caller.
+ * Callers that cannot resolve a root must refuse, not pass what they have.
+ *
+ * Two consequences of that precondition:
+ *  - The `+ sep` guard is only sound on a canonical root — it is what stops
+ *    `/a/rootster` from counting as being under `/a/root`.
+ *  - Comparison is exact and case-sensitive. On a case-insensitive volume
+ *    (APFS by default) two spellings of one path are the same file but not the
+ *    same string; `realpath` returns the on-disk spelling, which is why both
+ *    sides must come from it rather than from user input.
+ *
+ * Shared with the synchronous resolver in coverageResolver.ts so the rule has
+ * one implementation rather than one per resolver.
+ *
+ * See openspec/specs/filesystem-access-policy —
+ * "A Containment Anchor Is Verified Against Its Registered Root".
+ */
+export function isAnchoredUnder(realBoundary: string, realRoot: string): boolean {
+  return realBoundary === realRoot || realBoundary.startsWith(realRoot + sep)
+}
+
+/**
  * Resolve a relative path under a project root, asserting it stays within one of
  * ALLOWED_SUBDIRS. Defends against:
  *  - Absolute paths (isAbsolute check)
@@ -74,20 +102,34 @@ export async function resolveAllowed(
     throw new PathViolation('path does not exist or is not accessible')
   }
 
-  // Build realpath-resolved allowed roots for accurate prefix matching
-  const allowedRoots = await Promise.all(
-    ALLOWED_SUBDIRS.map(async (d) => {
+  // The registered root and the allow-listed roots, resolved together. The
+  // project root shares this Promise.all rather than being awaited before it so
+  // the anchor costs no extra round trip per read — every read already waits on
+  // the allow-listed roots, and this rides along with them.
+  const [realProjectRoot, ...allowedRoots] = await Promise.all([
+    realpath(projectRoot).catch(() => null),
+    // Build realpath-resolved allowed roots for accurate prefix matching
+    ...ALLOWED_SUBDIRS.map(async (d) => {
       try {
         return await realpath(resolve(projectRoot, d))
       } catch {
         return resolve(projectRoot, d)
       }
     }),
-  )
+  ])
 
-  const isAllowed = allowedRoots.some(
-    (root) => real === root || real.startsWith(root + sep),
-  )
+  if (realProjectRoot === null) {
+    throw new PathViolation('project root does not exist or is not accessible')
+  }
+
+  // Drop any allow-listed root that has itself left the project — an entry that
+  // is a symlink out of the root would otherwise become the boundary, and every
+  // per-path check below would pass against it. Dropping rather than throwing
+  // keeps the remaining entries usable; a path reachable only through the
+  // escaped one then falls through to the refusal below.
+  const anchoredRoots = allowedRoots.filter((root) => isAnchoredUnder(root, realProjectRoot))
+
+  const isAllowed = anchoredRoots.some((root) => isAnchoredUnder(real, root))
   if (!isAllowed) {
     throw new PathViolation('path outside allowed directories')
   }
@@ -109,6 +151,19 @@ export interface ResolveAllowedNamedOpts {
   allowedNames?: string[]
   /** Permitted file extension (e.g. '.yml'). Mutually exclusive with allowedNames. */
   extension?: string
+  /**
+   * The registered root any derived entry in `roots` must still lie under.
+   *
+   * Pass this whenever a root is DERIVED from a path inside a repository —
+   * `<repo>/.claude/skills`, `<repo>/.github/workflows` — rather than being the
+   * repository root itself. Roots that have left `anchorTo` are dropped before
+   * the containment check, so a symlinked directory cannot become the boundary.
+   *
+   * Roots are alternatives, so an escaped root only ever widens what is
+   * admitted: pairing one with a correctly-anchored root does not mitigate it.
+   * Omitting `anchorTo` preserves the previous behaviour exactly.
+   */
+  anchorTo?: string
 }
 
 /**
@@ -140,17 +195,39 @@ export async function resolveAllowedNamed(
     throw new PathViolation('not accessible')
   }
 
+  // `resolved` is null when the root could not be realpath'd. The distinction
+  // matters: an anchored call may only compare canonical paths (isAnchoredUnder's
+  // precondition), so it drops unresolved roots rather than falling back to the
+  // lexical form. Unanchored calls keep the original fallback exactly.
   const realRoots = await Promise.all(
     opts.roots.map(async (r) => {
       try {
-        return await realpath(r)
+        return { resolved: await realpath(r), lexical: resolve(r) }
       } catch {
-        return resolve(r)
+        return { resolved: null, lexical: resolve(r) }
       }
     }),
   )
 
-  const inRoot = realRoots.some((root) => real === root || real.startsWith(root + sep))
+  // Anchor check: a root derived from inside a repository is only usable while
+  // it is still inside that repository. See ResolveAllowedNamedOpts.anchorTo.
+  let candidateRoots = realRoots.map(({ resolved, lexical }) => resolved ?? lexical)
+  if (opts.anchorTo !== undefined) {
+    let realAnchor: string
+    try {
+      realAnchor = await realpath(opts.anchorTo)
+    } catch {
+      throw new PathViolation('anchor root not accessible')
+    }
+    candidateRoots = realRoots
+      .map(({ resolved }) => resolved)
+      .filter((root): root is string => root !== null && isAnchoredUnder(root, realAnchor))
+    if (candidateRoots.length === 0) {
+      throw new PathViolation('no allowed root remains anchored to its registered root')
+    }
+  }
+
+  const inRoot = candidateRoots.some((root) => isAnchoredUnder(real, root))
   if (!inRoot) throw new PathViolation('outside allowed roots')
 
   const name = basename(real)

@@ -156,6 +156,10 @@ export function scanWorkflowVersionForRepo(
       canonical = resolve(candidatePath, {
         allowedNames: ['SKILL.md'],
         roots: [skillRoot, repoAbsPath],
+        // skillRoot is derived from repoAbsPath. Listing repoAbsPath beside it
+        // does NOT bound it — roots are alternatives — so the anchor is what
+        // stops a symlinked .claude from becoming the boundary.
+        anchorTo: repoAbsPath,
       })
     } catch {
       // PathViolation or not accessible — try next candidate.

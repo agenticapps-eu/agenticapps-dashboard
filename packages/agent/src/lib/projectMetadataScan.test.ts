@@ -14,7 +14,7 @@
  *  9. parseInfisicalConfig — 4 cases (absent, valid, invalid, malformed JSON)
  */
 import { join } from 'node:path'
-import { mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync } from 'node:fs'
+import { mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -340,6 +340,38 @@ describe('parseCiWorkflowsForSentry', () => {
     // This test verifies no signal is emitted from the wrong directory
     const result = await parseCiWorkflowsForSentry(root)
     expect(result.every((r) => !r.evidence.includes('no-workflows'))).toBe(true)
+  })
+
+  // anchor-allowed-subdirs-to-root task 4.1. The scanner adopts
+  // <root>/.github/workflows as its own containment root. If that directory —
+  // or any component of it — is a symlink out of the repository, the boundary
+  // itself has escaped and every per-file check below it still passes.
+  it('reads nothing when .github/workflows is a symlink out of the repository', async () => {
+    const { root, cleanup: c } = makeTmpRoot()
+    const outside = mkdtempSync(join(tmpdir(), 'ci-anchor-outside-'))
+    cleanup = () => {
+      c()
+      rmSync(outside, { recursive: true, force: true })
+    }
+    writeFileSync(join(outside, 'release.yml'), 'run: sentry-cli releases new $VERSION\n')
+    mkdirSync(join(root, '.github'), { recursive: true })
+    symlinkSync(outside, join(root, '.github', 'workflows'), 'dir')
+
+    const result = await parseCiWorkflowsForSentry(root)
+
+    expect(result).toEqual([])
+  })
+
+  it('still reads an ordinary .github/workflows directory', async () => {
+    const { root, cleanup: c } = makeTmpRoot()
+    cleanup = c
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'ci.yml'),
+      'run: sentry-cli releases new\n',
+    )
+    const result = await parseCiWorkflowsForSentry(root)
+    expect(result.some((r) => r.signal === 'sentry-cli-ci')).toBe(true)
   })
 
   it('does not emit signal for files with wrong extension (.txt in workflows dir)', async () => {
