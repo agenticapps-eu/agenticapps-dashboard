@@ -68,22 +68,24 @@ withdrawn. With no integration to configure, it has no consumer.
 daemon's own directory are left in place so a rollback does not destroy
 configuration. Inert means v2 neither reads nor writes them.
 
-**Retention SHALL be bounded, owned, and dated.** These files hold integration
-credentials, and "left in place for rollback" with no end is indefinite retention
-of secrets the product no longer has any use for. The retention window SHALL be
-the rollback window and no longer: **thirty days from the cutover release**,
-after which the files SHALL be deleted. The cutover's implementing change SHALL
-name the deletion as one of its own tasks with a dated deadline, so the owner is
-whoever ships the cutover rather than nobody.
+**Retention is bounded, owned, and dated — and the rule that says so lives
+elsewhere, deliberately.** These files hold integration credentials, and "left in
+place for rollback" with no end is indefinite retention of secrets the product no
+longer has any use for. The window is the rollback window and no longer: **thirty
+days from the cutover release**, after which the files are deleted, with the
+deletion carried as a dated task owned by whoever ships the cutover.
 
-Deferring this to "separate cleanup with an explicit retention decision" is what
-the previous draft did, and it named no one, no window, and no date — which is
-how a secret outlives the feature that needed it.
+**Relocated 2026-08-04 to `filesystem-access-policy` as `Retained Credential
+Files Have A Bounded Lifetime`.** This paragraph previously stated the rule
+normatively — SHALL and all — inside a requirement this delta *removes*, in a
+file whose only heading is `## REMOVED Requirements`. At the fold the requirement
+is deleted and the rule with it, so the guarantee would have expired precisely
+when the credentials started outliving their feature. It now sits beside the
+`0600` mode discipline it complements, in a capability that survives.
 
-The daemon's file-mode discipline in `filesystem-access-policy` is unaffected and
-SHALL NOT be read as covering this. Mode `0600` governs **who** can read a file,
-not **how long** it exists; a credential retained forever at `0600` is still a
-credential retained forever.
+Mode `0600` governs **who** can read a file, not **how long** it exists; a
+credential retained forever at `0600` is still a credential retained forever.
+That distinction is the reason the rule needed a home rather than a mention.
 
 ### Requirement: Local Tooling Health Detection
 
@@ -113,30 +115,25 @@ A repo that wants this signal keeps it where the tooling already reports it.
 ### Requirement: No Reimplementation Of Third-Party Products
 
 **Reason**: A constraint on how integrations were allowed to behave. With the
-integrations withdrawn, it binds nothing. Its spirit is visible elsewhere in v2 —
-the knowledge-graph viewer is withdrawn for exactly this reason, and the board is
-read-only rather than a control plane — but it is not restated as a standing rule
-here.
+integrations withdrawn, it binds nothing in the literal present — exactly as its
+sibling binds nothing, since v2 offers no integrations at all.
 
-**This is asymmetric with its sibling, deliberately, and the asymmetry is the
-part worth stating.** `Optional Integrations Never Become Load-Bearing` is
-*preserved* by moving it to surviving `project-dashboard`, on the reasoning in
-design §7: it binds any future integration "without relying on archive
-archaeology". That reasoning applies word for word to this requirement, and this
-requirement is nonetheless withdrawn with a migration that says the opposite —
-that a future author should recover it from the archive.
+**Migration**: Preserved, not dropped. Relocated to surviving `project-dashboard`
+as `Third-Party Products Are Integrated, Not Reimplemented`, alongside
+`Optional Integrations Never Become Load-Bearing`. Both survive by the same
+reasoning in design §7: a standing rule binds the next author without relying on
+archive archaeology.
 
-The two are kept apart on consequence, not on principle. Load-bearing is a
-failure the product suffers silently: an unrelated surface degrades because an
-integration is down, and nobody thinks to look at the integration. Reimplementing
-a third-party product is a failure nobody can miss — it is visible in the diff,
-in review, and in the size of the work — so rediscovering the constraint late
-costs a design argument rather than a broken surface. One is worth carrying
-forward as a standing rule; the other is worth writing down and letting the next
-author find.
-
-If that trade is wrong, the fix is to preserve this one too rather than to
-withdraw both — the reasoning in design §7 would support it.
+**The asymmetry this entry used to defend is withdrawn (2026-08-04).** The
+earlier text kept the two apart on consequence rather than principle — that
+load-bearing fails silently while reimplementation "is visible in the diff, in
+review, and in the size of the work" — and conceded in the same breath that
+design §7's reasoning "applies word for word" to both. It closed by naming its
+own remedy: "If that trade is wrong, the fix is to preserve this one too." Two
+reviewers, in two separate rounds and from different vendors, judged the trade
+wrong on the same ground: the cost of retaining a standing rule is zero, and the
+visible-in-review defence assumes a reviewer who already knows the constraint,
+which is precisely what archive archaeology fails to supply.
 
 **Migration**: None. If integrations return, this constraint should return with
 them.

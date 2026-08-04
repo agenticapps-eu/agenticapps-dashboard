@@ -30,13 +30,27 @@ fields internally, but it MUST remain one list item rather than becoming a card
 and every required field MUST remain available.
 
 **Density SHALL be specified as a row height, not as a row count that fits a
-screen.** The binding constraint is a maximum height per row in CSS pixels,
-verifiable by measuring one row. "A fifteen-row working set is visible without
-scrolling" was the earlier phrasing and it is not a property of the design: the
-same stylesheet passes or fails it depending on browser chrome, OS font scaling,
-zoom level, and whether a bookmarks bar is open. A requirement that a correct
-implementation can fail for reasons outside the page cannot be met deliberately,
-only met by luck.
+screen.** The binding constraint is a maximum height per row, verifiable by
+measuring one row. "A fifteen-row working set is visible without scrolling" was
+the earlier phrasing and it is not a property of the design: the same stylesheet
+passes or fails it depending on browser chrome, OS font scaling, zoom level, and
+whether a bookmarks bar is open. A requirement that a correct implementation can
+fail for reasons outside the page cannot be met deliberately, only met by luck.
+
+**The maximum SHALL be `3.5rem`, declared as a design token, and SHALL be
+expressed in `rem` rather than CSS pixels.** An earlier draft said "a maximum
+height per row in CSS pixels" and then declared no number at all, leaving the
+requirement unverifiable — a scenario asserting a row is "at or below the
+declared maximum" when nothing declares one. `3.5rem` is the height the fleet
+table already ships, so the constraint records the density that exists rather
+than imposing a restyling this change does not otherwise call for.
+
+The unit is the substantive half. A cap fixed in CSS pixels that must hold "at a
+non-default OS font scale" is a requirement to clip text when a user enlarges it,
+which collides with the text-resize and reflow guarantees the product owes. In
+`rem` the row grows with the user's font size, so the cap scales with the text it
+contains: the density is a property of the design, and enlarging text remains a
+supported thing to do rather than a conformance failure.
 
 The row-count figure is retained as the **intent** the height is chosen to serve
 — roughly a fifteen-row working set at the reference viewport in a typical
@@ -58,6 +72,14 @@ horizontal scrolling at either verification viewport, and tabular figures on its
 numeric values so counts align between cards. Both are asserted in that change's
 own tests. The exemption is from uniform row height alone.
 
+**A surface SHALL NOT claim the exemption by self-assertion.** "Whose unit of
+information is a card" is a judgement, and a judgement no one has to write down
+is one every future surface can make in its own favour — which is how a density
+requirement decays into a density preference. A surface claiming the exemption
+SHALL record the claim and its trade-off in its own change, as the lifecycle
+change board does in its design decision 6. A surface that has not recorded the
+claim is bound by uniform row height.
+
 The **reference viewport** for density guarantees is 1440×900, matching the
 design critique. Responsive fit SHALL also be verified at the smallest declared
 breakpoint; a width breakpoint alone is not used to assert vertical fit. The
@@ -65,9 +87,14 @@ smallest named breakpoint is `xs` below 640 CSS pixels, and its representative
 verification viewport is 390×844.
 
 #### Scenario: A row is no taller than the density budget
-- **WHEN** a row on a list or table surface is measured
-- **THEN** its height is at or below the declared maximum
+- **WHEN** a row on a list or table surface is measured at the reference viewport
+- **THEN** its height is at or below the declared maximum of `3.5rem`
 - **AND** every row is the same height, rather than a card-sized block.
+
+#### Scenario: Enlarged text is not a conformance failure
+- **WHEN** a user raises their text size and rows grow with it
+- **THEN** the surface still conforms, because the maximum is expressed in `rem` and scales with the text
+- **AND** the requirement never asks an implementation to clip text to stay within a pixel budget.
 
 #### Scenario: A card surface is bound by fit and alignment but not by row height
 - **WHEN** a surface whose unit of information is a card rather than a row renders, such as the lifecycle change board
@@ -75,9 +102,14 @@ verification viewport is 390×844.
 - **AND** it still fits without page-level horizontal scrolling at every declared verification viewport
 - **AND** its numeric values still use tabular figures.
 
+#### Scenario: An unrecorded exemption does not hold
+- **WHEN** a surface renders card-shaped units without having recorded the exemption claim in its own change
+- **THEN** it is bound by the uniform row-height requirement
+- **AND** the exemption cannot be asserted after the fact to excuse a density regression.
+
 #### Scenario: Density does not depend on the viewer's browser furniture
-- **WHEN** the same surface is rendered with a bookmarks bar open, at a non-default OS font scale, or at a zoom level other than 100%
-- **THEN** it still satisfies the density requirement, because the requirement is a measured row height
+- **WHEN** the same surface is rendered with a bookmarks bar open, at a different window height, or at a zoom level other than 100%
+- **THEN** it still satisfies the density requirement, because the requirement is a measured row height rather than a count of rows that fit
 - **AND** conformance does not change with conditions the stylesheet does not control.
 
 #### Scenario: Numbers in a column line up
@@ -105,6 +137,11 @@ a value outside them.
 #### Scenario: The scale is enumerable
 - **WHEN** the design tokens are inspected
 - **THEN** the permitted sizes and weights are enumerated there as named tokens.
+
+#### Scenario: A value outside the scale is rejected
+- **WHEN** a component declares a font size or weight that is not one of the enumerated tokens
+- **THEN** the violation is detected rather than rendering
+- **AND** the requirement's MUST NOT is exercised rather than only its enumeration.
 
 ### Requirement: A Value Is Shown Where One Exists
 

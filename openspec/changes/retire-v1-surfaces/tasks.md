@@ -42,7 +42,9 @@ packages, not for a SPA rename.
 - [ ] Withdraw the six v1 locations from `packages/spa` — `/` (`MultiProjectHome`), `/projects/$projectId`, `/coverage`, `/observability/skill-drift`, `/observability/conformance`, `/code-intelligence` — removing their route definitions, lazy modules, and every component whose only consumer is one of them
 - [ ] Reduce the sidebar to the two groups §3 requires: remove the `Observability` and `Code Intelligence` sections and the per-project entries under `WORKSPACE`
 - [ ] Verify the deployment serves v2, pairing works, and all four post-cutover surfaces load — fleet, repo detail, workflow conformance, and the agent-change board
-- [ ] Implement one migration manifest enumerating the five retired legacy surface routes → fleet (`/`, `/coverage`, `/observability/skill-drift`, `/observability/conformance`, `/code-intelligence`), `/projects/:id` → `/repos/:id`, and every removed daemon API; unknown locations and APIs listed there return not-found. `/` keeps its existing unpaired-visitor redirect to `/onboarding`
+- [ ] Implement one migration manifest enumerating the five retired legacy surface routes → fleet (`/`, `/coverage`, `/observability/skill-drift`, `/observability/conformance`, `/code-intelligence`) and `/projects/:id` → `/repos/:id`. A location absent from the manifest returns not-found; the nineteen withdrawn daemon endpoints enumerated in the `project-dashboard` delta return not-found with no compatibility stub. `/` keeps its existing unpaired-visitor redirect to `/onboarding`
+- [ ] Re-home the register affordance onto the fleet surface before deleting `MultiProjectHome` — `RegisterModal` and `RegisterButtonCard` have no other consumer, and the fleet's empty state currently points at the CLI. Registering a first repository from the browser must still work after the cutover
+- [ ] Remove the knowledge-graph viewer's install command and delete its versioned asset directory under the daemon state dir; this is the one on-disk artifact class the change withdraws without naming an owner
 - [ ] Remove authored help pages, widget dispatch entries, contextual links, and keyboard-shortcut targets whose only destination is a retired surface; audit that every surviving contextual link resolves to an authored page and any specified anchor
 - [ ] Author or update one help page for each post-cutover content surface — fleet, repo detail, and workflow conformance, plus the agent-change surface once it exists — and verify each explains that surface's vocabulary; retain the cross-cutting shortcut reference
 - [ ] **One commit.** The cutover deletes; a revert of that single commit is the rollback
@@ -57,7 +59,9 @@ packages, not for a SPA rename.
 - [ ] **Keep** the `openspec` entry in the read allow-list added by `add-openspec-project-reader`
 - [ ] Confirm the sibling `add-workflow-fleet-conformance` filesystem-policy delta has replaced the old spawn authorization with exactly four sites — editor, bounded git, OpenSpec reader, and workflow harness — so the retired coverage/linter runners have no surviving exception and no fifth site exists
 - [ ] Confirm `add-workflow-fleet-conformance`'s filesystem-policy delta and `openspec/config.yaml` constraint are applied before teardown verification
-- [ ] Confirm retained snapshot and environment files are neither read nor written by v2; record deletion or archival as separate cleanup
+- [ ] Confirm retained snapshot and environment files are neither read nor written by v2
+- [ ] **Delete the integration environment files thirty days after the cutover release.** Owner: whoever ships the cutover. Record the cutover release date here and the resulting deadline as a literal date when this section is executed. `0600` governs who can read a file, not how long it exists — the `optional-integrations` delta makes this window normative, and "separate cleanup" is what the previous draft said when it named no one, no window and no date
+- [ ] **Give the retained conformance/coverage snapshots the same bounded retention:** thirty days from the cutover release, same owner, deleted or archived on a recorded date. They are kept for rollback evidence, and rollback evidence has an expiry for the same reason credentials do — indefinite retention by default is how a file outlives every reason anyone had for keeping it
 - [ ] `pnpm -r typecheck` and per-package tests green; no dead import remains
 
 ## 3. Implement and verify product-quality invariants · AGE-476
@@ -69,14 +73,15 @@ packages, not for a SPA rename.
 - [ ] Audit every state-bearing element and give each a non-colour channel; test all readiness states plus navigation-current state in light and dark appearances
 - [ ] Render the canonical em dash wherever a value is absent, preserve every real version/percentage/count beside its state, and test both cases across fleet and detail surfaces
 - [ ] Implement exactly two sidebar groups — product content and utilities — with help and settings/account in utilities, no registered-project entries, the shared navigation primitive and indentation, stable peer order, and a non-colour-only current marker
-- [ ] Verify fifteen uniform fleet rows and every surface without horizontal scrolling at 1440×900; verify at 390×844 that logical rows may wrap internally without becoming cards or hiding required fields and every control remains reachable
+- [ ] Declare the `3.5rem` row-height maximum as a design token and verify by **measuring one fleet row against it**, not by counting rows on screen — the requirement forbids row count as the pass condition, and this task previously asserted "fifteen uniform fleet rows", which is the same defect the requirement was rewritten to remove. Verify every surface fits without horizontal scrolling at 1440×900; verify at 390×844 that logical rows may wrap internally without becoming cards or hiding required fields and every control remains reachable
+- [ ] Verify rows grow with enlarged text rather than clipping it, confirming the maximum scales as a `rem` value
 - [ ] Four design-critique artifacts, one per surface
 
 ## 4. Fold the spec deltas
 
 - [ ] Apply this change's deltas into `openspec/specs/`
 - [ ] Confirm `code-intelligence`, `fleet-coverage`, `fleet-conformance`, `skills-and-linting`, `optional-integrations` are gone
-- [ ] Confirm `project-dashboard` contains the four retained requirements plus `Retired Locations Have An Explicit Transition` and `Optional Integrations Never Become Load-Bearing`
+- [ ] Confirm `project-dashboard` contains seven requirements: the four retained ones plus `Retired Locations Have An Explicit Transition`, `Optional Integrations Never Become Load-Bearing`, and `Third-Party Products Are Integrated, Not Reimplemented`
 - [ ] Confirm the hybrid OpenSpec reader no longer returns archived-change or per-change affected-capability data, while open-change/task and capability/requirement data remain available to their v2 consumers
 - [ ] Update the live capability index and count in `CLAUDE.md` to the post-cutover set: remove links to the five withdrawn spec files and add the three replacement capabilities
 - [ ] Update surviving capability Purpose prose so it describes v2; remove completed-removal banners from partially retained specs during the fold

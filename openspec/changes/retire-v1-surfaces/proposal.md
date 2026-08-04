@@ -109,14 +109,27 @@ leaves something behind that must still be true.
 **Untouched — 3 capabilities.** `daemon-runtime`, `auth-and-pairing`,
 `project-registry`. v2 changes *what* is shown, not *how* the data is fetched.
 
-**No longer untouched — `filesystem-access-policy`.** The original plan listed
-four untouched capabilities. That was wrong, and the correction is recorded
-rather than quietly applied: the sibling `add-workflow-fleet-conformance` delta
-replaces the process-spawn authorization with an exhaustive four-site list
-(editor, bounded git, OpenSpec reader, workflow harness), thereby closing the
-retired coverage/linter runner exceptions, and adds a machine-wide allowed root.
-The security spine is amended there, where the justification lives, not
-duplicated here; that sibling delta applies before this teardown is verified.
+**No longer untouched — `filesystem-access-policy`, for two separate reasons.**
+The original plan listed four untouched capabilities. That was wrong, and the
+correction is recorded rather than quietly applied.
+
+The first amendment is a sibling's: `add-workflow-fleet-conformance` replaces the
+process-spawn authorization with an exhaustive four-site list (editor, bounded
+git, OpenSpec reader, workflow harness), thereby closing the retired
+coverage/linter runner exceptions, and adds a machine-wide allowed root. That
+spine change is made there, where the justification lives, not duplicated here;
+that sibling delta applies before this teardown is verified.
+
+**The second is this change's own, added 2026-08-04.** This change now carries a
+`filesystem-access-policy` delta adding `Retained Credential Files Have A Bounded
+Lifetime`. The rule existed already — a bounded, owned, dated retention window
+for the withdrawn integrations' credential files — but it was written inside the
+`optional-integrations` requirement this change *removes*, in a delta file whose
+only heading is `## REMOVED Requirements`. A normative rule written into text
+being deleted does not survive the fold. Two reviewers found that independently
+in round 2. It lands in the security spine because that capability already fixes
+these files' mode at `0600` and says nothing about their lifetime, and the two
+halves belong together.
 
 ## Ordering: this change lands last
 
@@ -135,12 +148,20 @@ precomputed post-change output. Task 4 folds the delta into those baselines only
 after the replacement surfaces stand; seeing the withdrawn requirements in a
 baseline before that fold is therefore expected, not a count discrepancy.
 
-## Review disposition (2026-08-02)
+## Review disposition (2026-08-02) — round 1
 
-`REVIEWS.md` (2026-07-28) carried claude APPROVE, opencode APPROVE, and
-**gemini + codex REQUEST-CHANGES**. Every finding was verified against `main`
-before being acted on; two did not survive that check, and transcribing them
-would have made the change worse.
+`REVIEWS.md` for this round is preserved as `REVIEWS-round-1.md`. It carried
+claude APPROVE, opencode APPROVE, and **gemini + codex REQUEST-CHANGES**. The
+findings below were verified against `main` before being acted on; two did not
+survive that check, and transcribing them would have made the change worse.
+
+**Correction (2026-08-04): the sentence above used to read "Every finding was
+verified", and the table below covers gemini and codex only.** claude's four
+findings and opencode's were never dispositioned. Round 2 confirmed three of
+claude's were still unaddressed on disk a week later — the negative `MAY`, the
+untestable `MUST NOT` in `A Bounded Type Scale`, and the self-contradictory
+manifest bullet. A disposition table that silently omits two of four reviewers
+reads as completeness and is not; all three are fixed in round 2 below.
 
 | Finding | Disposition |
 |---|---|
@@ -154,6 +175,44 @@ would have made the change worse.
 | gemini — path-drift repair UI regression | **Fixed as an explicit non-goal.** Accepted, unscheduled, and recorded for whoever proposes the registry surface. |
 | gemini — degraded reads render silently | **Fixed.** Divergence is marked as compatibility mode and names the malformed spec. |
 | gemini — fifteen-row density is brittle | **Fixed.** Density is a measured row height; the row count is retained as intent, not as the pass condition. |
+
+## Review disposition (2026-08-04) — round 2
+
+Round 2 ran against the artifacts as revised on 2026-08-02, after four dead
+premises were corrected (see the capability count above and `tasks.md`). Three
+counted reviewers, **all REQUEST-CHANGES**: gemini, codex, opencode. claude was
+excluded as the declared implementing host. Every finding was checked against the
+code before being acted on, and this time the table covers all three reviewers
+plus one defect none of them raised.
+
+| Finding | Disposition |
+|---|---|
+| codex + opencode — `fleet-conformance` still carries the live atomicity/recomputation conditional | **Fixed.** It was the only corrected passage in the change with no supersession marker, and it read as a live release gate contradicting design §9 and the tasks preamble. Now marked and retired in place. |
+| codex — removed daemon APIs still not enumerated; "roughly sixty" against an actual 19 | **Fixed.** All nineteen are now enumerated as a method/path table in the delta. Sixty entered through a round-1 finding and was never counted; codex's 19 matches the count taken here independently. |
+| codex + opencode — the 30-day credential window is written inside a REMOVED requirement and would not survive the fold | **Fixed, and it was the most serious finding of the round.** `optional-integrations/spec.md` has exactly one heading, `## REMOVED Requirements`, so the rule was normative text scheduled for deletion. Relocated to `filesystem-access-policy` beside the `0600` mode discipline it complements, and `tasks.md` §2 now carries the dated deletion instead of "separate cleanup". |
+| opencode — the round-1 table omits claude's and opencode's findings while claiming every finding was verified | **Accepted.** The overclaim is corrected above, and the three unaddressed claude findings are fixed below. |
+| claude (round 1, unaddressed) — `No integration MAY be a hard dependency` | **Fixed.** A negative `MAY` has no RFC 2119 meaning; now `MUST NOT`. |
+| claude (round 1, unaddressed) — `A Bounded Type Scale` has no scenario for its `MUST NOT` | **Fixed.** Added the rejection scenario; the binding half was untestable. |
+| claude (round 1, unaddressed) — manifest bullet says "unknown locations **and APIs listed there**" | **Fixed.** A listed API is not unknown. Note this contradiction was carried forward verbatim in this session's own first edit of that bullet. |
+| opencode — installed viewer assets have neither a removal task nor a retention decision | **Fixed.** `grep -i viewer tasks.md` returned nothing; §2 now removes the install command and its versioned asset directory. |
+| codex — "any other retired per-project path" is a wildcard conflicting with the not-found rule, and cites a path that does not exist | **Fixed.** The router serves `/projects/:id` and no per-project sub-paths. The rule is now enumerated, with a scenario asserting an invented sub-path returns not-found. |
+| codex — `Dense Rows` declares a maximum with no number, and task 3 still verifies fifteen rows | **Fixed.** The maximum is `3.5rem`, the height the fleet table already ships, declared as a token. Task 3 now measures a row instead of counting rows — it had been asserting the exact pass condition the requirement forbids. |
+| codex — the unconditional zoom/OS-scaling clause conflicts with accessible text reflow | **Fixed, and it changed the unit.** A cap in CSS pixels that must hold at a non-default font scale is an instruction to clip enlarged text. Expressed in `rem`, rows grow with the reader's text and the density stays a property of the design. |
+| gemini — snapshot files have no bounded retention or owner, unlike credentials | **Fixed.** Same window, same owner, same dated task. Rollback evidence expires for the reason credentials do. |
+| gemini — the "card surface" exemption is subjective and could excuse future regressions | **Fixed, narrowly.** The exemption is well-reasoned but was self-asserting. A surface must now record the claim in its own change, as the lifecycle board did; an unrecorded claim does not hold. |
+| gemini — preserving `Optional Integrations Never Become Load-Bearing` while dropping `No Reimplementation` is not watertight | **Fixed by taking the delta's own escape hatch.** That entry conceded design §7's reasoning "applies word for word" to both and closed with "If that trade is wrong, the fix is to preserve this one too". Two vendors across two rounds judged it wrong. Both are now standing rules in `project-dashboard`, which rises to seven requirements. |
+| opencode — `four host workflows` and `five workflow repos` in one document | **Fixed.** Stated as four hosts compared against core, five repositories in total. |
+| opencode — `/projects/:id` unspecified when the id is no longer registered | **Fixed.** It still redirects; repo detail renders the 404 state it already implements. Resolving the registry inside a URL rewrite would give one stale bookmark two failure surfaces depending on timing. |
+| codex — the hybrid reader has no fallback when the CLI is present but errors | **Narrowed.** The behaviour already exists: `openspecCli.ts:231` returns `{ ok: false, reason: 'exit' }` on a non-zero exit and parse failure is caught at 269. The delta's text was wrong, not the daemon — it made absence the only fallback trigger. Claim corrected to match the code. |
+| codex — "every direct child" of `openspec/changes/` counts loose files as changes | **Narrowed.** `openspecReader.ts:62` already filters `e.isDirectory()`. Again the spec under-described working code; the word "directory" is now in the text. |
+| codex — the delta calls OpenSpec-permitted alternate task locations "malformed" | **Fixed.** Attributing every divergence to a malformed spec sends a reader to correct a file that conforms. The surface now names the change the readers disagreed about. |
+| gemini — the path-drift repair UI regression should get a concrete plan or tracking issue | **Held.** This repeats a round-1 finding already dispositioned as a deliberate, recorded non-goal. A repair affordance belongs on a v2 surface that shows drift, and none does; adding one would mean designing that surface inside a withdrawal change. |
+| **Found here, raised by no reviewer** — the register affordance loses its only host | **Fixed.** `RegisterModal` and `RegisterButtonCard` are imported only by the withdrawn `MultiProjectHome`, and the fleet's empty state points at the CLI. Deleting "every component whose only consumer is a withdrawn location" would have deleted the UI a retained requirement depends on, and silently converted a preserved promise into a CLI-only operation — while the fleet-population argument leans on that same "surviving home registration affordance". |
+
+Two findings were narrowed rather than fixed because the reviewers were reading
+artifacts and the code already did the right thing. That is the expected failure
+mode of a review that runs before implementation, not a reason to skip it: the
+same round found a security guarantee scheduled for deletion.
 
 ## What this change explicitly does not do
 

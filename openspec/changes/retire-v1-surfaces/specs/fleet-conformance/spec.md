@@ -1,8 +1,10 @@
 ## REMOVED Requirements
 
 > **The question survives; the answer form does not.** "Are the implementations
-> conformant?" is now asked of the four host workflows and answered by a version
-> comparison with byte-identity checks, in `workflow-fleet-conformance`. What is
+> conformant?" is now asked of the four host workflows, compared against core —
+> **five repositories in total**, which is the figure used everywhere else in this
+> change and below — and answered by a version comparison with byte-identity
+> checks, in `workflow-fleet-conformance`. What is
 > withdrawn is the weighted score over coverage columns, its tiers, its trend
 > chart, and its family cards. The new capability is deliberately **not** named
 > `fleet-conformance`, so that one word does not carry two concepts in one slot.
@@ -56,11 +58,21 @@ become inert.
 > a removed column would not read as a fleet-wide improvement. **The analysis was
 > correct and remains correct** — an uncorrected cutover would have written a
 > measurement change into the chart as a health change, permanently. The measure
-> is dropped only because GitNexus removal and this retirement deploy atomically,
-> so no live interval renders the changed measurement. If that atomic deployment
-> cannot be maintained, the recomputation must be restored before release. The
+> is dropped because no live interval renders the changed measurement. The
 > reasoning is preserved in that change's proposal so the descope reads as a
 > decision rather than a missed task.
+>
+> **Superseded 2026-08-04.** This passage previously said the measure was dropped
+> "because GitNexus removal and this retirement deploy atomically" and that "if
+> that atomic deployment cannot be maintained, the recomputation must be restored
+> before release". Both clauses are retired. `remove-gitnexus-integration`
+> archived on 2026-07-28 and shipped independently by design, discharging the
+> obligation at the source: old snapshots were re-scored ignoring `gitNexus` and
+> `wiki`, so every point in the retained window already uses the post-cutover
+> column set. There is no atomicity constraint and no outstanding recomputation
+> gate. Left unmarked, this was the one corrected passage in the change with no
+> supersession marker, and it read as a live release condition contradicting
+> design §9 and the tasks preamble. See design §9.
 
 ### Requirement: Chart Reveal Across Input Modalities
 
