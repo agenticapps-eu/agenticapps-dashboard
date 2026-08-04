@@ -59,6 +59,7 @@ describe('characterisation: resolveAllowedNamed admission', () => {
     await expect(
       resolveAllowedNamed(join(root, 'package.json'), {
         roots: [root],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).resolves.toBe(join(root, 'package.json'))
@@ -73,6 +74,7 @@ describe('characterisation: resolveAllowedNamed admission', () => {
     await expect(
       resolveAllowedNamed(join(root, 'package.json'), {
         roots: [root],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).rejects.toBeInstanceOf(PathsPathViolation)
@@ -85,6 +87,7 @@ describe('characterisation: resolveAllowedNamed admission', () => {
     await expect(
       resolveAllowedNamed(join(root, 'secrets.txt'), {
         roots: [root],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).rejects.toBeInstanceOf(PathsPathViolation)
@@ -101,7 +104,7 @@ describe('characterisation: resolveAllowedNamed admission', () => {
       resolveAllowedNamed(join(root, '.github', 'workflows', 'ci.yml'), {
         roots: [join(root, '.github', 'workflows')],
         extension: '.yml',
-        anchorTo: root,
+        containment: { kind: 'anchored', root: root },
       }),
     ).rejects.toBeInstanceOf(PathsPathViolation)
   })
@@ -126,6 +129,7 @@ describe('characterisation: resolveAllowedNamed admission', () => {
     await expect(
       resolveAllowedNamed(join(root, 'package.json'), {
         roots: [rootWithDotDot],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).resolves.toBe(join(root, 'package.json'))
@@ -154,6 +158,7 @@ describe('characterisation: PathResolver admission', () => {
     expect(
       resolve(join(repo, 'package.json'), {
         roots: [repo],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).toBe(join(repo, 'package.json'))
@@ -174,6 +179,7 @@ describe('characterisation: PathResolver admission', () => {
     expect(
       resolve(join(sibling, 'package.json'), {
         roots: [unrelated],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).toBe(join(sibling, 'package.json'))
@@ -186,6 +192,7 @@ describe('characterisation: PathResolver admission', () => {
     expect(() =>
       resolve(join(outside, 'package.json'), {
         roots: [family],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).toThrow(CoveragePathViolation)
@@ -205,7 +212,7 @@ describe('characterisation: PathResolver admission', () => {
       resolve(join(repo, 'skills', 'package.json'), {
         roots: [join(repo, 'skills')],
         allowedNames: ['package.json'],
-        anchorTo: repo,
+        containment: { kind: 'anchored', root: repo },
       }),
     ).toThrow(CoveragePathViolation)
   })

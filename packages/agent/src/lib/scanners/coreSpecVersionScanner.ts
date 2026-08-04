@@ -90,6 +90,7 @@ export function readCoreSpecVersion(
     specDir = resolve(join(coreRepoRoot, 'spec'), {
       allowedNames: ['spec'],
       roots: [coreRepoRoot],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return null
@@ -112,6 +113,11 @@ export function readCoreSpecVersion(
       sectionPath = resolve(join(specDir, sectionName), {
         extension: '.md',
         roots: [specDir],
+        // specDir is DERIVED from coreRepoRoot. Line ~90 already resolved it
+        // against coreRepoRoot, so this anchor is a restatement of a check
+        // that has passed rather than a new one — but the boundary is derived,
+        // and a derived boundary declares `anchored`.
+        containment: { kind: 'anchored', root: coreRepoRoot },
       })
     } catch {
       return null

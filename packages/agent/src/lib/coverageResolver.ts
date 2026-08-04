@@ -20,7 +20,7 @@ import { resolve as pathResolve, basename, join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { isAnchoredUnder } from './paths.js'
-import { anchorOf, malformedContainment, CONTAINMENT_CONFLICT } from './containment.js'
+import { anchorOf, malformedContainment } from './containment.js'
 import type { Containment } from './containment.js'
 
 // ── PathViolation ─────────────────────────────────────────────────────────────
@@ -54,26 +54,13 @@ export type PathResolver = (
     extension?: string
     roots: string[]
     /**
-     * The registered root that any DERIVED entry in `roots` must still lie
-     * under — pass it whenever a root is built from a path inside a repository
-     * (`<repo>/.claude/skills`, `<repo>/.github/workflows`) rather than being
-     * the repository root itself. Derived roots that have left it are dropped
-     * before the containment check.
-     *
-     * Applies to caller-supplied roots only; the family roots this resolver is
-     * bound to are a deliberate cross-family allowance and are never narrowed.
-     *
-     * @deprecated Superseded by `containment`. Supplying both is a PathViolation.
-     */
-    anchorTo?: string
-    /**
      * What the supplied `roots` ARE. See `containment.ts`.
      *
      * Note what `repository-root` does NOT mean here: this resolver merges its
      * standing family roots on the unanchored branch, so declaring
      * `repository-root` leaves that reach in place. Only `anchored` confines.
      */
-    containment?: Containment
+    containment: Containment
   },
 ) => string
 
@@ -128,8 +115,7 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
       allowedNames?: string[]
       extension?: string
       roots: string[]
-      anchorTo?: string
-      containment?: Containment
+      containment: Containment
     },
   ): string => {
     // Validate mutual exclusivity of allowedNames + extension
@@ -140,19 +126,12 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
     if (!resolverOpts.allowedNames && !resolverOpts.extension) {
       throw new PathViolation('one of opts.allowedNames or opts.extension is required')
     }
-    if (resolverOpts.anchorTo !== undefined && resolverOpts.containment !== undefined) {
-      throw new PathViolation(CONTAINMENT_CONFLICT)
-    }
-    if (resolverOpts.containment) {
-      const malformed = malformedContainment(resolverOpts.containment)
-      if (malformed) throw new PathViolation(malformed)
-    }
+    const malformed = malformedContainment(resolverOpts.containment)
+    if (malformed) throw new PathViolation(malformed)
 
     // Only `anchored` anchors. The unanchored variants reach the same branch an
     // undeclared call reaches — including the standing family roots merged below.
-    const effectiveAnchor = resolverOpts.containment
-      ? anchorOf(resolverOpts.containment)
-      : resolverOpts.anchorTo
+    const effectiveAnchor = anchorOf(resolverOpts.containment)
 
     // Resolve candidate to realpath
     let real: string

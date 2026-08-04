@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import type { PathResolver } from '../coverageResolver.js'
+import type { Containment } from '../containment.js'
+import { DAEMON_NAMED_REASONS } from '../containment.js'
 import { WORKFLOW_FLEET } from './workflowFleetScanner.js'
 import type {
   WorkflowArtifactId,
@@ -67,15 +69,23 @@ function isStrictSemver(value: string): boolean {
   ) ?? false)
 }
 
+/**
+  * `containment` is a PARAMETER, not a choice made here. This helper is called
+  * with a host repository root (via readBytes at the compareArtifact host call)
+  * and with a machine root (via the machine-root scan), so a classification
+  * synthesised here would label one of them wrongly — D8 of the change.
+  */
 function resolveFile(
   root: string,
   relativePath: string,
   resolve: PathResolver,
+  containment: Containment,
 ): string | null {
   try {
     return resolve(join(root, relativePath), {
       allowedNames: [basename(relativePath)],
       roots: [root],
+      containment,
     })
   } catch {
     return null
@@ -86,8 +96,9 @@ function readBytes(
   root: string,
   relativePath: string,
   resolve: PathResolver,
+  containment: Containment,
 ): { bytes: Buffer; sha256: string } | null {
-  const filePath = resolveFile(root, relativePath, resolve)
+  const filePath = resolveFile(root, relativePath, resolve, containment)
   if (!filePath) return null
 
   try {
@@ -158,7 +169,9 @@ function readProvenanceManifest(
 
   if (!relativePath) return empty('absent')
 
-  const manifestPath = resolveFile(hostRepoRoot, relativePath, resolve)
+  const manifestPath = resolveFile(hostRepoRoot, relativePath, resolve, {
+    kind: 'repository-root',
+  })
   if (!manifestPath) return empty('absent')
 
   let raw: string
@@ -246,6 +259,7 @@ function readOfferedMigration(
     migrationsDir = resolve(join(hostRepoRoot, 'migrations'), {
       allowedNames: ['migrations'],
       roots: [hostRepoRoot],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return null
@@ -271,15 +285,19 @@ function compareArtifact(
   artifactId: WorkflowArtifactId,
   copyRoot: string,
   copyPath: string,
+  /** What `copyRoot` IS — a host repository root at one call, a machine root at
+   *  the other. Passed in rather than assumed here, per D8. */
+  copyContainment: Containment,
   coreRepoRoot: string | undefined,
   referencePath: string,
   resolve: PathResolver,
   provenance: WorkflowProvenance,
   pin: WorkflowPin = { state: 'not-declared', commit: null, recordedSha256: null },
 ): WorkflowArtifactResult {
-  const copy = readBytes(copyRoot, copyPath, resolve)
+  const copy = readBytes(copyRoot, copyPath, resolve, copyContainment)
+  // coreRepoRoot is always a repository root, at both call sites.
   const reference = coreRepoRoot
-    ? readBytes(coreRepoRoot, referencePath, resolve)
+    ? readBytes(coreRepoRoot, referencePath, resolve, { kind: 'repository-root' })
     : null
 
   // A declared pin only speaks for an artefact the host does NOT carry. When a
@@ -333,12 +351,15 @@ export function scanWorkflowHostArtifacts(
   const artifacts: WorkflowArtifactResult[] = ARTIFACT_IDS.map((artifactId) => {
     const hostPath = hostEntry.artifacts[artifactId]
     const reference = coreRepoRoot
-      ? readBytes(coreRepoRoot, coreEntry.artifacts[artifactId], resolve)
+      ? readBytes(coreRepoRoot, coreEntry.artifacts[artifactId], resolve, {
+          kind: 'repository-root',
+        })
       : null
     return compareArtifact(
       artifactId,
       hostRepoRoot,
       hostPath,
+      { kind: 'repository-root' },
       coreRepoRoot,
       coreEntry.artifacts[artifactId],
       resolve,
@@ -371,6 +392,11 @@ export function scanWorkflowMachineRoot(
     canonicalRoot = resolve(rootPath, {
       allowedNames: [basename(rootPath)],
       roots: [rootPath],
+      containment: {
+        kind: 'daemon-named',
+        rootId,
+        reason: DAEMON_NAMED_REASONS[rootId],
+      },
     })
   } catch {
     return { rootId, state: 'absent', entries: [] }
@@ -388,6 +414,9 @@ export function scanWorkflowMachineRoot(
           artifactId,
           canonicalRoot,
           filename,
+          // canonicalRoot is the MACHINE root this scan is walking — the case
+          // that makes resolveFile's classification a parameter (D8).
+          { kind: 'daemon-named', rootId, reason: DAEMON_NAMED_REASONS[rootId] },
           options.coreRepoRoot,
           coreEntry.artifacts[artifactId],
           resolve,
@@ -412,6 +441,11 @@ export function scanWorkflowMachineRoot(
           ...(definition.skillTargetNames?.[id] ?? []),
         ],
         roots: [canonicalRoot],
+        containment: {
+          kind: 'daemon-named',
+          rootId,
+          reason: DAEMON_NAMED_REASONS[rootId],
+        },
       })
       return { id, state: 'present' }
     } catch {

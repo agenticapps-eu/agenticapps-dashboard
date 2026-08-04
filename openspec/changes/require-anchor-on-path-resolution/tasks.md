@@ -41,39 +41,44 @@
   `anchored` routes to the existing anchored branch; `repository-root` and
   `daemon-named` route to the existing **unanchored** branch byte-for-byte.
   Nothing changes; §1 tests stay green untouched.
-- [ ] 3.2 **Commit 2 — migrate**, in three reviewable slices: the 6 `anchored`
+- [x] 3.2 **Commit 2 — migrate**, in three reviewable slices: the 6 `anchored`
   sites; the `repository-root` sites; the `daemon-named` sites with reasons
   drawn from D8's evidence (33 of 98, 13 of 14), one per machine root across all
   five (`agenticapps-bin`, `claude-skills`, `codex-skills`, `opencode-skills`,
   `pi-skills`). Thread `containment` through the relaying helpers found in 2.5
   as a parameter — helpers SHALL NOT synthesise one (D8).
-- [ ] 3.3 **Commit 3 — require.** Delete `anchorTo`; make `containment`
+- [x] 3.3 **Commit 3 — require.** Delete `anchorTo`; make `containment`
   required. Capture the complete compiler-error list from the moment before the
   final site is migrated — that list is the authoritative enumeration (D3.3).
-- [ ] 3.4 Diff the compiler's enumeration against §2.1's table. Record the result
+- [x] 3.4 Diff the compiler's enumeration against §2.1's table. Record the result
   in §5 **either way**: this document's grep has produced two wrong tables
   already, so a corroboration is a result and a discrepancy is the finding.
 
 ## 4. Tests
 
-- [ ] 4.1 RED first: a caller supplying roots without a `containment` declaration
-  fails to compile. Prove it fails before the field is required.
-- [ ] 4.2 **Regression guard on #100 (D5).** The six derived boundaries are
-  `anchored`, and relabelling any of them fails. This is the enforceable half of
+- [~] 4.1 **Demonstrated, not automated.** Making the field required produced 53
+  compile errors across 6 files, which is the property this task asks for, but no
+  test asserts it — a type-level test needs `expect-type` or a `tsc` fixture and
+  neither is set up here. Recorded rather than claimed.
+- [ ] 4.2 **NOT DONE — the compensating control for D5 is still missing.** The
+  six derived boundaries are `anchored` in source, but nothing fails if one is
+  relabelled. This is the enforceable half of the misdeclaration concern and the
+  main outstanding gap. This is the enforceable half of
   the misdeclaration concern; the unenforceable half is stated in the spec.
-- [ ] 4.3 A `daemon-named` site still resolves a machine root that anchoring
+- [x] 4.3 A `daemon-named` site still resolves a machine root that anchoring
   would reject — D8's install-symlink case survives.
-- [ ] 4.4 Admission is unchanged: §1's characterisation tests pass **unmodified**
+- [x] 4.4 Admission is unchanged: §1's characterisation tests pass **unmodified**
   after commit 3. If any needed editing, admission moved and §5 must say where.
   This replaces the draft's 4.4, whose premise D2 disproved.
-- [ ] 4.5 A helper that relays a resolver carries the caller's classification
+- [x] 4.5 A helper that relays a resolver carries the caller's classification
   rather than choosing one (D8).
-- [ ] 4.6 `daemon-named` naming a root that is not the one registered for its
-  `rootId` is rejected, and a blank or whitespace `reason` is rejected. The
+- [~] 4.6 **Half done.** A blank or whitespace `reason` is rejected (tested on
+  both resolvers). Rejecting a `rootId` that does not match the supplied root is
+  NOT implemented — the resolver has no access to the mapping; see §5. The
   escape hatch must be bounded by the type and the check, not by convention.
 - [x] 4.7 Supplying both `anchorTo` and `containment` during the migration
   window raises `PathViolation` rather than silently obeying one.
-- [ ] 4.8 A `repository-root` read on `makeCoverageResolver` is still admitted
+- [x] 4.8 A `repository-root` read on `makeCoverageResolver` is still admitted
   under the standing family roots — the reach a declaration does not narrow.
   This is the admission round 2 found the spec misdescribing; pin it.
 
@@ -138,18 +143,71 @@ decorative in production — `repoAbsPath` always survives the filter — so it 
 the most-examined call in the set and its classification should be stated
 rather than inferred.
 
-<!-- 3.4's enumeration diff goes here. Any site whose classification departs
-     from the table is named here with reasoning, never folded into the
-     mechanical pass. -->
+**§3.2 — the union was not exhaustive, and a family root proved it.**
+`workflowScan.ts:64` supplies `sourceFamilyRoot` (`~/Sourcecode/agenticapps`)
+as a caller root. A family root **contains** repositories rather than being
+one, so `repository-root` is false of it and it is not one of the five machine
+roots either. The spec sentence "three cases exhaust the declarations" —
+which survived both review rounds — was wrong.
+
+Fixed by splitting the enumeration: `MachineRootId` (the five, still aliased as
+`WorkflowMachineRootId` and still iterated exhaustively by `workflowScan.ts`)
+and `FamilyRootId` (three family roots plus the workflow-migrations directory),
+with `DaemonNamedRootId` their union. The spec now describes daemon-named as
+"named roots outside every repository, of two kinds". The variant count did not
+change; what it admits did.
+
+**§3.2 — A REAL ESCAPE, of the class #100 closed, found by migrating.**
+`readiness/workflowDeriver.ts:250` read a host SKILL.md with
+`roots: [join(opts.root, host.marker), opts.root]` and **no anchor**, where
+`host.marker` is `.claude`, `.codex`, `.opencode` or `.pi`.
+
+That is `<repo>/.claude` — the derived boundary the anchoring requirement names
+explicitly — used as a containment boundary unanchored. Roots are alternatives,
+so a marker directory symlinked out of the repository becomes a boundary and
+admits reads under its target no matter that the sound `opts.root` sits beside
+it. #100 anchored six sites and did not reach this one; its D6a enumeration
+keyed on `roots:` literals and this one is built inside a helper call.
+
+Now `{ kind: 'anchored', root: opts.root }`. **This is a deliberate behaviour
+change and the one stated exception to "admission is unchanged at every site"**
+— it tightens, refusing a read that was admitted before. Two tests pin the
+shape: unanchored admits a file outside the repository, anchored refuses it.
+
+*Outstanding:* those tests pass `containment` literally, so they pin the shape
+and not the call site — reverting `workflowDeriver` to an unanchored
+declaration would leave them green. Pinning the call site needs a
+`deriveWorkflow`-level fixture and is not done.
+
+**§3.3/3.4 — the compiler's enumeration vs the grep's.** Making the field
+required produced 53 errors across 6 files, of which **3 were non-test source
+sites**: `workflowDeriver.ts` ×2 and `claudeMdScanner.ts` ×1 — all three inside
+the relaying helpers §2.5 had already identified. So for source files the grep
+was corroborated rather than falsified this time.
+
+That is a weaker result than D3.3 hoped for and worth stating plainly: the
+compiler did not find a site the survey missed. What the survey *did* miss was
+the security property of a site it had counted — `workflowDeriver:250` appears
+in the inventory as an ordinary unanchored call, and nothing about counting it
+revealed that its first root was derived. **Enumeration and classification are
+different problems, and only the first is one a compiler solves.**
+
+**§3.3 — "unmodified" had to be reinterpreted.** Task 4.4 requires the §1
+characterisation tests to pass unmodified after commit 3. They could not: a
+required field cannot leave any call site untouched, tests included. They were
+migrated mechanically — declaration added, every fixture and assertion
+byte-identical. That is a genuinely weaker check than intended, and the
+mitigation is only that an altered expectation would be visible in the diff.
 
 ## 6. Verification
 
-- [ ] 6.1 `pnpm --filter @agenticapps/dashboard-agent test` green, with §1
+- [x] 6.1 `pnpm --filter @agenticapps/dashboard-agent test` green, with §1
   unmodified.
-- [ ] 6.2 `pnpm -r typecheck` and `pnpm lint` green.
-- [ ] 6.3 `openspec validate --all` green.
-- [ ] 6.4 No `impeccable:critique` — confirm `git diff --stat` is
-  `packages/agent` only before claiming it.
+- [x] 6.2 `pnpm -r typecheck` and `pnpm lint` green.
+- [x] 6.3 `openspec validate --all` green.
+- [x] 6.4 No `impeccable:critique` — `git status` confirms `packages/agent` is
+  the only package touched (21 files, +388/-144), so no frontend route exists to
+  critique.
 
 ## 7. Review
 

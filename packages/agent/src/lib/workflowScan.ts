@@ -6,6 +6,7 @@ import {
   type WorkflowResponse,
 } from '@agenticapps/dashboard-shared'
 
+import { DAEMON_NAMED_REASONS } from './containment.js'
 import { makeCoverageResolver } from './coverageResolver.js'
 import { readCoreSpecVersion } from './scanners/coreSpecVersionScanner.js'
 import {
@@ -62,6 +63,14 @@ function resolveRepo(
     return resolve(join(sourceFamilyRoot, entry.directoryName), {
       allowedNames: [entry.directoryName],
       roots: [sourceFamilyRoot],
+      // A family root CONTAINS repositories rather than being one, so this is
+      // neither `repository-root` nor a machine root. It is the site that
+      // showed the three-variant union was not exhaustive — see the change's §5.
+      containment: {
+        kind: 'daemon-named',
+        rootId: 'family-agenticapps',
+        reason: DAEMON_NAMED_REASONS['family-agenticapps'],
+      },
     })
   } catch {
     return null

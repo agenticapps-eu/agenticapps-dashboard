@@ -4,7 +4,7 @@ import { homedir } from 'node:os'
 
 import { ALLOWED_SUBDIRS } from '@agenticapps/dashboard-shared'
 
-import { anchorOf, malformedContainment, CONTAINMENT_CONFLICT } from './containment.js'
+import { anchorOf, malformedContainment } from './containment.js'
 import type { Containment } from './containment.js'
 
 /**
@@ -155,24 +155,6 @@ export interface ResolveAllowedNamedOpts {
   /** Permitted file extension (e.g. '.yml'). Mutually exclusive with allowedNames. */
   extension?: string
   /**
-   * The registered root any derived entry in `roots` must still lie under.
-   *
-   * Pass this whenever a root is DERIVED from a path inside a repository —
-   * `<repo>/.claude/skills`, `<repo>/.github/workflows` — rather than being the
-   * repository root itself. Roots that have left `anchorTo` are dropped before
-   * the containment check, so a symlinked directory cannot become the boundary.
-   *
-   * Roots are alternatives, so an escaped root only ever widens what is
-   * admitted: pairing one with a correctly-anchored root does not mitigate it.
-   * Omitting `anchorTo` preserves the previous behaviour exactly.
-   *
-   * @deprecated Superseded by `containment`, which cannot be omitted once the
-   * migration completes. Supplying both is a PathViolation — during the
-   * migration window a call that set a contradictory pair would otherwise
-   * silently obey one of them.
-   */
-  anchorTo?: string
-  /**
    * What the supplied `roots` ARE. See `containment.ts`.
    *
    * `anchored` takes the anchoring branch; `repository-root` and `daemon-named`
@@ -180,7 +162,7 @@ export interface ResolveAllowedNamedOpts {
    * the point of the field is that the classification stops being unsayable,
    * not that resolution changes.
    */
-  containment?: Containment
+  containment: Containment
 }
 
 /**
@@ -204,18 +186,13 @@ export async function resolveAllowedNamed(
   if (!opts.allowedNames && !opts.extension) {
     throw new PathViolation('one of opts.allowedNames or opts.extension is required')
   }
-  if (opts.anchorTo !== undefined && opts.containment !== undefined) {
-    throw new PathViolation(CONTAINMENT_CONFLICT)
-  }
-  if (opts.containment) {
-    const malformed = malformedContainment(opts.containment)
-    if (malformed) throw new PathViolation(malformed)
-  }
+  const malformed = malformedContainment(opts.containment)
+  if (malformed) throw new PathViolation(malformed)
 
   // A declaration resolves to the same anchor the legacy field carried: only
   // `anchored` anchors. The two unanchored variants deliberately reach the
   // identical branch an undeclared call reaches.
-  const effectiveAnchor = opts.containment ? anchorOf(opts.containment) : opts.anchorTo
+  const effectiveAnchor = anchorOf(opts.containment)
 
   let real: string
   try {
@@ -239,7 +216,7 @@ export async function resolveAllowedNamed(
   )
 
   // Anchor check: a root derived from inside a repository is only usable while
-  // it is still inside that repository. See ResolveAllowedNamedOpts.anchorTo.
+  // it is still inside that repository. See ResolveAllowedNamedOpts.containment.
   let candidateRoots = realRoots.map(({ resolved, lexical }) => resolved ?? lexical)
   if (effectiveAnchor !== undefined) {
     let realAnchor: string

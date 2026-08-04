@@ -240,6 +240,7 @@ function readExplicitSkills(
       skillPath = resolve(join(hostRepoRoot, relativePath), {
         allowedNames: [basename(relativePath)],
         roots: [hostRepoRoot],
+        containment: { kind: 'repository-root' },
       })
     } catch {
       return missingSkill(id)

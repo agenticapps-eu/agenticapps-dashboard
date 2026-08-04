@@ -13,19 +13,41 @@
  */
 
 /**
- * The machine roots that deliberately lie outside every repository.
+ * The machine roots — installed to, never checked out.
  *
- * Enumerated rather than free-form so `daemon-named` cannot become an
- * open-ended exemption from anchoring. `workflowArtifactScanner.declare.ts`
- * re-exports this as `WorkflowMachineRootId`, which is the same set under the
- * name that scanner code already uses.
+ * `workflowArtifactScanner.declare.ts` aliases this as `WorkflowMachineRootId`,
+ * the name scanner code already uses.
  */
-export type DaemonNamedRootId =
+export type MachineRootId =
   | 'agenticapps-bin'
   | 'claude-skills'
   | 'codex-skills'
   | 'opencode-skills'
   | 'pi-skills'
+
+/**
+ * The family roots, and the workflow-core migrations directory beneath one.
+ *
+ * These are *containers of* repositories rather than repositories, so a caller
+ * that supplies one is not supplying a repository root and cannot honestly
+ * declare `repository-root`. Found during the migration at `workflowScan.ts:64`,
+ * which passes `sourceFamilyRoot` as a caller root — see tasks.md §5.
+ */
+export type FamilyRootId =
+  | 'family-agenticapps'
+  | 'family-factiv'
+  | 'family-neuroflash'
+  | 'workflow-migrations'
+
+/**
+ * Every named root that deliberately lies outside every repository.
+ *
+ * Enumerated rather than free-form so `daemon-named` cannot become an
+ * open-ended exemption from anchoring. The two halves are kept separate because
+ * `WorkflowMachineRootId` is iterated as an exhaustive set by `workflowScan.ts`
+ * and must not silently acquire the family roots.
+ */
+export type DaemonNamedRootId = MachineRootId | FamilyRootId
 
 /**
  * What a caller claims about the roots it is supplying.
@@ -84,6 +106,18 @@ export const DAEMON_NAMED_REASONS: Record<DaemonNamedRootId, string> = {
   'pi-skills':
     'the pi machine-wide skills directory is installed to, not checked out; ' +
     'its entries are symlinks into repositories by design',
+  'family-agenticapps':
+    'a family root CONTAINS repositories rather than being one; anchoring it to ' +
+    'a repository root would refuse every sibling it exists to enumerate',
+  'family-factiv':
+    'a family root CONTAINS repositories rather than being one; anchoring it to ' +
+    'a repository root would refuse every sibling it exists to enumerate',
+  'family-neuroflash':
+    'a family root CONTAINS repositories rather than being one; anchoring it to ' +
+    'a repository root would refuse every sibling it exists to enumerate',
+  'workflow-migrations':
+    'the workflow-core migrations directory is read to determine the fleet head ' +
+    'version, from outside whichever repository is being scanned',
 }
 
 /**

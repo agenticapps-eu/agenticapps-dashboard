@@ -23,7 +23,7 @@ import {
 } from './coverageResolver.js'
 import type { PathResolver } from './coverageResolver.js'
 import { resolveAllowedNamed, PathViolation as PathsPathViolation } from './paths.js'
-import { DAEMON_NAMED_REASONS, CONTAINMENT_CONFLICT } from './containment.js'
+import { DAEMON_NAMED_REASONS } from './containment.js'
 
 const temps: string[] = []
 
@@ -38,19 +38,11 @@ afterEach(() => {
 })
 
 describe('containment — malformed declarations', () => {
-  it('refuses anchorTo and containment together', async () => {
-    const root = makeTemp('cont-conflict-')
-    writeFileSync(join(root, 'package.json'), '{}')
-
-    await expect(
-      resolveAllowedNamed(join(root, 'package.json'), {
-        roots: [root],
-        allowedNames: ['package.json'],
-        anchorTo: root,
-        containment: { kind: 'repository-root' },
-      }),
-    ).rejects.toThrow(CONTAINMENT_CONFLICT)
-  })
+  // The migration-window guard (anchorTo AND containment together is a
+  // PathViolation) is deliberately absent: `anchorTo` no longer exists, so the
+  // contradiction it caught is now unrepresentable. The check remains in the
+  // resolvers for nothing, which is the correct end state for a guard whose job
+  // was to survive a window that has closed.
 
   it('refuses a daemon-named declaration whose reason is blank', async () => {
     const root = makeTemp('cont-blank-')
@@ -65,11 +57,24 @@ describe('containment — malformed declarations', () => {
     ).rejects.toBeInstanceOf(PathsPathViolation)
   })
 
-  it('ships a non-empty reason for every enumerated machine root', () => {
+  it('ships a non-empty reason for every enumerated named root', () => {
     for (const [rootId, reason] of Object.entries(DAEMON_NAMED_REASONS)) {
       expect(reason.trim(), `${rootId} must state why it is not anchored`).not.toBe('')
     }
-    expect(Object.keys(DAEMON_NAMED_REASONS)).toHaveLength(5)
+    // Five machine roots and four family roots. The family half was added
+    // during the migration, when `workflowScan.ts:64` turned out to supply a
+    // family root and the three-variant union could not describe it.
+    expect(Object.keys(DAEMON_NAMED_REASONS).sort()).toEqual([
+      'agenticapps-bin',
+      'claude-skills',
+      'codex-skills',
+      'family-agenticapps',
+      'family-factiv',
+      'family-neuroflash',
+      'opencode-skills',
+      'pi-skills',
+      'workflow-migrations',
+    ])
   })
 })
 
@@ -81,14 +86,13 @@ describe('containment — declaring a call does not change resolution', () => {
     const target = join(root, '.github', 'workflows', 'ci.yml')
     const roots = [join(root, '.github', 'workflows')]
 
-    const legacy = await resolveAllowedNamed(target, { roots, extension: '.yml', anchorTo: root })
     const declared = await resolveAllowedNamed(target, {
       roots,
       extension: '.yml',
       containment: { kind: 'anchored', root },
     })
 
-    expect(declared).toBe(legacy)
+    expect(declared).toBe(target)
   })
 
   it('anchored refuses exactly as anchorTo did, on an escaped boundary', async () => {
@@ -100,9 +104,6 @@ describe('containment — declaring a call does not change resolution', () => {
     const target = join(root, '.github', 'workflows', 'ci.yml')
     const roots = [join(root, '.github', 'workflows')]
 
-    await expect(
-      resolveAllowedNamed(target, { roots, extension: '.yml', anchorTo: root }),
-    ).rejects.toBeInstanceOf(PathsPathViolation)
     await expect(
       resolveAllowedNamed(target, {
         roots,
@@ -118,17 +119,12 @@ describe('containment — declaring a call does not change resolution', () => {
     writeFileSync(join(root, 'package.json'), '{}')
     const roots = [`${root}${sep}missing${sep}..`]
 
-    const undeclared = await resolveAllowedNamed(join(root, 'package.json'), {
-      roots,
-      allowedNames: ['package.json'],
-    })
     const declared = await resolveAllowedNamed(join(root, 'package.json'), {
       roots,
       allowedNames: ['package.json'],
       containment: { kind: 'repository-root' },
     })
 
-    expect(declared).toBe(undeclared)
     expect(declared).toBe(join(root, 'package.json'))
   })
 })
@@ -200,7 +196,7 @@ describe('containment — PathResolver keeps its standing roots when unanchored'
     ).toThrow(CoveragePathViolation)
   })
 
-  it('refuses anchorTo and containment together', () => {
+  it('refuses a daemon-named declaration whose reason is blank', () => {
     const repo = join(family, 'repo-g')
     mkdirSync(repo, { recursive: true })
     writeFileSync(join(repo, 'package.json'), '{}')
@@ -209,9 +205,60 @@ describe('containment — PathResolver keeps its standing roots when unanchored'
       resolve(join(repo, 'package.json'), {
         roots: [repo],
         allowedNames: ['package.json'],
-        anchorTo: repo,
-        containment: { kind: 'repository-root' },
+        containment: { kind: 'daemon-named', rootId: 'claude-skills', reason: '' },
       }),
-    ).toThrow(CONTAINMENT_CONFLICT)
+    ).toThrow(CoveragePathViolation)
+  })
+})
+
+describe('containment — the marker-directory escape found during migration', () => {
+  /**
+   * `workflowDeriver.ts` read a host SKILL.md with
+   * `roots: [join(root, host.marker), root]` and NO anchor, where `host.marker`
+   * is `.claude` / `.codex` / `.opencode` / `.pi`.
+   *
+   * That is the derived boundary `<repo>/.claude` — named explicitly by the
+   * anchoring requirement — used as a containment boundary without being
+   * anchored. Roots are alternatives, so a marker symlinked out of the
+   * repository admits reads under its target regardless of the sound `root`
+   * sitting beside it. #100 closed this at six sites and did not reach this one.
+   *
+   * The first assertion is the escape; the second is that anchoring refuses it.
+   *
+   * Both pass `containment` literally, so what they pin is the SHAPE, not the
+   * call site: they would keep passing if `workflowDeriver` reverted to an
+   * unanchored declaration. Pinning the call site needs a deriveWorkflow-level
+   * fixture, which is recorded as outstanding in the change's §5 rather than
+   * claimed here.
+   */
+  it('admits a read through a symlinked marker directory when unanchored', async () => {
+    const repo = makeTemp('marker-esc-repo-')
+    const outside = makeTemp('marker-esc-out-')
+    writeFileSync(join(outside, 'SKILL.md'), '---\nname: x\n---\n')
+    symlinkSync(outside, join(repo, '.claude'), 'dir')
+
+    const admitted = await resolveAllowedNamed(join(repo, '.claude', 'SKILL.md'), {
+      roots: [join(repo, '.claude'), repo],
+      allowedNames: ['SKILL.md'],
+      containment: { kind: 'repository-root' },
+    })
+
+    // The escape, stated rather than implied: a file outside the repository.
+    expect(admitted.startsWith(outside)).toBe(true)
+  })
+
+  it('refuses that same read once the boundary is anchored', async () => {
+    const repo = makeTemp('marker-fix-repo-')
+    const outside = makeTemp('marker-fix-out-')
+    writeFileSync(join(outside, 'SKILL.md'), '---\nname: x\n---\n')
+    symlinkSync(outside, join(repo, '.claude'), 'dir')
+
+    await expect(
+      resolveAllowedNamed(join(repo, '.claude', 'SKILL.md'), {
+        roots: [join(repo, '.claude'), repo],
+        allowedNames: ['SKILL.md'],
+        containment: { kind: 'anchored', root: repo },
+      }),
+    ).rejects.toBeInstanceOf(PathsPathViolation)
   })
 })

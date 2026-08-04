@@ -80,7 +80,7 @@ describe('makeCoverageResolver', () => {
           resolve(join(skillRoot, 'SKILL.md'), {
             allowedNames: ['SKILL.md'],
             roots: [skillRoot],
-            anchorTo: repo,
+            containment: { kind: 'anchored', root: repo },
           }),
         ).toThrow(PathViolation)
       } finally {
@@ -96,7 +96,7 @@ describe('makeCoverageResolver', () => {
       const result = resolve(join(skillRoot, 'SKILL.md'), {
         allowedNames: ['SKILL.md'],
         roots: [skillRoot],
-        anchorTo: repo,
+        containment: { kind: 'anchored', root: repo },
       })
       expect(result.endsWith('SKILL.md')).toBe(true)
     })
@@ -119,7 +119,7 @@ describe('makeCoverageResolver', () => {
         resolve(join(skillRoot, 'SKILL.md'), {
           allowedNames: ['SKILL.md'],
           roots: [skillRoot, repo],
-          anchorTo: repo,
+          containment: { kind: 'anchored', root: repo },
         }),
       ).toThrow(PathViolation)
     })
@@ -146,7 +146,7 @@ describe('makeCoverageResolver', () => {
         resolve(join(skillRoot, 'SKILL.md'), {
           allowedNames: ['SKILL.md'],
           roots: [skillRoot],
-          anchorTo: join(repo, 'no-such-directory'),
+          containment: { kind: 'anchored', root: join(repo, 'no-such-directory') },
         }),
       ).toThrow(/anchor root not accessible/)
     })
@@ -162,6 +162,7 @@ describe('makeCoverageResolver', () => {
       const result = resolve(filePath, {
         allowedNames: ['CLAUDE.md'],
         roots: [unrelatedRepo],
+        containment: { kind: 'repository-root' },
       })
       expect(result.endsWith('CLAUDE.md')).toBe(true)
     })
@@ -173,6 +174,7 @@ describe('makeCoverageResolver', () => {
     const result = resolve(filePath, {
       allowedNames: ['CLAUDE.md'],
       roots: [join(root, 'Sourcecode', 'agenticapps')],
+      containment: { kind: 'repository-root' },
     })
     expect(result).toContain('CLAUDE.md')
   })
@@ -183,6 +185,7 @@ describe('makeCoverageResolver', () => {
     const result = resolve(filePath, {
       allowedNames: ['registry.json'],
       roots: [join(root, 'Sourcecode', 'factiv')],
+      containment: { kind: 'repository-root' },
     })
     expect(typeof result).toBe('string')
     expect(result.endsWith('registry.json')).toBe(true)
@@ -197,6 +200,7 @@ describe('makeCoverageResolver', () => {
         resolve(outsidePath, {
           allowedNames: ['secret.txt'],
           roots: [join(root, 'Sourcecode', 'agenticapps')],
+          containment: { kind: 'repository-root' },
         }),
       ).toThrow(PathViolation)
     } finally {
@@ -213,6 +217,7 @@ describe('makeCoverageResolver', () => {
         resolve(outsidePath, {
           allowedNames: ['secret.json'],
           roots: [join(root, 'Sourcecode', 'factiv')],
+          containment: { kind: 'repository-root' },
         }),
       ).toThrow(/outside allowed roots/)
     } finally {
@@ -229,6 +234,7 @@ describe('makeCoverageResolver', () => {
       resolve(disallowed, {
         allowedNames: ['CLAUDE.md'],
         roots: [join(root, 'Sourcecode', 'agenticapps')],
+        containment: { kind: 'repository-root' },
       }),
     ).toThrow(PathViolation)
   })
@@ -239,6 +245,7 @@ describe('makeCoverageResolver', () => {
       resolve(nonExistent, {
         allowedNames: ['does-not-exist.md'],
         roots: [join(root, 'Sourcecode', 'agenticapps')],
+        containment: { kind: 'repository-root' },
       }),
     ).toThrow(PathViolation)
   })
@@ -254,6 +261,7 @@ describe('makeCoverageResolver', () => {
         resolve(symlinkPath, {
           allowedNames: ['escape.json'],
           roots: [join(root, 'Sourcecode', 'factiv')],
+          containment: { kind: 'repository-root' },
         }),
       ).toThrow(PathViolation)
     } finally {
@@ -267,6 +275,7 @@ describe('makeCoverageResolver', () => {
     const result = resolve(mdPath, {
       extension: '.md',
       roots: [join(root, 'Sourcecode', 'neuroflash')],
+      containment: { kind: 'repository-root' },
     })
     expect(result).toContain('README.md')
   })
@@ -278,6 +287,7 @@ describe('makeCoverageResolver', () => {
       resolve(txtPath, {
         extension: '.md',
         roots: [join(root, 'Sourcecode', 'neuroflash')],
+        containment: { kind: 'repository-root' },
       }),
     ).toThrow(PathViolation)
   })
@@ -290,6 +300,7 @@ describe('makeCoverageResolver', () => {
         allowedNames: ['CLAUDE.md'],
         extension: '.md',
         roots: [join(root, 'Sourcecode', 'agenticapps')],
+        containment: { kind: 'repository-root' },
       }),
     ).toThrow(PathViolation)
   })
@@ -300,6 +311,7 @@ describe('makeCoverageResolver', () => {
     expect(() =>
       resolve(filePath, {
         roots: [join(root, 'Sourcecode', 'agenticapps')],
+        containment: { kind: 'repository-root' },
       }),
     ).toThrow(PathViolation)
   })
@@ -308,7 +320,11 @@ describe('makeCoverageResolver', () => {
     const filePath = join(root, 'Sourcecode', 'agenticapps', 'does-not-exist.md')
     let caught: unknown
     try {
-      resolve(filePath, { allowedNames: ['does-not-exist.md'], roots: [join(root, 'Sourcecode', 'agenticapps')] })
+      resolve(filePath, {
+        allowedNames: ['does-not-exist.md'],
+        roots: [join(root, 'Sourcecode', 'agenticapps')],
+        containment: { kind: 'repository-root' },
+      })
     } catch (e) {
       caught = e
     }

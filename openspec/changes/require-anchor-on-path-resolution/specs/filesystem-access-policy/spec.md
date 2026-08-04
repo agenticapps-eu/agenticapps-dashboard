@@ -21,8 +21,12 @@ Three cases exhaust the declarations, and they are distinct claims:
   anchored to that repository root and is governed entirely by `A Containment
   Anchor Is Verified Against Its Registered Root`.
 - A boundary that **is** a repository root, where anchoring would be an identity.
-- A boundary that is a **daemon-named root** lying outside every repository —
-  the machine roots of `Named Allowed Roots For Fleet Scanners`.
+- A boundary that is a **daemon-named root** lying outside every repository.
+  These are the named roots of `Named Allowed Roots For Fleet Scanners`, and
+  they are of two kinds: the machine roots that are installed to rather than
+  checked out, and the family roots, which **contain** repositories rather than
+  being one. A caller supplying a family root is not supplying a repository
+  root and SHALL NOT declare it as one.
 
 Neither of the two unanchored declarations narrows a resolver's **standing**
 roots. Where a resolver is constructed with roots of its own, a read declared
