@@ -82,7 +82,14 @@ waiting for it.
 - [x] 7.4 **Verified against the live daemon and the real registry**, which is what caught the shell defect in 5.9. `GET /api/v2/changes/fleet` answers 401 unauthenticated and 200 with the bearer token; 60 cards across 3 registered repositories, 0 notices. The board classifies **its own change** correctly — `add-agent-change-board` sits in Validate with `hasRequestChanges: true` and 99/119 checklist rows, read from `REVIEWS.md`. Mocked responses would not have shown either the status codes or the overflow
 - [x] 7.5 `openspec validate --all` green
 - [x] 7.6 **Round 4 run and disposed in §12** — the first round with code to read. gemini and codex REQUEST-CHANGES; opencode's record truncated with no `VERDICT:` line, so it counts as absent, which is this change's own reviewer rule applied to its own evidence. Four findings confirmed and fixed (a TOCTOU, an unreachable scenario, two places the spec contradicted the code), one refuted with the check, two carried. Every finding was verified against the source before being acted on
-- [ ] 7.7 Two-stage review before merge
+- [x] 7.7 **Two-stage review before merge — both stages run, §14 and §15.**
+      Stage 1 (gstack `/review`, six specialists + cross-model Codex) found
+      three defects verified by executing code: a containment anchor escape, a
+      backlog card deleted silently, and an intransitive comparator that
+      mis-ordered the Archive column in 49% of random fleets. Stage 2
+      (`superpowers:requesting-code-review`, fresh context) found no Criticals
+      and four coherence defects, one of them against the security requirement
+      stage 1 had just written. All seven fixed, each proved RED first
 
 ## 8. Hand back to `retire-v1-surfaces`
 
@@ -653,6 +660,119 @@ against a 3.0 non-text floor.
 **The shell fix is scoped.** `TopBar`, `Sidebar` and `AppShellV2` carry only
 overflow-related edits plus the one new nav entry — no unrelated restyling,
 which was the Surgical Changes risk on this branch.
+
+## 15. Two-stage review disposition — stage 2 (2026-08-04, task 7.7)
+
+Stage 2 is `superpowers:requesting-code-review` over the full branch including
+stage 1's fixes, dispatched with fresh context. **No Critical findings.** The
+reviewer independently checked stage 1's work rather than taking it on trust:
+it ran the *pre-fix* comparator against the new test's fixture and confirmed it
+returns `['c2','c0']` against an expected `['c0','c2']`, so the test
+discriminates; it looked for a residual bypass of the new anchor check and found
+none (sibling-prefix `/repo` vs `/repo-secrets` is handled, both sides come from
+`realpath` so a case-insensitive filesystem cannot split them, and a symlink
+under the anchor is still refused by `contained()`).
+
+Four **Important** findings, all confirmed against the code and all fixed. Every
+one is the same failure mode this branch has now caught five times: a corrected
+artifact leaving an uncorrected sibling.
+
+- [x] 15.1 **The new anchor refusal was silent, against the scenario written in
+      the same commit.** `changeReader.ts` returned `{ records: [], notices: [] }`,
+      which is byte-identical to a repository with no `openspec/` at all — while
+      `filesystem-access-policy`'s new scenario requires "the repository's
+      failure is reported through the symbolic vocabulary". The stage-1 test
+      asserted only `records).toEqual([])` and never looked at the report, which
+      is exactly how the gap survived being written an hour earlier. Now a named
+      `ContainmentAnchorEscaped`, caught by name in `service.ts` and mapped to
+      `read: 'failed', reason: 'unreadable'` — repository-level, because no
+      source was attempted and `a active entry was refused` would name something
+      that never happened. Both the reader test and a new service test were
+      proved RED against the silent return before the fix
+- [x] 15.2 **The Archive column applied a bound no requirement permitted.**
+      `ARCHIVE_VISIBLE_LIMIT = 10` versus the delta's "No column applies a
+      second, silent bound of its own" — a clause §11.6 wrote specifically to
+      delete a hand-rolled archive bound, which §13.4 then reinstated in code
+      without touching the spec. Resolved in the spec's favour by describing
+      what the product actually does: the Archive column may bound what it
+      renders **by default**, because it is the one column that only grows,
+      provided the bound names the true total, reverses in both directions, and
+      withholds nothing from the response. A scenario pins all three
+- [x] 15.3 **The change's two deltas described two different boundaries.**
+      `agent-change-board` still required every path to lie under the literal
+      `<registered project root>/openspec`, which the new
+      `filesystem-access-policy` delta deliberately contradicts by admitting an
+      `openspec` symlinked *within* its own root — a case this change's own
+      control test asserts. The clause now cites the verified anchor and names
+      the requirement that governs it, instead of restating a path
+- [x] 15.4 **`ChangeBoardRoute`'s docblock argued from the pair §12.2 proved
+      unreachable**, claiming a backlog entry and an active change of one name
+      are "the ordinary case" when `occupiedSlugs` means no reader can emit that
+      pair. The spec was corrected in round 4; this file was not. Now cites the
+      reachable active/archive collision, and `ChangeDrawer.test.tsx`'s describe
+      block is renamed for what it proves rather than for an impossible example
+- [x] 15.5 **Carried item 14.20 closed in the same pass**, on the reviewer's
+      recommendation: `changeReader.test.ts` no longer requires the live tree to
+      contain `add-agent-change-board`, so `/opsx:archive` no longer turns it red
+      on main. It asserts the structural properties instead — at least one active
+      change, no record named `archive`, every archive `sourceInstance` dated
+
+**Stage 2 findings recorded but not fixed** — all Minor, none blocking:
+
+- [ ] 15.6 A dead guard: `changeReader.ts`'s `relativePath !== 'openspec'`
+      special case cannot be taken, because `listDirectory` is never called with
+      the anchor directory
+- [ ] 15.7 Dedup slug asymmetry: the active side occupies `backlogSlug(name)`,
+      the archive side the raw `archivedSlug`, so `2026-01-01-Add_Thing` occupies
+      `Add_Thing` while the backlog heading "Add Thing" slugs to `add-thing` and
+      the dedup misses. Pre-existing; the stage-1 commit touched both lines
+      without normalising them
+- [ ] 15.8 Records dropped by `MAX_SOURCE_RECORDS` no longer occupy their slugs
+      after 14.2's fix, so past 128 records a matching backlog entry reappears.
+      Practically unreachable; nothing asserts either behaviour
+- [ ] 15.9 A symlinked `REVIEWS.md` is skipped silently — `listDirectory` marks
+      symlinks `directory: true`, so the review-record scan drops it with no
+      notice while a symlinked `proposal.md` rejects the whole change. The change
+      then classifies `validate` for want of evidence it does have
+- [ ] 15.10 `MAX_SOURCE_ENTRIES = 2048` is an undocumented second bound that
+      refuses a whole source rather than truncating it, and its notice carries no
+      `observed`, so it cannot say what it lost
+- [ ] 15.11 UI copy: "a active entry could not be read" / "a archive entry was
+      refused" — article agreement
+- [ ] 15.12 The paged layout can open on an empty stage: the opening-column
+      reducer covers `propose|validate|execute` only, so an archive-only fleet
+      opens on Propose showing "No changes"
+- [ ] 15.13 `proposal.md` and `design.md` are read in full purely to test
+      presence — up to 1 MiB each, per change, per repository, per cold poll. An
+      `fstat` answers the question. Sharpens 14.14/14.16
+- [ ] 15.14 Failed repositories still become filter chips, so selecting one
+      yields four empty columns for a repository the banner just said was
+      unreadable. Overlaps the testing specialist's 14.21 note
+- [ ] 15.15 `boardLayout.ts`'s `SHELL_SIDEBAR_PX = 240` is only an input to a
+      true derivation above the compact boundary; below 640px the sidebar leaves
+      the grid, so the module's "arithmetic with its inputs named" claim is half
+      true
+- [ ] 15.16 The compact nav panel has Escape and `aria-expanded` but, unlike the
+      drawer it says it "pairs with", never moves focus in, traps Tab, or
+      restores focus on close
+
+**The reviewer also recommended promoting 14.18 above "carried"**, and the
+reasoning is sound: `parseBacklog` is fence-aware while `parseReviewEvidence`
+and `parseChecklist` are not, so the inconsistency is *internal to the mirrored
+parsers* rather than inherited from upstream, and the consequence is a wrong
+**stage** — a `tasks.md` whose only rows sit in a fenced example plus a
+`REVIEWS.md` with two fenced approvals classifies as ready to archive. Left
+carried rather than fixed here because it changes a mirrored parser and should
+be checked against upstream first, which is a change of its own.
+
+**Verification after stage 2:** shared 500, agent 1741 (+1 skipped), spa 1628.
+`pnpm -r typecheck` clean, `pnpm lint` 0 errors (222 warnings, unchanged in
+kind), `openspec validate --all` 18/18.
+
+**Assessment carried from the reviewer: ready to merge with fixes — and the
+fixes are applied.** All four Important findings are closed; what remains is
+eleven Minor items and the carried set in §14, none of which the reviewer
+considered blocking.
 
 ## Out of scope
 

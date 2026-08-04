@@ -181,7 +181,17 @@ async function readRepository(
   // rather than spending the whole bound failing one call at a time.
   if (!isReachable(entry.root)) return failed(entry, 'unreachable')
 
-  const settled = await withinBound(reader.readRepositoryChanges(entry.root), options)
+  let settled: Awaited<ReturnType<typeof reader.readRepositoryChanges>> | typeof TIMED_OUT
+  try {
+    settled = await withinBound(reader.readRepositoryChanges(entry.root), options)
+  } catch (error) {
+    // The one repository-state condition the reader refuses rather than
+    // degrades: its `openspec` anchor resolves outside the registered root, so
+    // there is nothing here this daemon is entitled to read. Caught by name so
+    // the generic `allSettled` fallback below keeps meaning what it says.
+    if (error instanceof reader.ContainmentAnchorEscaped) return failed(entry, 'unreadable')
+    throw error
+  }
   if (settled === TIMED_OUT) return failed(entry, 'timeout')
 
   const cards = settled.records.map((record): ChangeCard => {

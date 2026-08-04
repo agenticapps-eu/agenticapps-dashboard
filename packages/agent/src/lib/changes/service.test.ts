@@ -6,7 +6,7 @@
  * nothing in it, so every case here asserts both halves: what still rendered,
  * and what was named as lost.
  */
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -64,6 +64,33 @@ async function makeRegistry(entries: { id: string; name: string; root: string }[
   )
   return file
 }
+
+describe('a repository whose openspec anchor escapes its root', () => {
+  it('is reported as failed rather than as a repository with nothing in it', async () => {
+    // The distinction the whole degradation design exists for: a refused read
+    // and an empty corpus must not render the same. Before this was reported,
+    // an escaped anchor produced `read: 'ok'` with zero cards and zero notices
+    // — byte-identical to a repository with no `openspec/` at all.
+    const outside = await makeRepo(changeFiles('changes/leaked-change'))
+    const root = await mkdtemp(join(tmpdir(), 'change-fleet-'))
+    temps.push(root)
+    await symlink(outside, join(root, 'openspec'), 'dir')
+    const healthy = await makeRepo(changeFiles('openspec/changes/add-thing'))
+
+    const file = await makeRegistry([
+      { id: 'escaped', name: 'escaped', root },
+      { id: 'healthy', name: 'healthy', root: healthy },
+    ])
+    const response = await readChangesFleet({ registryFile: file })
+
+    expect(response.repositories).toContainEqual({
+      id: 'escaped', name: 'escaped', read: 'failed', reason: 'unreadable',
+    })
+    expect(response.cards.map((card) => card.changeName)).toEqual(['add-thing'])
+    // One repository refused, one read: the board is degraded, not empty.
+    expect(fleetReadState(response)).toBe('degraded')
+  })
+})
 
 describe('readChangesFleet', () => {
   it('returns the strict wire shape', async () => {

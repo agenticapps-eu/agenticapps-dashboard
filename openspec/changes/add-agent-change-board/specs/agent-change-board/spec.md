@@ -368,6 +368,20 @@ Cardinality is bounded by the per-source bound in `The Board Shows Every
 Registered Repository's Changes`, which applies to every source alike and reports
 what it withheld. No column applies a second, silent bound of its own.
 
+The Archive column MAY bound what it renders **by default**, because it is the
+one column that grows without end — every filed change stays filed, while the
+other three drain as work moves. Such a bound is a display default and not a
+second data bound: it SHALL name the true total, SHALL be reversible in both
+directions by an explicit control, and SHALL withhold nothing from the response.
+A bound the reader cannot see or cannot undo is the silent bound this
+requirement refuses.
+
+#### Scenario: The Archive column's default bound names its total and reverses
+- **WHEN** the Archive column holds more cards than its default bound
+- **THEN** it renders the bounded subset and offers a control naming the true total
+- **AND** activating that control reveals every card, and activating it again restores the bound
+- **AND** no card is withheld from the response itself.
+
 #### Scenario: The order is stable across requests
 - **WHEN** the same fleet is rendered twice with no change on disk
 - **THEN** each column presents its cards in the same order.
@@ -472,9 +486,13 @@ is widened to serve it.
 Path admission SHALL NOT rest on the lexical guard alone. `isReadableProjectPath`
 answers whether a path's shape is offerable, not whether reading it stays inside
 the tree the board is entitled to. Every path the board reads SHALL therefore be
-resolved and confirmed to lie under **`<registered project root>/openspec`** —
-not merely under the project root — and SHALL be read only when it is a regular
-file.
+resolved and confirmed to lie under **the verified anchor for that repository's
+`openspec` tree** — not merely under the project root — and SHALL be read only
+when it is a regular file. The anchor is `<registered project root>/openspec`
+resolved, and is itself verified against the registered root per
+`filesystem-access-policy` › `A Containment Anchor Is Verified Against Its
+Registered Root`; stating it as a literal path here would contradict that
+requirement, which admits an `openspec` symlinked *within* its own root.
 
 The narrower root is the point. A symlink under `openspec/` that resolves to
 `.env`, `.git/config`, or any other file elsewhere in the same repository passes

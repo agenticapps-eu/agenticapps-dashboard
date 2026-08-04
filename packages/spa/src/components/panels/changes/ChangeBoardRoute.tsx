@@ -12,10 +12,12 @@
  * confuse. That is the lesson of `fix-readiness-sanitiser-colon-hazard`,
  * applied by removing the failure mode rather than guarding it.
  *
- * `source` is in the address because it is in the identity: a backlog entry and
- * an active change of the same name are the ordinary case, since a backlog
- * entry becomes a change under its own name, and `(repo, change)` collides on
- * exactly that pair.
+ * `source` is in the address because it is in the identity: an active change
+ * and an archived one of the same name are the ordinary case, since archiving
+ * keeps the slug and only prefixes a date, and `(repo, change)` collides on
+ * exactly that pair. Note it is *not* the backlog/active pair — `occupiedSlugs`
+ * suppresses a backlog entry whose slug is already a change, so no reader can
+ * emit that one. §12.2 corrected the spec scenario for the same reason.
  */
 import type { ReactElement } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'

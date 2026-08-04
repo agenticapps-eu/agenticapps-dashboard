@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { isReadableProjectPath } from '@agenticapps/dashboard-shared'
 
 import {
+  ContainmentAnchorEscaped,
   MAX_CHANGE_FILE_BYTES,
   MAX_SOURCE_RECORDS,
   archivedSlug,
@@ -262,13 +263,17 @@ describe('what is not a change', () => {
   })
 
   it('reads this repository’s own changes/ tree without inventing entries', async () => {
-    // The real tree is the fixture: it holds `archive/`, four active changes,
-    // and no stray directories. A reader that counts `archive/` fails here.
+    // The real tree is the fixture: it holds `archive/` alongside active
+    // changes, and no stray directories. A reader that counts `archive/` fails
+    // here. Deliberately no assertion on any *named* change — an earlier
+    // version required `add-agent-change-board`, which `/opsx:archive` moves
+    // under `changes/archive/`, so the test was written to go red on main the
+    // moment the change it shipped with was filed.
     const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../../..')
     const { records } = await readRepositoryChanges(repoRoot)
     const active = records.filter((r) => r.source === 'active').map((r) => r.changeName)
 
-    expect(active).toContain('add-agent-change-board')
+    expect(active.length).toBeGreaterThan(0)
     expect(active).not.toContain('archive')
     expect(records.filter((r) => r.source === 'archive').length).toBeGreaterThan(0)
     for (const record of records.filter((r) => r.source === 'archive')) {
@@ -770,8 +775,10 @@ describe('containment', () => {
     temps.push(root)
     await symlink(outside, join(root, 'openspec'), 'dir')
 
-    const { records } = await readRepositoryChanges(root)
-    expect(records).toEqual([])
+    // Refused, not merely empty: an escaped anchor that returned no records and
+    // no report would be byte-identical to a repository with no `openspec/` at
+    // all, and the requirement asks for the failure to be reported.
+    await expect(readRepositoryChanges(root)).rejects.toBeInstanceOf(ContainmentAnchorEscaped)
   })
 
   it('still reads an openspec/ symlinked within the same repository', async () => {

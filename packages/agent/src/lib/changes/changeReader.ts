@@ -73,6 +73,22 @@ export const MAX_SOURCE_RECORDS = 128
 /** Immediate entries read from one directory before it is refused outright. */
 const MAX_SOURCE_ENTRIES = 2048
 
+/**
+ * The repository's `openspec` anchor resolved outside its registered root.
+ *
+ * An error rather than a notice because it is repository-level: no source was
+ * attempted, so there is no source to attach a notice to, and the service
+ * already has a symbolic, path-free vocabulary for "this repository could not
+ * be read". `filesystem-access-policy` › `A Containment Anchor Is Verified
+ * Against Its Registered Root`.
+ */
+export class ContainmentAnchorEscaped extends Error {
+  constructor() {
+    super('openspec anchor resolves outside the registered root')
+    this.name = 'ContainmentAnchorEscaped'
+  }
+}
+
 /** A notice before the service attaches the repository it came from. */
 export interface RepositoryNotice {
   source: ChangeSource | 'evidence'
@@ -505,9 +521,11 @@ const byName = (left: { name: string }, right: { name: string }) =>
 /**
  * One repository's admitted records and the notices explaining what it lost.
  *
- * Never throws for a repository's own state: an unreadable tree yields notices,
- * not a rejection. Only a caller-level failure — the service's own bound —
- * removes a repository from the board.
+ * Never throws for a repository's own *content*: an unreadable tree yields
+ * notices, not a rejection. Two things remove a repository from the board
+ * instead of degrading it — the service's own bound, and a containment anchor
+ * that resolves outside the registered root, which is a refusal to read the
+ * repository rather than a fact about what it holds.
  */
 export async function readRepositoryChanges(
   root: string,
@@ -528,9 +546,17 @@ export async function readRepositoryChanges(
     // `A Containment Anchor Is Verified Against Its Registered Root`.
     const rootReal = await realpath(root)
     if (openspecReal !== rootReal && !openspecReal.startsWith(rootReal + sep)) {
-      return { records, notices, paths }
+      // Thrown, not returned empty. An escaped anchor is a refusal to read the
+      // repository at all, and returning `{ records: [], notices: [] }` would
+      // make it byte-identical to a repository that simply has no `openspec/` —
+      // silence where the requirement asks for a report. It is not a per-source
+      // notice either: no source was attempted, so `a active entry was refused`
+      // would name a thing that never happened. The repository-level vocabulary
+      // is what fits, and the service maps this to `read: 'failed'`.
+      throw new ContainmentAnchorEscaped()
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ContainmentAnchorEscaped) throw error
     // No `openspec/` — or one we cannot resolve. Silent, per the requirement:
     // a repository without OpenSpec contributes nothing and is not an error.
     return { records, notices, paths }

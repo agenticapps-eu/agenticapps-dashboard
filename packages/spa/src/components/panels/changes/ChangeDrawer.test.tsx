@@ -431,7 +431,11 @@ describe('the address', () => {
 
 // ── 6.3 same name, different sources ────────────────────────────────────────
 
-describe('a backlog entry and an active change of the same name', () => {
+// The drawer is source-agnostic, so a backlog/active pair still exercises it —
+// but that pair is unreachable through the reader (`occupiedSlugs` suppresses
+// it), and the reachable collision the address exists for is active/archive.
+// Named for what it proves rather than for an example that cannot occur.
+describe('two cards sharing a name across sources', () => {
   const active = card({ source: 'active', sourceInstance: 'add-thing' })
   const backlog = card({
     source: 'backlog',
