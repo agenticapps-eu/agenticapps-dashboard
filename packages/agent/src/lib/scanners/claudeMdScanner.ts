@@ -17,6 +17,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PathResolver } from '../coverageResolver.js'
+import type { Containment } from '../containment.js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ export function scanClaudeMd(input: ScanClaudeMdInput): ClaudeMdResult {
   const claudeExists = resolveExists(resolve, join(repoAbsPath, 'CLAUDE.md'), {
     allowedNames: ['CLAUDE.md', 'AGENTS.md'],
     roots: [repoAbsPath],
+    containment: { kind: 'repository-root' },
   })
   if (claudeExists) return { state: 'fresh', via: 'CLAUDE.md' }
 
@@ -58,6 +60,7 @@ export function scanClaudeMd(input: ScanClaudeMdInput): ClaudeMdResult {
   const agentsExists = resolveExists(resolve, join(repoAbsPath, 'AGENTS.md'), {
     allowedNames: ['CLAUDE.md', 'AGENTS.md'],
     roots: [repoAbsPath],
+    containment: { kind: 'repository-root' },
   })
   if (agentsExists) return { state: 'fresh', via: 'AGENTS.md' }
 
@@ -73,7 +76,12 @@ export function scanClaudeMd(input: ScanClaudeMdInput): ClaudeMdResult {
 function resolveExists(
   resolve: PathResolver,
   candidatePath: string,
-  opts: { allowedNames?: string[]; extension?: string; roots: string[] },
+  opts: {
+    allowedNames?: string[]
+    extension?: string
+    roots: string[]
+    containment: Containment
+  },
 ): boolean {
   let resolved: string
   try {

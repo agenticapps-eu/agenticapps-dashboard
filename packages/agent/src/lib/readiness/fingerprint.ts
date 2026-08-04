@@ -64,6 +64,7 @@ async function fileIdentity(path: string, root: string): Promise<string> {
     absolute = await resolveAllowedNamed(path, {
       roots: [root],
       allowedNames: [basename(path)],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return 'refused'

@@ -230,6 +230,7 @@ describe('resolveAllowedNamed', () => {
     const candidate = join(tmp.root, 'package.json')
     const result = await resolveAllowedNamed(candidate, {
       roots: [tmp.root],
+      containment: { kind: 'repository-root' },
       allowedNames: ['package.json', '.infisical.json'],
     })
     const expected = await realpath(candidate)
@@ -246,6 +247,7 @@ describe('resolveAllowedNamed', () => {
     await expect(
       resolveAllowedNamed(outsideFile, {
         roots: [tmp.root],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
       }),
     ).rejects.toBeInstanceOf(PathViolation)
@@ -258,6 +260,7 @@ describe('resolveAllowedNamed', () => {
     await expect(
       resolveAllowedNamed(join(tmp.root, 'evil.yml'), {
         roots: [tmp.root],
+        containment: { kind: 'repository-root' },
         extension: '.yml',
       }),
     ).rejects.toBeInstanceOf(PathViolation)
@@ -270,6 +273,7 @@ describe('resolveAllowedNamed', () => {
     await expect(
       resolveAllowedNamed(join(tmp.root, 'foo.txt'), {
         roots: [tmp.root],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json', '.infisical.json'],
       }),
     ).rejects.toBeInstanceOf(PathViolation)
@@ -281,6 +285,7 @@ describe('resolveAllowedNamed', () => {
     writeFileSync(join(tmp.root, 'package.json'), '{"name":"test"}')
     const result = await resolveAllowedNamed(join(tmp.root, 'package.json'), {
       roots: [tmp.root],
+      containment: { kind: 'repository-root' },
       allowedNames: ['package.json'],
     })
     expect(result).toContain('package.json')
@@ -294,6 +299,7 @@ describe('resolveAllowedNamed', () => {
     const workflowsRoot = join(tmp.root, '.github', 'workflows')
     const result = await resolveAllowedNamed(join(workflowsRoot, 'ci.yml'), {
       roots: [workflowsRoot],
+      containment: { kind: 'repository-root' },
       extension: '.yml',
     })
     expect(result).toContain('ci.yml')
@@ -308,6 +314,7 @@ describe('resolveAllowedNamed', () => {
     await expect(
       resolveAllowedNamed(join(workflowsRoot, 'Makefile'), {
         roots: [workflowsRoot],
+        containment: { kind: 'repository-root' },
         extension: '.yml',
       }),
     ).rejects.toBeInstanceOf(PathViolation)
@@ -323,7 +330,7 @@ describe('resolveAllowedNamed', () => {
         resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
           roots: [skillRoot],
           allowedNames: ['SKILL.md'],
-          anchorTo: tmp.root,
+          containment: { kind: 'anchored', root: tmp.root },
         }),
       ).rejects.toBeInstanceOf(PathViolation)
     })
@@ -335,7 +342,7 @@ describe('resolveAllowedNamed', () => {
       const result = await resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
         roots: [skillRoot],
         allowedNames: ['SKILL.md'],
-        anchorTo: tmp.root,
+        containment: { kind: 'anchored', root: tmp.root },
       })
       expect(result).toBe(await realpath(join(skillRoot, 'foo', 'SKILL.md')))
     })
@@ -350,7 +357,7 @@ describe('resolveAllowedNamed', () => {
         resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
           roots: [skillRoot, tmp.root],
           allowedNames: ['SKILL.md'],
-          anchorTo: tmp.root,
+          containment: { kind: 'anchored', root: tmp.root },
         }),
       ).rejects.toBeInstanceOf(PathViolation)
     })
@@ -362,7 +369,7 @@ describe('resolveAllowedNamed', () => {
         resolveAllowedNamed(join(tmp.outside, 'secrets.txt'), {
           roots: [join(tmp.root, '.claude')],
           allowedNames: ['secrets.txt'],
-          anchorTo: tmp.root,
+          containment: { kind: 'anchored', root: tmp.root },
         }),
       ).rejects.toSatisfy(
         (e: unknown) =>
@@ -381,7 +388,7 @@ describe('resolveAllowedNamed', () => {
         resolveAllowedNamed(join(tmp.root, '.claude', 'skills', 'foo', 'SKILL.md'), {
           roots: [join(tmp.root, 'no-such-directory')],
           allowedNames: ['SKILL.md'],
-          anchorTo: tmp.root,
+          containment: { kind: 'anchored', root: tmp.root },
         }),
       ).rejects.toBeInstanceOf(PathViolation)
     })
@@ -392,6 +399,7 @@ describe('resolveAllowedNamed', () => {
       const skillRoot = join(tmp.root, '.claude', 'skills')
       const result = await resolveAllowedNamed(join(skillRoot, 'foo', 'SKILL.md'), {
         roots: [skillRoot],
+        containment: { kind: 'repository-root' },
         allowedNames: ['SKILL.md'],
       })
       expect(result).toBe(await realpath(join(tmp.outside, 'skills', 'foo', 'SKILL.md')))
@@ -405,6 +413,7 @@ describe('resolveAllowedNamed', () => {
     await expect(
       resolveAllowedNamed(join(tmp.root, 'package.json'), {
         roots: [tmp.root],
+        containment: { kind: 'repository-root' },
         allowedNames: ['package.json'],
         extension: '.json',
       }),
@@ -463,6 +472,7 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
       await expect(
         resolveAllowedNamed(outsidePath, {
           roots: [roots.agenticapps()],
+          containment: { kind: 'repository-root' },
           extension: '.md',
         }),
       ).rejects.toSatisfy(
@@ -485,6 +495,7 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
       await expect(
         resolveAllowedNamed(symlinkPath, {
           roots: [roots.factiv()],
+          containment: { kind: 'repository-root' },
           allowedNames: ['escape-link.json'],
         }),
       ).rejects.toBeInstanceOf(PathViolation)
@@ -502,6 +513,7 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
     await expect(
       resolveAllowedNamed(traversalCandidate, {
         roots: [roots.factiv()],
+        containment: { kind: 'repository-root' },
         allowedNames: ['secret.txt'],
       }),
     ).rejects.toBeInstanceOf(PathViolation)
@@ -526,6 +538,7 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
     writeFileSync(mdPath, '# readme')
     const result = await resolveAllowedNamed(mdPath, {
       roots: [roots.neuroflash()],
+      containment: { kind: 'repository-root' },
       extension: '.md',
     })
     expect(result).toContain('README.md')
@@ -538,6 +551,7 @@ describe('COVERAGE_ROOTS + resolveAllowedNamed integration', () => {
     await expect(
       resolveAllowedNamed(txtPath, {
         roots: [roots.agenticapps()],
+        containment: { kind: 'repository-root' },
         extension: '.md',
       }),
     ).rejects.toBeInstanceOf(PathViolation)

@@ -54,7 +54,7 @@ export async function parsePackageJsonForSentry(projectRoot: string): Promise<Ob
   const candidate = join(projectRoot, 'package.json')
   let real: string
   try {
-    real = await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['package.json'] })
+    real = await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['package.json'], containment: { kind: 'repository-root' } })
   } catch {
     return []
   }
@@ -93,7 +93,7 @@ export async function parsePackageJsonForSpotlight(projectRoot: string): Promise
   const candidate = join(projectRoot, 'package.json')
   let real: string
   try {
-    real = await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['package.json'] })
+    real = await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['package.json'], containment: { kind: 'repository-root' } })
   } catch {
     return []
   }
@@ -126,7 +126,7 @@ export async function parsePackageJsonForSentryCli(projectRoot: string): Promise
   const candidate = join(projectRoot, 'package.json')
   let real: string
   try {
-    real = await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['package.json'] })
+    real = await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['package.json'], containment: { kind: 'repository-root' } })
   } catch {
     return []
   }
@@ -164,7 +164,7 @@ export async function parsePackageJsonForSentryCli(projectRoot: string): Promise
 export async function parseSentryClirc(projectRoot: string): Promise<ObservabilitySignal[]> {
   const candidate = join(projectRoot, '.sentryclirc')
   try {
-    await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['.sentryclirc'] })
+    await resolveAllowedNamed(candidate, { roots: [projectRoot], allowedNames: ['.sentryclirc'], containment: { kind: 'repository-root' } })
     return [{ signal: 'sentryclirc', evidence: '.sentryclirc:1' }]
   } catch {
     return []
@@ -207,6 +207,7 @@ export async function detectSentryDsnEnv(projectRoot: string): Promise<Observabi
       real = await resolveAllowedNamed(candidate, {
         roots: [projectRoot],
         allowedNames: ['.env', '.env.local'],
+        containment: { kind: 'repository-root' },
       })
     } catch {
       continue
@@ -272,7 +273,7 @@ export async function parseCiWorkflowsForSentry(projectRoot: string): Promise<Ob
     workflowsDir = await resolveAllowedNamed(candidateDir, {
       roots: [projectRoot],
       allowedNames: ['workflows'],
-      anchorTo: projectRoot,
+      containment: { kind: 'anchored', root: projectRoot },
     })
   } catch {
     return []
@@ -296,7 +297,7 @@ export async function parseCiWorkflowsForSentry(projectRoot: string): Promise<Ob
         extension: '.yml',
         // workflowsDir is derived from projectRoot, so it is only a usable
         // boundary while it is still inside it.
-        anchorTo: projectRoot,
+        containment: { kind: 'anchored', root: projectRoot },
       })
     } catch {
       // Wrong extension or path outside workflows dir — skip silently
@@ -336,6 +337,7 @@ export async function parseInfisicalConfig(projectRoot: string): Promise<Secrets
     real = await resolveAllowedNamed(candidate, {
       roots: [projectRoot],
       allowedNames: ['.infisical.json'],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return { state: 'absent' }

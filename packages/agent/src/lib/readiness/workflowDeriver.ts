@@ -27,6 +27,8 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { PathResolver } from '../coverageResolver.js'
+import type { Containment, MachineRootId } from '../containment.js'
+import { DAEMON_NAMED_REASONS } from '../containment.js'
 import { compareSemver } from '../scanners/workflowVersionScanner.js'
 import { parseFrontmatter } from '../skillsScan.js'
 
@@ -72,6 +74,13 @@ interface HostDefinition {
   hostSkill: string
   /** Symbolic name for the machine-global root; never an absolute path. */
   machineRootLabel?: string
+  /**
+   * Which enumerated named root the machine-global read draws on. Present
+   * exactly when `strategy` is 'machine-global', so a `daemon-named`
+   * declaration names a root from the enumeration rather than building an id
+   * from a host name by string concatenation.
+   */
+  machineRootId?: MachineRootId
 }
 
 /**
@@ -96,6 +105,7 @@ const HOSTS: readonly HostDefinition[] = [
     stamp: '.codex/workflow-version.txt',
     hostSkill: `skills/${SKILL_ID}/${SKILL_FILE}`,
     machineRootLabel: 'the codex machine-wide skills directory',
+    machineRootId: 'codex-skills',
   },
   {
     id: 'opencode',
@@ -104,6 +114,7 @@ const HOSTS: readonly HostDefinition[] = [
     stamp: '.opencode/workflow-version.txt',
     hostSkill: `skills/${SKILL_ID}/${SKILL_FILE}`,
     machineRootLabel: 'the opencode machine-wide skills directory',
+    machineRootId: 'opencode-skills',
   },
   {
     id: 'pi',
@@ -181,7 +192,9 @@ function readShippedVersions(
 ): SkillVersions | null {
   const hostRepo = opts.sources.hostRepos[host.id]
   if (!hostRepo) return null
-  return readSkillVersions(join(hostRepo, host.hostSkill), [hostRepo], opts.resolve)
+  return readSkillVersions(join(hostRepo, host.hostSkill), [hostRepo], opts.resolve, {
+    kind: 'repository-root',
+  })
 }
 
 /**
@@ -190,14 +203,20 @@ function readShippedVersions(
  * is opened. Identity is checked too: a directory of the right name holding
  * some other skill is not this skill.
  */
+/**
+ * `containment` is a PARAMETER. This helper is called with a host repository
+ * root (:184) and with a machine skills root (:287); a classification chosen
+ * here would necessarily mislabel one of them. See the change's D8.
+ */
 function readSkillVersions(
   candidate: string,
   roots: string[],
   resolve: PathResolver,
+  containment: Containment,
 ): SkillVersions | null {
   let canonical: string
   try {
-    canonical = resolve(candidate, { allowedNames: [SKILL_FILE], roots })
+    canonical = resolve(candidate, { allowedNames: [SKILL_FILE], roots, containment })
   } catch {
     return null
   }
@@ -239,10 +258,17 @@ async function repoScoped(
   const relative = artifactPath(opts.root, host)
   if (!relative) return neverInstalled(host)
 
+  // `join(opts.root, host.marker)` is `<repo>/.claude` (or .codex/.opencode/.pi)
+  // — a DERIVED boundary, and until this change it was passed unanchored. A
+  // marker directory symlinked out of the repository would have become the
+  // containment boundary and admitted reads under its target: the escape #100
+  // closed at six other sites and missed here. Anchoring it is deliberately a
+  // behaviour change; see the change's §5.
   const installed = readSkillVersions(
     join(opts.root, relative),
     [join(opts.root, host.marker), opts.root],
     opts.resolve,
+    { kind: 'anchored', root: opts.root },
   )
   if (!installed) {
     return failure(
@@ -274,7 +300,9 @@ async function machineGlobal(
   const relative = artifactPath(opts.root, host)
   if (!relative) return neverInstalled(host)
 
-  const scaffolder = readStamp(join(opts.root, relative), [opts.root], opts.resolve)
+  const scaffolder = readStamp(join(opts.root, relative), [opts.root], opts.resolve, {
+    kind: 'repository-root',
+  })
   if (!scaffolder) {
     return failure(
       'workflow-artifact-malformed',
@@ -284,7 +312,18 @@ async function machineGlobal(
 
   const machineRoot = opts.sources.machineSkillRoots[host.id]
   const global = machineRoot
-    ? readSkillVersions(join(machineRoot, SKILL_ID, SKILL_FILE), [machineRoot], opts.resolve)
+    ? readSkillVersions(
+        join(machineRoot, SKILL_ID, SKILL_FILE),
+        [machineRoot],
+        opts.resolve,
+        host.machineRootId
+          ? {
+              kind: 'daemon-named',
+              rootId: host.machineRootId,
+              reason: DAEMON_NAMED_REASONS[host.machineRootId],
+            }
+          : { kind: 'repository-root' },
+      )
     : null
   if (!global) {
     return failure(
@@ -328,10 +367,15 @@ function compare(
   return { status: 'ok', verdict: 'both are level with the host repo' }
 }
 
-function readStamp(candidate: string, roots: string[], resolve: PathResolver): string | null {
+function readStamp(
+  candidate: string,
+  roots: string[],
+  resolve: PathResolver,
+  containment: Containment,
+): string | null {
   let canonical: string
   try {
-    canonical = resolve(candidate, { extension: '.txt', roots })
+    canonical = resolve(candidate, { extension: '.txt', roots, containment })
   } catch {
     return null
   }

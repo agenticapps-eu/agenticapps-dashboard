@@ -71,12 +71,19 @@ export interface WorkflowHostArtifactSummary {
   }
 }
 
-export type WorkflowMachineRootId =
-  | 'agenticapps-bin'
-  | 'claude-skills'
-  | 'codex-skills'
-  | 'opencode-skills'
-  | 'pi-skills'
+/**
+ * The five machine roots, under the name scanner code already uses.
+ *
+ * Defined in `containment.ts` as `MachineRootId` and re-exported here
+ * rather than declared twice: the same set is the vocabulary a `daemon-named`
+ * containment declaration draws from, and two copies of a five-member union
+ * would drift the first time a host was added. `containment.ts` sits below both
+ * resolvers, so this direction of dependency is the one that does not invert
+ * the layering.
+ */
+import type { MachineRootId } from '../containment.js'
+
+export type WorkflowMachineRootId = MachineRootId
 
 export interface WorkflowMachineRootDefinition {
   id: WorkflowMachineRootId

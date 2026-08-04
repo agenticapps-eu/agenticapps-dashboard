@@ -87,6 +87,7 @@ function _scanSentinels(repoAbsPath: string, resolve: PathResolver): OverrideEnt
       resolvedSentinel = resolve(sentinelPath, {
         allowedNames: [SENTINEL_NAME],
         roots: [repoAbsPath],
+        containment: { kind: 'repository-root' },
       })
     } catch {
       // PathViolation or not accessible — skip this sentinel.

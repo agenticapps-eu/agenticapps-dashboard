@@ -113,6 +113,7 @@ async function readArtifact(root: string, relativePath: string): Promise<Artifac
     absolute = await resolveAllowedNamed(join(root, relativePath), {
       roots: [root],
       allowedNames: [basename(relativePath)],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return (await exists(root, relativePath))

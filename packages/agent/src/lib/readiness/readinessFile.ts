@@ -104,6 +104,7 @@ export async function readReadinessFile(root: string): Promise<ReadinessFileOutc
     absolute = await resolveAllowedNamed(candidate, {
       roots: [root],
       allowedNames: ['readiness.json'],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return unusable(
@@ -211,6 +212,7 @@ async function citationFailure(root: string, cited: string): Promise<string | nu
     absolute = await resolveAllowedNamed(join(root, cited), {
       roots: [root],
       allowedNames: [basename(cited)],
+      containment: { kind: 'repository-root' },
     })
   } catch {
     return `${cited} does not resolve inside the repository`
