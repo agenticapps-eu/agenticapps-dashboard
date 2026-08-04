@@ -319,6 +319,88 @@ the same correction round 2 applied to the stage machine, applied to the reader.
       persistent skip notices. Real, and the fix is a judgement about noise
       versus silence that should be made against a live fleet, not guessed here
 
+## 12. Plan-review disposition — round 4 (2026-08-04)
+
+The first round with **code to review**, not only artifacts. gemini and codex
+both REQUEST-CHANGES; opencode's record is truncated mid-preamble with no
+`VERDICT:` line, so it counts as absent rather than as either verdict — which is
+the reviewer rule this change specifies, applied to its own evidence.
+
+**Confirmed and fixed — the two that were defects in shipped code:**
+
+- [x] 12.1 **TOCTOU in every artifact read** (codex). `readGuarded` did
+      `realpath` → `stat(path)` → `readFile(path)`: three separate resolutions of
+      one name, so a path swapped between the size check and the read would be
+      checked as one file and read as another. **Upstream already had the right
+      shape** — `readEvidenceText` opens `O_RDONLY|O_NOFOLLOW` once and `fstat`s
+      the descriptor — so this was a regression against the code this change
+      exists to mirror. Now opened once, statted and read on that descriptor.
+      `O_NOFOLLOW` also makes the rule simply "no symlinked artifacts" wherever
+      they point, which is upstream's rule; the in-tree-symlink test asserted an
+      exception upstream does not have and now asserts the refusal
+- [x] 12.2 **The drawer's same-name scenario was unreachable** (codex). It paired
+      a backlog entry with an active change of the same name — the exact pair
+      `occupiedSlugs` suppresses, so no reader could produce it. The
+      deduplication rule is upstream's and correct, so the *scenario* was wrong.
+      Replaced with active + archive of one slug, which ADR 0008 decision 3
+      permits in terms and which is what actually makes `source` load-bearing in
+      the address
+
+**Confirmed and fixed — spec text that contradicted the code:**
+
+- [x] 12.3 **Identity still mandated `sourceIdentity(repositoryRoot, …)`** while
+      the code used the registry id (codex). The substitution was recorded in
+      task 1.1 and the module docblock and never made normative, so the delta and
+      the implementation disagreed. The registry id is now specified, with the
+      reason: upstream has no registry and the root is its only handle; putting
+      the root in the identity puts an absolute path, and a username, in every
+      card of every response
+- [x] 12.4 **A third departure was undeclared** (codex) while the spec said there
+      were exactly two and that everything else was upstream's, mirrored.
+      Upstream admits an artifact-less directory under `changes/` as a `propose`
+      card; this board contributes nothing for one, silently. Now enumerated as
+      departure 3, with its reason — this board reads *registered repositories*
+      and so meets scratch directories and `README.md` files that upstream's
+      session-discovered corpus never sees
+
+**Refuted, with the check:**
+
+- [x] 12.5 gemini: the pre-read size cap "was left unimplemented" and shipping
+      without it is a DoS vector. It is implemented:
+      `MAX_CHANGE_FILE_BYTES = 1024 * 1024` at `changeReader.ts:61`, enforced
+      before the read at the descriptor, with tests in §3.12 including one at
+      exactly the cap. gemini read the specification's *narration of round-1
+      history* — "was the one of the three left unimplemented" — as a statement
+      of present state. The sentence is accurate about round 1 and misleading
+      out of context
+- [x] 12.6 gemini: this change should be marked a formal blocker for
+      `retire-v1-surfaces` or the durable specs conflict. Moot — the two
+      corrections are already made **in that change's own files** by tasks 8.1
+      and 8.2, so there is no ordering in which they are lost
+
+**Carried, knowingly:**
+
+- [ ] 12.7 codex: the endpoint is not fleet-bounded — no aggregate byte, card or
+      concurrency bound, no request coalescing or cancellation. Same item as 9.17
+      and 11.19, narrowed but not closed by the per-source bound and the response
+      cache. Belongs to the shared read primitive
+- [ ] 12.8 gemini and codex: **review-record ordering by `mtime` is not
+      semantic** — a `touch`, a `cp`, or a branch switch reorders records without
+      changing their content. Both proposed round-number-primary with mtime as
+      tie-break; that is refused, because an unnumbered `REVIEWS.md` has no round
+      to sort by, so the rule cannot express "a `REVIEWS.md` rewritten after the
+      last round wins" — the scenario §11.12 exists to protect. The better answer
+      is the record's **own declared timestamp**: the current producer writes
+      `_generated <ISO>_` into every section, and `retire-v1-surfaces` carries a
+      `reviewed_at:` front-matter field. Ordering on that, with `mtime` as the
+      fallback for older records that carry neither, is semantic and survives git
+      operations. Not folded in here because it changes a specified, tested rule
+      and deserves its own pass
+- [ ] 12.9 gemini: the deep-link not-found state is required but its presentation
+      is unspecified. The implementation renders a `role="status"` banner above
+      the board; the specification says only "states that the change was not
+      found". Worth pinning, and not a defect
+
 ## Out of scope
 
 - [ ] Do NOT render live agent-session counts, and do NOT add the host adapters

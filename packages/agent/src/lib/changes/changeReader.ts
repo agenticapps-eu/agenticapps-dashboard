@@ -31,15 +31,19 @@
  *    `.env` or `.git/config` passes a root-scoped check and fails this one. The
  *    board is entitled to a repository's OpenSpec tree, not to its repository.
  * 3. A regular-file check and a **pre-read size cap** against
- *    `MAX_CHANGE_FILE_BYTES`. The cap is checked before the read, because the
- *    board reads three files per change in every registered repository on one
- *    fleet request — an oversized file is a whole-endpoint cost, not a per-card
- *    one.
+ *    `MAX_CHANGE_FILE_BYTES`, both made against **the open file descriptor**
+ *    rather than re-resolved from the path. The cap is checked before the read,
+ *    because the board reads three files per change in every registered
+ *    repository on one fleet request — an oversized file is a whole-endpoint
+ *    cost, not a per-card one. Every artifact is opened `O_NOFOLLOW`, so a
+ *    symlinked artifact is refused outright wherever it points, which is
+ *    upstream's rule too.
  *
  * It spawns no process. There is no git probe here and no `ship` stage to need
  * one.
  */
-import { lstat, opendir, readFile, realpath, stat } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { lstat, open, opendir, realpath } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 
 import {
@@ -255,8 +259,26 @@ function contained(real: string, context: ReadContext): boolean {
 }
 
 /**
- * One file, read only if every guard passes. The order matters: containment is
- * decided before the file is opened, and the size before it is read.
+ * One file, read only if every guard passes.
+ *
+ * **The mode, size and content checks are all made against one open file
+ * descriptor**, not re-resolved from the path each time. An earlier draft did
+ * `realpath` then `stat(path)` then `readFile(path)` — three separate
+ * resolutions of the same name, so a path swapped between the stat and the read
+ * would have been size-checked as one file and read as another. Round-4 review
+ * caught it, and upstream's `readEvidenceText` already had the right shape:
+ * open once, `fstat` the descriptor, read the descriptor.
+ *
+ * `O_NOFOLLOW` refuses a symlink at the final component outright, matching
+ * upstream — there are no symlinked artifacts, in-tree or out, rather than a
+ * rule about where a symlink is allowed to point. The realpath containment
+ * check stays, because `O_NOFOLLOW` says nothing about a symlinked *parent*
+ * directory.
+ *
+ * The residual window is between the containment check and the open, on
+ * intermediate directories. It is the same one `coverageResolver` and upstream
+ * both carry, and closing it needs `openat`-style descriptor-relative traversal
+ * that Node does not expose.
  */
 async function readGuarded(absolute: string, context: ReadContext): Promise<ReadOutcome> {
   const relativePath = relative(context.root, absolute)
@@ -275,23 +297,32 @@ async function readGuarded(absolute: string, context: ReadContext): Promise<Read
   // Guard 2, containment — scoped to the OpenSpec tree, not the repository.
   if (!contained(real, context)) return { kind: 'rejected' }
 
-  let info
+  let file
   try {
-    info = await stat(real)
-  } catch {
+    file = await open(absolute, constants.O_RDONLY | constants.O_NOFOLLOW)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT') return { kind: 'absent' }
+    // ELOOP is a symlink at the final component. Refused, and reported: it is
+    // present and deliberately not read.
+    if (code === 'ELOOP') return { kind: 'rejected' }
     return { kind: 'malformed' }
   }
-  // Guard 3a, file mode.
-  if (!info.isFile()) return { kind: 'malformed' }
-  // Guard 3b, size — checked before the read, so the bytes are never allocated.
-  if (info.size > MAX_CHANGE_FILE_BYTES) return { kind: 'limited', updatedAt: info.mtimeMs }
 
   try {
-    const text = await readFile(real, { encoding: 'utf8' })
+    const info = await file.stat()
+    // Guard 3a, file mode — on the descriptor, so it describes what will be read.
+    if (!info.isFile()) return { kind: 'malformed' }
+    // Guard 3b, size — before any bytes are allocated, on that same descriptor.
+    if (info.size > MAX_CHANGE_FILE_BYTES) return { kind: 'limited', updatedAt: info.mtimeMs }
+
+    const text = await file.readFile({ encoding: 'utf8' })
     if (context.recordPaths) context.paths.push(relativePath)
     return { kind: 'ok', text, updatedAt: info.mtimeMs }
   } catch {
     return { kind: 'malformed' }
+  } finally {
+    await file.close()
   }
 }
 
@@ -432,7 +463,7 @@ async function readChangeEvidence(
       try {
         const real = await realpath(join(directory, entry.name))
         if (!contained(real, context)) return { kind: 'rejected' }
-        candidates.push({ name: entry.name, mtimeMs: (await stat(real)).mtimeMs })
+        candidates.push({ name: entry.name, mtimeMs: (await lstat(real)).mtimeMs })
       } catch {
         malformed = true
       }

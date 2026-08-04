@@ -143,6 +143,21 @@ boards agree" a check rather than a claim. Two departures exist:
 2. **Round-numbered review records.** Upstream reads `REVIEWS.md` alone; this
    fleet produces `REVIEWS-round-N.md` beside it, so the board selects the most
    recently modified record. See the reviewer requirement below.
+3. **A directory with no artifacts is not a change.** Upstream admits every
+   immediate child of `openspec/changes/` as a card, so a directory holding none
+   of `proposal.md`, `tasks.md`, `design.md` and no delta spec still becomes a
+   `propose` card there. Here it contributes nothing, and silently — it is an
+   absence rather than a defect. The reason is that this board reads
+   *registered repositories* rather than repositories discovered from agent
+   sessions, so it meets scratch directories, editor leftovers and `README.md`
+   files that upstream's narrower corpus never sees. A dated entry under
+   `archive/` failing the same test **is** reported, because a directory shaped
+   like a filed change and holding nothing is a defect in the tree rather than
+   an absence.
+
+   Round-4 review found this one undeclared while the specification claimed
+   there were exactly two departures. It is recorded rather than removed: the
+   alternative is a bogus card per stray directory.
 
 Everything else — artifact completeness, the reviewer clause, the empty-checklist
 clause, the `ready` marker, and backlog entries classifying as `propose` — is
@@ -385,13 +400,25 @@ Selecting a card SHALL open a detail drawer over the board, leaving the board
 visible. The drawer SHALL carry the change's repository, stage, source, artifact
 presence, reviewer verdicts, and its checklist rows.
 
-A card's identity SHALL be upstream's `sourceIdentity(repositoryRoot, source,
-instance)` — the triple, joined by NUL. The instance is the entry's own name:
-an active change's directory name, an archived entry's full dated
-`YYYY-MM-DD-<slug>` basename, a backlog entry's `backlogSlug(title)`. Two
-archived entries of one slug filed on different dates are distinct; a backlog
-entry whose slug is already a change is not a second card at all, per the
-deduplication rule above.
+A card's identity SHALL be upstream's `sourceIdentity` **shape** — a triple
+joined by NUL — with **this daemon's registry id in the first position, not the
+repository's absolute root**. The instance is the entry's own name: an active
+change's directory name, an archived entry's full dated `YYYY-MM-DD-<slug>`
+basename, a backlog entry's `backlogSlug(title)`. Two archived entries of one
+slug filed on different dates are distinct; a backlog entry whose slug is
+already a change is not a second card at all, per the deduplication rule above.
+
+**The registry id is normative here, and the substitution is deliberate.**
+Upstream has no registry, so a repository's absolute root is the only handle it
+has; this daemon does have one, and the registry id is what identifies a
+repository on every other route. Putting the root in the identity would also put
+an absolute filesystem path — and therefore a username — into every card of
+every response, which is the disclosure shape this change has been asked about
+since round 1. The id is unique per registry entry, so the triple is unique by
+construction exactly as upstream's is.
+
+The three components of the identity are exactly the three parameters of the
+card's address, which is what makes the address unforgeable without a parser.
 
 NUL is the separator precisely because no filesystem name and no heading can
 contain one, so the identity cannot be forged by an author-controlled string.
@@ -410,9 +437,17 @@ The slug is what makes the address safe.
 - **AND** the location identifies the repository, the source, and the change in separate parameters.
 
 #### Scenario: Same-named cards from different sources address distinctly
-- **WHEN** one repository holds a backlog entry and an active change with the same name
-- **THEN** each renders as its own card
+- **WHEN** one repository holds an active change `add-thing` and an archived entry `2026-07-04-add-thing`
+- **THEN** each renders as its own card, both carrying the change name `add-thing`
 - **AND** each card's location differs in the source parameter.
+
+**This scenario deliberately does not use a backlog entry.** An earlier draft
+paired a backlog entry with an active change of the same name and was
+unreachable: the deduplication rule above suppresses exactly that pair, so no
+reader could ever produce it. Round-4 review found the contradiction. Active and
+archived cards of one slug **do** coexist — ADR 0008 says so in terms, and
+`occupiedSlugs` suppresses only backlog candidates — so that is the pair which
+demonstrates why `source` has to be in the address.
 
 #### Scenario: One slug archived twice addresses distinctly
 - **WHEN** a repository holds `2026-07-04-add-thing` and `2026-08-02-add-thing` under `archive/`

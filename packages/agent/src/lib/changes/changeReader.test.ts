@@ -681,7 +681,13 @@ describe('containment', () => {
     expect(notices.some((notice) => notice.kind === 'rejected')).toBe(true)
   })
 
-  it('still reads a symlink that resolves inside the openspec tree', async () => {
+  // Round-4 review (codex) pointed out that re-resolving the path for the stat
+  // and again for the read leaves a window where the two see different files.
+  // The fix opens once with `O_NOFOLLOW` and stats that descriptor — which also
+  // makes the rule simply "no symlinked artifacts", wherever they point, rather
+  // than a rule about where a symlink is allowed to resolve to. That is
+  // upstream's rule too: `readEvidenceText` has always opened `O_NOFOLLOW`.
+  it('refuses a symlinked artifact even when it resolves inside the openspec tree', async () => {
     const root = await makeRepo({
       ...changeFiles('openspec/changes/add-thing'),
       'openspec/shared/proposal.md': '# a shared proposal\n',
@@ -692,9 +698,30 @@ describe('containment', () => {
       join(root, 'openspec/changes/add-thing/proposal.md'),
     )
 
-    const { records } = await readRepositoryChanges(root)
-    expect(records.map((r) => r.changeName)).toEqual(['add-thing'])
-    expect(records[0]!.artifacts.proposal).toBe('ready')
+    const { records, notices } = await readRepositoryChanges(root)
+    expect(records).toEqual([])
+    expect(notices).toContainEqual({
+      source: 'active',
+      kind: 'rejected',
+      changeName: 'add-thing',
+    })
+
+    // The control: a real file at the same path is read, so the refusal is
+    // caused by the symlink and not by the fixture.
+    const control = await makeRepo(changeFiles('openspec/changes/add-thing'))
+    expect((await readRepositoryChanges(control)).records[0]!.artifacts.proposal).toBe('ready')
+  })
+
+  it('checks the size against the descriptor it will read, not against the path', async () => {
+    // The observable half of the descriptor fix: an oversized file is still
+    // caught, and the cap is applied to the same open file the read would use.
+    const root = await makeRepo({
+      ...changeFiles('openspec/changes/add-thing'),
+      'openspec/changes/add-thing/tasks.md': 'x'.repeat(MAX_CHANGE_FILE_BYTES + 1),
+    })
+    const record = find((await readRepositoryChanges(root)).records, 'add-thing')!
+    expect(record.artifacts.tasks).toBe('missing')
+    expect(record.evidenceLimited).toBe(true)
   })
 
   it('rejects a symlinked BACKLOG.md escaping the openspec tree', async () => {
