@@ -140,6 +140,18 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
     // Caller supplies roots for the specific scanner's context (e.g. repo root);
     // the module-level roots provide the broader allow-list for cross-family reads.
     let callerRoots = resolverOpts.roots.map(realpathSafe)
+    // Which of those actually resolved. An anchored call may only compare
+    // canonical paths — isAnchoredUnder's precondition — so it uses this list
+    // and drops the rest, rather than comparing against a lexical fallback.
+    const resolvedCallerRoots = resolverOpts.roots
+      .map((r) => {
+        try {
+          return realpathSync(r)
+        } catch {
+          return null
+        }
+      })
+      .filter((r): r is string => r !== null)
 
     // Anchor check. A root derived from inside a repository stops being a
     // usable boundary once it has left that repository.
@@ -164,7 +176,7 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
       } catch {
         throw new PathViolation(`anchor root not accessible: ${resolverOpts.anchorTo}`)
       }
-      callerRoots = callerRoots.filter((root) => isAnchoredUnder(root, realAnchor))
+      callerRoots = resolvedCallerRoots.filter((root) => isAnchoredUnder(root, realAnchor))
       if (callerRoots.length === 0) {
         throw new PathViolation(
           `no allowed root remains anchored to its registered root: ${realAnchor}`,

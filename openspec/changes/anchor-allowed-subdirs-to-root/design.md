@@ -11,10 +11,12 @@ Two resolvers guard every project-scoped filesystem read in the daemon:
 
 Both check a candidate against a set of roots. Neither checks that a root is
 still inside the repository it was derived from. `resolveAllowed` derives its
-roots from `ALLOWED_SUBDIRS` inside the project; five scanner call sites were
-enumerated as deriving theirs from a subdirectory of a repository, of which four
-survive scrutiny — D8 refutes the fifth. Escape is confirmed by repro for the
-first and follows by inspection for the rest.
+roots from `ALLOWED_SUBDIRS` inside the project; the scanners derive theirs from
+a subdirectory of a repository. Five such boundaries are fixed here: four found
+by the initial enumeration, one more found in review round 2 after that
+enumeration turned out to be unsound (D6a), and one candidate refuted outright
+(D8). Escape is confirmed by repro for `resolveAllowed` and for the round-2
+site; the rest follow by inspection.
 
 Constraint: `filesystem-access-policy` is the security spine, so this change may
 tighten and must not relax. Verified empirically before designing: **no
@@ -29,7 +31,7 @@ tightening refuses nothing that works today.
 - A containment boundary derived from inside a registered root is never used
   unless it is still under the realpath of that root.
 - One implementation of the rule, shared by the async and sync resolvers.
-- Each of the five fixed sites — `resolveAllowed` plus four scanner call sites —
+- Each of the six fixed sites — `resolveAllowed` plus five scanner boundaries —
   gets a behavioural test that fails before the fix.
 - Ordinary repositories are byte-for-byte unaffected — no new error shape, no
   wire-schema change, no SPA change.
@@ -55,7 +57,7 @@ Callers that derive a root declare what it was derived from.
 Alternative considered: fix each call site by pre-resolving the derived root
 against the repo root first, the way `coreSpecVersionScanner.ts:92` already
 does. It works and needs no API change, but it is the same three lines written
-four times, and the next call site omits it — which is precisely how these
+once per site, and the next call site omits it — which is precisely how these
 came to exist. Rejected in favour of one enforcement point.
 
 ### D2 — Express the anchor as an `anchorTo` option
@@ -136,14 +138,30 @@ rather than left as "by inspection":
 `grep -rn "roots:" packages/agent/src --include="*.ts"` over every call into
 either resolver, then each hit classified by what its `roots` expression is
 derived from — the repository root itself (correct as written, ~25 sites), a
-path *inside* a repository (the four fixed here), or a root the daemon names
+path *inside* a repository (the sites fixed here), or a root the daemon names
 directly (the family roots and the machine root refuted in D8).
 
-Two limits worth stating plainly. The grep keys on the `roots:` property name,
-so a call site that built its options object indirectly would not appear. And
-nothing prevents a *future* site from omitting the anchor — that is the same gap
-D2's optional `anchorTo` leaves open, and it is why the required-field
-alternative is carried as an open question rather than closed.
+**That method was unsound, and round 2 proved it.** Classifying a call by what
+its `roots:` expression contains misses the case where a resolver's *return
+value* is later adopted as a boundary. `workflowFleetScanner` resolves
+`skills/` with `roots: [hostRepoRoot]` — correct-looking by the classification
+above — and then uses the returned path both as a `readdir` target and as the
+`roots` of later calls. The resolution itself was unanchored, so the family
+roots admitted a `skills/` symlinked into a sibling repository, and enumerating
+it put that repository's entry names into this one's output. Anchoring only the
+child reads was too late.
+
+The corrected method adds a second pass: for every resolver call, ask not just
+what its roots contain but **what its return value becomes**. A returned path
+that is later enumerated, or passed as a root, is itself a boundary and needs
+its own anchor. That pass found the missed site, taking the fixed set to
+`resolveAllowed` plus five scanner call sites.
+
+Two limits remain, now stated plainly. The grep keys on the `roots:` property
+name, so a call site building its options indirectly would not appear. And
+nothing prevents a *future* site from omitting the anchor — the same gap D2's
+optional `anchorTo` leaves open, and the reason the required-field alternative
+is the named next change rather than a someday item.
 
 ### D7 — An anchored call does not fall back to the family roots
 
@@ -174,7 +192,7 @@ repository, and the cross-family allowance is not part of that assertion.
 
 Unanchored calls are completely unaffected — the family roots remain exactly as
 permissive as before, which is what lets the fleet scanners read across
-repositories at all. The narrowing reaches only the four call sites this change
+repositories at all. The narrowing reaches only the call sites this change
 anchors, and `coverageResolver.test.ts` pins both halves.
 
 ### D8 — Machine roots are not anchored (a refutation of this change's own scope)
@@ -204,7 +222,7 @@ it and no spec change is needed to accommodate this.
   which is the behaviour the spec asks for.
 - **`anchorTo` is opt-in, so a future call site can omit it.** → Accepted, and
   the reason D2's required-field alternative is recorded as an open question
-  rather than closed. The behavioural tests cover the five fixed sites; they do
+  rather than closed. The behavioural tests cover the six fixed sites; they do
   not prevent a seventh.
 - **Extra realpath per call on the anchor.** → One `realpath` on a directory
   that is almost always already in the OS cache, against reads that already do

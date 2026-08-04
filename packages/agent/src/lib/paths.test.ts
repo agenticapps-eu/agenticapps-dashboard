@@ -370,6 +370,22 @@ describe('resolveAllowedNamed', () => {
       )
     })
 
+    // codex, round 2: an anchored call must not compare against a lexically
+    // normalised root either. isAnchoredUnder's precondition is that both sides
+    // are canonical realpaths, so a root that cannot be resolved is dropped
+    // rather than fudged.
+    it('drops a derived root that cannot be resolved instead of using its lexical form', async () => {
+      const tmp = makeTmpProject()
+      cleanups.push(tmp.cleanup)
+      await expect(
+        resolveAllowedNamed(join(tmp.root, '.claude', 'skills', 'foo', 'SKILL.md'), {
+          roots: [join(tmp.root, 'no-such-directory')],
+          allowedNames: ['SKILL.md'],
+          anchorTo: tmp.root,
+        }),
+      ).rejects.toBeInstanceOf(PathViolation)
+    })
+
     it('without anchorTo, behaviour is unchanged — the derived root is still honoured', async () => {
       const tmp = makeTmpAnchorEscape()
       cleanups.push(tmp.cleanup)

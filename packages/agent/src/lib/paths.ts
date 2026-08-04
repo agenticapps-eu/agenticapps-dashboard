@@ -195,19 +195,23 @@ export async function resolveAllowedNamed(
     throw new PathViolation('not accessible')
   }
 
+  // `resolved` is null when the root could not be realpath'd. The distinction
+  // matters: an anchored call may only compare canonical paths (isAnchoredUnder's
+  // precondition), so it drops unresolved roots rather than falling back to the
+  // lexical form. Unanchored calls keep the original fallback exactly.
   const realRoots = await Promise.all(
     opts.roots.map(async (r) => {
       try {
-        return await realpath(r)
+        return { resolved: await realpath(r), lexical: resolve(r) }
       } catch {
-        return resolve(r)
+        return { resolved: null, lexical: resolve(r) }
       }
     }),
   )
 
   // Anchor check: a root derived from inside a repository is only usable while
   // it is still inside that repository. See ResolveAllowedNamedOpts.anchorTo.
-  let candidateRoots = realRoots
+  let candidateRoots = realRoots.map(({ resolved, lexical }) => resolved ?? lexical)
   if (opts.anchorTo !== undefined) {
     let realAnchor: string
     try {
@@ -215,7 +219,9 @@ export async function resolveAllowedNamed(
     } catch {
       throw new PathViolation('anchor root not accessible')
     }
-    candidateRoots = realRoots.filter((root) => isAnchoredUnder(root, realAnchor))
+    candidateRoots = realRoots
+      .map(({ resolved }) => resolved)
+      .filter((root): root is string => root !== null && isAnchoredUnder(root, realAnchor))
     if (candidateRoots.length === 0) {
       throw new PathViolation('no allowed root remains anchored to its registered root')
     }

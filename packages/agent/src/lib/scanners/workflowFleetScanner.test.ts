@@ -360,6 +360,31 @@ describe('scanWorkflowHostSkills — escaping skill directories', () => {
     expect(primary?.version).toBeNull()
   })
 
+  // Found by the codex reviewer in round 2, and missed by the tests above: they
+  // symlink a skill directory *under* skills/, so they never exercise skills/
+  // ITSELF being the symlink. That resolution is unanchored, so the family roots
+  // admit it, and the directory is then enumerated — foreign entry names reach
+  // the output as skill ids before any child read is anchored.
+  it('does not enumerate a skills root symlinked into a sibling repository', () => {
+    const { repo, otherRepo, resolve } = makeFleetLayout()
+    mkdirSync(join(otherRepo, 'skills', 'not-this-repos-skill'), { recursive: true })
+    writeSkillAt(
+      join(otherRepo, 'skills', 'not-this-repos-skill', 'SKILL.md'),
+      'not-this-repos-skill',
+      ['implements_spec: 1.0.0'],
+    )
+    rmSync(join(repo, 'skills'), { recursive: true, force: true })
+    symlinkSync(join(otherRepo, 'skills'), join(repo, 'skills'), 'dir')
+
+    const result = scanWorkflowHostSkills('codex-workflow', repo, '1.0.0', resolve)
+
+    const surfaced = [
+      ...result.skills.map((s) => s.id),
+      ...result.unknowns.map((u) => u.id),
+    ]
+    expect(surfaced).not.toContain('not-this-repos-skill')
+  })
+
   it('control — an ordinary in-repo skill directory is read normally', () => {
     const { repo, resolve } = makeFleetLayout()
     writeSkillAt(

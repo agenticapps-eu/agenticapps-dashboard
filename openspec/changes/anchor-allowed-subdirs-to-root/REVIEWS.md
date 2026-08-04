@@ -7,52 +7,37 @@
 # Review record
 
 - requested: gemini codex claude opencode
-- counted:   gemini (REQUEST-CHANGES) codex (REQUEST-CHANGES) opencode (REQUEST-CHANGES)
+- counted:   gemini (REQUEST-CHANGES) codex (REQUEST-CHANGES)
 - excluded:  claude (declared implementing host)
-- failed:    (none)
+- failed:
+  - opencode: timed out at 540s
 
 ## Reviewer: gemini
-_generated 2026-08-04T11:46:36Z · timeout 540s_
+_generated 2026-08-04T12:04:58Z · timeout 540s_
 
 VERDICT: REQUEST-CHANGES
 
-- The choice to make the `anchorTo` parameter optional (D2) introduces a long-term risk. A security boundary that is opt-in will be missed in future code. The spec requirement should be strengthened to mandate that *any* boundary derived from a registered root MUST be anchored, and a plan to enforce this at the type level should be a required follow-on.
-- The logic to disable family-root fallbacks for an anchored call (D7) is correct and critical, but it's only captured in a scenario. This behaviour should be elevated to a non-negotiable statement in the main body of the "A Containment Anchor Is Verified..." requirement to make it explicit that anchoring *narrows* the scope and must not be widened by ambient authority.
-- The exclusion of "machine roots" (D8) is correct but relies on an implicit convention that the caller knows not to anchor them. This creates a trap for future developers. The design should consider a way to make the distinction between a machine root and a repository-derived root explicit in the type system to prevent incorrect anchoring decisions.
+- **The `anchorTo` option must be required, not optional.** An opt-in security boundary (D2) is a guarantee of future vulnerabilities. A new call site will eventually be added without it, re-introducing this exact bug class. The argument to keep the diff small is a process concern; the spec should enforce the secure-by-default design. The API should require callers to be explicit about their trust boundary.
+
+- **The distinction between machine roots and repository-derived roots must be encoded in the type system.** As noted in "Open Questions", leaving this distinction to a developer's judgement is fragile. A required `anchorTo` whose type can also express "this is a machine root and has no anchor" would solve the mandatory-anchor problem cleanly without adding noise to call sites that are correct today.
+
+- **The TOCTOU risk is understated.** While the spec correctly identifies the race condition, it dismisses it as pre-existing. For a change that is explicitly about the security spine, the window between `realpath` and the actual `open` remains a significant vector, especially if the underlying file system can be influenced by another process. The spec should recommend that the post-open `realpath` check mentioned as a mitigation in `routes/read.ts` be applied universally by the resolvers themselves, not left to callers.
+
+- **The spec needs a scenario for "reverse symlinks".** An explicit scenario should cover a symlink inside an anchored repository that points to a valid *external* root, such as one of the family roots (e.g., `<repo-A>/.claude` -> `<repo-B>/.claude`). Per D7, this should be refused, but this subtle and important interaction between anchoring and the family-root fallback deserves its own explicit scenario to ensure it is tested and preserved.
 
 ## Reviewer: codex
-_generated 2026-08-04T11:49:22Z · timeout 540s_
+_generated 2026-08-04T12:06:56Z · timeout 540s_
 
 VERDICT: REQUEST-CHANGES
 
-- The delta governs only “registered” repositories, but fleet scanners operate on discovered/fixed repository roots that may not be registered. Define the rule for any trusted repository-scoped root.
-- D7’s critical behavior is not explicit normatively: an anchored read must ignore family/global roots even when the escaped target lies beneath one. Add that exact scenario; the current paired-root scenario covers only the repository root.
-- “Aggregate readers contribute nothing from that repository” conflicts with the intended degradation behavior, which still emits missing/degraded repository records and may preserve other valid roots. Specify “no data read through the escaped boundary” or require total omission consistently.
-- Scope and test counts remain contradictory: the goals promise six tested sites and the proposal says five scanner call sites, while D8 refutes one and the final scope fixes four. Reconcile all artifacts before approval.
-- No scenario pins failure when `realpath(anchorTo)` is unavailable. Since the requirement mandates verification against the realpath, both async and sync resolvers must fail closed rather than diverge or use a lexical fallback.
-
-## Reviewer: opencode
-_generated 2026-08-04T11:52:24Z · timeout 540s_
-
-VERDICT: REQUEST-CHANGES
-
-- **Site-count inconsistency across sections.** Goals says "each of the six sites gets a behavioural test," Risks says "the six known sites," Context says "five scanner call sites," and What Changes enumerates four scanner sites and concludes "Four sites are fixed, not five." The actual fix surface is `resolveAllowed` + 4 scanner call sites = 5. The "six" figures look stale from before the `workflowArtifactScanner` refutation. In a security diff whose stated constraint is reviewability, a reviewer checking test coverage against Goals will hunt for a sixth test that doesn't exist. Make the enumeration consistent everywhere.
-
-- **Completeness of the sweep is asserted, not evidenced.** "Follows by inspection for the rest" gives no method for concluding these four are *all* the sites that derive a root from inside a repo. D6 rejected the textual guard, so nothing catches a site the inspection already missed. State how the enumeration was produced (what was grepped/audited), even if the guard itself stays rejected.
-
-- **Impact section contradicts D7.** Impact claims "Cross-family scanning is preserved" and cites `coreSpecVersionScanner` reading `claude-workflow` as unaffected — true only because that scanner is *unanchored*. Under D7, any anchored call loses the family-root allowance entirely. Reword Impact to say cross-family reads survive only for unanchored readers, so a future contributor doesn't anchor a call site and silently lose legitimate family reach.
-
-- **First scenario wording overstates per-path readers.** "The reader admits no records from that repository" is aggregate phrasing; for `resolveAllowed` with only `openspec` escaping, `.planning`/`.claude` reads still succeed — which the later "project remains readable" scenario correctly requires. As written the two scenarios can be read as contradictory. Scope the first to "contributes nothing reachable through the escaped boundary."
-
-- **TOCTOU unacknowledged.** The anchor is verified at realpath time; the symlink can be swapped before the subsequent read. Per-call re-resolution narrows but doesn't close the window. Arguably out of scope as a pre-existing class, but a security-spine change should state the residual risk rather than leave it silent.
-
-- **Shared-predicate contract underspecified.** D4 makes `isAnchoredUnder` the single implementation everything depends on, but nothing pins its precondition: both arguments MUST be canonical realpaths (same casing form — relevant on case-insensitive APFS, and the `/repo` vs `/repo-other` prefix trap is only safe if `root + sep` is applied to a canonical root). State the contract on the helper, not just in prose.
-
-Minor: D8's machine-root refutation is well-argued, but given 33/98 `~/.claude/skills` entries are symlinks into `~/Sourcecode`, add one line confirming a *registered repo's* `.claude/skills` symlinked to a machine root is covered by the "symlinked within its own root is admitted" / escape scenarios as intended — that direction of the symlink is the plausible future case.
+- `projectMetadataScan` calls `existsSync` and `readdir` on `.github/workflows` before validating its anchor. An escaping symlink therefore exposes outside directory metadata; the test only asserts an empty result and does not prove “nothing outside is read.”
+- `workflowFleetScanner` resolves `skillRoot` without `anchorTo`, allowing ambient family roots to admit an escaped target, then enumerates it with `readdirSync`. External entry names can even surface as degraded `missingSkill(id)` records—a filesystem-metadata/PII leak. Anchoring later child reads is too late.
+- Consequently, D6a’s site enumeration is unsound: classifying calls solely by what `roots:` contains misses returned paths later adopted as boundaries. The initial `skillRoot` resolution is an additional affected site, so the claimed five-site coverage is false.
+- Both resolvers may lexically normalize a derived root when its `realpath` fails. That violates the stated “already-resolved paths” predicate precondition and the requirement that an unverified boundary never be used. Add explicit fail-closed behavior and a scenario for an unverifiable derived boundary, not only an unverifiable repository root.
 
 <!-- openspec-review-trailer v1
 implementing-host: claude
-digest: sha256:cdfea4cb6d1025cf8011529503475670269cbb6c5fee4161f869735474c1f5bf
+digest: sha256:b87db0b1a3bb3097db20c6165599dfb1d0bfbed375b9120032128f312569fcfc
 producer-version: 1.2.0
-tasks-digest: sha256:32b8298854603d08455f239d3995e52f6a83b34d8f06246d4827b5a7889dd288
+tasks-digest: sha256:54c8e4f2378060def31af0b2ec826285d54e0e2d60d0c061e34c2c802925a36f
 -->

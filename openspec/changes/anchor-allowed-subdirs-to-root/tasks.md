@@ -108,4 +108,53 @@ verified against the artifacts or the code before being acted on. Dispositions:
   call sites and would bury the four that matter in an unreviewable security diff.
 - **Reverse symlink direction** (opencode, minor). Already governed by the
   existing scenarios; recorded as an open question to confirm rather than a new
-  rule.
+  rule. *(Round 2: gemini asked for it explicitly, so it is now a scenario.)*
+
+**Round 2 — gemini and codex REQUEST-CHANGES; opencode timed out at 540s and was
+not counted.** Round 2 earned its keep: it found a real hole round 1 missed.
+
+*Fixed in code:*
+- **A `skills/` root symlinked into a sibling repository was enumerated**
+  (codex). Confirmed and reproduced: `workflowFleetScanner` resolved that root
+  *unanchored*, so the family roots admitted it, and `readdirSync` then put the
+  sibling repository's entry names into this repository's output as skill ids.
+  Round 1's tests missed it because they symlinked a directory *under* `skills/`,
+  never `skills/` itself. Anchoring the child reads was too late. Now anchored
+  before the enumeration; RED proven first.
+- **`.github/workflows` was listed before its anchor was checked** (codex). Same
+  shape, and the round-1 test genuinely did not prove otherwise — it asserted an
+  empty result, which was true both when the directory was refused and when it
+  was read and its files rejected one by one. The anchor now precedes the
+  `readdir`, and `projectMetadataScan.anchor.test.ts` spies on `readdir` to
+  assert the escaped directory is never passed to it. Names are content.
+- **Unresolvable derived roots were still compared lexically** (codex). The
+  round-1 fix covered the anchor but not the roots, which contradicted the
+  precondition I had just documented on `isAnchoredUnder`. Anchored calls now
+  drop roots that cannot be realpath'd; unanchored calls keep the old fallback.
+
+*Fixed in the spec delta:*
+- Scenarios added for an unverifiable *derived boundary* (codex), for verifying a
+  boundary **before** listing the directory beneath it (codex), and for a
+  boundary symlinked into another repository the reader may otherwise read
+  (gemini's reverse-symlink case).
+
+*Fixed in design:*
+- **D6a's enumeration method was unsound** (codex). Classifying by what a call's
+  `roots:` contains misses a resolver's *return value* later becoming a boundary
+  — exactly how the `skills/` site was missed. D6a now records the corrected
+  two-pass method and the site it found. Counts reconciled again: six fixed
+  sites, `resolveAllowed` plus five scanner boundaries.
+
+*Refuted, with reasoning:*
+- **"Resolvers should apply the post-open `realpath` check universally"**
+  (gemini). They cannot: the resolvers return a path and never open a file, so
+  they have no fd to re-verify. The check belongs to whoever opens, which is why
+  it lives in `routes/read.ts` alongside `O_NOFOLLOW`. Moving it into the
+  resolvers would mean inventing a resolver that opens files — a larger design
+  change than this one, and a worse layering.
+- **"Make `anchorTo` required"** (gemini, again). Same answer as round 1, and the
+  same agreement on merit: it is the named next change, deliberately not this
+  one. Round 2 does strengthen the argument — the missed `skills/` site is
+  precisely the "a new call site forgets" failure gemini predicts, though note it
+  was an *existing* site rather than a new one, so a required field would have
+  caught it only by forcing every site to be revisited.

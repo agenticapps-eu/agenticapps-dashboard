@@ -106,3 +106,18 @@ Readers that have not anchored a read keep that standing permission unchanged.
 - **WHEN** the realpath of the repository root a read is anchored to cannot be obtained
 - **THEN** the read is refused
 - **AND** no comparison against an unresolved form of that root is used to admit it.
+
+#### Scenario: An unverifiable derived boundary is discarded, not approximated
+- **WHEN** a read is anchored to a repository root and one of its candidate boundaries cannot be resolved to a realpath
+- **THEN** that boundary is discarded rather than compared in an unresolved form
+- **AND** the read is refused if no resolvable, anchored boundary remains.
+
+#### Scenario: A boundary is verified before the directory beneath it is listed
+- **WHEN** a reader enumerates the contents of a directory it treats as a containment boundary, and that directory is a symlink whose target lies outside the realpath of the repository root
+- **THEN** the directory is not enumerated
+- **AND** no name read from the target appears in the reader's output, because names are themselves content.
+
+#### Scenario: An escaping boundary aimed at another permitted repository is still refused
+- **WHEN** an anchored read's boundary is a symlink from one repository into a *different* repository that the reader would otherwise be permitted to read
+- **THEN** the read is refused, because the boundary has left the repository it was anchored to
+- **AND** being a legitimate location for some other reader does not make it a legitimate boundary for this one.

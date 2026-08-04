@@ -27,13 +27,16 @@ review and held out of scope as pre-existing.
   registered project root before adopting it as a containment boundary. A root
   that has left the project is not a usable boundary and is dropped, so a path
   reachable only through it is refused with the existing `PathViolation`.
-- The same anchor check is applied at the four scanner call sites that derive a
-  containment root from a path *inside* a repository and pass it as `roots`
-  without verifying it first:
-  - `projectMetadataScan.ts:281` — `<root>/.github/workflows`
-  - `workflowVersionScanner.ts:158` — `skillRoot` (`<repo>/.claude/skills`)
-  - `workflowFleetScanner.ts:286` — `skillRoot`
-  - `workflowFleetScanner.ts:296` — `skillDir`
+- The same anchor check is applied at the five scanner call sites that adopt a
+  containment boundary derived from a path *inside* a repository without
+  verifying it first:
+  - `projectMetadataScan` — `<root>/.github/workflows`, anchored **before** the
+    directory is listed, since entry names are content too
+  - `workflowVersionScanner` — `skillRoot` (`<repo>/.claude/skills`)
+  - `workflowFleetScanner` — the `skills/` root itself, anchored before it is
+    enumerated (found in review round 2; anchoring only its children was too late)
+  - `workflowFleetScanner` — `skillDir`
+  - `workflowFleetScanner` — `skillPath`
 
   **`workflowArtifactScanner.ts:414` was listed here and is refuted.** Its
   `canonicalRoot` derives from a *machine* root (`~/.claude/skills`,
@@ -43,8 +46,8 @@ review and held out of scope as pre-existing.
   those directories is the intended install mechanism, not an escape: on this
   machine 13 of 14 entries under `~/.codex/skills` and 33 of 98 under
   `~/.claude/skills` are symlinks into `~/Sourcecode` repos. Anchoring it would
-  report every one of them missing. Four scanner sites are fixed, not five — so
-  five sites in total, counting `resolveAllowed` itself.
+  report every one of them missing. It is not one of the sites fixed here; six
+  are, counting `resolveAllowed` itself and the five scanner boundaries above.
 - A single shared anchor helper backs both the async (`paths.ts`) and the
   synchronous (`coverageResolver.ts`) resolvers, so the rule has one
   implementation rather than one copy per call site.

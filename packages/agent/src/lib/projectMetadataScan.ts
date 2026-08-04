@@ -261,8 +261,22 @@ export async function detectSentryCliBinary(): Promise<ObservabilitySignal[]> {
  * Substring-match 'sentry-cli' in each accepted file.
  */
 export async function parseCiWorkflowsForSentry(projectRoot: string): Promise<ObservabilitySignal[]> {
-  const workflowsDir = join(projectRoot, '.github', 'workflows')
-  if (!existsSync(workflowsDir)) return []
+  const candidateDir = join(projectRoot, '.github', 'workflows')
+  if (!existsSync(candidateDir)) return []
+
+  // Anchor the directory BEFORE listing it. Validating only the files inside is
+  // too late: if this directory has left the project, enumerating it already
+  // reads an outside directory's entry names.
+  let workflowsDir: string
+  try {
+    workflowsDir = await resolveAllowedNamed(candidateDir, {
+      roots: [projectRoot],
+      allowedNames: ['workflows'],
+      anchorTo: projectRoot,
+    })
+  } catch {
+    return []
+  }
 
   let entries: string[]
   try {
