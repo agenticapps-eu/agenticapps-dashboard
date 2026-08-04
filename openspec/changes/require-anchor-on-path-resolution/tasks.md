@@ -60,10 +60,16 @@
   compile errors across 6 files, which is the property this task asks for, but no
   test asserts it — a type-level test needs `expect-type` or a `tsc` fixture and
   neither is set up here. Recorded rather than claimed.
-- [ ] 4.2 **NOT DONE — the compensating control for D5 is still missing.** The
-  six derived boundaries are `anchored` in source, but nothing fails if one is
-  relabelled. This is the enforceable half of the misdeclaration concern and the
-  main outstanding gap. This is the enforceable half of
+- [x] 4.2 **Regression guard on #100 (D5).** →
+  `containmentAnchoredSites.guard.test.ts`. Asserts on SOURCE TEXT, because the
+  wrong declaration is wrong only relative to where the root came from — a fact
+  about the call site, not about any value the resolver sees, so no behavioural
+  test can reach it. Proven by mutation: relabelling `workflowDeriver`'s anchor
+  to `repository-root` **compiles and resolves cleanly** and every other test
+  stays green; only this guard goes red. That is D5's argument, executable.
+  Its limits are stated in the file: brittle to reformatting, and a NEW anchored
+  boundary is uncovered until added — which is why the spec makes joining the
+  coverage an obligation rather than claiming it is automatic. This is the enforceable half of
   the misdeclaration concern; the unenforceable half is stated in the spec.
 - [x] 4.3 A `daemon-named` site still resolves a machine root that anchoring
   would reject — D8's install-symlink case survives.
