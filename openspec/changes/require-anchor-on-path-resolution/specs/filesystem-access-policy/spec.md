@@ -42,10 +42,20 @@ The daemon-named case SHALL record why the read is not anchored to a repository
 root. It is the case in which a caller **supplies** a boundary outside every
 repository, and the justification is otherwise unavailable to whoever next reads
 that code. A recorded reason SHALL be non-empty, and the daemon-named case SHALL
-identify which named root it is claiming, drawn from the enumerated set of
-machine roots rather than from free text. A declaration that could name any root
-whatever, justified by any string whatever, would be an unbounded exemption from
-anchoring wearing the appearance of a decision.
+identify which named root it is claiming, drawn from an **enumerated set of
+named-root identifiers** — covering both kinds above — rather than from free
+text. A declaration that could name any root whatever, justified by any string
+whatever, would be an unbounded exemption from anchoring wearing the appearance
+of a decision.
+
+What the enumeration bounds is the **identifier**, not the directory. Nothing
+requires the supplied boundary to be the root that the identifier names, and no
+resolver can require it: the identifier-to-directory mapping is caller-side and
+deliberately overridable, so a resolver has nothing to check against without
+being handed the registry it is meant to be independent of. A declaration
+pairing a valid identifier with some other directory is therefore well-formed
+and false, and is governed by the presence-not-truth rule below rather than
+detected here. The reason string is likewise checked for presence only.
 
 **What this requirement enforces is the presence of a declaration, not its
 truth.** A declaration naming the wrong case SHALL NOT be treated as satisfying
@@ -56,6 +66,23 @@ a misdeclaration, and it SHALL NOT be relied on to. Boundaries already anchored
 under that requirement SHALL be protected against silent reclassification by
 regression coverage, which is the enforceable part of this concern.
 
+The same limit applies to every other truth-claim in this requirement, including
+the prohibition on declaring a container of repositories as a repository root.
+Those prohibitions state which declaration is *correct* for a boundary; none of
+them is detected at the resolver, and a requirement whose other clauses are
+build-checked SHALL NOT be read as build-checking these.
+
+**A helper that relays a resolver SHALL relay the classification with it.** A
+helper standing between a call site and a resolver SHALL accept the containment
+declaration as a parameter and pass it through unchanged, and SHALL NOT
+synthesise one of its own. One helper can serve boundaries in different cases —
+a repository root on one call and a named root outside every repository on
+another — so a helper that chooses a classification decides it for callers whose
+boundary it cannot see, which reintroduces the misdeclaration this requirement
+exists to make visible, one layer above where anyone would look for it. This
+obligation is on the relaying helper, not on the resolver, which cannot tell a
+relayed declaration from a first-hand one.
+
 Declaring a case SHALL NOT change what a site admits. The declaration records a
 classification that already governs the read, so a site whose admitted or
 refused paths move when its declaration is written down was misclassified, and
@@ -63,7 +90,12 @@ the misclassification is the finding rather than an accepted cost.
 
 The roots supplied in a single resolution SHALL share one classification. A site
 needing two classifications SHALL be split into two resolutions rather than
-declaring one for a mixed set. Because supplied roots are alternatives — a path
+declaring one for a mixed set. Roots of different **provenance** do not by
+themselves need two classifications: where a derived boundary and the repository
+root it derives from are supplied together, both are required to lie under that
+same repository root, so the resolution has one honest classification and one of
+its roots merely coincides with the anchor. What forces a split is two roots
+requiring **different anchors**. Because supplied roots are alternatives — a path
 admitted by any one of them is admitted, and what is returned is the resolved
 candidate rather than the root that matched — a split preserves admission
 exactly when the results are recombined as alternatives: the path is admitted if
@@ -90,11 +122,18 @@ which remain governed by `Named Allowed Roots For Fleet Scanners`.
 - **THEN** the site records the condition that makes anchoring that root wrong
 - **AND** the recorded reason is discoverable from the resolution site itself, not only from an archived design document.
 
-#### Scenario: The daemon-named case cannot exempt an arbitrary root
+#### Scenario: The daemon-named case cannot name an arbitrary root identifier
 
-- **WHEN** a site declares daemon-named for a root that is not one of the enumerated machine roots
+- **WHEN** a site declares daemon-named with an identifier that is not one of the enumerated named roots
 - **THEN** the declaration is rejected rather than admitted on the strength of its accompanying text
-- **AND** an empty or blank reason is likewise rejected, so the record cannot be satisfied by supplying nothing.
+- **AND** an empty or blank reason is likewise rejected, so the record cannot be satisfied by supplying nothing
+- **AND** a valid identifier paired with a directory that is not the root it names is **not** rejected, because that pairing is not checkable at the resolver; it is a misdeclaration, governed as one.
+
+#### Scenario: A helper relaying a resolver relays the declaration
+
+- **WHEN** a helper stands between a resolution site and a resolver, and is called for boundaries in more than one containment case
+- **THEN** the helper takes the declaration as a parameter and passes it through unchanged
+- **AND** a helper that synthesises a classification instead is a defect of this requirement, even where every resolution it performs is well-formed.
 
 #### Scenario: A misdeclared derived boundary is still governed by the anchoring requirement
 
@@ -120,8 +159,14 @@ which remain governed by `Named Allowed Roots For Fleet Scanners`.
 - **THEN** the paths it admits and refuses are unchanged
 - **AND** any observed difference is treated as evidence that the site was misclassified, not as an accepted consequence of declaring it.
 
-#### Scenario: A resolution mixing classifications is split rather than declared
+#### Scenario: A resolution needing two anchors is split rather than declared
 
-- **WHEN** one resolution would supply both a repository root and a boundary derived from inside a repository
+- **WHEN** one resolution would supply two roots that require different anchors
 - **THEN** it is split into two resolutions, each declaring its own case
 - **AND** no single declaration is applied to a set of roots that do not share it.
+
+#### Scenario: Roots of different provenance under one anchor are not split
+
+- **WHEN** one resolution supplies a boundary derived from inside a repository together with the repository root it derives from
+- **THEN** the resolution declares the single anchored case naming that repository root
+- **AND** the coincidence of one root with the anchor is not treated as a second classification requiring a split.

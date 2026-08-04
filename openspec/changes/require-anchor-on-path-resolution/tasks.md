@@ -227,7 +227,115 @@ mitigation is only that an altered expectation would be visible in the diff.
   REQUEST-CHANGES with six findings. opencode produced no verdict line and was
   correctly not counted — a different failure from the timeout that lost it in
   #100, and one the producer's 1.2.0 predicate caught rather than published.
-- [ ] 7.3 Preserve prior rounds as `REVIEWS-round-N.md` before re-running.
+- [x] 7.3 Preserve prior rounds as `REVIEWS-round-N.md` before re-running.
+- [x] 7.4 **Round 3 run** — same producer and timeout, run because the artifacts
+  changed materially after round 2: the id union gained a second kind, D1/D2/D4/
+  D6/D7 were all corrected, and implementation found a real escape. All three
+  counted reviewers returned REQUEST-CHANGES (gemini, codex, opencode); claude
+  excluded as implementing host; none failed.
+
+### Round 3 dispositions
+
+**The finding behind almost every finding: §5's corrections were never
+propagated into the reviewed artifacts.** Reviewers receive the proposal, the
+design and the spec deltas — not `tasks.md`. Every contradiction below was
+already discovered, reasoned about and recorded in §5 during implementation, and
+then left standing in the three documents that get read. Three independent
+reviewers each reconstructed the same discrepancies from scratch. That is the
+process defect; the textual fixes are its symptoms.
+
+*Confirmed and fixed:*
+
+- **The daemon-named enumeration contradicted itself — five ids or nine**
+  (all three reviewers). Real and pervasive: D1's type block said
+  `WorkflowMachineRootId`, D4 said "five machine roots", the proposal's What
+  Changes bullet said "one of the five machine roots" and omitted `rootId`
+  entirely, and the delta's enforcement sentence and scenario both said "machine
+  roots" — while the requirement prose said "two kinds" and the shipped
+  `containment.ts` defines `DaemonNamedRootId = MachineRootId | FamilyRootId`,
+  nine members. Fixed across all four documents; the identifier set is now
+  described as the named roots of both kinds wherever it appears.
+- **D4 and D7 both asserted "no call site passes a family root"** (codex,
+  opencode). False, and falsified by this change's own implementation:
+  `workflowScan.ts:63` passes `sourceFamilyRoot` as a caller root. D4 rewritten
+  around the two kinds; D7's exclusion re-grounded on *how a root arrives*
+  (standing vs supplied) rather than on which directory it is.
+- **"Admission is unchanged at every site" is false** (codex). Confirmed: the
+  `workflowDeriver.ts:250` fix deliberately tightens admission. The proposal
+  claimed it byte-for-byte, D2 claimed the delta's scenario was true
+  "unconditionally", and the Goals bullet stated it flatly. All three now state
+  the exception. The delta's *scenario* needed no change — it is scoped to a
+  site gaining a declaration "matching the case it was already in", and this
+  site's case was not the one it was in.
+- **D8's relay rule was absent from the spec delta** (codex). Confirmed and the
+  sharpest finding of the round: a security-critical SHALL — relaying helpers
+  accept and forward containment, never synthesise it — existed only in a design
+  document that archives. Now a normative paragraph plus a scenario in the
+  delta.
+- **The mixed-roots scenario contradicted D6** (codex). Confirmed on the letter:
+  the scenario forced a split for any repository-root/derived combination, while
+  D6 keeps `[skillRoot, repoAbsPath]` unsplit because both share one anchor.
+  Rescoped to roots requiring *different anchors*, with a second scenario
+  stating the non-split case explicitly.
+- **D1 overclaimed `reason` enforcement** (opencode). Confirmed: `reason:
+  string` with a non-empty check is all there is, so "draws from
+  `DAEMON_NAMED_REASONS`" describes a convention, not the type. D1 downgraded,
+  the module docstring corrected, and the delta now says the reason is checked
+  for presence only. Typing it as a lookup into the record was considered and
+  rejected — it pins the strings at today's wording, and they are meant to be
+  re-edited.
+- **The arbitrary-root rejection is not enforceable** (codex). Confirmed and
+  concrete: `workflowScan.ts:63` declares `rootId: 'family-agenticapps'` while
+  its `sourceFamilyRoot` is a caller option, so any directory can carry that id.
+  The enumeration bounds the *identifier*, never the directory. The delta now
+  says so and the scenario carries an explicit AND for the pairing it does not
+  check, instead of implying a rejection that does not happen.
+- **Reason strings embedded a volatile census** (opencode). "33 of 98" and "13
+  of 14" were true of one machine on one day. The reasons now state the
+  condition; the risk register gains "reasons decay into false counts" as
+  distinct from "reasons decay into 'because'".
+
+*Confirmed in part, refuted in part:*
+
+- **"The `workflowScan.ts:64` site is absent from the 24-site table"**
+  (opencode). The conclusion is right and the evidence is wrong, and the
+  difference matters to this change's central argument. The site is **not**
+  absent: the Impact table counts `workflowScan.ts` (1) PathResolver
+  invocation, and the file contains exactly one — the family-root call. What was
+  missed was a *property* of a site the survey had counted, which is precisely
+  what §3.3/3.4 concluded about `workflowDeriver:250`. Recorded as such rather
+  than accepted verbatim: the inventory was not falsified a third time, the
+  *classification* was. The proposal's Impact section now says this in place of
+  letting the count imply more than counting delivers.
+
+*Refuted:*
+
+- **"Remove the family roots from the requirement prose to match D1/D4"**
+  (gemini). The contradiction gemini identified is real and is fixed above, but
+  its proposed direction is backwards. Family roots were added to the union
+  *deliberately*, during implementation, because `workflowScan.ts:63` proved the
+  three-case taxonomy non-exhaustive (§3.2). Deleting them from the prose would
+  re-align the documents with a design the code has already outgrown, and would
+  restore exactly the gap that made a family root undeclarable. D1 and D4 were
+  the stale texts; the requirement prose was the current one.
+
+*Accepted as a limit, not fixed:*
+
+- **No scenario for the family-root misdeclaration the requirement prohibits**
+  (opencode). Correct that the SHALL NOT at the daemon-named bullet is
+  unenforceable prose sitting among build-checked clauses. Rather than add a
+  scenario asserting a THEN nothing performs, the presence-not-truth paragraph
+  now generalises to *every* truth-claim in the requirement, the family-root
+  prohibition named among them. This is the same treatment D5 gives the derived
+  boundaries and for the same reason.
+
+**Correction to the round-2 dispositions above.** The entry for
+"`daemon-named` accepted arbitrary roots" ends "The resolver checks the supplied
+root against the root registered for that id." It does not, and cannot — see §5
+and D1's correction. The sentence records what was believed when round 2 was
+dispositioned and is left in place with this pointer rather than rewritten,
+since the disposition record is a history of claims, not a statement of current
+behaviour.
 
 ### Round 2 dispositions
 

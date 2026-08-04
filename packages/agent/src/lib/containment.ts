@@ -88,7 +88,13 @@ export type Containment =
  * field decays into "because" one hurried edit at a time, and these particular
  * reasons are load-bearing enough to have been refuted once already (D8 of
  * `anchor-allowed-subdirs-to-root`, which established that anchoring these
- * roots would report 33 of 98 and 13 of 14 entries missing).
+ * roots would report their symlinked entries missing).
+ *
+ * Convention, not a constraint: `Containment['reason']` is `string`, so a call
+ * site can pass anything non-blank. `rootId` is what bounds the exemption.
+ * These reasons state a *condition* rather than a census — an earlier version
+ * quoted "33 of 98" and "13 of 14" entries, numbers true of one machine on one
+ * day, which is the reason-rot this record exists to prevent.
  */
 export const DAEMON_NAMED_REASONS: Record<DaemonNamedRootId, string> = {
   'agenticapps-bin':
@@ -96,10 +102,10 @@ export const DAEMON_NAMED_REASONS: Record<DaemonNamedRootId, string> = {
     'they are installed to a machine-wide path and read from there, not from a checkout',
   'claude-skills':
     'symlinking skills into ~/.claude/skills IS the install mechanism; ' +
-    'anchoring would report 33 of 98 entries missing',
+    'anchoring would report every symlinked entry missing',
   'codex-skills':
     'symlinking skills into ~/.codex/skills IS the install mechanism; ' +
-    'anchoring would report 13 of 14 entries missing',
+    'anchoring would report every symlinked entry missing',
   'opencode-skills':
     'the opencode machine-wide skills directory is installed to, not checked out; ' +
     'its entries are symlinks into repositories by design',

@@ -54,8 +54,13 @@ this change removes.
   by the type checker rather than by review attention.
 - The classification that widens reach beyond a repository carries a written
   reason, so it is auditable and greppable rather than merely absent.
-- **Admission is unchanged at every site.** After review round 1, this is not an
-  aspiration but the design's central constraint — see D2.
+- **Admission is unchanged at every site whose classification was already
+  right.** After review round 1, this is not an aspiration but the design's
+  central constraint — see D2. Implementation found exactly one site whose
+  classification was *not* already right (`workflowDeriver.ts:250`), and
+  anchoring it tightens admission. That is the goal working as intended rather
+  than an exception to it: the whole point of forcing the declaration is that a
+  site which cannot be declared truthfully without moving was misclassified.
 
 **Non-Goals:**
 
@@ -77,26 +82,45 @@ this change removes.
 type Containment =
   | { kind: 'anchored'; root: string }
   | { kind: 'repository-root' }
-  | { kind: 'daemon-named'; rootId: WorkflowMachineRootId; reason: string }
+  | { kind: 'daemon-named'; rootId: DaemonNamedRootId; reason: string }
 ```
 
 `daemon-named` carries an **enumerated** root identity, not free text. Review
 round 2 was right that `{ reason: string }` alone would let any root at all skip
 anchoring on the strength of any non-empty string — an unbounded exemption
-wearing the appearance of a decision. `WorkflowMachineRootId` already exists and call sites already know their id,
-since `workflowScan.ts:194` indexes `configuredMachineRoots[rootId]`. So the
-hatch is bounded by the type: a declaration can only name one of five roots, and
-`reason` draws from `DAEMON_NAMED_REASONS` rather than being a place to type
-anything. A blank or whitespace reason is rejected at the resolver.
+wearing the appearance of a decision. Call sites already know their id, since
+`workflowScan.ts:194` indexes `configuredMachineRoots[rootId]`. So the hatch is
+bounded by the type: a declaration can only name one of the enumerated ids.
+A blank or whitespace reason is rejected at the resolver.
+
+**Corrected during implementation — the id union is nine, not five.**
+`DaemonNamedRootId` is `MachineRootId | FamilyRootId`: the five machine roots
+plus four family roots (see D4). The two halves stay separate types because
+`WorkflowMachineRootId` is iterated as an exhaustive set by `workflowScan.ts`
+and must not silently acquire the family roots.
+
+**`reason` is not bounded by the type, and this decision previously said it
+was.** The claim that "`reason` draws from `DAEMON_NAMED_REASONS` rather than
+being a place to type anything" is not what `reason: string` enforces. Call
+sites pass `DAEMON_NAMED_REASONS[rootId]` by convention, and the resolver
+rejects only a blank or whitespace string. The bound on the exemption is
+therefore `rootId` alone; the reason is documentation, checked for presence and
+not for provenance. Typing it as a lookup into the record was considered and
+left out: it would pin the strings at their current wording, and the constants
+are meant to be re-edited as the conditions they describe change.
 
 **Corrected during implementation.** An earlier version of this decision said
 "the resolver verifies the supplied root matches the root registered for that
 id". It cannot: the id→root mapping lives caller-side in `workflowScan.ts` and
 is overridable per call for tests, so the resolver has nothing to check against
 without being handed the registry it is supposed to be independent of. What is
-enforced is therefore the *enumeration* (five ids, no free text) and a non-empty
-reason; that the id matches the root is covered per site by test, not by the
-resolver. This is weaker than review round 2 asked for, and is recorded rather
+enforced is therefore the *enumeration* (the nine ids, no free text) and a
+non-empty reason; that the id matches the root is covered per site by test, not
+by the resolver. `workflowScan.ts:63` is the sharpest case: it declares
+`rootId: 'family-agenticapps'` while its `sourceFamilyRoot` is a caller option,
+so a caller supplying a different directory gets a declaration that is
+well-formed and false. That is D5's limit reached by a concrete path, not a
+hypothetical one. This is weaker than review round 2 asked for, and is recorded rather
 than quietly delivered as if it were the same thing.
 
 The type also lives in a new `lib/containment.ts` rather than in `paths.ts`.
@@ -150,8 +174,18 @@ behaviour is deliberately unchanged.* `daemon-named` maps there too. Only
 So the executable content of this change is exactly: a required field, and
 nothing else. That is a smaller change than the draft described and a strictly
 better one — the entire class of behavioural risk the draft spent its risk
-budget on does not arise. It also makes the "admission unchanged" scenario in
-the spec delta true unconditionally, where the draft contradicted it.
+budget on does not arise.
+
+**"Unconditionally" was too strong, and implementation proved it.** An earlier
+version of this paragraph said the mapping made the "admission unchanged"
+scenario in the spec delta true unconditionally. One site moved:
+`workflowDeriver.ts:250` was misclassified as unanchored and is now `anchored`,
+which refuses reads it used to admit (tasks §3.2). The delta's scenario survives
+because it is scoped to a site "gaining a declaration **matching the case it was
+already in**", and this site's case was not the one it was in — but the
+unconditional claim does not survive, and the variant mapping is what makes
+admission stable, not a guarantee that every site was correctly classified to
+begin with.
 
 **What `repository-root` therefore does not mean.** Review round 2 caught the
 spec claiming daemon-named was "the only case that widens reach beyond a
@@ -191,15 +225,29 @@ document already; the compiler cannot.
 
 ### D4 — What `daemon-named` classifies
 
-Five machine roots, not the two the draft named: `agenticapps-bin`,
-`claude-skills`, `codex-skills`, `opencode-skills`, `pi-skills`. Their reasons
-come from D8's evidence — symlinking skills into these directories *is* the
-install mechanism, and 33 of 98 and 13 of 14 entries are such symlinks, so
-anchoring would report all of them missing.
+**Two kinds of named root, nine ids in total.**
 
-The family roots bound into `makeCoverageResolver` are **not** classified by
-this union. They are the resolver's own roots, not a caller's, and no call site
-passes them. D7 covers them.
+The **machine roots** — five, not the two the draft named: `agenticapps-bin`,
+`claude-skills`, `codex-skills`, `opencode-skills`, `pi-skills`. Their reasons
+come from D8's evidence: symlinking skills into these directories *is* the
+install mechanism, so most of their entries are such symlinks and anchoring
+would report all of them missing.
+
+The **family roots** — four: `family-agenticapps`, `family-factiv`,
+`family-neuroflash`, and `workflow-migrations` (the workflow-core migrations
+directory beneath one). A family root **contains** repositories rather than
+being one, so `repository-root` is false of it and it is not a machine root
+either.
+
+**This half is a correction, and it falsified this decision's previous
+wording.** D4 used to say the family roots "are the resolver's own roots, not a
+caller's, and no call site passes them". `workflowScan.ts:63` passes
+`sourceFamilyRoot` as a caller root, so the claim was false and the union was
+not exhaustive — the third time in this change that the family roots falsified a
+claim about themselves (tasks §3.2). What remains true, and is now D7's business
+alone, is that the family roots *bound into* `makeCoverageResolver` as standing
+roots are not classified by this union. A family root reaches the union when a
+**caller supplies** one, and only then.
 
 ### D5 — Declaration correctness is not claimed, and is compensated
 
@@ -265,8 +313,16 @@ roots passed to `resolveAllowedNamed` and to `PathResolver`**. It does not cover
 
 - `resolveAllowed`, which anchors unconditionally against `realProjectRoot` —
   there is no optional field to make required.
-- The family roots bound inside `makeCoverageResolver`, which are not passed by
-  any caller and are governed by `Named Allowed Roots For Fleet Scanners`.
+- The family roots **bound inside** `makeCoverageResolver` as standing roots,
+  which are governed by `Named Allowed Roots For Fleet Scanners`.
+
+  This exclusion is about how a root arrives, not about which directory it is.
+  An earlier wording justified it with "not passed by any caller", which
+  `workflowScan.ts:63` falsified — that site supplies a family root *as a caller
+  root*, and a caller-supplied family root is squarely in scope and declares
+  `daemon-named` (D4). The same directory can therefore be out of scope as a
+  standing root and in scope as a supplied one, which is the distinction the
+  requirement's Scope section draws.
 
 Both exclusions are in the spec text, not just here, so the requirement cannot
 be read as covering boundaries it does not reach.
@@ -290,9 +346,15 @@ the relaying helpers from the compiler errors of step 3 rather than by grep.
 - **A declaration is not a correct declaration** → D5: scope the spec to what is
   enforced, and pin #100's six sites with a test. Residual and stated: nothing
   detects a *new* site misclassified from birth.
-- **`reason` strings decay into "because"** → the five initial reasons are
-  written from D8's counts, setting the standard. Nothing checks a reason is
+- **`reason` strings decay into "because"** → the nine initial reasons are
+  written from D8's evidence, setting the standard. Nothing checks a reason is
   true; the spec says so rather than implying otherwise.
+- **`reason` strings decay into false *counts*** → a distinct failure the
+  register missed. Two of the machine-root reasons quoted "33 of 98" and "13 of
+  14" entries, which are a census of one machine on one day and rot with the
+  next install. The reasons now state the *condition* — symlinking into these
+  directories is the install mechanism, so anchoring reports their entries
+  missing — and leave the arithmetic to whoever re-measures it.
 - **The inventory is wrong again** → it was wrong twice already in this document.
   D3.3 moves the authority to the compiler; §5 records the diff between what the
   compiler finds and this table, whichever way it falls.
