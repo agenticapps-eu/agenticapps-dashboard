@@ -83,13 +83,30 @@ type Containment =
 `daemon-named` carries an **enumerated** root identity, not free text. Review
 round 2 was right that `{ reason: string }` alone would let any root at all skip
 anchoring on the strength of any non-empty string — an unbounded exemption
-wearing the appearance of a decision. `WorkflowMachineRootId` already exists
-(`workflowArtifactScanner.declare.ts:74-79`) and call sites already know their
-id, since `workflowScan.ts:194` indexes `configuredMachineRoots[rootId]`. The
-resolver verifies the supplied root matches the root registered for that id, so
-the hatch is bounded by construction rather than by convention, and `reason`
-becomes a per-root rationale rather than a place to type anything. A blank or
-whitespace reason is rejected.
+wearing the appearance of a decision. `WorkflowMachineRootId` already exists and call sites already know their id,
+since `workflowScan.ts:194` indexes `configuredMachineRoots[rootId]`. So the
+hatch is bounded by the type: a declaration can only name one of five roots, and
+`reason` draws from `DAEMON_NAMED_REASONS` rather than being a place to type
+anything. A blank or whitespace reason is rejected at the resolver.
+
+**Corrected during implementation.** An earlier version of this decision said
+"the resolver verifies the supplied root matches the root registered for that
+id". It cannot: the id→root mapping lives caller-side in `workflowScan.ts` and
+is overridable per call for tests, so the resolver has nothing to check against
+without being handed the registry it is supposed to be independent of. What is
+enforced is therefore the *enumeration* (five ids, no free text) and a non-empty
+reason; that the id matches the root is covered per site by test, not by the
+resolver. This is weaker than review round 2 asked for, and is recorded rather
+than quietly delivered as if it were the same thing.
+
+The type also lives in a new `lib/containment.ts` rather than in `paths.ts`.
+Round 2's suggestion assumed the enumeration could be imported downward, but the
+import graph runs `workflowArtifactScanner.declare.ts` →
+`coverageResolver.ts` → `paths.ts`, so importing the id union into `paths.ts`
+would invert the layering and close a cycle. `containment.ts` sits below both
+resolvers and owns the vocabulary; `declare.ts` aliases `WorkflowMachineRootId`
+to it so scanner code keeps the name it already uses and the five-member union
+is not written twice.
 
 *Alternative considered:* `anchorTo: string | null`. Rejected: `null` records
 only that someone typed `null`, and cannot distinguish "the roots are repository

@@ -29,7 +29,7 @@
 
 ## 3. Implement in three commits, each of which builds (D3)
 
-- [ ] 3.1 **Commit 1 — add.** Introduce the `containment` union alongside
+- [x] 3.1 **Commit 1 — add.** Introduce the `containment` union alongside
   `anchorTo`, optional, on `ResolveAllowedNamedOpts` and `PathResolver`.
   `anchored` routes to the existing anchored branch; `repository-root` and
   `daemon-named` route to the existing **unanchored** branch byte-for-byte.
@@ -64,7 +64,7 @@
 - [ ] 4.6 `daemon-named` naming a root that is not the one registered for its
   `rootId` is rejected, and a blank or whitespace `reason` is rejected. The
   escape hatch must be bounded by the type and the check, not by convention.
-- [ ] 4.7 Supplying both `anchorTo` and `containment` during the migration
+- [x] 4.7 Supplying both `anchorTo` and `containment` during the migration
   window raises `PathViolation` rather than silently obeying one.
 - [ ] 4.8 A `repository-root` read on `makeCoverageResolver` is still admitted
   under the standing family roots — the reach a declaration does not narrow.
@@ -94,6 +94,23 @@ not by `join`.
 `coverageResolver.ts:26`). An `instanceof` against the wrong one fails while the
 value really is a path violation, which reads as a behaviour change but is an
 import bug. Noted, not fixed — out of scope here.
+
+**§3.1 — the enumeration could not live where round 2's fix assumed.** D1 said
+to reuse `WorkflowMachineRootId` from `workflowArtifactScanner.declare.ts`. The
+import graph forbids it: `declare.ts` → `coverageResolver.ts` → `paths.ts`, so
+importing the id union *into* `paths.ts` inverts the layering and closes a
+cycle. A new `lib/containment.ts` sits below both resolvers and owns the
+vocabulary; `declare.ts` now aliases `WorkflowMachineRootId` to it, so scanner
+code keeps its name and the union is not written twice. Design D1 updated.
+
+**§3.1 — the resolver cannot verify that `rootId` matches the supplied root.**
+D1 claimed it would. The id→root mapping lives caller-side in `workflowScan.ts`
+and is overridable per call for tests, so the resolver has nothing to check
+against without being handed the registry it is meant to be independent of. What
+is enforced is the enumeration — five ids, no free text — and a non-empty
+reason. Whether the id matches its root is covered per site by test. That is
+weaker than round 2 asked for and is recorded as such rather than delivered as
+if it were the same thing.
 
 <!-- 3.4's enumeration diff goes here. Any site whose classification departs
      from the table is named here with reasoning, never folded into the

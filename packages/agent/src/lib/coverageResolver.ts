@@ -20,6 +20,8 @@ import { resolve as pathResolve, basename, join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { isAnchoredUnder } from './paths.js'
+import { anchorOf, malformedContainment, CONTAINMENT_CONFLICT } from './containment.js'
+import type { Containment } from './containment.js'
 
 // ── PathViolation ─────────────────────────────────────────────────────────────
 
@@ -60,8 +62,18 @@ export type PathResolver = (
      *
      * Applies to caller-supplied roots only; the family roots this resolver is
      * bound to are a deliberate cross-family allowance and are never narrowed.
+     *
+     * @deprecated Superseded by `containment`. Supplying both is a PathViolation.
      */
     anchorTo?: string
+    /**
+     * What the supplied `roots` ARE. See `containment.ts`.
+     *
+     * Note what `repository-root` does NOT mean here: this resolver merges its
+     * standing family roots on the unanchored branch, so declaring
+     * `repository-root` leaves that reach in place. Only `anchored` confines.
+     */
+    containment?: Containment
   },
 ) => string
 
@@ -117,6 +129,7 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
       extension?: string
       roots: string[]
       anchorTo?: string
+      containment?: Containment
     },
   ): string => {
     // Validate mutual exclusivity of allowedNames + extension
@@ -127,6 +140,19 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
     if (!resolverOpts.allowedNames && !resolverOpts.extension) {
       throw new PathViolation('one of opts.allowedNames or opts.extension is required')
     }
+    if (resolverOpts.anchorTo !== undefined && resolverOpts.containment !== undefined) {
+      throw new PathViolation(CONTAINMENT_CONFLICT)
+    }
+    if (resolverOpts.containment) {
+      const malformed = malformedContainment(resolverOpts.containment)
+      if (malformed) throw new PathViolation(malformed)
+    }
+
+    // Only `anchored` anchors. The unanchored variants reach the same branch an
+    // undeclared call reaches — including the standing family roots merged below.
+    const effectiveAnchor = resolverOpts.containment
+      ? anchorOf(resolverOpts.containment)
+      : resolverOpts.anchorTo
 
     // Resolve candidate to realpath
     let real: string
@@ -164,7 +190,7 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
     // which is true of every repository in the fleet. Unanchored calls keep the
     // allowance untouched.
     let mergedRoots: string[]
-    if (resolverOpts.anchorTo !== undefined) {
+    if (effectiveAnchor !== undefined) {
       // Fail closed, exactly as resolveAllowedNamed does. realpathSafe's lexical
       // fallback is fine for candidate roots — an unresolvable root simply fails
       // to match — but it is not safe for the anchor: comparing against a
@@ -172,9 +198,9 @@ export function makeCoverageResolver(opts: CoverageResolverOptions = {}): PathRe
       // verified, which is the whole failure this change exists to prevent.
       let realAnchor: string
       try {
-        realAnchor = realpathSync(resolverOpts.anchorTo)
+        realAnchor = realpathSync(effectiveAnchor)
       } catch {
-        throw new PathViolation(`anchor root not accessible: ${resolverOpts.anchorTo}`)
+        throw new PathViolation(`anchor root not accessible: ${effectiveAnchor}`)
       }
       callerRoots = resolvedCallerRoots.filter((root) => isAnchoredUnder(root, realAnchor))
       if (callerRoots.length === 0) {
