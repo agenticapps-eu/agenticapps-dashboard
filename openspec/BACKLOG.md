@@ -255,3 +255,61 @@ implementing and verifying named product-quality invariants; "the type scale
 responds to the reader" is not among them, and adding it mid-change would repeat
 the mistake of ratifying a design-system decision as a side effect of a ticket
 scoped to something else.
+
+---
+
+## An evaluation error is presented as an ordinary failure
+
+**Status:** OPEN. Found 2026-08-05 by the `retire-v1-surfaces` §3 design-critique
+artifacts for the fleet and repository detail surfaces. Filed here rather than
+fixed in `retire-v1-surfaces` because no §3 bullet names this invariant, and
+widening §3 to cover defects it happens to find is the mistake the density
+decision deliberately avoided. Recorded with its root cause so the change that
+picks it up does not have to re-derive it.
+
+**The defect, as it appears on screen.** On `/repos/agenticapps-dashboard`, the
+Code review block currently renders three lines that describe two different
+worlds:
+
+| Element | Text |
+|---|---|
+| badge | failing |
+| summary | Could not evaluate this check: the artifact carries no frontmatter to read a verdict from |
+| remedy | The latest REVIEW.md records a failing verdict or an open blocker. Resolve it and commit the corrected code review. |
+
+There is no failing verdict in that file. There is no frontmatter at all, which
+is exactly what the summary says. A reader who follows the remedy goes looking
+for something that does not exist.
+
+On `/fleet` the same state is worse in a different way: the Code review cell
+("could not be evaluated") and the Coverage cell ("failing") are identical in
+glyph and colour, in light (`rgb(181, 61, 61)`) and dark (`rgb(234, 129, 129)`)
+alike. The distinction survives only in the `aria-label`.
+
+**Root cause.** `repo-readiness` requires every error-bearing result to carry
+status `fail` and to distinguish itself by a structured error marker rather than
+by prose (`spec.md:203`). That contract is honoured on the wire. The
+presentation layer then discards it in two places:
+
+- `remedyFor(id, status, host, source)` — `packages/agent/src/lib/readiness/remedy.ts:149`
+  — never receives `check.error`, so an evaluation error takes the `fail` branch.
+- `STATUS_PRESENTATION[check.status]` — `packages/spa/src/components/panels/readiness/ReadinessIndicator.tsx:71`
+  — is keyed on status alone, so the word and the glyph are the `fail` ones.
+
+`disclose()` at `ReadinessIndicator.tsx:214` already branches on
+`check.error !== null` for the accessible label, and its comment at line 201
+concedes the rest: *"without this the two render identically and read
+identically, while ordering differently."* The branch exists; nothing else
+consumes it.
+
+**Why it is worth more than a polish note.** The two states demand opposite
+responses — fix the code, versus fix the artifact's frontmatter. On the fleet a
+reader cannot tell which repository needs an afternoon from which needs a
+one-line metadata edit without hovering every red cell. On the detail page they
+are actively instructed to do the wrong thing.
+
+**Shape of the fix, not a decision to adopt it.** A presentation-layer branch on
+`check.error !== null` in both places: a distinct glyph in `STATUS_PRESENTATION`
+(the vocabulary has six members and `X` is taken by `fail`), a word other than
+"failing", and an error-aware remedy. The status stays `fail` on the wire, so no
+spec delta is implied — this is conformance to what the spec already separates.
