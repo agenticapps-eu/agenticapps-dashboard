@@ -68,24 +68,19 @@ withdrawn. With no integration to configure, it has no consumer.
 daemon's own directory are left in place so a rollback does not destroy
 configuration. Inert means v2 neither reads nor writes them.
 
-**Retention is bounded, owned, and dated — and the rule that says so lives
-elsewhere, deliberately.** These files hold integration credentials, and "left in
-place for rollback" with no end is indefinite retention of secrets the product no
-longer has any use for. The window is the rollback window and no longer: **thirty
-days from the cutover release**, after which the files are deleted, with the
-deletion carried as a dated task owned by whoever ships the cutover.
+**Retention is governed by `Retained Credential Files Have A Bounded Lifetime` in
+`filesystem-access-policy`.** That requirement is the sole normative statement of
+the window, the owner, and the deadline. This entry points at it and does not
+restate it.
 
-**Relocated 2026-08-04 to `filesystem-access-policy` as `Retained Credential
-Files Have A Bounded Lifetime`.** This paragraph previously stated the rule
-normatively — SHALL and all — inside a requirement this delta *removes*, in a
-file whose only heading is `## REMOVED Requirements`. At the fold the requirement
-is deleted and the rule with it, so the guarantee would have expired precisely
-when the credentials started outliving their feature. It now sits beside the
-`0600` mode discipline it complements, in a capability that survives.
-
-Mode `0600` governs **who** can read a file, not **how long** it exists; a
-credential retained forever at `0600` is still a credential retained forever.
-That distinction is the reason the rule needed a home rather than a mention.
+**Relocated 2026-08-04; the restatement removed 2026-08-05.** The rule was
+originally written here — SHALL and all — inside a requirement this delta
+*removes*, in a file whose only heading is `## REMOVED Requirements`, so at the
+fold the requirement would be deleted and the rule with it. Relocating it fixed
+that. Leaving a second copy behind, as the first attempt did, reintroduced the
+defect in a subtler form: one number stated in two places, one of which is
+scheduled for deletion, is how the two copies drift and how a reader ends up
+citing the dead one.
 
 ### Requirement: Local Tooling Health Detection
 
@@ -133,10 +128,10 @@ own remedy: "If that trade is wrong, the fix is to preserve this one too." Two
 reviewers, in two separate rounds and from different vendors, judged the trade
 wrong on the same ground: the cost of retaining a standing rule is zero, and the
 visible-in-review defence assumes a reviewer who already knows the constraint,
-which is precisely what archive archaeology fails to supply.
-
-**Migration**: None. If integrations return, this constraint should return with
-them.
+which is precisely what archive archaeology fails to supply. A second
+`**Migration**: None. If integrations return, this constraint should return with
+them.` was left standing below this paragraph by that reversal and removed on
+2026-08-05; it contradicted the relocation stated above.
 
 ### Requirement: The Dashboard Works Without Any Integration
 

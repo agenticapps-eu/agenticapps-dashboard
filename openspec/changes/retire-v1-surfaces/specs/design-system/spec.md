@@ -52,6 +52,15 @@ which collides with the text-resize and reflow guarantees the product owes. In
 contains: the density is a property of the design, and enlarging text remains a
 supported thing to do rather than a conformance failure.
 
+**The maximum and the uniformity clause are both scoped to the reference
+viewport.** At `xs` a logical row may wrap its fields internally, which
+necessarily makes it taller than one line and makes rows of differing content
+differ in height. Both are permitted there: at `xs` the requirement is that a row
+remains one list item with every required field available, not that it fits
+`3.5rem` or matches its neighbours. Read unscoped, the uniform-height scenario
+and the wrap allowance contradict each other outright — one demands every row be
+identical while the other permits exactly the variation that breaks it.
+
 The row-count figure is retained as the **intent** the height is chosen to serve
 — roughly a fifteen-row working set at the reference viewport in a typical
 browser — and SHALL NOT be used as the pass condition.
@@ -89,7 +98,12 @@ verification viewport is 390×844.
 #### Scenario: A row is no taller than the density budget
 - **WHEN** a row on a list or table surface is measured at the reference viewport
 - **THEN** its height is at or below the declared maximum of `3.5rem`
-- **AND** every row is the same height, rather than a card-sized block.
+- **AND** every row at that viewport is the same height, rather than a card-sized block.
+
+#### Scenario: A wrapped row at the smallest breakpoint is not a violation
+- **WHEN** a logical row wraps its fields internally at the `xs` viewport and so exceeds `3.5rem`
+- **THEN** it still conforms, because the maximum and the uniformity clause are scoped to the reference viewport
+- **AND** it remains one list item with every required field available.
 
 #### Scenario: Enlarged text is not a conformance failure
 - **WHEN** a user raises their text size and rows grow with it
@@ -140,7 +154,7 @@ a value outside them.
 
 #### Scenario: A value outside the scale is rejected
 - **WHEN** a component declares a font size or weight that is not one of the enumerated tokens
-- **THEN** the violation is detected rather than rendering
+- **THEN** an automated check fails on that component — a lint rule or a test asserting component typography against the token set, named by the implementing change
 - **AND** the requirement's MUST NOT is exercised rather than only its enumeration.
 
 ### Requirement: A Value Is Shown Where One Exists

@@ -111,21 +111,6 @@ A removed API MUST NOT retain a compatibility stub or synthetic payload.
 - **THEN** the application redirects to the onboarding surface as before
 - **AND** the fleet redirect does not bypass the pairing check.
 
-#### Scenario: A degraded spec read is visible, not silent
-- **WHEN** the CLI and tree readers return different values for a project
-- **THEN** the surface marks that project as read in compatibility mode and names the change they disagreed about
-- **AND** two machines that differ only in whether the binary is installed do not present the difference as a difference between repos.
-
-#### Scenario: A legal configuration is not reported as malformed
-- **WHEN** the readers diverge because a change places its task artifact at a schema-permitted path other than the default
-- **THEN** the surface reports the divergence without attributing it to a malformed spec
-- **AND** the reader is not sent to correct a file that conforms.
-
-#### Scenario: A broken CLI cannot empty a populated surface
-- **WHEN** the `openspec` binary is present but exits non-zero or emits output that does not parse
-- **THEN** the daemon falls back to the values read from the tree
-- **AND** the surface shows what the tree can populate rather than nothing.
-
 #### Scenario: A retired per-project link keeps its repo
 - **WHEN** a user navigates to `/projects/:id`
 - **THEN** the application redirects to `/repos/:id` rather than to the fleet surface
@@ -361,8 +346,17 @@ family-root discovery on the grounds that "an unregistered repo is added through
 the surviving home registration affordance" — an argument that only holds while
 the affordance survives somewhere a user can reach.
 
+**The title still says "Home Page" and deliberately stays that way.** It names
+the requirement as the baseline names it, and a MODIFIED entry that renames its
+target modifies nothing — the fold matches on the title. The same mismatch in
+this change's `fleet-coverage` delta left two requirements silently un-withdrawn
+in a capability it claimed to end, so the cost of a tidier title here is not
+worth paying. Renaming it is a one-line follow-up once this change has folded,
+at which point the baseline carries the new title and a later delta can target
+it.
+
 #### Scenario: Registering from the UI updates the fleet
-- **WHEN** a user registers a project through the home surface affordance
+- **WHEN** a user registers a project through the register affordance on the fleet surface
 - **THEN** the project is registered and appears in the fleet list
 - **AND** its name was suggested before submission and no manual reload occurs.
 
@@ -403,9 +397,17 @@ only when the binary is present, the same repository can render differently on
 two machines with no indication that anything is environment-dependent. A reader
 comparing two dashboards would take the difference for a difference in the repos.
 When a divergence is detected the surface SHALL mark the affected project as read
-in a degraded or compatibility mode and SHALL name the change the readers
-disagreed about; it SHALL NOT present the merged values as though both readers
-agreed.
+in a degraded or compatibility mode and SHALL identify what the readers disagreed
+about — the change, where the divergence is per-change, and otherwise the field,
+such as a capability or requirement count that belongs to no single change. It
+SHALL NOT present the merged values as though both readers agreed.
+
+**The diagnostic is required to be possible, which is why it names a field and
+not always a change.** An earlier draft required the surface to name "the change
+the readers disagreed about", which cannot be satisfied for a divergence in
+capability or requirement counts: those are properties of the project, not of any
+change. A mandatory diagnostic that some real divergence cannot produce is a
+requirement that forces either a false attribution or a silent failure to report.
 
 **The cause SHALL NOT be reported as a malformed spec unless the spec is
 malformed.** An earlier draft named "the malformed spec" as the cause of every
@@ -443,9 +445,26 @@ because "presence is read from the tree" reads like a guarantee about all change
 and is a guarantee about one path.
 
 The reader SHALL NOT enumerate archived changes or derive each open change's
-affected capabilities: no v2 surface consumes either value. It SHALL continue
-to expose open-change names, completed and total task counts, task-artifact
+affected capabilities: no v2 surface consumes either value. It SHALL continue to
+expose open-change names, completed and total task counts, task-artifact
 presence, capability names, and requirement counts.
+
+**What is actually consumed, stated exactly, because the pruning standard above
+does not reach the whole retained set.** After the cutover the `spec` check reads
+slot presence, each open change's name with its completed and total task counts,
+and the *length* of the capability list for its summary line. Task-artifact
+presence, capability **names**, and requirement counts have no post-cutover
+consumer: their only readers were the withdrawn capability panel and change
+progress column.
+
+They are retained anyway, and this is a deliberate exception rather than an
+oversight. They are part of the reader contract `add-openspec-project-reader`
+established, they cost one tree read that already happens for the counts, and
+presence in particular is the one value the CLI cannot reconstruct, so dropping
+it would be irreversible from the CLI side alone. What is *not* claimed is that
+v2 consumes them — the earlier wording listed the retained and the consumed as
+one set, so a reader checking the pruning argument against the retained fields
+would find it fails for three of them.
 
 **The parity claim is pinned to a field set and a scope**, because an unqualified
 "both paths produce the same values" is not testable and, taken literally, is
@@ -515,3 +534,18 @@ worse, because it reads as tested when it is not.
 - **WHEN** the hybrid reader returns OpenSpec data after the v2 cutover
 - **THEN** it carries no archived-change list or per-change affected-capability list
 - **AND** the spec check and repo detail still receive every field they display.
+
+#### Scenario: A degraded spec read is visible, not silent
+- **WHEN** the CLI and tree readers return different values for a project
+- **THEN** the surface marks that project as read in compatibility mode and identifies what the readers disagreed about
+- **AND** two machines that differ only in whether the binary is installed do not present the difference as a difference between repos.
+
+#### Scenario: A legal configuration is not reported as malformed
+- **WHEN** the readers diverge because a change places its task artifact at a schema-permitted path other than the default
+- **THEN** the surface reports the divergence without attributing it to a malformed spec
+- **AND** the reader is not sent to correct a file that conforms.
+
+#### Scenario: A broken CLI cannot empty a populated surface
+- **WHEN** the `openspec` binary is present but exits non-zero or emits output that does not parse
+- **THEN** the daemon falls back to the values read from the tree
+- **AND** the surface shows what the tree can populate rather than nothing.

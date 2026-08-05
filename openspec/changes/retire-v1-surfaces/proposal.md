@@ -214,6 +214,38 @@ artifacts and the code already did the right thing. That is the expected failure
 mode of a review that runs before implementation, not a reason to skip it: the
 same round found a security guarantee scheduled for deletion.
 
+## Review disposition (2026-08-05) — round 3, and the last
+
+Round 3 ran against the round-2 fixes. **gemini APPROVE, codex REQUEST-CHANGES,
+opencode REQUEST-CHANGES** (claude excluded). opencode independently re-derived
+the nineteen-endpoint table, confirmed both narrowed code claims against the
+source, and confirmed the register-affordance catch.
+
+**Four of this round's findings were defects introduced by round 2's fixes.**
+That is the number worth carrying forward: a fix round with no review after it
+lands is not free, and this one had a defect rate around one in four.
+
+| Finding | Disposition |
+|---|---|
+| codex — `fleet-coverage` removes `Four-State Column Freshness` and `Scoped Refresh Actions`, which the baseline does not contain, while `Three-State Column Freshness` and `Coverage Wire Version Skew Is Explicit` are withdrawn by nothing | **Fixed, and it was the most consequential finding across all three rounds.** `remove-gitnexus-integration` (#75) renamed one and added the other on 2026-07-28; this delta was drafted against the older baseline. Two requirements would have survived in a capability this change claims to *end* — and both sides totalled ten, so every count-based check passed, including a reviewer's and this session's. All five withdrawn capabilities were then diffed name-by-name against their baselines; the drift was isolated to this one. |
+| codex + opencode + gemini — snapshot retention still deferred in the delta while the disposition claims it fixed | **Fixed, and the round-2 disposition was an overclaim.** Round 2 said "Fixed. Same window, same owner, same dated task"; only the task list had changed and `Daily Coverage History Snapshots` still read "requires a separate cleanup decision". The retention requirement also scoped itself to credential files, which snapshots are not, so nothing normative covered them. The requirement is now `Files Retained For Rollback Have A Bounded Lifetime` and covers both. This is the same failure this proposal charged the round-1 table with, committed in the act of correcting it. |
+| opencode — `No Reimplementation` carries two contradictory `**Migration**` paragraphs | **Fixed.** Splice residue from the round-2 reversal; the stale "Migration: None" is removed. |
+| opencode — the thirty-day window is still restated inside the REMOVED requirement | **Fixed.** The relocation's whole premise was that normative text under `## REMOVED Requirements` does not survive the fold; leaving a second copy behind recreated the defect as a drift hazard. The entry now points at the new home and states nothing itself. |
+| codex — three hybrid-reader scenarios are nested under `Retired Locations Have An Explicit Transition` | **Fixed.** Two were misfiled by round 2, one was already misfiled before it. All three now sit under `Hybrid OpenSpec Read Strategy`. |
+| codex — a capability-count divergence has no "change they disagreed about", making the mandatory diagnostic impossible | **Fixed.** The diagnostic now names the change where the divergence is per-change and the field otherwise. A mandatory diagnostic that a real divergence cannot produce forces either a false attribution or a silent failure. |
+| codex — the reader-pruning claim relies on v2 consumers that do not exist | **Fixed by stating the truth rather than widening the pruning.** Verified: the `spec` check reads slot presence, each open change's name and task counts, and `capabilities.length` for its summary (`specDeriver.ts:46-66`). Task-artifact presence, capability *names* and requirement counts have no post-cutover consumer — their only readers were the withdrawn capability panel and change-progress column. They are still retained, now as a stated exception with its reasons, instead of being listed as though consumed. |
+| codex — the credential requirement demands a literal date and a named person; the task says "whoever ships" and defers the date. Nothing removes the `env` writer or the boot-time loader | **Fixed, both halves.** The task now carries blanks that must hold literal values before it can be checked off. And `cli.ts:105-123` exposes `env set/unset/list` while `cli/start.ts:222` calls `loadEnvFile()` on every boot — deleting the file while both survive is not a deletion, since the CLI recreates it and the daemon reads it back. Removing them is now its own task. |
+| opencode — `Dense Rows` uniformity contradicts the `xs` wrap allowance | **Fixed.** Both the maximum and the uniformity clause are scoped to the reference viewport; a wrapped `xs` row that exceeds `3.5rem` conforms. Unscoped, one clause demanded every row be identical while the other permitted exactly the variation that breaks it. |
+| opencode — `A Bounded Type Scale`'s new scenario names no detection oracle | **Fixed.** It now requires a named automated check — lint rule or typography test — rather than asserting an outcome with no mechanism. |
+| opencode — `Register A Project From The Home Page` keeps its title while its body re-homes the affordance | **Held, with the reason recorded in the delta.** The title is how the fold matches the baseline requirement; renaming it would make the entry modify nothing. That is precisely the `fleet-coverage` defect above, and it is not worth re-committing for a tidier title. Recorded as a follow-up once the baseline carries the new name. |
+| gemini — `Consistent Table Column Widths` is "intentionally dormant" spec debt | **Held.** Design §5 already argues this: the condition is generic to any repeated table structure, and a dormant requirement constrains future work correctly rather than obliging anyone to build a surface for it. |
+| gemini — the path-drift regression needs a tracked issue, not a note | **Held, third time.** Recorded as a deliberate, unscheduled non-goal since round 1. A repair affordance belongs on a v2 surface that shows drift; none does, and designing one inside a withdrawal change is the scope error this change exists to avoid. |
+
+**This is the last review round.** Three rounds found, in order: seventeen
+findings, then nine, converging from zero approvals to one. The round-3 fixes
+above are unreviewed, which is a known and accepted risk recorded here rather
+than discovered later — the same risk that produced four defects last time.
+
 ## What this change explicitly does not do
 
 - **It does not tidy `openspec/CAPABILITY-MAP.md`.** That document is ratified
