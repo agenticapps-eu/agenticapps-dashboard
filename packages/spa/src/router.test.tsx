@@ -140,6 +140,11 @@ describe('router — single AppShellV2 route tree', () => {
  * `beforeLoad` is invoked directly rather than through a navigation: the
  * redirect is the entire behaviour, and driving a real history would add a
  * shell, lazy chunks and a query client to a question about one function.
+ *
+ * That economy has one blind spot, and the describe block below pays for it:
+ * a fabricated `location` cannot disagree with the router about the pathname,
+ * so these cases cannot see a spelling the router accepts and the manifest
+ * does not. Those are driven through a real navigation instead.
  */
 describe('router — retired v1 locations resolve through the manifest', () => {
   beforeEach(() => {
@@ -196,5 +201,85 @@ describe('router — retired v1 locations resolve through the manifest', () => {
     const { router } = await import('./router.js')
     const fleet = router.routesById['/_appshell/fleet' as keyof typeof router.routesById]
     expect(fleet?.options.beforeLoad).toBeUndefined()
+  })
+})
+
+/**
+ * `Retired Locations Have An Explicit Transition` — the spellings a browser
+ * actually sends.
+ *
+ * TanStack matches paths case-insensitively and tolerates a trailing slash,
+ * but `location.pathname` reaches `beforeLoad` exactly as the visitor typed
+ * it. So `/coverage/` and `/COVERAGE` both *match* the retired route while
+ * missing an exact manifest lookup — no redirect is thrown, and the route has
+ * no component, so it renders an empty Outlet inside the shell. That is the
+ * one outcome the requirement's scenarios name and forbid in as many words:
+ * "it does not render a blank shell".
+ *
+ * Case is not significant to this router for any surviving surface — `/FLEET`
+ * renders the fleet. A retired location that answered only the lower-case
+ * spelling would change URL semantics for exactly the six addresses the
+ * cutover exists to keep working.
+ *
+ * Driven through a real navigation on purpose. The block above calls
+ * `beforeLoad` with a hand-built location, which is cheap and cannot fail this
+ * way — it hands the manifest the pathname the test already assumed.
+ */
+describe('router — retired locations answer every spelling the router accepts', () => {
+  /** Navigates for real and reports where the visitor ended up. */
+  async function land(entered: string): Promise<{ pathname: string; leaf: string }> {
+    vi.resetModules()
+    pairingState.paired = true
+    const [{ router }, { createMemoryHistory }] = await Promise.all([
+      import('./router.js'),
+      import('@tanstack/react-router'),
+    ])
+    router.update({ history: createMemoryHistory({ initialEntries: [entered] }) })
+    await router.load()
+    return {
+      pathname: router.state.location.pathname,
+      leaf: router.state.matches.at(-1)?.routeId ?? '(none)',
+    }
+  }
+
+  it('treats case as insignificant for a surviving surface — the premise the rest rests on', async () => {
+    expect((await land('/FLEET')).leaf).toBe('/_appshell/fleet')
+  })
+
+  it.each([
+    '/coverage/',
+    '/COVERAGE',
+    '/Coverage/',
+    '/observability/conformance/',
+    '/observability/Skill-Drift',
+    '/code-intelligence/',
+  ])('carries %s to the fleet rather than a blank shell', async (entered) => {
+    expect(await land(entered)).toMatchObject({ pathname: '/fleet', leaf: '/_appshell/fleet' })
+  })
+
+  it.each([
+    ['/projects/dashboard/', '/repos/dashboard'],
+    ['/PROJECTS/dashboard', '/repos/dashboard'],
+  ])('carries %s to %s rather than a blank shell', async (entered, expected) => {
+    expect(await land(entered)).toMatchObject({
+      pathname: expected,
+      leaf: '/_appshell/repos/$repoId',
+    })
+  })
+
+  it('lower-cases the location it looks up, never the identifier it carries', async () => {
+    // The registry id is the identifier, not a spelling to normalise. Folding
+    // its case would send a bookmark for `MyRepo` to a repo that may not exist
+    // and turn a working deep link into the detail page's not-found state.
+    expect((await land('/Projects/MyRepo')).pathname).toBe('/repos/MyRepo')
+  })
+
+  it('still returns not-found for a sub-path the product never served', async () => {
+    // The control. Tolerating spellings must not widen the manifest into the
+    // wildcard the requirement rejects.
+    expect((await land('/projects/dashboard/coverage')).pathname).toBe(
+      '/projects/dashboard/coverage',
+    )
+    expect((await land('/projects/dashboard/coverage')).leaf).not.toContain('repos')
   })
 })
