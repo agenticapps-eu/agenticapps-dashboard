@@ -45,6 +45,29 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ),
   }
 })
+/**
+ * RegisterModal is stubbed: its own behaviour — path entry, name suggestion,
+ * the three prepare outcomes — is covered by RegisterModal.test.tsx, and the
+ * real component needs the registry query hooks this file does not provide.
+ * What the fleet owes the user is the affordance and the open, so that is what
+ * is asserted here.
+ */
+vi.mock('../../RegisterModal.js', () => ({
+  RegisterModal: ({
+    isOpen,
+    onConfirmed,
+  }: {
+    isOpen: boolean
+    onConfirmed: (id: string) => void
+  }) =>
+    isOpen ? (
+      <div data-testid="register-modal">
+        <button type="button" onClick={() => onConfirmed('newly-registered')}>
+          stub confirm
+        </button>
+      </div>
+    ) : null,
+}))
 vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
   // `useFleet` is mocked; `SchemaDriftError` is not. The page branches on
   // `instanceof`, so a stubbed class would make that branch untestable.
@@ -107,19 +130,26 @@ function repo(
   }
 }
 
-/** The shape `useFleet` returns, narrowed to what the page reads. */
-function fleet(repos: readonly RepoSummary[]): void {
+/**
+ * The shape `useFleet` returns, narrowed to what the page reads.
+ *
+ * Returns the `refetch` spy so a test can assert the fleet was asked to
+ * re-read; every existing caller ignores it.
+ */
+function fleet(repos: readonly RepoSummary[]): ReturnType<typeof vi.fn> {
   const data: FleetResponse = {
     generatedAt: Date.UTC(2026, 6, 31, 12, 0),
     repos: [...repos],
   }
+  const refetch = vi.fn()
   mockUseFleet.mockReturnValue({
     data,
     isPending: false,
     isError: false,
     error: null,
-    refetch: vi.fn(),
+    refetch,
   } as unknown as ReturnType<typeof useFleet>)
+  return refetch
 }
 
 /** Body rows only — the header row is not a repo. */
@@ -506,6 +536,65 @@ describe('FleetPage', () => {
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     screen.getByRole('button', { name: /retry/i }).click()
+    expect(refetch).toHaveBeenCalled()
+  })
+})
+
+/**
+ * `Register A Project From The Home Page` (project-dashboard, MODIFIED by
+ * retire-v1-surfaces): the affordance is re-homed onto the fleet, because the
+ * multi-project home that hosts it today is withdrawn. Its three scenarios are
+ * the three cases below; the fourth test covers the command-palette entry
+ * point, whose only listener today is that same withdrawn component.
+ */
+describe('FleetPage — the re-homed register affordance', () => {
+  it('offers registration from a populated fleet, not only from the empty state', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.getByRole('button', { name: /register repository/i })).toBeInTheDocument()
+  })
+
+  it('offers registration directly when nothing is registered, without falling back to the CLI', () => {
+    fleet([])
+    render(<FleetPage />)
+
+    // Two: the persistent header action and the empty state's own primary
+    // button. The CLI line survives as an alternative, not as the only route —
+    // which is the regression this requirement exists to prevent.
+    expect(screen.getAllByRole('button', { name: /register repository/i })).toHaveLength(2)
+    expect(screen.getByText(/agentic-dashboard register/)).toBeInTheDocument()
+  })
+
+  it('opens the register modal when the affordance is activated', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.queryByTestId('register-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /register repository/i }))
+    expect(screen.getByTestId('register-modal')).toBeInTheDocument()
+  })
+
+  it('opens the register modal when the command palette dispatches palette:open-register', () => {
+    // commandPaletteActions.ts fires this on `window`; MultiProjectHome was its
+    // only listener, so the palette action no-ops the moment that surface goes.
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    fireEvent(window, new CustomEvent('palette:open-register'))
+    expect(screen.getByTestId('register-modal')).toBeInTheDocument()
+  })
+
+  it('re-reads the fleet once a registration is confirmed, so the new repo needs no reload', () => {
+    // `useRegisterConfirm` invalidates ['registry'], which the fleet does not
+    // read — it reads FLEET_QUERY_KEY. Without this the row appears only after
+    // a manual reload, which the requirement's first scenario forbids.
+    const refetch = fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: /register repository/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'stub confirm' }))
+
     expect(refetch).toHaveBeenCalled()
   })
 })
