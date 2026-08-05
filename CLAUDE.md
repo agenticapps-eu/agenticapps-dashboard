@@ -89,26 +89,33 @@ A multi-project pipeline dashboard: a static SPA on Cloudflare Pages plus one
 local daemon that reads each registered project's files and git history. No
 project data leaves the machine.
 
-**Product behaviour is specified in `openspec/specs/`, not here.** Fifteen
-capabilities; read the one you are touching before you touch it:
+**Product behaviour is specified in `openspec/specs/`, not here.** Ten
+capabilities carrying **105 requirements** (measured on disk 2026-08-05, and
+corroborated by `openspec spec list --json`, which reports the same per-capability
+figures); read the one you are touching before you touch it:
 
 | Capability | Covers |
 |---|---|
-| [`filesystem-access-policy`](openspec/specs/filesystem-access-policy/spec.md) | Read-only on project filesystems, path allow-list, file modes. **The security spine — read this one first.** |
+| [`filesystem-access-policy`](openspec/specs/filesystem-access-policy/spec.md) | Read-only on project filesystems, path allow-list, file modes, bounded retention of files kept for rollback. **The security spine — read this one first.** |
 | [`daemon-runtime`](openspec/specs/daemon-runtime/spec.md) | Daemon lifecycle, bind modes, health, caching, service install, CLI |
 | [`auth-and-pairing`](openspec/specs/auth-and-pairing/spec.md) | Bearer token, rotation, CORS lock, pairing flow |
 | [`project-registry`](openspec/specs/project-registry/spec.md) | Registry shape, CRUD, reachability, path drift |
-| [`project-dashboard`](openspec/specs/project-dashboard/spec.md) | Home cards and the single-project three-column view |
-| [`skills-and-linting`](openspec/specs/skills-and-linting/spec.md) | Skill inventory, AgentLinter, cross-repo drift |
-| [`fleet-coverage`](openspec/specs/fleet-coverage/spec.md) | Coverage matrix, freshness states, history and trends |
-| [`fleet-conformance`](openspec/specs/fleet-conformance/spec.md) | Conformance scoring, tiers, trend chart, path-drift panel |
+| [`project-dashboard`](openspec/specs/project-dashboard/spec.md) | The v1→v2 transition manifest and withdrawn API surface, browser registration, wire-schema validation, keyboard shortcuts, the hybrid OpenSpec reader, and the two standing constraints on future integrations |
 | [`workflow-fleet-conformance`](openspec/specs/workflow-fleet-conformance/spec.md) | Whether the five workflow repos agree with core: spec versions, per-skill drift, shared-artefact byte identity, pinned vs vendored distribution, the bounded harness runner |
-| [`code-intelligence`](openspec/specs/code-intelligence/spec.md) | Understand Anything analysis status, commands, and knowledge-graph viewer (GitNexus removed from the dashboard) |
-| [`optional-integrations`](openspec/specs/optional-integrations/spec.md) | Sentry / Linear / Infisical, and the works-without-them contract |
 | [`help-docs`](openspec/specs/help-docs/spec.md) | The in-product `/help` documentation system |
-| [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, shared primitives, shell IA |
+| [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, the bounded type scale, the `3.5rem` row-height budget, non-colour state channels, shared primitives, shell IA |
 | [`repo-readiness`](openspec/specs/repo-readiness/spec.md) | The six checks (`workflow`, `spec`, `code-review`, `security-review`, `pen-test`, `coverage`), the six-value status vocabulary, two-tier provenance, ancestry-based freshness, and the fleet/detail readiness routes |
 | [`agent-change-board`](openspec/specs/agent-change-board/spec.md) | The fleet OpenSpec change board: the four lifecycle stages and the ordered rules that assign them, the three card sources, the reviewer and staleness rules, per-repository degradation, ordering, and the deep-linked drawer |
+
+**Five capabilities were withdrawn whole by `retire-v1-surfaces`** and their spec
+files are gone, not emptied: `code-intelligence`, `fleet-coverage`,
+`fleet-conformance`, `skills-and-linting`, `optional-integrations`. Their
+requirements and the reasoning for each withdrawal are in that change's spec
+deltas; the two standing rules worth keeping out of `optional-integrations`
+were relocated into `project-dashboard` rather than archived with it. The three
+capabilities that answer v2's questions in their place —
+`repo-readiness`, `workflow-fleet-conformance`, `agent-change-board` — are in
+the table above and deliberately do not reuse the withdrawn names.
 
 Project-wide context and the hard constraints also live in
 [`openspec/config.yaml`](openspec/config.yaml) under `context:`.

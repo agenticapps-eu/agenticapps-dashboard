@@ -5,17 +5,23 @@
 The dashboard is a tool someone looks at many times a day, so its visual layer is
 held to a contract rather than left to per-page judgement. This capability owns
 that contract: the design tokens every surface draws from, the accessibility
-floors those tokens must clear, the shared interaction primitives, and the app
-shell and navigation structure.
+floors those tokens must clear, the type scale and density budget every surface
+works within, the shared interaction primitives, and the app shell and navigation
+structure.
 
 The important part is that these are **enforced**, not aspirational. Colour
 contrast is asserted in the test suite, so a token edit that regresses legibility
 fails CI rather than shipping. Layout widths come from one shared source, so
-sections cannot drift apart.
+sections cannot drift apart. The type scale resets each Tailwind namespace to
+`initial`, so a size outside the enumeration generates no CSS at all rather than
+quietly working.
 
-The per-phase design critique ritual and its composite-score floor are **process**,
-not product, and live in `CLAUDE.md` / `docs/WORKFLOW.md`. What is specified here
-is the outcome that ritual protects.
+The per-change design critique ritual and its composite-score floor are
+**process**, not product, and live in `CLAUDE.md` / `docs/WORKFLOW.md`; the
+ratified capability map lists them under deliberate exclusions. What is specified
+here is the *outcome* that ritual protects — state legibility without colour,
+density, a bounded scale, and a value shown wherever one exists — which is what
+belongs in a spec.
 ## Requirements
 ### Requirement: Design Tokens Are The Single Source Of Colour
 
@@ -148,15 +154,35 @@ focus.
 
 ### Requirement: App Shell And Sidebar Information Architecture
 
-The product SHALL render its authenticated routes inside a shared shell with
-sidebar navigation grouped into sections. New destinations SHALL be added as peer
-entries within the appropriate section, preserving existing ordering, rather than
-reorganising established navigation.
+The product SHALL render its authenticated routes inside a shared application
+shell. Its sidebar SHALL present navigation grouped into exactly two labelled
+sections: product content and utilities. Help and settings/account destinations
+SHALL appear in utilities rather than being treated as product content. Entries
+within each section SHALL use the same navigation primitive and indentation. The
+sidebar MUST NOT enumerate individual registered projects; the fleet surface is
+that list. New destinations SHALL be added as peers within the appropriate
+section without reordering existing peers unless a later
+information-architecture change says so.
 
-#### Scenario: A new destination is added without reordering
-- **WHEN** a new page joins an existing sidebar section
-- **THEN** it is appended as a peer entry using the same navigation primitive as its siblings
-- **AND** the existing entries keep their order and indentation.
+#### Scenario: Navigation is grouped into two sections
+- **WHEN** an authenticated route renders inside the shared shell
+- **THEN** product content appears under one labelled section and help plus settings/account destinations under utilities
+- **AND** no third navigation section is present.
+
+#### Scenario: The sidebar does not list projects
+- **WHEN** many projects are registered
+- **THEN** the sidebar's height is unchanged by their number
+- **AND** the projects are reached through the fleet surface.
+
+#### Scenario: The current surface is indicated
+- **WHEN** a surface is active
+- **THEN** its navigation entry is marked as current
+- **AND** the marking does not rely on colour alone.
+
+#### Scenario: Adding a destination preserves peer order
+- **WHEN** a new content or utility destination is added
+- **THEN** it appears in the matching section using the same navigation primitive and indentation as its siblings
+- **AND** existing peer ordering remains unchanged.
 
 ### Requirement: Theme Support
 
@@ -205,4 +231,183 @@ place fixed-luminance text on a token whose role is foreground.
 - **WHEN** a component pairs fixed-luminance text with a foreground-role token
 - **THEN** an automated test fails identifying the component
 - **AND** the pairing cannot reach the default branch.
+
+### Requirement: State Is Never Signalled By Colour Alone
+
+Any element that communicates a state SHALL encode that state through at least
+one channel besides colour — shape, fill, pattern, glyph, or text. A user who
+does not perceive the colour difference MUST be able to distinguish every state.
+
+#### Scenario: Every state is distinguishable without colour
+- **WHEN** a state-bearing element renders and colour information is unavailable
+- **THEN** each distinct state remains distinguishable from every other
+- **AND** no state is identified only by its hue.
+
+### Requirement: Dense Rows And Aligned Figures
+
+Every surface SHALL fit horizontally at the declared verification viewports
+without page-level horizontal scrolling. List and table surfaces SHALL use a
+compact, uniform row height, and numeric columns SHALL use tabular figures so
+that digits align vertically. At the `xs` viewport a logical row MAY wrap its
+fields internally, but it MUST remain one list item rather than becoming a card
+and every required field MUST remain available.
+
+**Density SHALL be specified as a row height, not as a row count that fits a
+screen.** The binding constraint is a maximum height per row, verifiable by
+measuring one row. "A fifteen-row working set is visible without scrolling" was
+the earlier phrasing and it is not a property of the design: the same stylesheet
+passes or fails it depending on browser chrome, OS font scaling, zoom level, and
+whether a bookmarks bar is open. A requirement that a correct implementation can
+fail for reasons outside the page cannot be met deliberately, only met by luck.
+
+**The maximum SHALL be `3.5rem`, declared as a design token, and SHALL be
+expressed in `rem` rather than CSS pixels.** An earlier draft said "a maximum
+height per row in CSS pixels" and then declared no number at all, leaving the
+requirement unverifiable — a scenario asserting a row is "at or below the
+declared maximum" when nothing declares one.
+
+**`3.5rem` was chosen because the fleet table already ships it — but it is a
+budget the product must meet, not a description of the product as built.** The
+original rationale read "the constraint records the density that exists rather
+than imposing a restyling", and measurement on 2026-08-05 falsified that as a
+general claim: it holds for the fleet, and does not hold for the workflow
+conformance surface, whose two tables measure `[100, 75.5, 51, 99.5]` and
+`[71.5, 71.5, 51, 51, 51, 50.5]` CSS pixels against a 56 px cap, because their
+cells stack list-valued content. That surface is a real `<table>` with no
+recorded exemption claim, so this requirement binds it and it is currently
+non-conformant — tracked as an open `openspec/BACKLOG.md` entry rather than
+silently rescoped. Stated here so the number is read as a target with one known
+outstanding violation, not as a measurement of the whole product.
+
+The unit is the substantive half. A cap fixed in CSS pixels that must hold "at a
+non-default OS font scale" is a requirement to clip text when a user enlarges it,
+which collides with the text-resize and reflow guarantees the product owes. In
+`rem` the row grows with the user's font size, so the cap scales with the text it
+contains: the density is a property of the design, and enlarging text remains a
+supported thing to do rather than a conformance failure.
+
+**The maximum and the uniformity clause are both scoped to the reference
+viewport.** At `xs` a logical row may wrap its fields internally, which
+necessarily makes it taller than one line and makes rows of differing content
+differ in height. Both are permitted there: at `xs` the requirement is that a row
+remains one list item with every required field available, not that it fits
+`3.5rem` or matches its neighbours. Read unscoped, the uniform-height scenario
+and the wrap allowance contradict each other outright — one demands every row be
+identical while the other permits exactly the variation that breaks it.
+
+The row-count figure is retained as the **intent** the height is chosen to serve
+— roughly a fifteen-row working set at the reference viewport in a typical
+browser — and SHALL NOT be used as the pass condition.
+
+**The density clause binds list and table surfaces; the fit and alignment
+clauses bind every surface.** The scoping is stated rather than inferred,
+because the lifecycle change board is a kanban board of cards and the sentence
+"every row is the same height, rather than a card-sized block" reads as
+anti-card in general. It is not: it governs surfaces whose unit of information
+is a **row**, where a card-sized block is a density regression against a
+directly comparable alternative. A kanban column's unit is a card, chosen over
+a dense table deliberately and with the trade-off recorded (`add-agent-change-board`
+design decision 6 — stage as a *place* rather than a value scanned for, matching
+the terminal board this fleet already uses).
+
+What the board is **not** exempt from, and must satisfy: no page-level
+horizontal scrolling at either verification viewport, and tabular figures on its
+numeric values so counts align between cards. Both are asserted in that change's
+own tests. The exemption is from uniform row height alone.
+
+**A surface SHALL NOT claim the exemption by self-assertion.** "Whose unit of
+information is a card" is a judgement, and a judgement no one has to write down
+is one every future surface can make in its own favour — which is how a density
+requirement decays into a density preference. A surface claiming the exemption
+SHALL record the claim and its trade-off in its own change, as the lifecycle
+change board does in its design decision 6. A surface that has not recorded the
+claim is bound by uniform row height.
+
+The **reference viewport** for density guarantees is 1440×900, matching the
+design critique. Responsive fit SHALL also be verified at the smallest declared
+breakpoint; a width breakpoint alone is not used to assert vertical fit. The
+smallest named breakpoint is `xs` below 640 CSS pixels, and its representative
+verification viewport is 390×844.
+
+#### Scenario: A row is no taller than the density budget
+- **WHEN** a row on a list or table surface is measured at the reference viewport
+- **THEN** its height is at or below the declared maximum of `3.5rem`
+- **AND** every row at that viewport is the same height, rather than a card-sized block.
+
+#### Scenario: A wrapped row at the smallest breakpoint is not a violation
+- **WHEN** a logical row wraps its fields internally at the `xs` viewport and so exceeds `3.5rem`
+- **THEN** it still conforms, because the maximum and the uniformity clause are scoped to the reference viewport
+- **AND** it remains one list item with every required field available.
+
+#### Scenario: Enlarged text is not a conformance failure
+- **WHEN** a user raises their text size and rows grow with it
+- **THEN** the surface still conforms, because the maximum is expressed in `rem` and scales with the text
+- **AND** the requirement never asks an implementation to clip text to stay within a pixel budget.
+
+#### Scenario: A card surface is bound by fit and alignment but not by row height
+- **WHEN** a surface whose unit of information is a card rather than a row renders, such as the lifecycle change board
+- **THEN** the uniform-row-height requirement does not apply to it
+- **AND** it still fits without page-level horizontal scrolling at every declared verification viewport
+- **AND** its numeric values still use tabular figures.
+
+#### Scenario: An unrecorded exemption does not hold
+- **WHEN** a surface renders card-shaped units without having recorded the exemption claim in its own change
+- **THEN** it is bound by the uniform row-height requirement
+- **AND** the exemption cannot be asserted after the fact to excuse a density regression.
+
+#### Scenario: Density does not depend on the viewer's browser furniture
+- **WHEN** the same surface is rendered with a bookmarks bar open, at a different window height, or at a zoom level other than 100%
+- **THEN** it still satisfies the density requirement, because the requirement is a measured row height rather than a count of rows that fit
+- **AND** conformance does not change with conditions the stylesheet does not control.
+
+#### Scenario: Numbers in a column line up
+- **WHEN** a column carries version numbers, percentages, or counts
+- **THEN** the digits align vertically between rows
+- **AND** the column width does not shift as values change.
+
+#### Scenario: No horizontal scrolling at the reference viewport
+- **WHEN** any surface renders at the reference viewport
+- **THEN** its content fits without horizontal scrolling.
+
+#### Scenario: The smallest breakpoint has a deliberate layout
+- **WHEN** a surface renders at the 390×844 representative `xs` viewport
+- **THEN** a list may wrap fields within each logical row without becoming a card or hiding required fields
+- **AND** the page has no horizontal scrolling
+- **AND** interactive controls remain reachable.
+
+### Requirement: A Bounded Type Scale
+
+The product SHALL draw interface text from one declared family and code,
+commands, and tabular machine text from one declared monospace family. Sizes and
+weights SHALL come from enumerated design tokens; a component MUST NOT introduce
+a value outside them.
+
+#### Scenario: The scale is enumerable
+- **WHEN** the design tokens are inspected
+- **THEN** the permitted sizes and weights are enumerated there as named tokens.
+
+#### Scenario: A value outside the scale is rejected
+- **WHEN** a component declares a font size or weight that is not one of the enumerated tokens
+- **THEN** an automated check fails on that component — `packages/spa/src/styles/typographyTokens.test.ts`, which parses the enumeration out of `tokens.css` rather than restating it
+- **AND** the requirement's MUST NOT is exercised rather than only its enumeration.
+
+### Requirement: A Value Is Shown Where One Exists
+
+Where a state has an underlying value — a version, a percentage, a count — that
+value SHALL be rendered alongside the state indicator rather than replaced by it.
+Colour and shape summarise; they do not substitute for the number.
+
+#### Scenario: The number is not hidden behind an indicator
+- **WHEN** a state carries an underlying value
+- **THEN** the value is rendered in the cell together with the state indicator.
+
+#### Scenario: Absence is not rendered as a value
+- **WHEN** a state has no underlying value because none exists
+- **THEN** a single canonical absence marker is rendered — an em dash, used consistently across every surface
+- **AND** no placeholder number, empty string, or zero is shown in its place.
+
+#### Scenario: Absence is distinguishable from a failed render
+- **WHEN** the absence marker appears in a cell
+- **THEN** it is visibly a deliberate marker rather than a blank
+- **AND** a reader can tell "there is no value here" from "this did not render".
 

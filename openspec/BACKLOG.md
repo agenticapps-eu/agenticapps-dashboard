@@ -364,3 +364,37 @@ another polish pass.
 harness buttons report no last-attempt time, and the harness section is 523px of
 "No current result" repeated eight times. Both are real; neither was measured as
 a top-three contributor.
+
+## `filesystem-access-policy` names two files that no longer exist
+
+**Status:** OPEN — found 2026-08-05 while folding `retire-v1-surfaces` §4.
+Deliberately **not** fixed inside that fold: no delta in the change modifies the
+requirement, and rewriting a MUST no delta targets would widen a spec fold into
+an unreviewed spec edit.
+
+**The defect.** `Daemon Writes Confined To Its Own Directory` reads:
+
+> `registry.json`, `auth.json`, and `env.json` MUST be mode `0600`, and the
+> daemon MUST refuse to start when any is looser. The `coverage-history/` and
+> `workflow-harness/` trees MUST be directory mode `0700` […]
+
+Two of those five names are withdrawn. `env.json` was the optional-integration
+environment file: §2 removed its loader, removed the `env` CLI group that wrote
+it, and the file itself was deleted ahead of the cutover release. The
+`coverage-history/` tree went with `fleet-coverage`; the directory was deleted on
+2026-08-05 (540 KB of daily NDJSON spanning 2026-05-24 to 2026-08-02).
+
+**Why it matters more than a stale mention.** This is the security spine, and the
+requirement is a startup-refusal condition. As written, a reader implementing it
+fresh would add a boot-time mode check for a file the product no longer creates —
+either dead code, or a refusal-to-start on a file that cannot be there. The
+sibling requirement added by this same change, `Files Retained For Rollback Have
+A Bounded Lifetime`, is what made both files temporary in the first place, so the
+two now disagree inside one capability: one says the files are mode-governed for
+as long as they exist, the other says they were deleted.
+
+**Shape of the fix.** A one-requirement delta narrowing the enumeration to
+`registry.json` and `auth.json` plus the `workflow-harness/` tree, with the
+withdrawn names recorded as removed rather than silently dropped. Small, but it
+is a MUST in the security capability, which is exactly the class of edit that
+should carry a delta and a reviewer rather than ride along in a fold.
