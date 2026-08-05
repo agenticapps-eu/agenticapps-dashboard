@@ -206,6 +206,13 @@ of permanent chrome for five links.
   and the pill background sits on the parent `<a>`, which measures 6.42.
 - Section labels are 11px. That is inside the bounded scale and legible at
   4.71:1, but it is the smallest type in the product.
+- **The top bar builds a confident breadcrumb for a page that does not exist.**
+  At `/projects/agenticapps-dashboard/coverage` — an address the product never
+  served — `#main` correctly reads exactly "Not Found", while the bar above it
+  reads "All Projects › agenticapps-dashboard › Changes · 3", complete with a
+  count. It is deriving context from URL segments without asking whether a route
+  matched. Pre-existing, and the least trustworthy thing on a not-found screen:
+  every word of it is invented.
 
 ---
 
