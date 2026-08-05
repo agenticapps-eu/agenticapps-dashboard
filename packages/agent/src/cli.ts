@@ -122,12 +122,6 @@ program
     await (await import('./cli/installLaunchd.js')).runInstallLaunchd(opts)
   })
 
-program
-  .command('install-understand-viewer')
-  .description('Build and install the understand-anything viewer from the plugin cache')
-  .action(async () => {
-    await (await import('./cli/installUnderstandViewer.js')).runInstallUnderstandViewer()
-  })
 
 program
   .command('install-systemd')

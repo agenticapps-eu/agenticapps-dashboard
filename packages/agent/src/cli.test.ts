@@ -41,12 +41,9 @@ describe('agentic-dashboard CLI (built dist/cli.js)', () => {
     expect(contents).not.toMatch(/from\s+['"]@agenticapps\/dashboard-shared['"]/)
   })
 
-  it('registers install-understand-viewer command with correct description (D-14-01)', () => {
-    const result = spawnSync('node', [cliBundle, '--help'], { encoding: 'utf8' })
-    expect(result.status).toBe(0)
-    expect(result.stdout).toContain('install-understand-viewer')
-    // Commander may wrap the description across lines — normalise whitespace before asserting
-    const normalised = result.stdout.replace(/\s+/g, ' ')
-    expect(normalised).toContain('Build and install the understand-anything viewer from the plugin cache')
-  })
+  // The install-understand-viewer registration test that stood here was
+  // inverted by `retire-v1-surfaces`: the command is withdrawn with the viewer
+  // it installed. Its replacement — asserting the command is absent from this
+  // same --help output — lives in `cli/viewerRetired.test.ts` alongside the
+  // health-payload and module-absence checks it belongs with.
 })
