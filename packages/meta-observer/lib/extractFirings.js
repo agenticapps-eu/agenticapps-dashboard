@@ -1,5 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
+
 import { HookFiringSchema } from '@agenticapps/dashboard-shared';
 /**
  * Extract hook firings from a Claude Code transcript JSONL file.

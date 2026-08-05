@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
 import { mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
+
+import { describe, it, expect } from 'vitest'
 
 import { atomicWrite, PathViolation } from '../lib/atomicWrite.js'
 

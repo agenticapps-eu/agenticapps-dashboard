@@ -34,6 +34,7 @@ vi.mock('../lib/auth.js', () => ({
 }))
 
 import { addProject, removeProject, renameProject, setTags } from '../lib/registry.js'
+
 import { runRegister, runUnregister } from './register.js'
 import { runRename, runTag } from './registryCmd.js'
 

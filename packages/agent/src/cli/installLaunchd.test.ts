@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import { makePlist, runInstallLaunchd } from './installLaunchd.js'
 

@@ -1,8 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest'
 import { mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
+
+import { describe, it, expect, afterEach } from 'vitest'
 
 import { resolveProjectRoot } from '../lib/projectRoot.js'
 

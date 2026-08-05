@@ -1,5 +1,4 @@
 import pc from 'picocolors'
-
 import type { ServerInfo } from '@agenticapps/dashboard-shared'
 
 import { agentLog } from '../lib/logging.js'

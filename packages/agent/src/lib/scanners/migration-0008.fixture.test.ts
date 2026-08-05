@@ -13,10 +13,12 @@
  * fail silently on the real migration file.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+
 import { parseFrontmatter } from '../skillsScan.js'
 
 // CODEX MED-17: fixture content is the EXPECTED shape of migration 0008.

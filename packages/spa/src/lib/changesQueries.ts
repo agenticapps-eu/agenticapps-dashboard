@@ -15,7 +15,6 @@
  * docblocks claimed a polling client justified the cache.
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-
 import {
   ChangesFleetResponseSchema,
   type ChangesFleetResponse,

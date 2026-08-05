@@ -22,6 +22,7 @@
  *   per CONTEXT §Specifics.
  */
 import React, { useRef } from 'react'
+
 import { usePageHeaderHeight } from './usePageHeaderHeight.js'
 
 export interface PageHeaderProps {

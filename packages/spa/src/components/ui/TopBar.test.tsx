@@ -45,6 +45,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 import { useRegistryList } from '../../lib/registry.js'
+
 import { TopBar } from './TopBar.js'
 
 const mockUseRegistryList = vi.mocked(useRegistryList)

@@ -9,6 +9,7 @@ import {
 
 import { apiFetch, ApiError } from '../lib/api.js'
 import { setPairing, clearPairing, getPairing } from '../lib/pairing.js'
+
 import { MaskedToken } from './ui/MaskedToken.js'
 
 type FormStatus =

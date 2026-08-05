@@ -19,13 +19,20 @@ import {
   rmSync,
   realpathSync,
 } from 'node:fs'
+import { readFile as mockedReadFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-
 import { PathDriftEntrySchema } from '@agenticapps/dashboard-shared'
 
+import { detectPathDrift, inferSuggestedPath } from './registryPathDrift.js'
+import { readRegistry } from './registry.js'
+import { COVERAGE_ROOTS } from './paths.js'
+
+// Every vi.mock below is hoisted above these imports, so each mock is
+// registered before the module it replaces is resolved.
+//
 // Mock registry.ts BEFORE importing the unit under test so the detector
 // pulls a controlled in-memory registry instead of touching ~/.agenticapps.
 vi.mock('./registry.js', async () => {
@@ -59,11 +66,6 @@ vi.mock('node:fs/promises', async () => {
     readFile: vi.fn(actual.readFile),
   }
 })
-
-import { readFile as mockedReadFile } from 'node:fs/promises'
-import { detectPathDrift, inferSuggestedPath } from './registryPathDrift.js'
-import { readRegistry } from './registry.js'
-import { COVERAGE_ROOTS } from './paths.js'
 
 // Tracks one tmp root per test so cleanup can wipe it.
 let tmpRoot: string

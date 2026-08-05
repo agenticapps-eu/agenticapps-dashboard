@@ -18,10 +18,11 @@
  *  8. existing pidfile + serverInfo cleanups still happen
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // Mock the dependencies boot.ts touches so we can spy on them deterministically.
 vi.mock('../lib/pidfile.js', () => ({
@@ -42,6 +43,10 @@ vi.mock('../lib/logging.js', async () => {
   }
 })
 
+import { removePidfile } from '../lib/pidfile.js'
+import { removeServerInfo } from '../lib/serverInfo.js'
+import { agentError } from '../lib/logging.js'
+
 import {
   registerDisposer,
   clearDisposers,
@@ -49,9 +54,6 @@ import {
   _runDisposersForTests,
   assertSnapshotDirInDaemonHome,
 } from './boot.js'
-import { removePidfile } from '../lib/pidfile.js'
-import { removeServerInfo } from '../lib/serverInfo.js'
-import { agentError } from '../lib/logging.js'
 
 describe('boot.ts disposer registry', () => {
   let exitSpy: ReturnType<typeof vi.spyOn>

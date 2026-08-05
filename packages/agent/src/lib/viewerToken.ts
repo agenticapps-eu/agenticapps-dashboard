@@ -44,6 +44,7 @@ import { homedir } from 'node:os'
 import { dirname, basename } from 'node:path'
 
 import { VIEWER_TOKEN_FILE } from '../constants.js'
+
 import { atomicWriteFile } from './atomicWrite.js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+
 import { parseFrontmatter } from '../skillsScan.js'
 import type { PathResolver } from '../coverageResolver.js'
 

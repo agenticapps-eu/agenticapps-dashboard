@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { basename, join, sep } from 'node:path'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
 import { PathViolation, makeCoverageResolver } from '../coverageResolver.js'
 import type { PathResolver } from '../coverageResolver.js'
+
 import {
   WORKFLOW_FLEET,
   requireWorkflowRepoId,

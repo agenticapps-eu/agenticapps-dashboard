@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
+
 import type { PathResolver } from '../coverageResolver.js'
+
 import type {
   WorkflowArtifactId,
   WorkflowFleetEntry,

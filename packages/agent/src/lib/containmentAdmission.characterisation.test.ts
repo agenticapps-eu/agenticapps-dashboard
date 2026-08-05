@@ -27,7 +27,9 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, symlinkSync, realpathSyn
 import { tmpdir } from 'node:os'
 import { realpath } from 'node:fs/promises'
 import { join, sep, resolve } from 'node:path'
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+
 import { makeCoverageResolver, PathViolation as CoveragePathViolation } from './coverageResolver.js'
 import type { PathResolver } from './coverageResolver.js'
 import { resolveAllowedNamed, PathViolation as PathsPathViolation } from './paths.js'

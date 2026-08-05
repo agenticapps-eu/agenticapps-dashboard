@@ -25,7 +25,6 @@
  */
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { X } from 'lucide-react'
-
 import type { ChangeCard } from '@agenticapps/dashboard-shared'
 
 import { ChecklistRow } from './ChecklistRow.js'

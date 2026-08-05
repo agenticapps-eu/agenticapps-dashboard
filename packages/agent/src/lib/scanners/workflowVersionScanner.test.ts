@@ -9,17 +9,21 @@
  * Pitfall 6: scanner uses only 4 explicit paths — never recurses into .claude/worktrees/.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync, symlinkSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { tmpdir } from 'node:os'
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+
+
+import { PathViolation, makeCoverageResolver } from '../coverageResolver.js'
+import type { PathResolver } from '../coverageResolver.js'
+
 import {
   readWorkflowHeadVersion,
   scanWorkflowVersionForRepo,
   compareSemver,
 } from './workflowVersionScanner.js'
-import { PathViolation, makeCoverageResolver } from '../coverageResolver.js'
-import type { PathResolver } from '../coverageResolver.js'
 
 let tmpDir: string
 

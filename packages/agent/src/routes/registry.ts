@@ -1,7 +1,6 @@
 import { basename } from 'node:path'
 import { statSync } from 'node:fs'
 
-import { REGISTRY_FILE } from '../constants.js'
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
@@ -19,6 +18,7 @@ import {
   TagsRequestSchema,
 } from '@agenticapps/dashboard-shared'
 
+import { REGISTRY_FILE } from '../constants.js'
 import {
   addProject,
   removeProject,
@@ -42,9 +42,10 @@ import {
   getPhaseCache,
   setPhaseCache,
 } from '../lib/phaseCache.js'
-import { evictSkillsCacheProject } from './skills.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
+
+import { evictSkillsCacheProject } from './skills.js'
 
 const RegisterBodySchema = z.object({
   path: z.string().min(1),

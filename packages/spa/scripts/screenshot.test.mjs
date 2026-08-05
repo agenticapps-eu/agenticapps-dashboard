@@ -7,6 +7,7 @@
  * Run: pnpm --filter @agenticapps/dashboard-spa exec vitest run scripts/screenshot.test.mjs
  */
 import { describe, it, expect } from 'vitest'
+
 import { parseViewport, captureScreenshot } from './screenshot.mjs'
 
 describe('parseViewport', () => {

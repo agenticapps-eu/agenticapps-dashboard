@@ -2,9 +2,10 @@ import { join } from 'node:path'
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
-import { createApp } from './app.js'
 import { setActiveToken, ensureAuthFile, getActiveToken } from '../lib/auth.js'
 import { makeTmpHome } from '../lib/__fixtures__/tmpHome.js'
+
+import { createApp } from './app.js'
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` }

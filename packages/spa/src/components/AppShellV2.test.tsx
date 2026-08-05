@@ -16,12 +16,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 
 import { RepairProvider, useRepair } from '../lib/repair.js'
+
+import { AppShellV2 } from './AppShellV2.js'
 import { useToast } from './ui/Toast.js'
 
 // Mock commandPaletteActions (same pattern as AppShell.test.tsx)
 vi.mock('../lib/commandPaletteActions.js', () => ({
   useCommandPaletteActions: () => [],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filterActions: (..._args: any[]) => [],
 }))
 
@@ -106,8 +108,6 @@ function renderAppShellV2() {
 
   return { container, getHook: () => hookResult! }
 }
-
-import { AppShellV2 } from './AppShellV2.js'
 
 describe('AppShellV2', () => {
   it('AV1: renders Sidebar <aside> with aria-label="Primary navigation"', () => {

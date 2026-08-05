@@ -34,7 +34,6 @@
  */
 import { useState, type ReactElement } from 'react'
 import { AlertTriangle, LayoutGrid } from 'lucide-react'
-
 import {
   CHANGE_STAGES,
   compareChangeCards,
