@@ -13,7 +13,6 @@ const state = (over: Partial<OpenspecProjectState> = {}): OpenspecProjectState =
   present: true,
   openChanges: [],
   capabilities: [],
-  archived: [],
   ...over,
 })
 
@@ -22,7 +21,6 @@ const change = (name: string, completedTasks: number, totalTasks: number) => ({
   completedTasks,
   totalTasks,
   hasTaskArtifact: true,
-  affectedCapabilities: [],
 })
 
 const derive = (readProject: () => Promise<OpenspecProjectState>) =>

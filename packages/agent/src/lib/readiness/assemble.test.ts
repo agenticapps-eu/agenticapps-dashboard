@@ -59,7 +59,6 @@ const emptyProject = async (): Promise<OpenspecProjectState> => ({
   present: false,
   openChanges: [],
   capabilities: [],
-  archived: [],
 })
 
 function options(over: Partial<AssembleReadinessOptions> = {}): AssembleReadinessOptions {

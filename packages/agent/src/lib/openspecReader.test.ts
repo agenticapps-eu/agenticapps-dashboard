@@ -2,9 +2,15 @@
  * Hybrid OpenSpec reader — project-dashboard › Hybrid OpenSpec Read Strategy.
  *
  * The parity claim is pinned to five fields and scoped to conformant change
- * directories. Three values never come from the CLI at all — the archive,
- * affected capabilities, and task-artifact presence — so they are read from the
- * tree on both paths and are deliberately not parity fields.
+ * directories. Task-artifact presence never comes from the CLI at all, so it is
+ * read from the tree on both paths and is deliberately not a parity field.
+ *
+ * The archive and affected capabilities used to be in that same category. The
+ * v2 cutover withdrew both from this reader entirely, so they are no longer
+ * tree-sourced values — they are not values it produces. The fixture below
+ * still builds an archive directory and per-change spec deltas on purpose:
+ * their presence on disk is what makes "the reader does not read them" an
+ * assertion rather than a vacuous truth.
  */
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -111,42 +117,22 @@ describe('readOpenspecTree — change enumeration', () => {
     expect(state.openChanges.map((c) => c.name).sort()).toEqual(['only-proposal', 'only-tasks'])
   })
 
-  it('derives affected capabilities from the change specs/ tree, empty when absent', async () => {
+  it('does not treat a change spec delta as an affected-capability source', async () => {
+    // `add-thing` carries specs/daemon-runtime/ and specs/help-docs/ on disk.
+    // Neither may appear anywhere in the change's reported shape.
     const state = await readOpenspecTree(makeProject())
     const withDelta = state.openChanges.find((c) => c.name === 'add-thing')!
-    const without = state.openChanges.find((c) => c.name === 'no-delta-yet')!
-    expect(withDelta.affectedCapabilities.sort()).toEqual(['daemon-runtime', 'help-docs'])
-    expect(without.affectedCapabilities).toEqual([])
+    expect(Object.values(withDelta).flat()).not.toContain('daemon-runtime')
   })
 })
 
-describe('readOpenspecTree — capabilities and archive', () => {
+describe('readOpenspecTree — capabilities', () => {
   it('counts requirements per capability', async () => {
     const state = await readOpenspecTree(makeProject())
     expect(state.capabilities).toEqual([
       { id: 'daemon-runtime', requirementCount: 2 },
       { id: 'help-docs', requirementCount: 1 },
     ])
-  })
-
-  it('orders archived changes by zero-padded ISO prefix', async () => {
-    const state = await readOpenspecTree(makeProject())
-    expect(state.archived.map((a) => a.name)).toEqual([
-      '2026-06-11-08-panels',
-      '2026-05-03-00-bootstrap',
-    ])
-  })
-
-  it('orders a non-conforming archive directory after every conforming one', async () => {
-    const root = makeProject()
-    mkdirSync(join(root, 'openspec', 'changes', 'archive', 'legacy-thing'), { recursive: true })
-    const state = await readOpenspecTree(root)
-    expect(state.archived.map((a) => a.name)).toEqual([
-      '2026-06-11-08-panels',
-      '2026-05-03-00-bootstrap',
-      'legacy-thing',
-    ])
-    expect(state.archived.at(-1)!.datePrefix).toBeNull()
   })
 
   it('reports absent openspec/ without throwing', async () => {
@@ -188,7 +174,6 @@ describe('readOpenspecTree — capabilities and archive', () => {
         completedTasks: 1,
         totalTasks: 2,
         hasTaskArtifact: true,
-        affectedCapabilities: [],
       },
     ])
   })
@@ -271,7 +256,7 @@ esac`,
     expect(PARITY(viaCli)).toEqual(PARITY(viaTree))
   })
 
-  it('keeps archive, affected capabilities and presence tree-sourced on the CLI path', async () => {
+  it('keeps task-artifact presence tree-sourced on the CLI path', async () => {
     const root = makeProject()
     const binDir = tmp()
     const bin = makeBin(
@@ -282,15 +267,25 @@ esac`,
 esac`,
     )
     const viaCli = await readOpenspecProject(root, bin)
-    // The CLI reported no specs and only one change, but these three values are
-    // never taken from it.
-    expect(viaCli.archived.map((a) => a.name)).toEqual([
-      '2026-06-11-08-panels',
-      '2026-05-03-00-bootstrap',
-    ])
+    // The CLI reports 0/0 for an absent artifact and an empty one alike, so
+    // presence is never taken from it.
     const c = viaCli.openChanges.find((x) => x.name === 'add-thing')!
-    expect(c.affectedCapabilities.sort()).toEqual(['daemon-runtime', 'help-docs'])
     expect(c.hasTaskArtifact).toBe(true)
+  })
+
+  it('adds no withdrawn field back on the CLI path', async () => {
+    const root = makeProject()
+    const binDir = tmp()
+    const bin = makeBin(
+      binDir,
+      `case "$*" in
+  *--specs*) echo '{"specs":[]}' ;;
+  *) echo '{"changes":[{"name":"add-thing","completedTasks":2,"totalTasks":3}]}' ;;
+esac`,
+    )
+    const viaCli = await readOpenspecProject(root, bin)
+    expect(Object.keys(viaCli).sort()).toEqual(['capabilities', 'openChanges', 'present'])
+    expect(JSON.stringify(viaCli)).not.toContain('bootstrap')
   })
 
   it('does not let the CLI narrow the change set', async () => {

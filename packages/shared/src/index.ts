@@ -39,17 +39,18 @@ export type {
 } from './schemas/registry.js'
 export { ProjectOverviewSchema, MarkersSchema } from './schemas/overview.js'
 export type { ProjectOverview, Markers } from './schemas/overview.js'
+// `OpenspecArchivedChangeSchema` is gone with the reader's archive enumeration
+// — see the note on OpenspecProjectStateSchema. The lifecycle change board has
+// its own archived-entry shape in ./schemas/changes.js.
 export {
   OpenspecProjectStateSchema,
   OpenspecChangeDetailSchema,
   OpenspecCapabilitySchema,
-  OpenspecArchivedChangeSchema,
 } from './schemas/openspec.js'
 export type {
   OpenspecProjectState,
   OpenspecChangeDetail,
   OpenspecCapability,
-  OpenspecArchivedChange,
 } from './schemas/openspec.js'
 export {
   CHECK_IDS,
