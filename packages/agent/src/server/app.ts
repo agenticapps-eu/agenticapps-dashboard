@@ -22,18 +22,7 @@ import { observationsRoute } from '../routes/observations.js'
 import { overviewRoute } from '../routes/overview.js'
 import { openspecRoute } from '../routes/openspec.js'
 import { skillsRoute } from '../routes/skills.js'
-import { agentlinterRoute } from '../routes/agentlinter.js'
-import { observabilityRoute } from '../routes/observability.js'
-import { secretsRoute } from '../routes/secrets.js'
-import { integrationsRoute } from '../routes/integrations.js'
-import { sentryRoute } from '../routes/sentry.js'
-import { linearRoute } from '../routes/linear.js'
-import { coverageRoute } from '../routes/coverage.js'
-import { coverageHistoryRoute } from '../routes/coverageHistory.js'
-import { skillDriftRoute } from '../routes/skillDrift.js'
-import { conformanceRoute } from '../routes/conformance.js'
 import { registryFixPathRoute } from '../routes/registryFixPath.js'
-import { understandViewerRoute, understandDataRoute } from '../routes/understandViewer.js'
 import { workflowRoute } from '../routes/workflow.js'
 import { changesRoute } from '../routes/changes.js'
 import { readinessRoute } from '../routes/readiness.js'
@@ -54,16 +43,6 @@ export type Variables = {
   bindMode: BindMode
   /** Override viewer token file path (for tests). Defaults to VIEWER_TOKEN_FILE constant. */
   viewerTokenFile?: string
-  /**
-   * Override repoId → root path resolution (for tests).
-   * When set, understandViewer resolves repoIds from this map instead of registry + FS.
-   */
-  viewerRootOverrides?: Record<string, string>
-  /**
-   * Override the viewer install directory base path (for tests).
-   * When set, getInstalledViewerPath() is called on this dir instead of UNDERSTAND_VIEWER_DIR.
-   */
-  viewerDirOverride?: string
 }
 export type Env = { Bindings: HttpBindings; Variables: Variables }
 
@@ -77,16 +56,6 @@ export interface CreateAppOptions {
   bindMode?: BindMode
   /** Override viewer token file path (for isolated testing). */
   viewerTokenFile?: string
-  /**
-   * Override repoId → root path map (for isolated testing).
-   * Bypasses registry + FS resolution in understandViewer routes.
-   */
-  viewerRootOverrides?: Record<string, string>
-  /**
-   * Override the viewer install directory base path (for isolated testing).
-   * Passed to getInstalledViewerPath() instead of UNDERSTAND_VIEWER_DIR.
-   */
-  viewerDirOverride?: string
 }
 
 /**
@@ -101,11 +70,6 @@ export interface CreateAppOptions {
  *   4. cors            — MUST precede bearerAuth so OPTIONS preflight from
  *                        an allowed-origin browser succeeds without an
  *                        Authorization header (RESEARCH Pitfall 1)
- *   4a. understandDataRoute  — Phase 14 D-14-03/D-14-04: scoped ?token= auth
- *                        (per-repo viewer tokens); mounted pre-bearerAuth by
- *                        design; static assets tokenless (no project data);
- *                        full Tailscale parity (read-only surface, contrast D-13-11)
- *   4b. understandViewerRoute — same rationale as 4a (static SPA serving)
  *   5. bearerAuth      — verifyToken reads in-memory activeToken ref at
  *                        request entry (D-15)
  *   6. routes          — business logic
@@ -126,8 +90,6 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
     if (opts.registryFile) c.set('registryFile', opts.registryFile)
     if (opts.authFile) c.set('authFile', opts.authFile)
     if (opts.viewerTokenFile) c.set('viewerTokenFile', opts.viewerTokenFile)
-    if (opts.viewerRootOverrides) c.set('viewerRootOverrides', opts.viewerRootOverrides)
-    if (opts.viewerDirOverride) c.set('viewerDirOverride', opts.viewerDirOverride)
     await next()
   })
 
@@ -146,16 +108,6 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
       credentials: false,
     }),
   )
-
-  // Phase 14 D-14-03/D-14-04: scoped ?token= viewer routes mounted BEFORE bearerAuth.
-  // These routes use per-repo viewer tokens (verifyViewerToken, ?token= param), not
-  // the main bearer token. Mounting here short-circuits the bearerAuth middleware so
-  // the browser can reach data endpoints and static assets without an Authorization header.
-  //
-  // D-14-04: no bindMode check in understandViewer — full Tailscale parity is
-  // deliberate because these routes serve read-only viewer data.
-  app.route('/understand', understandViewerRoute)  // Phase 14 D-14-03/D-14-04
-  app.route('/', understandDataRoute)  // Phase 14 D-14-03/D-14-04: root-absolute data endpoints
 
   // 5. Bearer auth — verifyToken reads in-memory ref at request entry (D-15)
   //    Uses timingSafeEqual to prevent string-equality timing leaks; refuses
@@ -188,16 +140,6 @@ export function createApp(opts: CreateAppOptions = {}): Hono<Env> {
   app.route('/api/projects', disciplineRoute)
   app.route('/api/projects', observationsRoute)
   app.route('/api', skillsRoute)
-  app.route('/api/projects', agentlinterRoute)
-  app.route('/api/projects', observabilityRoute)
-  app.route('/api/projects', secretsRoute)
-  app.route('/api/projects', integrationsRoute)
-  app.route('/api/projects', sentryRoute)
-  app.route('/api/projects', linearRoute)
-  app.route('/api', coverageRoute)
-  app.route('/api', coverageHistoryRoute) // Phase 11 TRD-03 (PD-11-02 bulk-per-repo)
-  app.route('/api', skillDriftRoute) // Phase 11 SKD-02, SKD-03 (D-11-14 single-project-per-request)
-  app.route('/api', conformanceRoute) // Phase 12 D-12-14: GET /api/observability/conformance
   app.route('/api/admin', registryFixPathRoute) // Phase 12 D-12-19, D-12-26: POST /api/admin/registry/fix-path
   app.route('/api/v2', workflowRoute)
   app.route('/api/v2', readinessRoute) // AGE-462: GET /fleet, GET+POST /repos/:id

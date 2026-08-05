@@ -131,58 +131,13 @@ export type {
  * `.planning/phases/<N>/`. The `Phase Progress Column` requirement they served
  * is REMOVED by this change; `Change Progress Column` replaces it.
  */
-export {
-  AgentLinterSeveritySchema,
-  AgentLinterDiagnosticSchema,
-  AgentLinterCategoryScoreSchema,
-  AgentLinterReportSchema,
-  AgentLinterResponseSchema,
-} from './schemas/agentlinter.js'
-export type {
-  AgentLinterSeverity,
-  AgentLinterDiagnostic,
-  AgentLinterCategoryScore,
-  AgentLinterReport,
-  AgentLinterResponse,
-} from './schemas/agentlinter.js'
-export {
-  IntegrationStateSchema,
-  IntegrationsResponseSchema,
-} from './schemas/integrations.js'
-export type {
-  IntegrationState,
-  IntegrationsResponse,
-} from './schemas/integrations.js'
-// Phase 8 — Sentry + Linear shared wire schemas (INV-04)
-// Note: env.ts (EnvFileSchema) is intentionally NOT re-exported here (T-08-01/INV-05/D-08-13)
-export {
-  SentryIssueSchema,
-  SentryRecentResponseSchema,
-} from './schemas/sentry.js'
-export type {
-  SentryIssue,
-  SentryRecentResponse,
-} from './schemas/sentry.js'
-export {
-  LinearIssueSchema,
-  LinearIssuesResponseSchema,
-} from './schemas/linear.js'
-export type {
-  LinearIssue,
-  LinearIssuesResponse,
-} from './schemas/linear.js'
-export {
-  ObservabilitySignalSchema,
-  ObservabilityToolStateSchema,
-  ObservabilityResponseSchema,
-} from './schemas/observability.js'
-export type {
-  ObservabilitySignal,
-  ObservabilityToolState,
-  ObservabilityResponse,
-} from './schemas/observability.js'
-export { SecretsResponseSchema } from './schemas/secrets.js'
-export type { SecretsResponse } from './schemas/secrets.js'
+/*
+ * The `agentlinter`, `integrations`, `sentry`, `linear`, `observability` and
+ * `secrets` schemas are gone with the eleven withdrawn daemon route modules.
+ * Each described the wire shape of an endpoint `retire-v1-surfaces` removes,
+ * and none had a second reader. `env.ts` (EnvFileSchema) was never re-exported
+ * here (T-08-01/INV-05/D-08-13) and is reached through `daemon.ts`.
+ */
 export {
   SkillFrontmatterSchema,
   SkillEntrySchema,
@@ -195,70 +150,24 @@ export type {
   GlobalSkillsResponse,
   LocalSkillsResponse,
 } from './schemas/skills.js'
+/*
+ * The `coverage`, `coverageHistory` and `skillDrift` schemas are gone with the
+ * fleet-coverage and skills-and-linting surfaces. The conformance surface's
+ * tier, day-point and response shapes went with it; its path-drift and
+ * fix-path shapes did not, because `retire-v1-surfaces` §2 retains registry
+ * drift detection and the strict atomic repair endpoint. Those three moved to
+ * `schemas/pathDrift.ts`, which is where they always belonged.
+ */
 export {
-  CoverageStateSchema,
-  CoverageFamilySchema,
-  CoverageBasicColumnSchema,
-  CoverageWorkflowColumnSchema,
-  CoverageColumnStateSchema,
-  OverrideEntrySchema,
-  CoverageRowSchema,
-  CoverageResponseSchema,
-  parseCoverageResponse,
-} from './schemas/coverage.js'
-export type {
-  CoverageState,
-  CoverageFamily,
-  CoverageColumnState,
-  CoverageRow,
-  CoverageResponse,
-  CompatibleCoverageRow,
-  CompatibleCoverageResponse,
-  OverrideEntry,
-} from './schemas/coverage.js'
-// Phase 11 — coverage trends + skill drift (D-11-12)
-export {
-  CoverageDriftDirectionSchema,
-  CoverageCellDriftSchema,
-  CoverageHistoryResponseSchema,
-  parseCoverageHistoryResponse,
-} from './schemas/coverageHistory.js'
-export type {
-  CoverageDriftDirection,
-  CoverageCellDrift,
-  CoverageHistoryResponse,
-  CompatibleCoverageHistoryResponse,
-} from './schemas/coverageHistory.js'
-
-export {
-  SkillDriftCellSchema,
-  SkillDriftRowSchema,
-  SkillDriftResponseSchema,
-} from './schemas/skillDrift.js'
-export type {
-  SkillDriftCell,
-  SkillDriftRow,
-  SkillDriftResponse,
-} from './schemas/skillDrift.js'
-
-// Phase 12 — observability conformance surface (D-12-14/15/16)
-export {
-  ConformanceTierSchema,
-  tierOf,
-  ConformanceDayPointSchema,
   PathDriftReasonSchema,
   PathDriftEntrySchema,
-  ConformanceResponseSchema,
   RegistryFixPathRequestSchema,
-} from './schemas/conformance.js'
+} from './schemas/pathDrift.js'
 export type {
-  ConformanceTier,
-  ConformanceDayPoint,
   PathDriftReason,
   PathDriftEntry,
-  ConformanceResponse,
   RegistryFixPathRequest,
-} from './schemas/conformance.js'
+} from './schemas/pathDrift.js'
 
 export {
   WorkflowResponseSchema,

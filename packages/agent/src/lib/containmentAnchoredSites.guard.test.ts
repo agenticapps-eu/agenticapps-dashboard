@@ -31,10 +31,12 @@ const LIB = join(fileURLToPath(new URL('.', import.meta.url)))
  * boundary in its own right, and the anchor it must be held to.
  *
  * These are the six sites `anchor-allowed-subdirs-to-root` (PR #100) fixed,
- * plus the marker-directory site this change found unanchored.
+ * plus the marker-directory site this change found unanchored — less
+ * `projectMetadataScan.ts`, whose two sites went with the file when
+ * `retire-v1-surfaces` withdrew the secrets, integrations and observability
+ * routes that were its only readers.
  */
 const ANCHORED_SITES = [
-  { file: 'projectMetadataScan.ts', root: 'projectRoot', count: 2 },
   { file: 'scanners/workflowFleetScanner.ts', root: 'hostRepoRoot', count: 3 },
   { file: 'scanners/workflowVersionScanner.ts', root: 'repoAbsPath', count: 1 },
   { file: 'scanners/coreSpecVersionScanner.ts', root: 'coreRepoRoot', count: 1 },
@@ -62,6 +64,6 @@ describe('the anchored boundaries stay anchored', () => {
     // the library. It moves when a site is added or removed, which is a prompt
     // to update this file deliberately rather than a failure to route around.
     const total = ANCHORED_SITES.reduce((sum, { count }) => sum + count, 0)
-    expect(total).toBe(8)
+    expect(total).toBe(6)
   })
 })

@@ -193,23 +193,9 @@ describe('boot.ts assertSnapshotDirInDaemonHome (T-11-02-03)', () => {
     else process.env.HOME = originalHome
   })
 
-  it('Test 1: throws when coverage-history realpaths OUTSIDE daemon home (symlink escape)', () => {
-    const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-home-'))
-    const daemonHome = join(homeDir, '.agenticapps', 'dashboard')
-    mkdirSync(daemonHome, { recursive: true, mode: 0o700 })
-
-    // Place an escaping symlink at coverage-history.
-    const outside = mkdtempSync(join(tmpdir(), 'agentic-escape-'))
-    symlinkSync(outside, join(daemonHome, 'coverage-history'))
-
-    cleanups.push(() => rmSync(homeDir, { recursive: true, force: true }))
-    cleanups.push(() => rmSync(outside, { recursive: true, force: true }))
-
-    process.env.HOME = homeDir
-
-    expect(() => assertSnapshotDirInDaemonHome()).toThrow(/escapes daemon home/)
-  })
-
+  // The `coverage-history` counterpart to the test below went with the
+  // snapshot store in `retire-v1-surfaces` §2. `workflow-harness` is now the
+  // only daemon write dir, so it carries the escape guard alone.
   it('throws when workflow-harness realpaths outside daemon home', () => {
     const homeDir = mkdtempSync(join(tmpdir(), 'agentic-boot-harness-home-'))
     const daemonHome = join(homeDir, '.agenticapps', 'dashboard')
@@ -251,31 +237,11 @@ describe('boot.ts assertSnapshotDirInDaemonHome (T-11-02-03)', () => {
   })
 })
 
-describe('boot.ts scheduler wiring', () => {
-  it('Test 4: registerDisposer + startSnapshotScheduler are wired together (contract check)', async () => {
-    // We assert the CONTRACT — boot.ts imports the symbols and threads them
-    // through the registry. The wiring lives inside the serve() listen
-    // callback (not directly testable without spinning up a real Hono server),
-    // so this contract test verifies the imports + the call shape via grep
-    // is enforced separately by acceptance criteria.
-    const mod = await import('./boot.js')
-    expect(typeof mod.registerDisposer).toBe('function')
-    // The disposer registry helper exists; the wiring inside bootDaemon's
-    // listen callback is enforced by the acceptance-criteria grep
-    // (registerDisposer(startSnapshotScheduler === 1 hit in boot.ts).
-  })
-
-  it('Test 5: route mounted at /api in app.ts (acceptance grep)', async () => {
-    // Sanity: the mount line landed in Task 5. This test ensures we haven't
-    // regressed it during the Task 7 wiring touches.
-    const { readFileSync } = await import('node:fs')
-    const appSrc = readFileSync(
-      new URL('./app.ts', import.meta.url),
-      'utf8',
-    )
-    expect(appSrc).toMatch(/app\.route\('\/api', coverageHistoryRoute\)/)
-  })
-
+// The snapshot scheduler this suite was built around went with the snapshot
+// store in `retire-v1-surfaces` §2, taking its wiring contract test and the
+// `coverageHistoryRoute` mount grep with it. The workflow harness is the
+// remaining disposer this callback registers.
+describe('boot.ts disposer wiring', () => {
   it('registers active workflow harness process groups for shutdown disposal', async () => {
     const { readFileSync } = await import('node:fs')
     const bootSource = readFileSync(
