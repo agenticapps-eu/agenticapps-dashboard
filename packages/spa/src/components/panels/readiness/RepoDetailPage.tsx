@@ -333,8 +333,15 @@ function CheckBlock({
       {why !== null && <p className="mt-3 text-sm text-text-secondary">{why}</p>}
 
       <dl className="mt-4 flex flex-col gap-1.5">
+        {/*
+          Tabular figures on the value, not on `Fact`'s `<dd>`: the six blocks
+          stack their Observed times at one indent down the page, so they are a
+          numeric column whatever element holds them — but Provenance and
+          Evidence share that `<dd>` and are prose, where tabular figures are
+          simply wrong.
+        */}
         <Fact term="Observed">
-          {check.at === null ? <EmDash /> : formatCommitTime(check.at)}
+          {check.at === null ? <EmDash /> : <span className="tabular-nums">{formatCommitTime(check.at)}</span>}
         </Fact>
         <Fact term="Provenance">{provenance(check)}</Fact>
         <Fact term="Evidence">

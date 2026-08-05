@@ -282,7 +282,7 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
             <tr className="border-b border-border-subtle text-xs uppercase tracking-wide text-text-tertiary">
               <th className="sticky left-0 bg-card-bg py-3 pr-5 font-medium">Artefact</th>
               {data.hosts.map((host) => (
-                <th key={host.hostId} className="px-3 py-3 font-mono text-[11px] font-medium">
+                <th key={host.hostId} className="px-3 py-3 font-mono text-xs font-medium">
                   {host.hostId}
                 </th>
               ))}

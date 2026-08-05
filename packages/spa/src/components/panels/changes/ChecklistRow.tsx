@@ -35,7 +35,12 @@ export function renderInlineMarkup(text: string): ReactNode[] {
     if (at > last) nodes.push(text.slice(last, at))
     if (match[1] !== undefined) {
       nodes.push(
-        <code key={(key += 1)} className="rounded bg-card-bg-hover px-1 font-mono text-[0.9em]">
+        // `text-xs` rather than the `0.9em` this carried: the row is `text-sm`
+        // (12px), so the relative value resolved to 10.8px — a size the scale
+        // does not contain, reached by arithmetic instead of by choice. The
+        // token one step down is 11px and does the same job, which is shrinking
+        // mono to sit level with the surrounding sans.
+        <code key={(key += 1)} className="rounded bg-card-bg-hover px-1 font-mono text-xs">
           {match[1]}
         </code>,
       )

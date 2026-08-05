@@ -35,6 +35,11 @@ import { describe, it, expect } from 'vitest'
 const STYLES_DIR = dirname(fileURLToPath(import.meta.url))
 const COMPONENTS_DIR = resolve(STYLES_DIR, '..', 'components')
 const HELP_DIR = resolve(STYLES_DIR, '..', 'help')
+// Routes render UI too. tokenSourceOfTruth.test.ts scans components and help
+// only, which left every route free to introduce whatever it liked — and a
+// census that excludes the places a counter-example would live cannot be
+// evidence that none exists.
+const ROUTES_DIR = resolve(STYLES_DIR, '..', 'routes')
 const TOKENS_FILE = resolve(STYLES_DIR, 'tokens.css')
 
 /**
@@ -202,7 +207,7 @@ describe('design-system → A Bounded Type Scale — a value outside the scale i
   })
 
   it('no production component declares typography outside the token set', () => {
-    const files = [...walk(COMPONENTS_DIR), ...walk(HELP_DIR)]
+    const files = [...walk(COMPONENTS_DIR), ...walk(HELP_DIR), ...walk(ROUTES_DIR)]
     const offenders: { file: string; violations: string[] }[] = []
     for (const f of files) {
       const violations = collectTypographyViolations(readFileSync(f, 'utf8'), tokens)

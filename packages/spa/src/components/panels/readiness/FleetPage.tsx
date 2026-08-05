@@ -232,8 +232,12 @@ function FleetRow({
           variant="compact"
         />
       </td>
-      {/* Right, to match its own header. They disagreed until now. */}
-      <td className="px-3 py-2 text-right align-middle text-sm text-text-secondary whitespace-nowrap">
+      {/* Right, to match its own header. They disagreed until now.
+          Tabular figures because this is the fleet's one numeric column: every
+          value is an equal-length ISO date, so with proportional digits the
+          column still reads ragged — a '1' is narrower than a '0' and the
+          right edge is the only thing holding the rhythm. */}
+      <td className="px-3 py-2 text-right align-middle text-sm tabular-nums text-text-secondary whitespace-nowrap">
         {formatLastChange(repo.lastCommitAt)}
       </td>
     </tr>
