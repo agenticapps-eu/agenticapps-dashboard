@@ -160,6 +160,52 @@ they are withdrawn daemon endpoints, not SPA locations, so bookmarked viewer URL
 deliberately return not-found rather than redirecting to an unrelated dashboard
 surface.
 
+## 8a. Where the register affordance lands, and why it moved first
+
+Decided 2026-08-05, at implementation. The spec requires the affordance survive
+on the fleet; it does not say in what shape. Three were considered:
+
+1. **A persistent action in the fleet's `PageHeader` slot, plus the same button
+   inside the empty state.** Chosen. `PageHeader` already has an `actions` slot
+   and `EmptyState` already has an `action` slot documented as "e.g. Register
+   button", so both call sites exist. The control keeps one address whether or
+   not the fleet is populated.
+2. **Empty state only.** Rejected. It satisfies the third scenario literally and
+   leaves the first — a registration appearing in a populated fleet list —
+   reachable only from the CLI, which is the promise this requirement exists to
+   keep.
+3. **A button in `FleetToolbar`.** Rejected. The toolbar is gated on the
+   registry being non-empty, so the empty state would need a second copy anyway,
+   and the control would move position depending on state.
+
+`RegisterButtonCard` is deleted rather than re-homed: it is a dashed card sized
+for the withdrawn home's card grid, and the fleet is a table. `RegisterModal` is
+reused unchanged.
+
+**This step moved ahead of the redirects.** The tasks list has the redirect
+before the re-home, which would have left the branch with commits where `/`
+redirects to the fleet while `RegisterModal` is still reachable only from the
+now-unreachable `MultiProjectHome` — browser registration broken in the
+intervening state even though every component still existed. The same applies to
+the command palette: `commandPaletteActions.ts` dispatches `palette:open-register`
+on `window` and the withdrawn home was its only listener, so the palette's
+"Register project" action would have started no-opping silently. The listener
+now lives on the fleet.
+
+One thing the re-home had to add rather than move: `useRegisterConfirm`
+invalidates `['registry']` and the fleet reads `FLEET_QUERY_KEY`, so nothing
+connected the two. Without re-reading the fleet on confirm, a newly registered
+repository appears only after a manual reload — which the requirement's first
+scenario forbids in as many words.
+
+**Not fixed here, and not introduced here:** `RegisterModal`'s dialog carries
+`mx-4`, which overrides the UA's `margin: auto` on a `showModal()` dialog and
+pins it to the top-left of the viewport instead of centring it. Measured at
+1440×900 on the fleet. It is a property of the component's own classes, so it
+rendered identically on the withdrawn home; re-homing did not cause it and
+fixing it would widen this change into a component it otherwise reuses
+untouched.
+
 ## 9. Historical data becomes inert, not mysteriously abandoned
 
 Snapshot and environment files under the daemon's own directory are retained at
