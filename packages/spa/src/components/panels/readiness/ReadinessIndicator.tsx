@@ -239,21 +239,37 @@ function ReadinessCell({
   // ratio that read as a placeholder rather than a value. `w-8 mx-auto` caps the
   // tint at its content and leaves the grid track, and therefore the alignment
   // with the column header above it, untouched.
-  const surface = `flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : 'mx-auto w-8 justify-center py-1.5'} ${presentation.bg} ${presentation.text}`
+  //
+  // A compact cell CARRYING a value drops `w-8` and pads instead: 32px cannot
+  // hold "66.42 of 80", and forcing it to would either clip the number or
+  // wrap the row past its height cap. The tint still ends at its content, so
+  // the valueless cells either side keep the shape this comment describes.
+  const compactSurface = value === null ? 'mx-auto w-8 justify-center py-1.5' : 'mx-auto justify-center px-1.5 py-1.5'
+  const surface = `flex items-center gap-1.5 rounded-md ${full ? 'px-2 py-1' : compactSurface} ${presentation.bg} ${presentation.text}`
   const body = (
     <>
       <Shape size={full ? 16 : 14} aria-hidden="true" />
       {full && (
-        <>
-          <span className="text-xs whitespace-nowrap">
-            {CHECK_LABELS[check.id]}
-          </span>
-          {value !== null && (
-            <span className="text-xs text-text-secondary whitespace-nowrap">
-              {value}
-            </span>
-          )}
-        </>
+        <span className="text-xs whitespace-nowrap">
+          {CHECK_LABELS[check.id]}
+        </span>
+      )}
+      {/*
+        Both variants now. `design-system` → A Value Is Shown Where One Exists:
+        colour and shape summarise, they do not substitute for the number, and
+        the fleet is the surface where that mattered most — it was the one
+        place the value existed on the wire and never reached the screen.
+
+        Compact inherits the status colour from the surface; full overrides it
+        to secondary, because there the check label sits beside the value and
+        two status-coloured strings would compete.
+      */}
+      {value !== null && (
+        <span
+          className={`whitespace-nowrap text-xs tabular-nums ${full ? 'text-text-secondary' : ''}`}
+        >
+          {value}
+        </span>
       )}
     </>
   )

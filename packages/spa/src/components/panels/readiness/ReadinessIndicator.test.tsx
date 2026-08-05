@@ -285,7 +285,18 @@ describe('ReadinessIndicator', () => {
     expect(cell.className).toContain(text)
   })
 
-  it('shows a value in the full variant and withholds it in the compact one', () => {
+  it('shows a value in both variants', () => {
+    // REVERSED 2026-08-05, `retire-v1-surfaces` §3. This test previously
+    // asserted the compact variant *withholds* the value — it read
+    // "shows a value in the full variant and withholds it in the compact one"
+    // — which is the behaviour `design-system` → A Value Is Shown Where One
+    // Exists forbids: "colour and shape summarise; they do not substitute for
+    // the number".
+    //
+    // The old assertion is left described rather than deleted because it was
+    // not a mistake at the time; it encoded a density trade made before that
+    // requirement existed, and a future reader finding the compact cell wider
+    // than 32px deserves to know it was decided rather than drifted into.
     const checks = [result('coverage', 'ok', { value: 87.4, threshold: 80 })]
 
     render(
@@ -297,7 +308,7 @@ describe('ReadinessIndicator', () => {
     render(
       <ReadinessIndicator checks={checks} repoName="dashboard" variant="compact" />,
     )
-    expect(screen.queryByText('87.4 of 80')).toBeNull()
+    expect(screen.getByText('87.4 of 80')).toBeTruthy()
   })
 
   it('reads a value against its threshold, since the threshold is why it is green', () => {
