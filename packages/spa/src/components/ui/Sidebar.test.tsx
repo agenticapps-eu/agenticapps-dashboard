@@ -92,6 +92,28 @@ function sectionLabels(container: HTMLElement): string[] {
   )
 }
 
+/**
+ * The elements a section actually contains, in document order, minus its label.
+ *
+ * `SidebarSection` renders `<div>{label}{children}</div>`, so a section's
+ * entries are its children after the first. Reading them this way — rather than
+ * by querying `nav a` — is the point: it sees an entry that is not a link, and
+ * it sees which section an entry is *in* rather than only what it follows.
+ */
+function sectionEntries(container: HTMLElement): Map<string, Element[]> {
+  const sections = new Map<string, Element[]>()
+  for (const section of container.querySelectorAll('nav > div')) {
+    const [label, ...entries] = [...section.children]
+    sections.set(label?.textContent ?? '', entries)
+  }
+  return sections
+}
+
+/** Accessible labels of a section's entries, in document order. */
+function entryLabels(entries: Element[]): string[] {
+  return entries.map((el) => el.textContent?.trim() ?? '')
+}
+
 beforeEach(() => {
   mockMatchRoute.mockReset()
   mockMatchRoute.mockReturnValue(false)
@@ -155,6 +177,24 @@ describe('Sidebar — two labelled sections, and no third', () => {
     expect(help.getAttribute('href')).toBe('/help')
     expect(changes.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  it('files each destination inside its section, not merely after the one above it', () => {
+    // The two cases above assert document *order* — that Settings follows
+    // Changes. Order is a weaker claim than the requirement makes: an entry
+    // moved to the bottom of WORKSPACE still follows Changes, and would still
+    // satisfy them, while being exactly the misfiling the requirement forbids
+    // when it says help and settings appear in utilities "rather than being
+    // treated as product content". Membership is the assertion that catches it.
+    const { container } = render(<Sidebar />)
+    const sections = sectionEntries(container)
+
+    expect(entryLabels(sections.get('WORKSPACE') ?? [])).toEqual([
+      'Workflow',
+      'Fleet readiness',
+      'Changes',
+    ])
+    expect(entryLabels(sections.get('UTILITIES') ?? [])).toEqual(['Settings', 'Help'])
+  })
 })
 
 describe('Sidebar — the sidebar is not the project list', () => {
@@ -211,6 +251,28 @@ describe('Sidebar — nothing points at a withdrawn location', () => {
 })
 
 describe('Sidebar — one primitive, one indentation', () => {
+  it('builds every entry from the one navigation primitive', () => {
+    // Every other case in this file — including the indentation one below —
+    // reaches its entries through `nav a`, so an entry that is not a link is
+    // invisible to all of them. `SidebarItemDisabled` renders a <button> and
+    // ships from this same module, which makes a second primitive in a section
+    // a one-word change that nothing would report. The requirement says
+    // entries within each section use the same navigation primitive; this is
+    // the assertion that says so.
+    registered(makeProject('a', 'agenticapps-dashboard'))
+    const { container } = render(<Sidebar />)
+    const sections = sectionEntries(container)
+
+    expect(sections.size).toBe(2)
+    for (const [label, entries] of sections) {
+      expect(entries.length, `${label} has entries`).toBeGreaterThan(0)
+      expect(
+        entries.map((el) => el.tagName),
+        `${label} entries are all links`,
+      ).toEqual(entries.map(() => 'A'))
+    }
+  })
+
   it('gives every entry the same padding, so no entry reads as subordinate', () => {
     registered(makeProject('a', 'agenticapps-dashboard'))
     const { container } = render(<Sidebar />)
