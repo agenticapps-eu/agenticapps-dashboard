@@ -150,3 +150,51 @@ rebuilt surfaces — is sound and unaffected.
   vendored from claude-workflow and a local fix would be reverted by the next
   `/update-agenticapps-workflow`. It belongs upstream, or in the guard test's
   allow-list.
+
+---
+
+## Workflow surface: rows exceed the declared density budget
+
+**Status:** OPEN. Found 2026-08-05 while closing `retire-v1-surfaces` §3's
+row-height bullet. Filed here rather than as a change because it needs **no
+spec delta** — the requirement already says what should happen and already
+binds this surface. What is missing is conformance, not specification.
+
+`design-system` → **Dense Rows And Aligned Figures** caps a row on a list or
+table surface at `3.5rem` and requires uniform height, both scoped to the
+1440×900 reference viewport. Measured on `/workflow` at that viewport against
+the token-resolved cap of 56px:
+
+| Table | Row heights (px) | Max | Within cap | Uniform |
+|---|---|---|---|---|
+| Spec conformance | 100, 75.5, 51, 99.5 | 100 | no | no |
+| Shared artefacts | 71.5, 71.5, 51, 51, 51, 50.5 | 71.5 | no | no |
+
+The fleet, measured in the same pass, is conformant: three rows at exactly 56px,
+uniform, cap resolved from `--spacing-row-max`.
+
+**Cause.** Cells carry list-valued content stacked vertically — "2 unknown ·
+setup-agenticapps-workflow · implements spec missing", seven laggard skills in
+one cell — so row height tracks the longest list rather than the row.
+
+**Why the exemption does not apply.** The requirement exempts surfaces whose
+unit of information is a *card*, and only when the claim and its trade-off are
+recorded in that surface's own change; it says in as many words that a surface
+which has not recorded the claim is bound. This is a real `<table>` of `<tr>`
+rows and no such claim exists, so it is bound.
+
+**Worth noting against the requirement's own text.** The delta justifies the
+number with "`3.5rem` is the height the fleet table already ships, so the
+constraint records the density that exists rather than imposing a restyling this
+change does not otherwise call for." Measurement falsifies that as a general
+claim: it holds for the fleet and not for the workflow surface, which the same
+change retains. The number is still right — the rationale was written from one
+surface and generalised without measuring the other.
+
+**Not fixed here, deliberately.** The fix is a design decision, not a tidy-up:
+collapsing a multi-item cell means choosing between a count plus a drawer, a
+truncation with disclosure, or a secondary detail row. That wants its own
+change, its own `impeccable:critique` artifact, and a re-measurement — which is
+more than the bullet that found it was scoped to do. Re-scoping the requirement
+to fit the code was considered and rejected: the recorded-claim clause exists
+precisely so density does not decay into a preference.
