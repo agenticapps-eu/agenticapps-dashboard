@@ -198,3 +198,60 @@ change, its own `impeccable:critique` artifact, and a re-measurement — which i
 more than the bullet that found it was scoped to do. Re-scoping the requirement
 to fit the code was considered and rejected: the recorded-claim clause exists
 precisely so density does not decay into a preference.
+
+---
+
+## Type scale is declared in pixels, so text ignores the reader's font size
+
+**Status:** OPEN. Found 2026-08-05 while producing `retire-v1-surfaces` §3's
+design-critique artifact for the repository detail surface. Filed here rather
+than as a change because the fix is a design-system decision that touches all
+four surfaces and wants its own RED, its own measurement, and its own critique
+— which is more than the bullet that found it was scoped to do.
+
+`tokens.css:141-148` declares the eight-step scale in `px`:
+
+```
+--text-xs: 11px;  --text-sm: 12px;  --text-base: 13px;  --text-md: 14px;
+--text-lg: 16px;  --text-xl: 20px;  --text-2xl: 24px;   --text-3xl: 32px;
+```
+
+Measured on `/repos/agenticapps-dashboard` at 1440×900, driving the root font
+size from 16px to 24px:
+
+| | root 16px | root 24px | moved |
+|---|---|---|---|
+| `h1` | 24px | 24px | no |
+| check summary | 12px | 12px | no |
+| fact term | 12px | 12px | no |
+| `--spacing-row-max` | 3.5rem → 56px | 3.5rem → 84px | yes |
+
+The row-height cap tracks the root correctly. Nothing it contains does.
+
+**Why this is worth recording rather than shrugging at.** It sits in direct
+tension with a decision this same change ratified. §3's row-height bullet argued
+that a px cap "is a requirement to clip text when a reader enlarges it", made
+`rem` "the substantive half" of the token, and proved the cap tracks 3.5× the
+root exactly at 16 / 20 / 24px. That reasoning is right and the cap is right.
+But the text the cap was protecting never enlarges through this channel, so the
+proof demonstrated a mechanism whose input is currently always constant.
+
+**Scope of the gap.** Browser page zoom scales everything, including px, so this
+is not a total failure — a reader who zooms is served. A reader who instead
+raises their browser's default font size, which is the setting people who need
+larger text actually use, gets no change at all on any surface.
+
+**Shape of the fix, not a decision to adopt it.** Redeclaring the eight tokens
+in `rem` at the same rendered sizes (`0.6875rem` … `2rem`) changes unit, not
+appearance, at the default root size. `typographyTokens.test.ts` parses the
+enumeration out of `tokens.css` rather than restating it, so it would follow the
+values automatically; its unit assertion would need the same treatment
+`rowHeightToken.test.ts` gives the row cap. Whether the *scale itself* should
+also change — 11px base type is small — is a separate question and deliberately
+not bundled here.
+
+**Not fixed in `retire-v1-surfaces`, deliberately.** The change's §3 is scoped to
+implementing and verifying named product-quality invariants; "the type scale
+responds to the reader" is not among them, and adding it mid-change would repeat
+the mistake of ratifying a design-system decision as a side effect of a ticket
+scoped to something else.
