@@ -78,15 +78,28 @@ describe('design-system → Dense Rows And Aligned Figures (the declared maximum
   })
 })
 
+/**
+ * The class lists a file actually applies, in both the quoted and the template
+ * form. Scanning `className` values rather than the whole file is the point: a
+ * comment explaining which utility was replaced necessarily names the replaced
+ * one, and a scanner that reads prose reports that comment as the violation it
+ * describes. Same correction EmDash.test.tsx needed for spaced em dashes.
+ */
+function classLists(source: string): string[] {
+  return [...source.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map(
+    (m) => m[1] ?? m[2] ?? '',
+  )
+}
+
 describe('design-system → Dense Rows And Aligned Figures (the row is bound to it)', () => {
   it('sizes the fleet row from the token, not from an equal-by-coincidence default', () => {
     // `h-14` measures 3.5rem too, so a browser measurement passes either way.
     // What it cannot tell you is whether the row is *bound* to the declared
     // maximum or merely happens to match it today — and an unbound row drifts
     // the moment someone edits one of the two numbers.
-    const source = readFileSync(FLEET_PAGE, 'utf8')
+    const applied = classLists(readFileSync(FLEET_PAGE, 'utf8'))
 
-    expect(source).toContain('h-row-max')
-    expect(source).not.toContain('h-14')
+    expect(applied.filter((c) => /\bh-row-max\b/.test(c))).not.toEqual([])
+    expect(applied.filter((c) => /\bh-14\b/.test(c))).toEqual([])
   })
 })

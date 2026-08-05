@@ -219,8 +219,15 @@ function FleetRow({
         rows the eye should not be drawn to — and it would break further the
         moment a second check becomes advisory and the phrase wraps. Uniform
         height costs 12px per row and makes the fleet scannable at any mix.
+
+        `h-row-max` is the declared density token, not a local choice:
+        `design-system` → Dense Rows And Aligned Figures caps a row at 3.5rem,
+        and rowHeightToken.test.ts holds the utility and the token together. It
+        replaces `h-14`, which measured the same 3.5rem while being bound to
+        nothing — equal by coincidence, and free to drift the moment either
+        number was edited.
       */}
-      <td className="h-14 px-3 py-2 align-middle whitespace-nowrap">
+      <td className="h-row-max px-3 py-2 align-middle whitespace-nowrap">
         <ReadyVerdict ready={repo.ready} checks={repo.checks} />
       </td>
       {/*

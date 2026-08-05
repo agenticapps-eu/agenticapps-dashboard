@@ -82,6 +82,28 @@
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
   --radius-card: 12px;
 
+  /* Density — `design-system` → Dense Rows And Aligned Figures.
+   *
+   * The maximum height of one row on a list or table surface, generating
+   * `h-row-max`. This is the number the requirement's "at or below the declared
+   * maximum" scenario compares against; before it there was nothing to compare
+   * against, and the fleet's `h-14` measured the right height while declaring
+   * nothing.
+   *
+   * `rem`, not `px`, and that is the substantive half rather than a style
+   * preference. A cap fixed in CSS pixels is a requirement to clip text as soon
+   * as a reader enlarges it, which collides with the reflow guarantee the
+   * product owes. In `rem` the row grows with the user's font size, so the cap
+   * scales with the text it contains and enlarging text stays a supported thing
+   * to do rather than a conformance failure.
+   *
+   * Scoped to the 1440x900 reference viewport. At `xs` a logical row may wrap
+   * its fields internally and exceed this, which the requirement permits
+   * explicitly — there the rule is that a row stays one list item with every
+   * required field, not that it fits this budget.
+   */
+  --spacing-row-max: 3.5rem;
+
   /* Typography — Pitfall 3: family name is 'Inter Variable' WITH space.
    *
    * Each namespace is reset to `initial` before it is declared. Without that,
