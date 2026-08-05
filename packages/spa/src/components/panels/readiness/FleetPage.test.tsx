@@ -76,6 +76,7 @@ vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
 }))
 
 import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
+import { EM_DASH } from '../../ui/EmDash.js'
 
 import { CHECK_LABELS } from './ReadinessIndicator.js'
 import { FleetPage } from './FleetPage.js'
@@ -195,12 +196,30 @@ describe('FleetPage', () => {
     }
   })
 
-  it('renders an em dash for a repo with no known last change', () => {
+  it('renders the canonical absence marker for a repo with no known last change', () => {
+    // `design-system` → A Value Is Shown Where One Exists, third scenario:
+    // absence must be tellable from a failed render. So the assertion is that
+    // a marker element is present carrying exactly the canonical character —
+    // an empty cell would satisfy neither, and a hyphen would satisfy the eye
+    // while breaking consistency with the detail surface.
     fleet([repo('fresh-clone', { lastCommitAt: null })])
     render(<FleetPage />)
 
     const [row] = rows()
-    expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument()
+    const marker = within(row as HTMLElement).getByText(EM_DASH)
+    expect(marker).toBeInTheDocument()
+    expect(marker.textContent).toBe(EM_DASH)
+  })
+
+  it('keeps a real date rather than replacing it with the absence marker', () => {
+    // The paired case. A surface that rendered the marker unconditionally
+    // would pass the test above and lose every value on the page.
+    fleet([repo('alpha')])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    expect(within(row as HTMLElement).getByText('2026-07-30')).toBeInTheDocument()
+    expect(within(row as HTMLElement).queryByText(EM_DASH)).toBeNull()
   })
 
   it('renders the last-change column with tabular figures so its digits align', () => {

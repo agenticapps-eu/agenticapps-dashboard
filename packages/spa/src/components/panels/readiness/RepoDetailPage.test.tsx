@@ -60,6 +60,7 @@ import {
   useRepoDetail,
   useRescanRepo,
 } from '../../../lib/readinessQueries.js'
+import { EM_DASH } from '../../ui/EmDash.js'
 
 import { CHECK_LABELS } from './ReadinessIndicator.js'
 import { RepoDetailPage } from './RepoDetailPage.js'
@@ -462,6 +463,59 @@ describe('RepoDetailPage evidence blocks', () => {
     const workflow = block('workflow')
     expect(within(workflow).getByText(/passing/)).toBeInTheDocument()
     expect(within(workflow).getByText(/2026-07-30 09:15 UTC/)).toBeInTheDocument()
+  })
+
+  it('keeps a real value beside its state indicator rather than letting the indicator replace it', () => {
+    // `design-system` → A Value Is Shown Where One Exists: "Colour and shape
+    // summarise; they do not substitute for the number." A reader looking at a
+    // coverage check needs to know it is 66.42 against a threshold of 80, not
+    // merely that the cell is amber — the amber is what makes them look, and
+    // the number is what they came for.
+    const checks = CHECK_IDS.map((id) => ({
+      id,
+      status: (id === 'coverage' ? 'warn' : 'ok') as CheckStatus,
+      source: 'derived' as const,
+      at: Date.UTC(2026, 6, 30, 9, 15),
+      value: id === 'coverage' ? 66.42 : null,
+      threshold: id === 'coverage' ? 80 : null,
+      summary: '',
+      evidence: null,
+      error: null,
+      remedy: 'Nothing to do.',
+    })) as unknown as RepoDetail['checks']
+
+    loaded(detail({ checks, ready: computeReady(checks, null) }))
+    render(<RepoDetailPage />)
+
+    // Both halves, in one node: the threshold is on the wire precisely so the
+    // reader can see what the number was judged against.
+    expect(screen.getByText('66.42 of 80')).toBeInTheDocument()
+  })
+
+  it('renders the canonical absence marker where a check has no observed time', () => {
+    // The counterpart case. `never` and `na` carry no timestamp, and the
+    // requirement forbids standing a placeholder in for one — no zero, no
+    // empty string, no "unknown".
+    const checks = CHECK_IDS.map((id) => ({
+      id,
+      status: 'never' as CheckStatus,
+      source: 'derived' as const,
+      at: null,
+      value: null,
+      threshold: null,
+      summary: '',
+      evidence: null,
+      error: null,
+      remedy: 'Run it.',
+    })) as unknown as RepoDetail['checks']
+
+    loaded(detail({ checks, ready: computeReady(checks, null) }))
+    render(<RepoDetailPage />)
+
+    for (const id of CHECK_IDS) {
+      const observed = within(block(id)).getAllByText(EM_DASH)
+      expect(observed.length).toBeGreaterThan(0)
+    }
   })
 
   it('renders every observed time with tabular figures so the six stack in a column', () => {
