@@ -160,6 +160,16 @@ function ErrorState({ onRetry }: { onRetry: () => void }): ReactElement {
   )
 }
 
+/**
+ * The sibling surfaces date an epoch-ms field with the same slice; this response
+ * carries an ISO string, so the parse differs and the rendered shape does not.
+ * A third local copy rather than a shared helper: extracting one would rewrite
+ * two files this change has no reason to touch.
+ */
+function formatGeneratedAt(iso: string): string {
+  return `${new Date(iso).toISOString().slice(0, 16).replace('T', ' ')} UTC`
+}
+
 function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
   const coreVersion = data.core.specVersion ?? 'Unavailable'
   return (
@@ -369,31 +379,53 @@ function SharedArtifacts({ data }: { data: WorkflowResponse }): ReactElement {
           </tbody>
         </table>
       </div>
+      {/*
+        Collapsed to the exception, per the 2026-08-05 critique of this surface.
+        This block used to render one chip per skill per root — 34 of them on the
+        live fleet, every single one reading "· Present". That is one bit of
+        information ("nothing is missing") spread over 34 identical elements, and
+        the cost falls in exactly the wrong place: a reader scanning for the one
+        chip that says something else has to read all 34 to be sure there isn't
+        one, so the common case is expensive and the exceptional case is
+        invisible.
+
+        Now the healthy root states its count and stops, and an incomplete root
+        names only what is missing. The skills that are fine are not information.
+      */}
       <div className="mt-4 flex flex-wrap gap-2" aria-label="Machine skill roots">
         {data.machineRoots
           .filter(({ rootId }) => rootId !== 'agenticapps-bin')
-          .map((root) => (
-            <span
-              key={root.rootId}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-border-subtle px-3 py-2 text-xs text-text-secondary"
-            >
-              <span>
-                {ROOT_LABELS[root.rootId]} · {capitalized(root.state)}
-              </span>
-              {root.entries.map((entry) => (
-                <span
-                  key={entry.id}
-                  className={
-                    entry.state === 'missing'
-                      ? 'text-status-error'
-                      : 'text-status-success'
-                  }
-                >
-                  {entry.id} · {capitalized(entry.state)}
+          .map((root) => {
+            const missing = root.entries.filter(({ state }) => state === 'missing')
+            const summary =
+              root.entries.length === 0
+                ? capitalized(root.state)
+                : missing.length === 0
+                  ? `${root.entries.length} present`
+                  : `${missing.length} of ${root.entries.length} missing`
+            return (
+              <span
+                key={root.rootId}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-border-subtle px-3 py-2 text-xs text-text-secondary"
+              >
+                <span>
+                  {ROOT_LABELS[root.rootId]} · {summary}
                 </span>
-              ))}
-            </span>
-          ))}
+                {/*
+                  The state word stays even though every chip here is missing by
+                  construction. Dropping it was tried and an existing case caught
+                  it: `text-status-error` alone makes the chip differ from its
+                  neighbours by hue and nothing else, which is the one thing the
+                  state-channel invariant forbids.
+                */}
+                {missing.map((entry) => (
+                  <span key={entry.id} className="text-status-error">
+                    {entry.id} · {capitalized(entry.state)}
+                  </span>
+                ))}
+              </span>
+            )
+          })}
       </div>
     </Card>
   )
@@ -548,6 +580,17 @@ export function WorkflowPage(): ReactElement {
     )
     content = (
       <>
+        {/*
+          The response has carried `generatedAtIso` since schema v1; this surface
+          simply never rendered it, while both sibling surfaces do. It matters
+          more here than there: the fleet and the detail page report a *state*,
+          and this one reports an *agreement*, which is a claim about a moment.
+          "codex-workflow: 7 laggards" is actionable if it is true now and
+          misleading if it was true an hour ago.
+        */}
+        <p className="text-xs text-text-tertiary">
+          Readings computed {formatGeneratedAt(workflow.data.generatedAtIso)}
+        </p>
         <SpecConformance data={workflow.data} />
         <SharedArtifacts data={workflow.data} />
         <HarnessResults

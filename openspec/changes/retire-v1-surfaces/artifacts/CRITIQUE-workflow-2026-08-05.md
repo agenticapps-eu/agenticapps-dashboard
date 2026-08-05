@@ -274,9 +274,70 @@ some point.
 
 ---
 
+## Re-measurement after the two presentational fixes (same day)
+
+The operator chose to fix the cheap P1s before deciding on a waiver. Two of the
+three were fixable in the presentation layer and were fixed; **the third was
+not, and the reason matters more than the fix would have.**
+
+**Fixed — the surface now says when it was read.** `Readings computed 2026-08-05
+18:44 UTC`, in the same shape and the same token as the fleet and the repository
+detail. No daemon change was needed: `generatedAtIso` has been on the wire since
+schema v1 and the surface simply never rendered it.
+
+**Fixed — the 34 chips are now 4.** Measured before and after:
+
+| | before | after |
+|---|---|---|
+| chips under "Machine skill roots" | 34 | 4 |
+| chips reading "· Present" | 34 | 0 |
+| height of that block | 260px | 35px |
+| page scroll height | 1916px | 1731px |
+
+The four now read "Claude skills · 4 present", "Codex skills · 11 present",
+"OpenCode skills · 11 present", "Pi skills · 4 present". An incomplete root
+instead reads "N of M missing" and names only the missing skills, so the
+exception is the payload rather than a needle in 34 identical chips.
+
+**An existing test caught a regression in that fix, which is worth recording.**
+The first implementation rendered a missing skill as a bare id in
+`text-status-error`. That makes the chip differ from its neighbours by hue and
+nothing else — precisely what the state-channel invariant forbids — and
+`WorkflowPage.test.tsx:264`, which had asserted `observability · Missing` since
+long before this critique, failed on it. The state word was restored. The
+invariant held because a test written for another reason was standing on it.
+
+**Not fixed — the surface still carries zero anchors, and cannot cheaply.** The
+host payload carries neither a path nor a repo id, and none of the four workflow
+repositories is a registered project (the registry holds three:
+`agenticapps-dashboard`, `cparx`, `fx-signal-agent`). A link to
+`/repos/claude-workflow` would 404. A conditional link — rendered only when a
+host happens to be registered — would produce zero links on this machine while
+adding a code path with no consumer, which is the thing CLAUDE.md's Simplicity
+First rule names outright. Giving these repositories a destination is a real
+piece of product design, not a presentational fix.
+
+**Re-scored: composite 65.0 (26/40). Still below the floor of 80.**
+
+| # | Heuristic | was | now | why it moved |
+|---|---|---|---|---|
+| 1 | Visibility of system status | 2 | 3 | The reading is dated; the eight harness buttons still report no last-attempt time |
+| 6 | Recognition rather than recall | 2 | 3 | The chip wall is gone; "Offered 0034" still needs a ledger held off-screen |
+| 8 | Aesthetic and minimalist | 2 | 3 | 185px of repetition removed; the density violation and the three stacked comparison models remain |
+
+The other seven are unchanged. **The two fixes were worth 7.5 points and the
+surface still fails by 15.** That is the useful result: the remaining gap is not
+made of small things. It is the density violation (already OPEN, needing its own
+change), the absence of any route from a finding to an action, and the fact that
+three unrelated comparison models share one page — and none of those is a
+presentational fix.
+
+---
+
 ## Verdict against the floor
 
-**57.5 against a ratified floor of 80.** Recorded, not waived — the
+**57.5 as first measured, 65.0 after the two presentational fixes, against a
+ratified floor of 80.** Recorded, not waived — the
 structural-debt waiver clause (D-10.5-03.calibration-2, ratified 2026-06-08) is
 the operator's to invoke, and the precedent for it is `/code-intelligence`,
 which was waived at 74 to a named follow-up bundle and later lifted to 81 to
