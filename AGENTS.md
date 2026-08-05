@@ -94,8 +94,8 @@ change has validated and been reviewed. On any code-touching task the
 ritual before any tool call, and carries the lifecycle routing, gate
 bindings, and knowledge-capture procedures — read them there, and see
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the explainer.
-Project-specific bindings live in `.planning/config.json`; gates that do
-not fire on this project are documented in `docs/ENFORCEMENT-PLAN.md`.
+Gates that do not fire on this project are documented in
+`docs/ENFORCEMENT-PLAN.md`.
 Do not bypass a gate — accept-via-ADR is the override path. Spec:
 [`agenticapps-workflow-core`](https://github.com/agenticapps-eu/agenticapps-workflow-core).
 Version stamp: `.opencode/workflow-version.txt`.
