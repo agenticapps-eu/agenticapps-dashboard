@@ -206,6 +206,37 @@ rendered identically on the withdrawn home; re-homing did not cause it and
 fixing it would widen this change into a component it otherwise reuses
 untouched.
 
+## 8b. The manifest is keyed on a normalised location, not on the identifier
+
+Decided 2026-08-05, at stage-2 code review of the first cutover commits.
+
+The manifest was keyed on the pathname exactly. TanStack matches paths
+case-insensitively and tolerates trailing slashes, but hands `beforeLoad` the
+pathname the visitor typed rather than the one it matched — so `/coverage/` and
+`/COVERAGE` *matched* the retired route while missing the lookup. No redirect
+was thrown, and a retired route has no component, so the visitor got an empty
+Outlet inside the shell: the blank page §8 and the requirement's scenarios
+forbid by name, reached through the most ordinary thing a bookmark does.
+
+Two answers were open. Fold the spelling and redirect, or treat the variant as
+unknown and return not-found. Folding wins because case is already
+insignificant to this router for every *surviving* surface — `/FLEET` renders
+the fleet. A retired location that answered only one spelling would change URL
+semantics for exactly the six addresses this change exists to keep working.
+
+**Only the location is folded, never the identifier.** `/Projects/MyRepo`
+resolves to `/repos/MyRepo`. A repo id is data the URL carries, not a spelling
+of an address; folding it would point a bookmark at a repo that may not exist
+and convert a working deep link into the detail surface's not-found state —
+the same loss §8 refuses when it declines to discard the identifier.
+
+The fallback for an unresolved mounted route now throws `notFound()` rather
+than falling through. Falling through was documented as reaching not-found and
+did not: with no component and no `notFoundComponent`, the route renders an
+empty Outlet. Thrown, it renders not-found and logs a warning naming the route,
+so a manifest that ever stops covering a mounted path fails loudly instead of
+serving a blank page in silence.
+
 ## 9. Historical data becomes inert, not mysteriously abandoned
 
 Snapshot and environment files under the daemon's own directory are retained at
