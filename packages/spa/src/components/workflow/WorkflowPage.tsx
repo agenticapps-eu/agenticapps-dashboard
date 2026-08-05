@@ -14,6 +14,7 @@ import {
 import { SchemaDriftState } from '../SchemaDriftState.js'
 import { Card } from '../ui/Card.js'
 import { CardHeader } from '../ui/CardHeader.js'
+import { EmDash } from '../ui/EmDash.js'
 import { PageHeader } from '../ui/PageHeader.js'
 
 type WorkflowHost = WorkflowResponse['hosts'][number]
@@ -192,7 +193,7 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                 </th>
                 <td className="px-3 py-4">
                   <span className="tabular-nums text-text-primary">
-                    {host.primary?.version ?? 'Unknown'}
+                    {host.primary?.version ?? <EmDash />}
                   </span>
                   <span className={`ml-2 text-xs font-medium ${stateTextClass(host.coreState)}`}>
                     {capitalized(host.coreState)}
@@ -200,7 +201,7 @@ function SpecConformance({ data }: { data: WorkflowResponse }): ReactElement {
                 </td>
                 <td className="px-3 py-4">
                   <span className="tabular-nums text-text-primary">
-                    {host.minimum && host.maximum ? `${host.minimum}–${host.maximum}` : 'Unknown'}
+                    {host.minimum && host.maximum ? `${host.minimum}–${host.maximum}` : <EmDash />}
                   </span>
                   {host.state === 'missing' ? (
                     <span className="ml-2 text-xs text-status-error">

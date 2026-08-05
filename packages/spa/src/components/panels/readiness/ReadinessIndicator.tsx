@@ -40,6 +40,7 @@ import {
   type CheckStatus,
 } from '@agenticapps/dashboard-shared'
 
+import { EM_DASH } from '../../ui/EmDash.js'
 import { Tooltip } from '../../ui/Tooltip.js'
 
 export type ReadinessVariant = 'compact' | 'full'
@@ -169,7 +170,7 @@ export function exclusionPhrase(excluded: readonly CheckId[]): string | null {
  * must never stand in for an observation that did not happen.
  */
 function formatObservedAt(at: number | null): string {
-  if (at === null) return '—'
+  if (at === null) return EM_DASH
   return `${new Date(at).toISOString().slice(0, 16).replace('T', ' ')} UTC`
 }
 

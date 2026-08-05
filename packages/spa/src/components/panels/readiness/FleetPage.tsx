@@ -34,6 +34,7 @@ import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
 import { RegisterModal } from '../../RegisterModal.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
+import { EmDash } from '../../ui/EmDash.js'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
 
@@ -68,8 +69,15 @@ function plural(count: number): string {
  * `lastCommitAt` is bounded by the wire schema, so this cannot throw on a
  * corrupt committer date.
  */
-function formatLastChange(at: number | null): string {
-  if (at === null) return '—'
+/**
+ * `null` rather than the marker itself: the caller renders `<EmDash />`, so the
+ * absence carries the same tertiary colour here as it does on the detail page.
+ * Returning the character from this function would have produced the right
+ * glyph in the wrong weight, which is the kind of drift "a single canonical
+ * absence marker" exists to stop.
+ */
+function formatLastChange(at: number | null): string | null {
+  if (at === null) return null
   return new Date(at).toISOString().slice(0, 10)
 }
 
@@ -238,7 +246,7 @@ function FleetRow({
           column still reads ragged — a '1' is narrower than a '0' and the
           right edge is the only thing holding the rhythm. */}
       <td className="px-3 py-2 text-right align-middle text-sm tabular-nums text-text-secondary whitespace-nowrap">
-        {formatLastChange(repo.lastCommitAt)}
+        {formatLastChange(repo.lastCommitAt) ?? <EmDash />}
       </td>
     </tr>
   )
