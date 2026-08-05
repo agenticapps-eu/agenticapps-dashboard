@@ -21,9 +21,9 @@
  * - NO hex literals — token names only
  * - NO shadcn aliases
  */
-import type { ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { AlertTriangle, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Plus, ShieldCheck } from 'lucide-react'
 import {
   CHECK_IDS,
   type CheckResult,
@@ -32,6 +32,7 @@ import {
 
 import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
+import { RegisterModal } from '../../RegisterModal.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
@@ -293,11 +294,34 @@ function FleetTable({
 }
 
 /**
+ * The one register affordance, rendered twice: once in the page header where
+ * it is always in the same place, and once inside the empty state where a
+ * first-time reader is already looking. Both open the same modal.
+ */
+function RegisterButton({ onClick }: { onClick: () => void }): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-md border border-accent bg-accent-bg-strong px-3 py-2 text-sm font-semibold text-white hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+    >
+      <Plus size={16} aria-hidden="true" />
+      Register repository
+    </button>
+  )
+}
+
+/**
  * Nothing registered is not the same as nothing to show. An empty table would
  * state that the fleet is clear; this states that the fleet is empty, and says
  * how to change that.
+ *
+ * The CLI line stays, demoted to an alternative. `Register A Project From The
+ * Home Page` survives this change as a promise that a user can register
+ * without leaving the browser, and until the affordance was re-homed here this
+ * state pointed at the CLI as the only route.
  */
-function NoReposState(): ReactElement {
+function NoReposState({ onRegister }: { onRegister: () => void }): ReactElement {
   return (
     <div className="rounded-card bg-card-bg p-6 shadow-card">
       <EmptyState
@@ -305,11 +329,11 @@ function NoReposState(): ReactElement {
         title="No repositories registered yet."
         body={
           <>
-            Readiness is read from repositories on this machine. Run{' '}
-            <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>{' '}
-            to add one.
+            Readiness is read from repositories on this machine. Add one below, or run{' '}
+            <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>.
           </>
         }
+        action={<RegisterButton onClick={onRegister} />}
       />
     </div>
   )
@@ -343,6 +367,16 @@ export function FleetPage(): ReactElement {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as FleetSearch
   const filters = parseFleetFilters(search)
+  const [registerOpen, setRegisterOpen] = useState(false)
+
+  // The command palette's "Register project" action dispatches this on
+  // `window` rather than calling anything — `MultiProjectHome` was its only
+  // listener, and this change withdraws that surface.
+  useEffect(() => {
+    const onOpenRegister = (): void => setRegisterOpen(true)
+    window.addEventListener('palette:open-register', onOpenRegister)
+    return () => window.removeEventListener('palette:open-register', onOpenRegister)
+  }, [])
 
   // `useNavigate()` without a `from` infers the root route, whose search type is
   // empty, so a concrete search object does not type-check against it. The
@@ -382,7 +416,7 @@ export function FleetPage(): ReactElement {
   } else if (fleet.isError || !fleet.data) {
     content = <ErrorState onRetry={() => void fleet.refetch()} />
   } else if (fleet.data.repos.length === 0) {
-    content = <NoReposState />
+    content = <NoReposState onRegister={() => setRegisterOpen(true)} />
   } else {
     content =
       visible.length === 0 ? (
@@ -402,6 +436,7 @@ export function FleetPage(): ReactElement {
         title="Fleet readiness"
         helper="Six checks per repository. Count the cells — there is no combined score."
         sticky={true}
+        actions={<RegisterButton onClick={() => setRegisterOpen(true)} />}
       />
       {filterable && (
         <div className="flex flex-col gap-3">
@@ -428,6 +463,19 @@ export function FleetPage(): ReactElement {
         </div>
       )}
       {content}
+      {/*
+        `useRegisterConfirm` invalidates ['registry'], which this page does not
+        read — it reads FLEET_QUERY_KEY. Re-reading here is what makes the new
+        repository appear without a reload.
+      */}
+      <RegisterModal
+        isOpen={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onConfirmed={() => {
+          setRegisterOpen(false)
+          void fleet.refetch()
+        }}
+      />
     </div>
   )
 }
