@@ -43,4 +43,43 @@ describe('resolveRetiredLocation', () => {
     expect(resolveRetiredLocation('/fleet')).toBeNull()
     expect(resolveRetiredLocation('/settings')).toBeNull()
   })
+
+  /**
+   * The router matches paths case-insensitively and tolerates trailing
+   * slashes, and hands `beforeLoad` the pathname the visitor typed rather than
+   * the one it matched. A manifest keyed exactly would disown spellings the
+   * router had already accepted, and the retired route they landed on has no
+   * component — so the answer was a blank shell.
+   */
+  describe('the spellings the router accepts', () => {
+    it.each(['/coverage/', '/COVERAGE', '/Coverage/', '/coverage//'])(
+      'resolves %s to the fleet',
+      (location) => {
+        expect(resolveRetiredLocation(location)).toBe('/fleet')
+      },
+    )
+
+    it('resolves the origin with its slash stripped back to the origin, not to nothing', () => {
+      expect(resolveRetiredLocation('//')).toBe('/fleet')
+    })
+
+    it.each(['/projects/dashboard/', '/PROJECTS/dashboard'])(
+      'resolves %s to the repo detail surface',
+      (location) => {
+        expect(resolveRetiredLocation(location)).toBe('/repos/dashboard')
+      },
+    )
+
+    it('folds the case of the location, never of the identifier it carries', () => {
+      // The identifier is data. Folding it would send a bookmark for `MyRepo`
+      // to a repo that may not exist and turn a working deep link into the
+      // detail surface's not-found state.
+      expect(resolveRetiredLocation('/Projects/MyRepo')).toBe('/repos/MyRepo')
+    })
+
+    it('still refuses a sub-path the product never served, in any spelling', () => {
+      expect(resolveRetiredLocation('/projects/some-repo/coverage')).toBeNull()
+      expect(resolveRetiredLocation('/PROJECTS/some-repo/coverage/')).toBeNull()
+    })
+  })
 })

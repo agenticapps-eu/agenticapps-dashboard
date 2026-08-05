@@ -3,6 +3,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  notFound,
   redirect,
   Outlet,
   type AnyRoute,
@@ -95,11 +96,13 @@ const appShellLayoutRoute = createRoute({
  * keyed on the pathname the visitor actually typed, so the router never holds
  * a second copy of the mapping that could drift from the first.
  *
- * `resolveRetiredLocation` returning `null` cannot happen for a path mounted
- * here — the route paths and the manifest are the same six locations. If they
- * ever stop being, falling through is the honest answer: the route has no
- * component, so the visitor reaches not-found rather than a plausible guess,
- * which is what the requirement asks for an address the product never served.
+ * `resolveRetiredLocation` returning `null` should not happen for a path
+ * mounted here — the route paths and the manifest are the same six locations,
+ * and the manifest answers every spelling this router will match. If they ever
+ * stop agreeing, `notFound()` is the honest answer, and it has to be thrown:
+ * falling through leaves a route with no component, which renders an empty
+ * Outlet inside the shell — the blank page the requirement forbids by name,
+ * and silent, which is worse than wrong.
  */
 function retiredRoute(path: string) {
   return createRoute({
@@ -107,7 +110,8 @@ function retiredRoute(path: string) {
     path,
     beforeLoad: ({ location }: { location: { pathname: string } }) => {
       const to = resolveRetiredLocation(location.pathname)
-      if (to !== null) { throw redirect({ to, replace: true }) }
+      if (to === null) { throw notFound() }
+      throw redirect({ to, replace: true })
     },
   })
 }

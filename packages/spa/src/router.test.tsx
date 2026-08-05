@@ -202,6 +202,30 @@ describe('router — retired v1 locations resolve through the manifest', () => {
     const fleet = router.routesById['/_appshell/fleet' as keyof typeof router.routesById]
     expect(fleet?.options.beforeLoad).toBeUndefined()
   })
+
+  it('answers not-found, not a blank shell, if a mounted route ever leaves the manifest', async () => {
+    // Unreachable by navigation as the two are mounted today — the six route
+    // paths and the manifest are the same six locations, and the manifest now
+    // answers every spelling this router will match. It is pinned anyway
+    // because the failure it replaces was silent: a retired route that resolves
+    // to nothing has no component, and a component-less route renders an empty
+    // Outlet inside the shell rather than announcing anything. Thrown, it
+    // renders TanStack's `<p>Not Found</p>` and logs a warning naming the route.
+    const { router } = await import('./router.js')
+    const { isNotFound } = await import('@tanstack/react-router')
+    const route = router.routesById['/_appshell/coverage' as keyof typeof router.routesById]
+    const beforeLoad = route?.options.beforeLoad as (opts: {
+      location: { pathname: string }
+    }) => unknown
+
+    expect(() => beforeLoad({ location: { pathname: '/drifted' } })).toThrow()
+    try {
+      beforeLoad({ location: { pathname: '/drifted' } })
+    } catch (thrown) {
+      expect(isNotFound(thrown)).toBe(true)
+      expect(isRedirect(thrown)).toBe(false)
+    }
+  })
 })
 
 /**
