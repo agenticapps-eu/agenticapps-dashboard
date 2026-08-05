@@ -19,7 +19,9 @@
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+
 import { makeCoverageResolver, PathViolation } from './coverageResolver.js'
 import type { PathResolver } from './coverageResolver.js'
 

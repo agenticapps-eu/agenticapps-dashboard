@@ -12,7 +12,6 @@
  * the registry is read from disk. It spawns no process.
  */
 import { Hono } from 'hono'
-
 import { ChangesFleetResponseSchema } from '@agenticapps/dashboard-shared'
 
 import {

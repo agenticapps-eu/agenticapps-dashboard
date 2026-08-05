@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 
+import { describe, it, expect } from 'vitest'
 import { HookFiringSchema } from '@agenticapps/dashboard-shared'
+
 import { extractFirings } from '../lib/extractFirings.js'
 
 function makeTmpDir(): string {

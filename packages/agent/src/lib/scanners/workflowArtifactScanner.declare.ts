@@ -1,4 +1,6 @@
+import type { MachineRootId } from '../containment.js'
 import type { PathResolver } from '../coverageResolver.js'
+
 import type {
   WorkflowArtifactId,
   WorkflowHostId,
@@ -81,8 +83,6 @@ export interface WorkflowHostArtifactSummary {
  * resolvers, so this direction of dependency is the one that does not invert
  * the layering.
  */
-import type { MachineRootId } from '../containment.js'
-
 export type WorkflowMachineRootId = MachineRootId
 
 export interface WorkflowMachineRootDefinition {

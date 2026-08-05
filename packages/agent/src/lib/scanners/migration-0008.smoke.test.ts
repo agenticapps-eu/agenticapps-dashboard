@@ -15,10 +15,12 @@
  *      1.6 → 1.8 jump that was originally bundled with 0008.)
  */
 
-import { describe, it, expect } from 'vitest'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+
+import { describe, it, expect } from 'vitest'
+
 import { parseFrontmatter } from '../skillsScan.js'
 
 const MIGRATION_PATH = join(

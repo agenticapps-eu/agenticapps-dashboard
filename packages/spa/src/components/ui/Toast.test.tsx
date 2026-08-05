@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import React from 'react'
+
 import { ToastProvider, useToast } from './Toast.js'
 
 function TestHarness({ onReady }: { onReady: (toast: ReturnType<typeof useToast>) => void }) {

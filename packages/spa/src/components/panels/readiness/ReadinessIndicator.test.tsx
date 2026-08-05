@@ -49,6 +49,9 @@ import {
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  // The appearance is global state on <html>. A test that sets it and then
+  // fails mid-body would otherwise hand `.dark` to every test after it.
+  document.documentElement.classList.remove('dark')
 })
 
 /**
@@ -107,6 +110,44 @@ describe('ReadinessIndicator', () => {
     },
   )
 
+  it('shows an underlying value in the compact cell, not only in its accessible name', () => {
+    // `design-system` → A Value Is Shown Where One Exists: "Colour and shape
+    // summarise; they do not substitute for the number."
+    //
+    // The compact variant put the value in `disclose()` alone, so on the fleet
+    // — the product's primary surface — a coverage cell said "amber" and never
+    // said 66.42. A sighted reader had to open the repo to learn the number
+    // that made the cell amber, and a fleet of thirty repos meant thirty
+    // round trips to read a column of figures the daemon had already sent.
+    //
+    // The accessible name is not a substitute: it is reachable by pointer or
+    // screen reader, and the requirement is about what the cell renders.
+    const checks = sixChecks()
+    const withValue = checks.map((check) =>
+      check.id === 'coverage'
+        ? result('coverage', 'warn', { value: 66.42, threshold: 80 })
+        : check,
+    ) as unknown as CheckResult[]
+
+    render(
+      <ReadinessIndicator checks={withValue} repoName="alpha" variant="compact" />,
+    )
+
+    expect(screen.getByText('66.42 of 80')).toBeInTheDocument()
+  })
+
+  it('adds nothing to a compact cell that has no underlying value', () => {
+    // The paired case. A cell with no value must stay the bare glyph rather
+    // than gaining an empty span, a zero, or a stray separator — the same
+    // prohibition the absence marker carries.
+    render(
+      <ReadinessIndicator checks={sixChecks()} repoName="alpha" variant="compact" />,
+    )
+
+    expect(screen.queryByText(/\bof\b/)).toBeNull()
+    expect(screen.queryByText('0')).toBeNull()
+  })
+
   it('never omits a check to close a gap, and holds each position across repos', () => {
     render(
       <ReadinessIndicator checks={sixChecks()} repoName="alpha" variant="compact" />,
@@ -159,6 +200,43 @@ describe('ReadinessIndicator', () => {
     expect(shapes.size).toBe(CHECK_STATUSES.length)
   })
 
+  it.each(['light', 'dark'] as const)(
+    'keeps all six shapes in the %s appearance, so the channel does not depend on the palette',
+    (appearance) => {
+      // The shape test above renders under whatever appearance happens to be
+      // on the documentElement, which is light. That leaves the one regression
+      // this requirement is most exposed to unguarded: a `dark:` variant that
+      // drops or unifies the glyph, leaving dark readers with six cells told
+      // apart by hue alone while every existing assertion stays green.
+      //
+      // Shapes are palette-independent by construction, so a pass here is
+      // expected rather than surprising — the value is that it now has to
+      // stay that way deliberately.
+      //
+      // The class comes off in afterEach rather than at the end of this body:
+      // an assertion that throws mid-loop would otherwise leave `.dark` on the
+      // documentElement and fail every later test in the file for a reason
+      // that has nothing to do with them. Observed while mutation-testing this
+      // very assertion.
+      document.documentElement.classList.toggle('dark', appearance === 'dark')
+
+      const shapes = new Set<string>()
+      for (const status of CHECK_STATUSES) {
+        cleanup()
+        const checks = CHECK_IDS.map((id) => result(id, status))
+        render(<ReadinessIndicator checks={checks} repoName="repo" />)
+
+        const svg = document.querySelector('[role="figure"] svg')
+        expect(svg, `no icon rendered for status ${status} in ${appearance}`).not.toBeNull()
+        const name = Array.from((svg as SVGElement).classList).find((c) => c.startsWith('lucide-'))
+        expect(name, `no lucide class for status ${status} in ${appearance}`).toBeDefined()
+        shapes.add(name as string)
+      }
+
+      expect(shapes.size).toBe(CHECK_STATUSES.length)
+    },
+  )
+
   it('says when a cell failed to evaluate rather than failed on its merits', () => {
     // readinessOrder.ts claims "a reader can reconstruct any pairwise result by
     // counting cells". They could not: an evaluation error and a merits-based
@@ -207,7 +285,18 @@ describe('ReadinessIndicator', () => {
     expect(cell.className).toContain(text)
   })
 
-  it('shows a value in the full variant and withholds it in the compact one', () => {
+  it('shows a value in both variants', () => {
+    // REVERSED 2026-08-05, `retire-v1-surfaces` §3. This test previously
+    // asserted the compact variant *withholds* the value — it read
+    // "shows a value in the full variant and withholds it in the compact one"
+    // — which is the behaviour `design-system` → A Value Is Shown Where One
+    // Exists forbids: "colour and shape summarise; they do not substitute for
+    // the number".
+    //
+    // The old assertion is left described rather than deleted because it was
+    // not a mistake at the time; it encoded a density trade made before that
+    // requirement existed, and a future reader finding the compact cell wider
+    // than 32px deserves to know it was decided rather than drifted into.
     const checks = [result('coverage', 'ok', { value: 87.4, threshold: 80 })]
 
     render(
@@ -219,7 +308,7 @@ describe('ReadinessIndicator', () => {
     render(
       <ReadinessIndicator checks={checks} repoName="dashboard" variant="compact" />,
     )
-    expect(screen.queryByText('87.4 of 80')).toBeNull()
+    expect(screen.getByText('87.4 of 80')).toBeTruthy()
   })
 
   it('reads a value against its threshold, since the threshold is why it is green', () => {

@@ -2,18 +2,23 @@
  * Hybrid OpenSpec reader — project-dashboard › Hybrid OpenSpec Read Strategy.
  *
  * The CLI is preferred where it answers; the tree is the floor that always
- * answers. Three values never come from the CLI and are read from the tree on
- * both paths:
- *
- *   - the archive          — the CLI does not expose it
- *   - affected capabilities — the CLI does not report them
- *   - task-artifact presence — the CLI emits 0/0 for absent and empty alike,
- *                              so presence cannot be recovered from its output
+ * answers. One value never comes from the CLI and is read from the tree on both
+ * paths: task-artifact presence, because the CLI emits 0/0 for an absent
+ * artifact and an empty one alike, so presence cannot be recovered from its
+ * output.
  *
  * The change *set* is likewise always enumerated from the tree. The CLI supplies
  * counts for changes the tree already found; it does not decide which changes
  * exist. Were its set authoritative, a half-written change it declines to list
- * would vanish from the column exactly when the binary is present.
+ * would vanish from the surface exactly when the binary is present.
+ *
+ * Two values this reader used to return are withdrawn by the v2 cutover, and
+ * this module reads neither: the archived-change list, and each open change's
+ * affected capabilities. Both had exactly one consumer apiece — the
+ * change-progress column and the capability panel — and both surfaces are gone.
+ * The archive is still rendered, by the lifecycle change board, which reads
+ * `openspec/changes/archive/` itself so that this reader stays off that cost:
+ * it sits on the `spec` readiness check's hot path, which the board does not.
  */
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -26,8 +31,6 @@ export interface OpenspecChangeSummary {
   totalTasks: number
   /** False when the change has no task artifact at all — distinct from 0 of 0. */
   hasTaskArtifact: boolean
-  /** Capability ids from the change's own specs/ tree; empty when it has none. */
-  affectedCapabilities: string[]
 }
 
 export interface OpenspecCapabilitySummary {
@@ -35,25 +38,17 @@ export interface OpenspecCapabilitySummary {
   requirementCount: number
 }
 
-export interface OpenspecArchivedChange {
-  name: string
-  /** The zero-padded ISO prefix, or null when the name does not carry one. */
-  datePrefix: string | null
-}
-
 export interface OpenspecProjectState {
   present: boolean
   openChanges: OpenspecChangeSummary[]
   capabilities: OpenspecCapabilitySummary[]
-  archived: OpenspecArchivedChange[]
 }
 
-const ISO_PREFIX = /^(\d{4}-\d{2}-\d{2})-/
 const REQUIREMENT_HEADING = /^###\s+Requirement:/gm
 const TASK_LINE = /^\s*[-*]\s+\[( |x|X)\]/gm
 
 function emptyState(present: boolean): OpenspecProjectState {
-  return { present, openChanges: [], capabilities: [], archived: [] }
+  return { present, openChanges: [], capabilities: [] }
 }
 
 async function listDirs(dir: string): Promise<string[]> {
@@ -96,8 +91,7 @@ export async function readOpenspecTree(projectRoot: string): Promise<OpenspecPro
     changeNames.map(async (name) => {
       const dir = join(changesDir, name)
       const { completedTasks, totalTasks, hasTaskArtifact } = await readTaskCounts(dir)
-      const affectedCapabilities = (await listDirs(join(dir, 'specs'))).sort()
-      return { name, completedTasks, totalTasks, hasTaskArtifact, affectedCapabilities }
+      return { name, completedTasks, totalTasks, hasTaskArtifact }
     }),
   )
 
@@ -109,30 +103,7 @@ export async function readOpenspecTree(projectRoot: string): Promise<OpenspecPro
     })),
   )
 
-  const archived = (await listDirs(join(changesDir, 'archive'))).map((name) => ({
-    name,
-    datePrefix: ISO_PREFIX.exec(name)?.[1] ?? null,
-  }))
-  sortArchive(archived)
-
-  return { present: true, openChanges, capabilities, archived }
-}
-
-/**
- * Newest first by zero-padded ISO prefix, which makes lexicographic order
- * chronological by construction. A name without a conforming prefix carries no
- * chronological claim, so it sorts after every conforming one, by name.
- */
-function sortArchive(archived: OpenspecArchivedChange[]): void {
-  archived.sort((a, b) => {
-    if (a.datePrefix && b.datePrefix) {
-      if (a.datePrefix !== b.datePrefix) return b.datePrefix.localeCompare(a.datePrefix)
-      return b.name.localeCompare(a.name)
-    }
-    if (a.datePrefix) return -1
-    if (b.datePrefix) return 1
-    return a.name.localeCompare(b.name)
-  })
+  return { present: true, openChanges, capabilities }
 }
 
 async function readTaskCounts(
@@ -189,7 +160,7 @@ export async function readOpenspecProject(
     openChanges = tree.openChanges.map((c) => {
       const fromCli = byName.get(c.name)
       if (!fromCli) return c
-      // Counts come from the CLI; presence and affected capabilities do not.
+      // Counts come from the CLI; task-artifact presence does not.
       return {
         ...c,
         completedTasks: fromCli.completedTasks,

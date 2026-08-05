@@ -14,7 +14,6 @@
  *
  * All tests use a tmp dir override — no ~/.agenticapps writes.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   mkdtempSync,
   rmSync,
@@ -26,6 +25,8 @@ import {
 import { createHmac } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import {
   ensureViewerSecretFile,

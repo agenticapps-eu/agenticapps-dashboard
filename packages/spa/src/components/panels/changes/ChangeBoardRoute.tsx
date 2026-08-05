@@ -21,7 +21,6 @@
  */
 import type { ReactElement } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-
 import type { ChangeCard } from '@agenticapps/dashboard-shared'
 
 import { useChangesFleet } from '../../../lib/changesQueries.js'

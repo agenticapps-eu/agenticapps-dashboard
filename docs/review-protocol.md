@@ -60,4 +60,4 @@ Phase 6's own closing PR is the **live test** of this protocol — its PR descri
 
 - It does **not** build a `<finding>` aggregator service (D-6-14). The two skills already produce findings; the protocol is enforcement, not infrastructure.
 - It does **not** automate finding-resolution. The author resolves each `block` finding with a fix commit and adds the `<resolution commit="…">` child manually.
-- It does **not** gate the impeccable-critique CI check — that's a separate workflow (`.github/workflows/impeccable.yml`, D-6-09/D-6-09.v1).
+- It does **not** cover the impeccable-critique floor. That was once a CI check (D-6-09/D-6-09.v1) but the workflow was retired in favour of a per-change artifact, and the link to `.github/workflows/impeccable.yml` outlived it. The composite ≥ 80 floor is a process gate enforced by committing the critique artifact with each frontend-touching change; it is defined in `CLAUDE.md`, not here.

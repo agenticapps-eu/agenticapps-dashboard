@@ -82,11 +82,62 @@
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
   --radius-card: 12px;
 
-  /* Typography — Pitfall 3: family name is 'Inter Variable' WITH space */
+  /* Density — `design-system` → Dense Rows And Aligned Figures.
+   *
+   * The maximum height of one row on a list or table surface, generating
+   * `h-row-max`. This is the number the requirement's "at or below the declared
+   * maximum" scenario compares against; before it there was nothing to compare
+   * against, and the fleet's `h-14` measured the right height while declaring
+   * nothing.
+   *
+   * `rem`, not `px`, and that is the substantive half rather than a style
+   * preference. A cap fixed in CSS pixels is a requirement to clip text as soon
+   * as a reader enlarges it, which collides with the reflow guarantee the
+   * product owes. In `rem` the row grows with the user's font size, so the cap
+   * scales with the text it contains and enlarging text stays a supported thing
+   * to do rather than a conformance failure.
+   *
+   * Scoped to the 1440x900 reference viewport. At `xs` a logical row may wrap
+   * its fields internally and exceed this, which the requirement permits
+   * explicitly — there the rule is that a row stays one list item with every
+   * required field, not that it fits this budget.
+   */
+  --spacing-row-max: 3.5rem;
+
+  /* Typography — Pitfall 3: family name is 'Inter Variable' WITH space.
+   *
+   * Each namespace is reset to `initial` before it is declared. Without that,
+   * Tailwind's own families, weights and sizes stay live alongside these and
+   * the list below is merely a subset of what the stylesheet permits —
+   * `font-serif` and `text-7xl` would still resolve. "Bounded" in
+   * `design-system` → A Bounded Type Scale means there is nothing else to
+   * reach for, so the enumeration has to be the whole scale rather than a
+   * preferred corner of a larger one.
+   *
+   * Order matters and is load-bearing: `--font-*: initial` is written before
+   * the weight namespace is declared, because the reset applies in source
+   * order and the two namespaces share a prefix.
+   *
+   * typographyTokens.test.ts reads THIS BLOCK as the enumeration — the token
+   * names are parsed out of the file rather than restated in the test — and
+   * fails on any component that declares a size, weight or family outside it.
+   * Adding a token here is therefore the whole act of permitting one.
+   */
+  --font-*: initial;
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
+  /* Weights — the three the product uses. The scale had none until now: sizes
+   * were tokenised in Phase 5.1 and weights were left to Tailwind's defaults,
+   * which is how `font-bold` stayed one keystroke away from a scale that never
+   * meant to offer it. */
+  --font-weight-*: initial;
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+
   /* Type scale — UI-SPEC §3 */
+  --text-*: initial;
   --text-xs:   11px;
   --text-sm:   12px;
   --text-base: 13px;

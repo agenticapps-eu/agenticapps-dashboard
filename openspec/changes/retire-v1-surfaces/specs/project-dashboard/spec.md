@@ -2,18 +2,44 @@
 
 ### Requirement: Retired Locations Have An Explicit Transition
 
-Known SPA transitions SHALL come from one explicit migration manifest.
-`/coverage`, `/observability/skill-drift`, and `/observability/conformance` SHALL
-redirect to the fleet surface. `/code-intelligence` SHALL redirect to the fleet
-surface. `/projects/:id` SHALL redirect to `/repos/:id`, preserving the
-registered-project identifier.
+Known SPA transitions SHALL come from one explicit migration manifest. The root
+location `/`, `/coverage`, `/observability/skill-drift`, and
+`/observability/conformance` SHALL redirect to the fleet surface.
+`/code-intelligence` SHALL redirect to the fleet surface. `/projects/:id` SHALL
+redirect to `/repos/:id`, preserving the registered-project identifier.
+
+**`/` is named because it is the one retired location nobody thinks to
+enumerate.** It rendered the withdrawn multi-project home, so after the cutover
+it is neither a surviving surface nor an unknown location, and the not-found
+clause below does not reach it. Left unnamed, the product's bare origin — its
+most likely entry point — would be the single URL whose behaviour nothing
+specifies. Redirecting rather than re-hosting the fleet at `/` keeps `/fleet` the
+canonical location `add-repo-readiness` shipped; a withdrawal change is the wrong
+place to move a surface that is working. The existing redirect from `/` to the
+onboarding surface for a visitor with no pairing SHALL be preserved: this
+requirement governs where a paired visitor lands, not whether pairing is checked.
 
 **A retired location carrying a repo identifier SHALL redirect to that repo's
-detail surface, not to the fleet.** `/projects/:id/coverage` and any other
-retired per-project path SHALL resolve to `/repos/:id`. Discarding an identifier
-the URL already carries costs the user the context they bookmarked and lands them
-on a list they must search to get back to where they were. Only a retired
-location with no identifier in it falls back to the fleet surface.
+detail surface, not to the fleet.** `/projects/:id` SHALL resolve to `/repos/:id`.
+Discarding an identifier the URL already carries costs the user the context they
+bookmarked and lands them on a list they must search to get back to where they
+were. Only a retired location with no identifier in it falls back to the fleet
+surface.
+
+**The per-project rule is enumerated, not a wildcard.** An earlier draft read
+"`/projects/:id/coverage` and any other retired per-project path", which
+contradicted the not-found rule below: a wildcard over `/projects/:id/*` would
+redirect invented paths the product never served instead of returning not-found.
+It also cited a location that does not exist — the router serves
+`/projects/:id` and no per-project sub-paths. The manifest lists the locations
+the product actually served; anything else is unknown.
+
+**A redirect preserves the identifier without asserting it is still registered.**
+`/projects/:id` for a repo that has since been unregistered SHALL still resolve to
+`/repos/:id`, where the repo detail surface renders its existing not-found state.
+Resolving the identifier against the registry before redirecting would put a
+registry lookup in a URL rewrite and give a stale bookmark two different failure
+surfaces depending on timing.
 
 Unknown SPA locations MUST return the ordinary not-found state.
 
@@ -25,10 +51,43 @@ withdrawal covers **every** method and path served by the retired route modules 
 the knowledge-graph viewer's asset and read endpoints, the coverage and
 coverage-history endpoints, the conformance endpoint, the skill-drift endpoints,
 the AgentLinter endpoints, and the Sentry, Linear, secrets, integrations and
-observability endpoints. Roughly sixty endpoints across eleven route modules; the
-implementing change SHALL record the exact method/path list and SHALL treat any
-endpoint in a retired module that is absent from that list as an error in the
-list rather than as a survivor.
+observability endpoints. **Nineteen endpoints across eleven route modules**,
+enumerated here rather than deferred:
+
+| Endpoint | Module |
+|---|---|
+| `GET /api/coverage` | `coverage` |
+| `GET /api/coverage/history` | `coverageHistory` |
+| `GET /api/observability/conformance` | `conformance` |
+| `GET /api/skills/drift` | `skillDrift` |
+| `POST /api/skills/drift/agentlinter` | `skillDrift` |
+| `GET /api/projects/:id/agentlinter` | `agentlinter` |
+| `GET /api/projects/:id/sentry/recent` | `sentry` |
+| `GET /api/projects/:id/linear/issues` | `linear` |
+| `GET /api/projects/:id/secrets` | `secrets` |
+| `GET /api/projects/:id/integrations` | `integrations` |
+| `GET /api/projects/:id/observability` | `observability` |
+| `GET /knowledge-graph.json` | `understandViewer` |
+| `GET /meta.json` | `understandViewer` |
+| `GET /config.json` | `understandViewer` |
+| `GET /domain-graph.json` | `understandViewer` |
+| `GET /diff-overlay.json` | `understandViewer` |
+| `GET /file-content.json` | `understandViewer` |
+| `GET /understand/:family/:repo` | `understandViewer` |
+| `GET /understand/:family/:repo/*` | `understandViewer` |
+
+An endpoint served by one of those eleven modules and absent from this table is
+an error in the table rather than a survivor; the implementing change SHALL
+re-derive the list against the router and correct it if the two disagree.
+
+**The count was previously stated as "roughly sixty" and was never verified.**
+Nineteen is the measured figure, counted from the router registrations in the
+eleven modules and corroborated independently by a reviewer. Sixty entered
+through a round-1 review finding and survived into a normative clause, where an
+implementer finding nineteen would reasonably conclude they had missed forty-one.
+The six root-level `*.json` endpoints are listed explicitly because they are
+mounted at the root rather than under `/api`, which is where an enumeration by
+prefix loses them.
 
 The viewer endpoints are called out because they are the ones where an escape
 costs most: they serve graph and file content, so an endpoint left standing after
@@ -42,15 +101,30 @@ A removed API MUST NOT retain a compatibility stub or synthetic payload.
 - **THEN** the application redirects to the fleet surface
 - **AND** it does not render a blank shell or a withdrawn page.
 
-#### Scenario: A degraded spec read is visible, not silent
-- **WHEN** the CLI and tree readers return different values for a project whose spec is non-conformant
-- **THEN** the surface marks that project as read in compatibility mode and names the malformed spec
-- **AND** two machines that differ only in whether the binary is installed do not present the difference as a difference between repos.
+#### Scenario: The bare origin lands on the fleet
+- **WHEN** a paired user opens the application at `/`
+- **THEN** the application redirects to the fleet surface
+- **AND** it does not render the withdrawn multi-project home or a blank shell.
+
+#### Scenario: The origin still gates on pairing
+- **WHEN** a user with no pairing opens the application at `/`
+- **THEN** the application redirects to the onboarding surface as before
+- **AND** the fleet redirect does not bypass the pairing check.
 
 #### Scenario: A retired per-project link keeps its repo
-- **WHEN** a user navigates to a retired location that names a registered project, such as `/projects/:id/coverage`
+- **WHEN** a user navigates to `/projects/:id`
 - **THEN** the application redirects to `/repos/:id` rather than to the fleet surface
 - **AND** the user is not made to search a list for the repo their bookmark already named.
+
+#### Scenario: An invented per-project path is not redirected
+- **WHEN** a user navigates to a `/projects/:id/...` sub-path the product never served
+- **THEN** the application returns the ordinary not-found state
+- **AND** the per-project rule does not act as a wildcard over paths absent from the manifest.
+
+#### Scenario: A stale bookmark for an unregistered repo
+- **WHEN** a user navigates to `/projects/:id` for a repo that is no longer registered
+- **THEN** the application still redirects to `/repos/:id`
+- **AND** the repo detail surface renders its not-found state rather than the redirect resolving the registry first.
 
 #### Scenario: A removed API is absent
 - **WHEN** a client requests a daemon API withdrawn by this change
@@ -80,7 +154,7 @@ integrations, so this is a standing constraint on future additions rather than a
 current panel requirement. This deliberately sharpens the withdrawn
 `optional-integrations` wording ("every non-integration route shall function")
 into an observable render guarantee without weakening its no-dependency intent.
-No integration MAY be a hard dependency of any unrelated route or surface.
+An integration MUST NOT be a hard dependency of any unrelated route or surface.
 
 #### Scenario: No integration configured is fully supported
 - **WHEN** the dashboard runs with no integration configured
@@ -91,6 +165,27 @@ No integration MAY be a hard dependency of any unrelated route or surface.
 - **WHEN** a future integration is added and left unconfigured
 - **THEN** only that integration's own surface may report its absence
 - **AND** no other surface's data or action is withheld.
+
+### Requirement: Third-Party Products Are Integrated, Not Reimplemented
+
+Where the dashboard surfaces a third-party product, it SHALL reflect that
+product's state and link out to it rather than rebuild its functionality. The
+dashboard MUST NOT become a control plane for a product it does not own. Like the
+requirement above, this binds future additions rather than any current surface,
+because v2 offers no integrations.
+
+This is relocated from the withdrawn `optional-integrations` capability rather
+than restated fresh. It was originally to be dropped on the reasoning that
+reimplementation is conspicuous enough to be caught in review, unlike a
+load-bearing dependency that fails silently. That reasoning was withdrawn: a
+reviewer only catches what they know to look for, and the constraint they would
+need is the one being sent to the archive. Retaining a standing rule costs
+nothing; recovering one from an archived change requires knowing it existed.
+
+#### Scenario: A product is reflected, not rebuilt
+- **WHEN** a future integration surfaces a third-party product's state
+- **THEN** the dashboard renders that state and links out to the product
+- **AND** it does not reimplement the product's own operations.
 
 ## REMOVED Requirements
 
@@ -103,8 +198,11 @@ No integration MAY be a hard dependency of any unrelated route or surface.
 >
 > Surviving from the current capability after this change: `Schema Validation At
 > Both Ends`, `Hybrid OpenSpec Read Strategy`, `Register A Project From The Home
-> Page`, and `Keyboard Shortcuts`. The transition and no-integration requirements
-> above are added, for six requirements in the resulting capability.
+> Page`, and `Keyboard Shortcuts`. Three requirements are added above — the
+> retired-location transition, `Optional Integrations Never Become Load-Bearing`,
+> and `Third-Party Products Are Integrated, Not Reimplemented` — for **seven**
+> requirements in the resulting capability. The count was six before 2026-08-04,
+> when the second relocated integration rule was preserved rather than withdrawn.
 >
 > The categories are disjoint: the eight titled requirements below are the only
 > removals. `Register A Project From The Home Page` and `Keyboard Shortcuts`
@@ -114,8 +212,12 @@ No integration MAY be a hard dependency of any unrelated route or surface.
 
 ### Requirement: Multi-Project Home Renders A Card Per Project
 
-**Reason**: A card costs roughly 200 px of height; a row costs 40. At fifteen
-repos that is one screen against four scrolls, and the fleet grows. More
+**Reason**: A card costs roughly 200 px of height; a fleet row costs 56 — the
+`3.5rem` the fleet table ships and the maximum `design-system` now declares. The
+figure was written as 40 and never measured; the argument survives the
+correction, at roughly three and a half rows per card rather than five. At
+fifteen repos that is one screen against several scrolls, and the fleet grows.
+More
 fundamentally, the card summarised *activity* — what work is in flight — where v2
 answers *readiness*. The replacement is not a smaller card.
 
@@ -228,8 +330,33 @@ The home surface SHALL offer a register affordance that accepts a path, suggests
 a name, and creates the registry entry. A new project SHALL appear in the fleet
 list and a removed project SHALL disappear without manual reload.
 
+**The affordance SHALL be re-homed onto the fleet surface, because the surface
+that hosts it today is withdrawn by this change.** The register modal and its
+entry point are reachable only from the withdrawn multi-project home; nothing
+else in the product imports them, and the fleet surface's empty state currently
+directs the user to the `agentic-dashboard register <path>` CLI instead. Read
+alongside the instruction to delete every component whose only consumer is a
+withdrawn location, that would delete the UI this requirement retains and quietly
+convert a preserved promise into a CLI-only operation. This requirement survives
+the cutover as a *product* guarantee: after the cutover a user SHALL still be
+able to register a project without leaving the browser.
+
+The proposal's fleet-population argument depends on this. It withdraws automatic
+family-root discovery on the grounds that "an unregistered repo is added through
+the surviving home registration affordance" — an argument that only holds while
+the affordance survives somewhere a user can reach.
+
+**The title still says "Home Page" and deliberately stays that way.** It names
+the requirement as the baseline names it, and a MODIFIED entry that renames its
+target modifies nothing — the fold matches on the title. The same mismatch in
+this change's `fleet-coverage` delta left two requirements silently un-withdrawn
+in a capability it claimed to end, so the cost of a tidier title here is not
+worth paying. Renaming it is a one-line follow-up once this change has folded,
+at which point the baseline carries the new title and a later delta can target
+it.
+
 #### Scenario: Registering from the UI updates the fleet
-- **WHEN** a user registers a project through the home surface affordance
+- **WHEN** a user registers a project through the register affordance on the fleet surface
 - **THEN** the project is registered and appears in the fleet list
 - **AND** its name was suggested before submission and no manual reload occurs.
 
@@ -237,6 +364,11 @@ list and a removed project SHALL disappear without manual reload.
 - **WHEN** a registered project is removed
 - **THEN** it disappears from the fleet immediately
 - **AND** no manual reload is required.
+
+#### Scenario: Registration survives the withdrawal of its old host
+- **WHEN** a user opens the product after the cutover with no repository registered
+- **THEN** the fleet surface offers the register affordance directly
+- **AND** the user is not required to fall back to the CLI to add their first repository.
 
 ### Requirement: Keyboard Shortcuts
 
@@ -253,26 +385,48 @@ the authoritative discoverable list.
 ### Requirement: Hybrid OpenSpec Read Strategy
 
 The daemon SHALL enumerate a project's open changes from its `openspec/` tree on
-both read paths. An open change is every direct child of `openspec/changes/`
-except `archive/` and names beginning with a dot; an incomplete directory
-containing only a proposal or only a task artifact still counts. A change the
-CLI reports but the tree does not is ignored.
+both read paths. An open change is every direct child **directory** of
+`openspec/changes/` except `archive/` and names beginning with a dot; an
+incomplete directory containing only a proposal or only a task artifact still
+counts. A loose file sitting in `openspec/changes/` is not a change and SHALL NOT
+be enumerated as one. A change the CLI reports but the tree does not is ignored.
 
 **Where the two readers disagree, the surface SHALL say so rather than pick a
-winner quietly.** The CLI and the tree can diverge on a non-conformant spec, and
-because the CLI is used only when the binary is present, the same repository can
-render differently on two machines with no indication that anything is
-environment-dependent. A reader comparing two dashboards would take the
-difference for a difference in the repos. When a divergence is detected the
-surface SHALL mark the affected project as read in a degraded or compatibility
-mode and name the malformed spec as the cause; it SHALL NOT present the merged
-values as though both readers agreed.
+winner quietly.** The CLI and the tree can diverge, and because the CLI is used
+only when the binary is present, the same repository can render differently on
+two machines with no indication that anything is environment-dependent. A reader
+comparing two dashboards would take the difference for a difference in the repos.
+When a divergence is detected the surface SHALL mark the affected project as read
+in a degraded or compatibility mode and SHALL identify what the readers disagreed
+about — the change, where the divergence is per-change, and otherwise the field,
+such as a capability or requirement count that belongs to no single change. It
+SHALL NOT present the merged values as though both readers agreed.
+
+**The diagnostic is required to be possible, which is why it names a field and
+not always a change.** An earlier draft required the surface to name "the change
+the readers disagreed about", which cannot be satisfied for a divergence in
+capability or requirement counts: those are properties of the project, not of any
+change. A mandatory diagnostic that some real divergence cannot produce is a
+requirement that forces either a false attribution or a silent failure to report.
+
+**The cause SHALL NOT be reported as a malformed spec unless the spec is
+malformed.** An earlier draft named "the malformed spec" as the cause of every
+divergence. Divergence also arises from configurations OpenSpec permits — a
+change whose schema places its task artifact somewhere other than the default
+path is legal and still reads as absent to the tree reader — and blaming a
+supported configuration on a malformed spec sends the reader to fix a file that
+is correct.
 
 For the tree-enumerated changes, the daemon SHALL use the `openspec` CLI's
-machine-readable values when that binary is available and SHALL fall back to
-values read directly from the tree when it is not. The CLI augments the
-tree-authoritative set; it MUST NOT narrow it. The binary is bounded by the
-invocation discipline in `filesystem-access-policy`.
+machine-readable values when that binary is available **and its invocation
+succeeds**, and SHALL fall back to values read directly from the tree when the
+binary is absent, exits non-zero, or emits output that does not parse. The
+earlier wording made absence the only fallback trigger, which under-describes the
+implemented behaviour: the daemon already treats a non-zero exit and unparseable
+output as a failed invocation and degrades to the tree. A CLI that is present but
+broken MUST NOT be able to empty a surface that the tree can populate. The CLI
+augments the tree-authoritative set; it MUST NOT narrow it. The binary is bounded
+by the invocation discipline in `filesystem-access-policy`.
 
 Task-artifact presence is always read from the tree on **both** paths because
 the CLI emits `completedTasks` and `totalTasks` as zero both for a change with no
@@ -291,9 +445,26 @@ because "presence is read from the tree" reads like a guarantee about all change
 and is a guarantee about one path.
 
 The reader SHALL NOT enumerate archived changes or derive each open change's
-affected capabilities: no v2 surface consumes either value. It SHALL continue
-to expose open-change names, completed and total task counts, task-artifact
+affected capabilities: no v2 surface consumes either value. It SHALL continue to
+expose open-change names, completed and total task counts, task-artifact
 presence, capability names, and requirement counts.
+
+**What is actually consumed, stated exactly, because the pruning standard above
+does not reach the whole retained set.** After the cutover the `spec` check reads
+slot presence, each open change's name with its completed and total task counts,
+and the *length* of the capability list for its summary line. Task-artifact
+presence, capability **names**, and requirement counts have no post-cutover
+consumer: their only readers were the withdrawn capability panel and change
+progress column.
+
+They are retained anyway, and this is a deliberate exception rather than an
+oversight. They are part of the reader contract `add-openspec-project-reader`
+established, they cost one tree read that already happens for the counts, and
+presence in particular is the one value the CLI cannot reconstruct, so dropping
+it would be irreversible from the CLI side alone. What is *not* claimed is that
+v2 consumes them — the earlier wording listed the retained and the consumed as
+one set, so a reader checking the pruning argument against the retained fields
+would find it fails for three of them.
 
 **The parity claim is pinned to a field set and a scope**, because an unqualified
 "both paths produce the same values" is not testable and, taken literally, is
@@ -363,3 +534,18 @@ worse, because it reads as tested when it is not.
 - **WHEN** the hybrid reader returns OpenSpec data after the v2 cutover
 - **THEN** it carries no archived-change list or per-change affected-capability list
 - **AND** the spec check and repo detail still receive every field they display.
+
+#### Scenario: A degraded spec read is visible, not silent
+- **WHEN** the CLI and tree readers return different values for a project
+- **THEN** the surface marks that project as read in compatibility mode and identifies what the readers disagreed about
+- **AND** two machines that differ only in whether the binary is installed do not present the difference as a difference between repos.
+
+#### Scenario: A legal configuration is not reported as malformed
+- **WHEN** the readers diverge because a change places its task artifact at a schema-permitted path other than the default
+- **THEN** the surface reports the divergence without attributing it to a malformed spec
+- **AND** the reader is not sent to correct a file that conforms.
+
+#### Scenario: A broken CLI cannot empty a populated surface
+- **WHEN** the `openspec` binary is present but exits non-zero or emits output that does not parse
+- **THEN** the daemon falls back to the values read from the tree
+- **AND** the surface shows what the tree can populate rather than nothing.

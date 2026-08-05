@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+
 import type { PathResolver } from '../coverageResolver.js'
 
 interface ParsedSemver {

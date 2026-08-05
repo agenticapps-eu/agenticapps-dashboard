@@ -1,4 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
 import {
   mkdirSync,
@@ -10,8 +9,12 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join, sep } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
 import { PathViolation } from '../coverageResolver.js'
 import type { PathResolver } from '../coverageResolver.js'
+
 import { WORKFLOW_FLEET } from './workflowFleetScanner.js'
 import type {
   WorkflowArtifactId,

@@ -67,10 +67,16 @@ const FIXED_ROLE_TEXT = /\btext-(?:white|card-bg|app-bg)(?![\w/-])/
  * but array-join composition is used here (`ManualPairForm.tsx:225`) and a
  * determined split would evade this. The check is a floor, not a proof.
  *
- * Widening to file scope was tried and reverted — it flags `SidebarSubItem`,
- * where `bg-status-success` is a status dot carrying no text and the file's
- * `text-white` sits on `bg-accent-bg-strong` two branches away. A check that
+ * Widening to file scope was tried and reverted — it flagged `SidebarSubItem`,
+ * where `bg-status-success` was a status dot carrying no text and the file's
+ * `text-white` sat on `bg-accent-bg-strong` two branches away. A check that
  * cannot tell a dot from a fill costs more than the case it would catch.
+ *
+ * `SidebarSubItem` was deleted with the sidebar's project list
+ * (`retire-v1-surfaces`), so the counter-example that settled this no longer
+ * exists. Whether file scope is affordable now is an open question, not a
+ * settled no — it needs re-testing against the surviving components rather
+ * than inheriting a verdict about a file that is gone.
  */
 const CLASS_STRINGS = /(['"`])((?:[^'"`\\\n]|\\.){8,}?)\1/g
 

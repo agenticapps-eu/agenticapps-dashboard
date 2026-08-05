@@ -1,4 +1,5 @@
 import type { WorkflowResponse } from '@agenticapps/dashboard-shared'
+
 import type { WorkflowMachineRootId } from './scanners/workflowArtifactScanner.declare.js'
 
 export interface WorkflowScanOptions {

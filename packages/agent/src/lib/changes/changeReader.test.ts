@@ -13,7 +13,6 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
-
 import { isReadableProjectPath } from '@agenticapps/dashboard-shared'
 
 import {

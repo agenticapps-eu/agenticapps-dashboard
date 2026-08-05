@@ -10,20 +10,20 @@
  * This is genuinely new behaviour, which is why it gets a RED/GREEN cycle
  * rather than a characterisation test (design decision 4).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// Mock execa BEFORE importing tailscale (vi.mock is hoisted)
-vi.mock('execa', () => ({
-  execa: vi.fn(),
-}))
-
 import { execa } from 'execa'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import {
   getTailscaleIP,
   TailscaleNotDetectedError,
   TailscaleNoCgnatIPv4Error,
 } from './tailscale.js'
+
+// vi.mock is hoisted above every import in this file, so the mock is registered
+// before `execa` is resolved regardless of where this call sits.
+vi.mock('execa', () => ({
+  execa: vi.fn(),
+}))
 
 const mockExeca = execa as unknown as ReturnType<typeof vi.fn>
 

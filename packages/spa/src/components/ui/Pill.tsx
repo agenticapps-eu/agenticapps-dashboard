@@ -1,8 +1,21 @@
 /**
- * Pill — generic inline tag with 5 variants (Phase 5.1 Wave 0).
+ * Pill — generic inline tag, two emphasis variants (Phase 5.1 Wave 0).
  *
  * UI-SPEC §8: rounded-md (6px, intentionally less than card 12px), text-xs, font-medium.
  * Variant colors come from Tailwind 4 namespaced utilities — NO hex literals.
+ *
+ * `success`, `warning` and `error` were removed by `retire-v1-surfaces` §3.
+ * All three sat on the same `bg-card-bg-hover` as `neutral` and changed only
+ * the text hue, which is what `design-system` → State Is Never Signalled By
+ * Colour Alone forbids. Nothing rendered them — `neutral` in TopBar is the
+ * only caller this component has ever had — so removing them changed no
+ * pixel; it removed the ability to introduce the violation by typing one
+ * word. A pill that carries a state needs a second channel, as ChangeCard's
+ * badge has with its `●` and the readiness cells have with their six shapes.
+ * Add the variant back with a glyph when something actually needs one.
+ *
+ * The two that remain are emphasis, not state: neither answers "how is it
+ * going", so neither is a state to be told apart without colour.
  *
  * Constraints (D-5.1-10):
  * - NO transition utilities
@@ -11,14 +24,11 @@
  */
 import React from 'react'
 
-export type PillVariant = 'neutral' | 'accent' | 'success' | 'warning' | 'error'
+export type PillVariant = 'neutral' | 'accent'
 
-const VARIANT_CLASSES: Record<PillVariant, string> = {
+export const VARIANT_CLASSES: Record<PillVariant, string> = {
   neutral: 'bg-card-bg-hover text-text-secondary',
   accent:  'bg-accent-bg text-accent',
-  success: 'bg-card-bg-hover text-status-success',
-  warning: 'bg-card-bg-hover text-status-warning',
-  error:   'bg-card-bg-hover text-status-error',
 }
 
 export interface PillProps {

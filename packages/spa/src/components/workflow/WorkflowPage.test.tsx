@@ -480,3 +480,90 @@ describe('WorkflowPage source guards', () => {
     expect(source).not.toContain(`dangerously${'Set'}InnerHTML`)
   })
 })
+
+/**
+ * Both cases come from the 2026-08-05 `impeccable:critique` artifact for this
+ * surface (`artifacts/CRITIQUE-workflow-2026-08-05.md`, composite 57.5 against a
+ * ratified floor of 80). They are the two of its three P1s that are fixable in
+ * the presentation layer; the third — that the surface carries no anchors — is
+ * not, because the host payload carries neither a path nor a repo id and none of
+ * the four workflow repositories is a registered project, so a link would be
+ * dead.
+ */
+describe('WorkflowPage · critique findings', () => {
+  /**
+   * The response has always carried `generatedAtIso`; the surface simply never
+   * rendered it. Its two sibling surfaces both do, and this one reports an
+   * *agreement*, which is a claim about a moment — "codex-workflow: 7 laggards"
+   * is actionable if true now and misleading if true an hour ago.
+   */
+  it('says when the reading was taken, in the same shape as the sibling surfaces', () => {
+    render(<WorkflowPage />)
+
+    expect(screen.getByText('Readings computed 2026-07-26 09:12 UTC')).toBeTruthy()
+  })
+
+  it('collapses an all-present skill root to its count rather than one chip per skill', () => {
+    const response = data()
+    response.machineRoots = [
+      {
+        rootId: 'claude-skills',
+        state: 'present',
+        entries: [
+          { id: 'agentic-apps-workflow', state: 'present', artifact: null },
+          { id: 'ts-declare-first', state: 'present', artifact: null },
+          { id: 'update-agenticapps-workflow', state: 'present', artifact: null },
+        ],
+      },
+    ] as unknown as WorkflowResponse['machineRoots']
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: response,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+    const roots = screen.getByLabelText('Machine skill roots')
+
+    expect(within(roots).getByText('Claude skills · 3 present')).toBeTruthy()
+    // The point of the finding: the common case must not cost one element per
+    // skill, because 34 identical chips make an exception invisible.
+    expect(within(roots).queryByText(/ts-declare-first/)).toBeNull()
+    expect(within(roots).queryByText(/agentic-apps-workflow/)).toBeNull()
+  })
+
+  it('names only the missing skills when a root is incomplete', () => {
+    const response = data()
+    response.machineRoots = [
+      {
+        rootId: 'codex-skills',
+        state: 'partial',
+        entries: [
+          { id: 'agentic-apps-workflow', state: 'present', artifact: null },
+          { id: 'codex-qa', state: 'missing', artifact: null },
+          { id: 'codex-cso', state: 'present', artifact: null },
+        ],
+      },
+    ] as unknown as WorkflowResponse['machineRoots']
+    mockUseWorkflow.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      data: response,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkflow>)
+
+    render(<WorkflowPage />)
+    const roots = screen.getByLabelText('Machine skill roots')
+
+    expect(within(roots).getByText('Codex skills · 1 of 3 missing')).toBeTruthy()
+    // The state word rides along: `text-status-error` alone would leave the chip
+    // differing from its neighbours by hue only.
+    expect(within(roots).getByText('codex-qa · Missing')).toBeTruthy()
+    // The two that are fine stay off screen: the exception is the whole payload.
+    expect(within(roots).queryByText('codex-cso')).toBeNull()
+    expect(within(roots).queryByText('agentic-apps-workflow')).toBeNull()
+  })
+})

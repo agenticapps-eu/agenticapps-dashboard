@@ -1,7 +1,6 @@
 import { basename } from 'node:path'
 import { statSync } from 'node:fs'
 
-import { REGISTRY_FILE } from '../constants.js'
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
@@ -19,6 +18,7 @@ import {
   TagsRequestSchema,
 } from '@agenticapps/dashboard-shared'
 
+import { REGISTRY_FILE } from '../constants.js'
 import {
   addProject,
   removeProject,
@@ -42,13 +42,10 @@ import {
   getPhaseCache,
   setPhaseCache,
 } from '../lib/phaseCache.js'
-import { evictAgentLinterCacheProject } from '../lib/agentLinterCache.js'
-import { evictSkillsCacheProject } from './skills.js'
-import { evictObservabilityCacheProject } from './observability.js'
-import { evictSecretsCacheProject } from './secrets.js'
-import { evictIntegrationsCacheProject } from './integrations.js'
 import { outbound } from '../server/middleware/errors.js'
 import type { Env } from '../server/app.js'
+
+import { evictSkillsCacheProject } from './skills.js'
 
 const RegisterBodySchema = z.object({
   path: z.string().min(1),
@@ -177,15 +174,11 @@ registryRoute.post(
     if (removed) {
       evictOverviewCache(body.id) // T-03-03-05 cache hygiene
       evictPhaseCacheProject(body.id) // T-04-03-07 Phase 4 cache hygiene
-      // Phase 5 cache hygiene (WR-01 from 05-REVIEW.md): unregister must
-      // also evict skills/AgentLinter/observability/secrets/integrations
-      // caches so a re-registration at the same path doesn't see stale
-      // data for up to 1 hour (AgentLinter TTL).
+      // Phase 5 cache hygiene (WR-01 from 05-REVIEW.md): unregister must also
+      // evict the skills cache so a re-registration at the same path doesn't
+      // see stale data. The AgentLinter, observability, secrets and
+      // integrations caches this list also drained went with their routes.
       evictSkillsCacheProject(body.id)
-      evictAgentLinterCacheProject(body.id)
-      evictObservabilityCacheProject(body.id)
-      evictSecretsCacheProject(body.id)
-      evictIntegrationsCacheProject(body.id)
       return c.body(null, 204)
     }
     return c.json(

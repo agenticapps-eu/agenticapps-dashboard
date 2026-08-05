@@ -1,8 +1,8 @@
-import { hasOpenspec } from '../lib/projectCondition.js'
 
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, basename } from 'node:path'
 
+import { hasOpenspec } from '../lib/projectCondition.js'
 import { addProject } from '../lib/registry.js'
 
 export interface DiscoveredMatch {

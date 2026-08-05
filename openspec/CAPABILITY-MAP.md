@@ -354,3 +354,66 @@ vendored skill, plus the Wiki coverage column and compiler reads, are removed.
 The machine-level GitNexus MCP registration and installation remain outside
 dashboard scope. Compatibility and retained-history decisions are recorded in
 `docs/decisions/0001-coverage-v2-history-compatibility.md`.
+
+### v2 supersession — appended 2026-08-05
+
+`retire-v1-surfaces` folded its spec deltas on 2026-08-05. Appended per §08; the
+ratified capability table, the deliberate exclusions, and the GAP resolutions
+above are preserved unedited as historical decision context. Where they describe
+a capability withdrawn below, the withdrawal is what is current.
+
+**Five capabilities are withdrawn whole.** Their spec files are deleted rather
+than emptied, so the count below is of capabilities that exist, not of
+capabilities that still have a directory:
+
+| Withdrawn | Requirements | Where the question went |
+|---|---|---|
+| `code-intelligence` | 5 | Nowhere in the product. Whether a third-party knowledge graph has been generated is not one of v2's questions and no readiness check depends on it; the analysis tool remains usable outside the dashboard. |
+| `fleet-coverage` | 10 | `repo-readiness`. Tool presence is at most an input to the `workflow` check, never a surface. Automatic family-root discovery is withdrawn with it — v2's fleet is registry-scoped. |
+| `fleet-conformance` | 9 | `workflow-fleet-conformance` for the question, nothing for the score. The fleet sorts by count of `fail` then `never`, which recovers the one thing the score was used for. |
+| `skills-and-linting` | 5 | `repo-readiness`'s `workflow` check per repo, `workflow-fleet-conformance` across the four hosts. Which tool satisfies a check is deliberately outside the UI. |
+| `optional-integrations` | 11 | Withdrawn; v2 offers no integrations. Two standing rules were **relocated into `project-dashboard`** rather than archived — see below. |
+
+**`project-dashboard` is retained but is no longer what it was.** Eight of its
+twelve requirements are withdrawn, including the multi-project home and every
+part of the single-project three-column view. Four survive and three are added,
+for seven. What it owns now is the transition manifest and the withdrawn API
+surface, browser registration, the wire-schema contract, keyboard shortcuts, the
+hybrid OpenSpec reader, and the two relocated integration constraints.
+
+**Two rules were relocated rather than archived.** `Optional Integrations Never
+Become Load-Bearing` and `Third-Party Products Are Integrated, Not
+Reimplemented` now live in `project-dashboard`. Both bind future additions
+rather than any current surface. The second was originally to be dropped, on the
+reasoning that reimplementation is conspicuous enough to be caught in review;
+that reasoning was withdrawn, because a reviewer only catches what they know to
+look for and the constraint they would need was the one being sent to the
+archive.
+
+**Three capabilities answer v2's questions in their place**, none reusing a
+withdrawn name — deliberately, so that one word does not carry two concepts in
+one slot. `coverage` in particular means test coverage of one repo in v2, where
+`fleet-coverage` meant tooling coverage across repos:
+
+- `repo-readiness` (18) — is this repo production-ready, in six checks
+- `workflow-fleet-conformance` (12) — do the four host workflows agree with core
+- `agent-change-board` (10) — what is in flight across the fleet
+
+**The resulting count is 105 requirements across 10 capabilities**, measured on
+disk on 2026-08-05 and corroborated by `openspec spec list --json`, which
+reports the same figure per capability. It was 145 across 15 immediately before
+the fold, measured the same way: net −40 requirements and −5 capabilities. The
+figure is measured rather than carried over from the proposal, which §4's own
+bullet forbids.
+
+Per capability: `agent-change-board` 10, `auth-and-pairing` 9, `daemon-runtime`
+9, `design-system` 16, `filesystem-access-policy` 11, `help-docs` 6,
+`project-dashboard` 7, `project-registry` 7, `repo-readiness` 18,
+`workflow-fleet-conformance` 12.
+
+**The 2026-07-26 blocking note above is discharged.** It records
+`retire-v1-surfaces` as blocked until an agent-change surface exists in the
+product. `add-agent-change-board` archived on 2026-08-04, so all four
+post-cutover content surfaces — fleet, repo detail, workflow conformance, and
+the change board — exist. The note is left in place as the record of a condition
+that was real; it is no longer outstanding.

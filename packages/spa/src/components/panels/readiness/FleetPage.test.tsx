@@ -45,6 +45,29 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ),
   }
 })
+/**
+ * RegisterModal is stubbed: its own behaviour — path entry, name suggestion,
+ * the three prepare outcomes — is covered by RegisterModal.test.tsx, and the
+ * real component needs the registry query hooks this file does not provide.
+ * What the fleet owes the user is the affordance and the open, so that is what
+ * is asserted here.
+ */
+vi.mock('../../RegisterModal.js', () => ({
+  RegisterModal: ({
+    isOpen,
+    onConfirmed,
+  }: {
+    isOpen: boolean
+    onConfirmed: (id: string) => void
+  }) =>
+    isOpen ? (
+      <div data-testid="register-modal">
+        <button type="button" onClick={() => onConfirmed('newly-registered')}>
+          stub confirm
+        </button>
+      </div>
+    ) : null,
+}))
 vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
   // `useFleet` is mocked; `SchemaDriftError` is not. The page branches on
   // `instanceof`, so a stubbed class would make that branch untestable.
@@ -53,6 +76,7 @@ vi.mock('../../../lib/readinessQueries.js', async (importOriginal) => ({
 }))
 
 import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
+import { EM_DASH } from '../../ui/EmDash.js'
 
 import { CHECK_LABELS } from './ReadinessIndicator.js'
 import { FleetPage } from './FleetPage.js'
@@ -107,19 +131,26 @@ function repo(
   }
 }
 
-/** The shape `useFleet` returns, narrowed to what the page reads. */
-function fleet(repos: readonly RepoSummary[]): void {
+/**
+ * The shape `useFleet` returns, narrowed to what the page reads.
+ *
+ * Returns the `refetch` spy so a test can assert the fleet was asked to
+ * re-read; every existing caller ignores it.
+ */
+function fleet(repos: readonly RepoSummary[]): ReturnType<typeof vi.fn> {
   const data: FleetResponse = {
     generatedAt: Date.UTC(2026, 6, 31, 12, 0),
     repos: [...repos],
   }
+  const refetch = vi.fn()
   mockUseFleet.mockReturnValue({
     data,
     isPending: false,
     isError: false,
     error: null,
-    refetch: vi.fn(),
+    refetch,
   } as unknown as ReturnType<typeof useFleet>)
+  return refetch
 }
 
 /** Body rows only — the header row is not a repo. */
@@ -165,12 +196,66 @@ describe('FleetPage', () => {
     }
   })
 
-  it('renders an em dash for a repo with no known last change', () => {
+  it('renders the canonical absence marker for a repo with no known last change', () => {
+    // `design-system` → A Value Is Shown Where One Exists, third scenario:
+    // absence must be tellable from a failed render. So the assertion is that
+    // a marker element is present carrying exactly the canonical character —
+    // an empty cell would satisfy neither, and a hyphen would satisfy the eye
+    // while breaking consistency with the detail surface.
     fleet([repo('fresh-clone', { lastCommitAt: null })])
     render(<FleetPage />)
 
     const [row] = rows()
-    expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument()
+    const marker = within(row as HTMLElement).getByText(EM_DASH)
+    expect(marker).toBeInTheDocument()
+    expect(marker.textContent).toBe(EM_DASH)
+  })
+
+  it('keeps a real date rather than replacing it with the absence marker', () => {
+    // The paired case. A surface that rendered the marker unconditionally
+    // would pass the test above and lose every value on the page.
+    fleet([repo('alpha')])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    expect(within(row as HTMLElement).getByText('2026-07-30')).toBeInTheDocument()
+    expect(within(row as HTMLElement).queryByText(EM_DASH)).toBeNull()
+  })
+
+  it('shows a check value in the fleet row rather than making the reader open the repo', () => {
+    // The fleet-level half of the same requirement. Asserted here as well as
+    // in ReadinessIndicator.test.tsx because the compact variant is a prop the
+    // fleet passes: a cell that renders values correctly in isolation proves
+    // nothing about the surface that has to fit thirty of them in a row.
+    const withCoverage = repo('dashboard')
+    const checks = withCoverage.checks.map((check) =>
+      check.id === 'coverage'
+        ? { ...check, status: 'warn' as CheckStatus, value: 66.42, threshold: 80 }
+        : check,
+    ) as unknown as RepoSummary['checks']
+
+    fleet([{ ...withCoverage, checks }])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    expect(within(row as HTMLElement).getByText('66.42 of 80')).toBeInTheDocument()
+  })
+
+  it('renders the last-change column with tabular figures so its digits align', () => {
+    // `design-system` → Dense Rows And Aligned Figures. This is the fleet's
+    // only numeric column. With proportional digits a '1'-heavy date is
+    // visibly narrower than a '0'-heavy one, so a column of equal-length ISO
+    // dates still reads as ragged — the exact defect tabular figures exist to
+    // remove. Asserted on the cell that carries the date, not on an ancestor,
+    // because `font-variant-numeric` inherited from a wrapper is what a
+    // careless fix would produce and it would not survive a restructure.
+    fleet([repo('alpha'), repo('beta')])
+    render(<FleetPage />)
+
+    for (const row of rows()) {
+      const cell = within(row).getByText('2026-07-30')
+      expect(cell.className).toContain('tabular-nums')
+    }
   })
 
   it('orders rows by severity rather than registry order', () => {
@@ -506,6 +591,65 @@ describe('FleetPage', () => {
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     screen.getByRole('button', { name: /retry/i }).click()
+    expect(refetch).toHaveBeenCalled()
+  })
+})
+
+/**
+ * `Register A Project From The Home Page` (project-dashboard, MODIFIED by
+ * retire-v1-surfaces): the affordance is re-homed onto the fleet, because the
+ * multi-project home that hosts it today is withdrawn. Its three scenarios are
+ * the three cases below; the fourth test covers the command-palette entry
+ * point, whose only listener today is that same withdrawn component.
+ */
+describe('FleetPage — the re-homed register affordance', () => {
+  it('offers registration from a populated fleet, not only from the empty state', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.getByRole('button', { name: /register repository/i })).toBeInTheDocument()
+  })
+
+  it('offers registration directly when nothing is registered, without falling back to the CLI', () => {
+    fleet([])
+    render(<FleetPage />)
+
+    // Two: the persistent header action and the empty state's own primary
+    // button. The CLI line survives as an alternative, not as the only route —
+    // which is the regression this requirement exists to prevent.
+    expect(screen.getAllByRole('button', { name: /register repository/i })).toHaveLength(2)
+    expect(screen.getByText(/agentic-dashboard register/)).toBeInTheDocument()
+  })
+
+  it('opens the register modal when the affordance is activated', () => {
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    expect(screen.queryByTestId('register-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /register repository/i }))
+    expect(screen.getByTestId('register-modal')).toBeInTheDocument()
+  })
+
+  it('opens the register modal when the command palette dispatches palette:open-register', () => {
+    // commandPaletteActions.ts fires this on `window`; MultiProjectHome was its
+    // only listener, so the palette action no-ops the moment that surface goes.
+    fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    fireEvent(window, new CustomEvent('palette:open-register'))
+    expect(screen.getByTestId('register-modal')).toBeInTheDocument()
+  })
+
+  it('re-reads the fleet once a registration is confirmed, so the new repo needs no reload', () => {
+    // `useRegisterConfirm` invalidates ['registry'], which the fleet does not
+    // read — it reads FLEET_QUERY_KEY. Without this the row appears only after
+    // a manual reload, which the requirement's first scenario forbids.
+    const refetch = fleet([repo('dashboard')])
+    render(<FleetPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: /register repository/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'stub confirm' }))
+
     expect(refetch).toHaveBeenCalled()
   })
 })

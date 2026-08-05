@@ -547,8 +547,14 @@ Jubel-Copy. Was sich ändert:
   Inhalt.
 - **Typografie:** eine Schrift, drei Größen, zwei Gewichte. Tabellenzahlen
   tabellarisch (`font-variant-numeric: tabular-nums`), damit Spalten fluchten.
-- **Impeccable-Schwelle** bleibt CI-Gate, wird auf **≥ 90** angehoben — das
-  war ohnehin die v1.1-Zusage, und ein Neubau ist der Moment dafür.
+- ⚠ **Impeccable-Schwelle** ~~bleibt CI-Gate, wird auf **≥ 90** angehoben — das
+  war ohnehin die v1.1-Zusage, und ein Neubau ist der Moment dafür.~~
+  **Korrigiert 2026-08-05 (ADR-0003).** Beide Annahmen waren falsch: es gibt
+  kein CI-Gate — `impeccable.yml` wurde zugunsten des Pro-Change-Artefakts
+  zurückgezogen — und die ratifizierte Schwelle war zu diesem Zeitpunkt bereits
+  **≥ 80**, nicht ≥ 87. Die Schwelle **bleibt ≥ 80** und wird weiterhin über das
+  committete Kritik-Artefakt durchgesetzt, nicht in CI. Die v1.1-Zusage ≥ 90
+  stand in einem `README.md`, das eine im Juni 2026 abgelöste Schwelle nannte.
 
 ---
 
@@ -588,7 +594,9 @@ Jubel-Copy. Was sich ändert:
    ohne Tests, 282 inklusive).
 5. `pnpm lint` meldet 0 Fehler und 0 Warnungen (heute: 3 Fehler, ~247
    Warnungen).
-6. Impeccable-Composite ≥ 90 auf allen vier Seiten bei 1440 × 900.
+6. ⚠ Impeccable-Composite ~~≥ 90~~ **≥ 80** auf allen vier Seiten bei
+   1440 × 900, nachgewiesen durch vier committete Kritik-Artefakte — kein
+   CI-Check (korrigiert 2026-08-05, ADR-0003).
 
 ---
 

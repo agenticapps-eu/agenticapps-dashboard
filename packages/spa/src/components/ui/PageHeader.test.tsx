@@ -15,8 +15,9 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
-import { PageHeader } from './PageHeader.js'
 import { triggerLastResizeObserver } from '../../vitest.setup'
+
+import { PageHeader } from './PageHeader.js'
 
 describe('PageHeader', () => {
   it('PH1: renders title in <h1> with text-2xl font-semibold', () => {

@@ -178,7 +178,7 @@ export function HelpLayout(): React.JSX.Element {
                         >
                           {item.label}
                           {item.status === 'stub' && (
-                            <span className="ml-1.5 text-[10px] text-text-tertiary">(soon)</span>
+                            <span className="ml-1.5 text-xs text-text-tertiary">(soon)</span>
                           )}
                         </Link>
                       </li>

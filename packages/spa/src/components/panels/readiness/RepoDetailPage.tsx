@@ -26,6 +26,7 @@ import {
   useRescanRepo,
 } from '../../../lib/readinessQueries.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
+import { EmDash, EM_DASH } from '../../ui/EmDash.js'
 
 import {
   CHECK_LABELS,
@@ -47,7 +48,7 @@ const READINESS_FILE = '.agenticapps/readiness.json'
  * it against a UTC one. A null renders an em dash rather than a substitute.
  */
 function formatCommitTime(at: number | null): string {
-  if (at === null) return '—'
+  if (at === null) return EM_DASH
   return `${new Date(at).toISOString().slice(0, 16).replace('T', ' ')} UTC`
 }
 
@@ -259,14 +260,6 @@ function provenance(check: DetailCheck): string {
   return 'Derived'
 }
 
-/**
- * A missing fact, rendered as itself. Its own element rather than punctuation
- * inside a sentence, so "there is no timestamp" is as readable as a timestamp.
- */
-function EmDash(): ReactElement {
-  return <span className="text-text-tertiary">—</span>
-}
-
 function Fact({ term, children }: { term: string; children: ReactNode }): ReactElement {
   return (
     <div className="flex gap-3 text-sm">
@@ -333,8 +326,15 @@ function CheckBlock({
       {why !== null && <p className="mt-3 text-sm text-text-secondary">{why}</p>}
 
       <dl className="mt-4 flex flex-col gap-1.5">
+        {/*
+          Tabular figures on the value, not on `Fact`'s `<dd>`: the six blocks
+          stack their Observed times at one indent down the page, so they are a
+          numeric column whatever element holds them — but Provenance and
+          Evidence share that `<dd>` and are prose, where tabular figures are
+          simply wrong.
+        */}
         <Fact term="Observed">
-          {check.at === null ? <EmDash /> : formatCommitTime(check.at)}
+          {check.at === null ? <EmDash /> : <span className="tabular-nums">{formatCommitTime(check.at)}</span>}
         </Fact>
         <Fact term="Provenance">{provenance(check)}</Fact>
         <Fact term="Evidence">

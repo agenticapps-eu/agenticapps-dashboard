@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { useRef } from 'react'
-import { usePageHeaderHeight } from './usePageHeaderHeight'
+
 import { triggerLastResizeObserver, activeResizeObserverCount } from '../../vitest.setup'
+
+import { usePageHeaderHeight } from './usePageHeaderHeight'
 
 function TestHost({ skip = false }: { skip?: boolean }) {
   const ref = useRef<HTMLDivElement | null>(null)

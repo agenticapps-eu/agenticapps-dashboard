@@ -43,16 +43,6 @@ import { setActiveToken, ensureAuthFile } from '../lib/auth.js'
 import { makeTmpHome } from '../lib/__fixtures__/tmpHome.js'
 import { COVERAGE_ROOTS } from '../lib/paths.js'
 import { _resetForTests as resetRateLimiter } from '../lib/rateLimiter.js'
-import {
-  setConformanceCache,
-  _resetConformanceCacheForTests,
-  getConformanceCache,
-} from '../lib/conformanceCache.js'
-import {
-  setCoverageCache,
-  _resetCoverageCacheForTests,
-  getCoverageCache,
-} from '../lib/coverageCache.js'
 
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -81,8 +71,6 @@ interface FixtureContext {
  */
 async function buildFixture(): Promise<FixtureContext> {
   resetRateLimiter()
-  _resetConformanceCacheForTests()
-  _resetCoverageCacheForTests()
 
   const tmp = makeTmpHome()
   const registryFile = join(tmp.configDir, 'registry.json')
@@ -163,8 +151,6 @@ afterEach(() => {
   ctx.cleanupFamily()
   ctx.cleanupHome()
   resetRateLimiter()
-  _resetConformanceCacheForTests()
-  _resetCoverageCacheForTests()
   vi.restoreAllMocks()
 })
 
@@ -501,45 +487,6 @@ describe('POST /api/admin/registry/fix-path', () => {
     expect(res11.headers.get('Retry-After')).toBe('1')
   })
 
-  it('Test 14 [T-12-CACHE-STALE]: invalidates conformanceCache + coverageCache on success', async () => {
-    // Pre-populate both caches; happy-path call must clear both.
-    setConformanceCache(
-      {
-        schemaVersion: 1,
-        today: {
-          asOf: '2026-05-19T12:00:00.000Z',
-          fleet: 50,
-          agenticapps: 50,
-          factiv: 50,
-          neuroflash: 50,
-        },
-        baselineDays: 14,
-        deltaBaseline: { fleet: 0, agenticapps: 0, factiv: 0, neuroflash: 0 },
-        series: [],
-        drifted: [],
-      },
-      Date.now(),
-    )
-    setCoverageCache(
-      {
-        schemaVersion: 2,
-        generatedAtIso: new Date().toISOString(),
-        workflowHeadVersion: null,
-        rows: [],
-      },
-      Date.now(),
-    )
-
-    const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })
-    await app.request('http://127.0.0.1:5193/api/admin/registry/fix-path', {
-      method: 'POST',
-      headers: authHeaders(ctx.token),
-      body: JSON.stringify({ id: ctx.projectId, newPath: ctx.newRealProjectPath }),
-    })
-
-    expect(getConformanceCache(Date.now())).toBeNull()
-    expect(getCoverageCache(Date.now())).toBeNull()
-  })
 
   it('Test 15 [T-12-INFO-DISCLOSURE]: error responses do NOT leak filesystem paths', async () => {
     const app = createApp({ registryFile: ctx.registryFile, authFile: ctx.authFile })

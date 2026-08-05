@@ -67,6 +67,7 @@ vi.mock('./ui/shellLayout.js', async (importOriginal) => ({
 }))
 
 import { RepairProvider } from '../lib/repair.js'
+
 import { AppShellV2 } from './AppShellV2.js'
 
 afterEach(cleanup)

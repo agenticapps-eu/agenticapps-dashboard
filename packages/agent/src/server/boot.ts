@@ -12,8 +12,6 @@ import { renderBanner, renderZeroBindWarning, formatUrlHost } from '../lib/banne
 import { readRegistry } from '../lib/registry.js'
 import { getOpenspecBinary } from '../lib/openspecCli.js'
 import { getActiveToken } from '../lib/auth.js'
-import { resolveSnapshotDir } from '../lib/snapshots/snapshotPaths.js'
-import { startSnapshotScheduler } from '../lib/snapshots/snapshotScheduler.js'
 import { disposeWorkflowHarnessRuns } from '../lib/workflowHarness.js'
 import { SHUTDOWN_TIMEOUT_MS } from '../constants.js'
 
@@ -107,7 +105,6 @@ export function assertSnapshotDirInDaemonHome(): void {
     return
   }
   const daemonWriteDirs = [
-    { name: 'coverage-history', path: resolveSnapshotDir() },
     { name: 'workflow-harness', path: join(expected, 'workflow-harness') },
   ]
   for (const directory of daemonWriteDirs) {
@@ -211,11 +208,6 @@ export async function bootDaemon(opts: BootOptions): Promise<ServerType> {
 
       writePidfile()
       writeServerInfo({ bindUrl, pid: process.pid, startedAt: new Date().toISOString() })
-
-      // Plan 11-02 Task 7 — wire the in-process snapshot scheduler (PD-11-01)
-      // and register its disposer with the Task 6 disposer registry so
-      // gracefulShutdown drains it on every shutdown branch.
-      registerDisposer(startSnapshotScheduler())
 
       registerDisposer(() => disposeWorkflowHarnessRuns())
     },

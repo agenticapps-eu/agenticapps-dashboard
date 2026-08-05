@@ -27,7 +27,7 @@ export function WidgetStub({ title, description, emoji = '✨' }: WidgetStubProp
       </div>
       <h3 className="font-semibold text-base mb-1 text-text-primary">
         {title}{' '}
-        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
+        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-accent">
           <Sparkles size={10} />
           Coming v1.2
         </span>

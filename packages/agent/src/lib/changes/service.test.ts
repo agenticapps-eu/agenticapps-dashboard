@@ -11,7 +11,6 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-
 import { ChangesFleetResponseSchema, cardKey, fleetReadState } from '@agenticapps/dashboard-shared'
 
 import {

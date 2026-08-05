@@ -10,6 +10,7 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
+
 import { Tooltip } from './Tooltip.js'
 
 afterEach(() => {

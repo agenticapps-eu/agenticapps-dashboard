@@ -9,12 +9,15 @@
  * session handoff justified the carve-out by saying the scanner reads
  * `.planning/skill-observations/`; it does not. `routes/commitment.ts` does.)
  *
- * The carve-out survives for a better reason: the scanner serves the
- * `fleet-coverage` requirement `Review-Override Visibility`, which is removed by
- * the separate `retire-v1-surfaces` change. Retiring it here would be foreign
- * scope. So the invariant this change can actually enforce is the stronger,
- * honest one below: exactly one reader remains, it is named, and no new one may
- * appear without this test failing.
+ * The carve-out survived for a better reason: the scanner served the
+ * `fleet-coverage` requirement `Review-Override Visibility`, removed by the
+ * separate `retire-v1-surfaces` change. Retiring it there rather than here was
+ * the correct scope, and that has now happened — the daemon teardown deleted
+ * `overrideSentinelScanner.ts` along with `coverageScan.ts`, its only reader.
+ *
+ * So the carve-out is discharged and the guard tightens to what the original
+ * group-5 task asked for and could not then have: **no** daemon path reads
+ * `.planning/phases/`. A new reader cannot appear without this test failing.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -23,8 +26,12 @@ import { describe, it, expect } from 'vitest'
 
 const SRC_ROOT = new URL('../', import.meta.url).pathname
 
-/** The single sanctioned `.planning/phases/` reader, owned by another change. */
-const SANCTIONED = 'lib/scanners/overrideSentinelScanner.ts'
+/**
+ * No sanctioned `.planning/phases/` reader remains. The last one,
+ * `lib/scanners/overrideSentinelScanner.ts`, went with the coverage scan in
+ * `retire-v1-surfaces` §2.
+ */
+const SANCTIONED: readonly string[] = []
 
 function sourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -50,13 +57,13 @@ function readsPhasesDir(source: string): boolean {
 }
 
 describe('the GSD phase reader is retired', () => {
-  it('leaves exactly one sanctioned `.planning/phases/` reader in the daemon', () => {
+  it('leaves no `.planning/phases/` reader in the daemon', () => {
     const offenders = sourceFiles(SRC_ROOT)
       .filter((f) => readsPhasesDir(readFileSync(f, 'utf8')))
       .map((f) => relative(SRC_ROOT, f))
       .sort()
 
-    expect(offenders).toEqual([SANCTIONED])
+    expect(offenders).toEqual(SANCTIONED)
   })
 
   it('keeps `.planning/skill-observations/` load-bearing', () => {

@@ -33,7 +33,7 @@ const MOCK_ACTIONS = [
 ]
 
 vi.mock('../lib/commandPaletteActions.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   useCommandPaletteActions: (_close: () => void) => MOCK_ACTIONS,
   filterActions: (actions: typeof MOCK_ACTIONS, query: string) => {
     if (!query) return actions

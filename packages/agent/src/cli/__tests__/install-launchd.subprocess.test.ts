@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { execa } from 'execa'
 
 const CLI = resolve(__dirname, '..', '..', '..', 'dist', 'cli.js')

@@ -1,6 +1,37 @@
 # AgenticApps Pipeline Dashboard
 
-> **Alpha — v1.0 closing.** Phases 0–6 ship a complete, useful dashboard with zero third-party service dependencies. Desktop-only in v1.0; mobile/tablet support deferred to v1.1+.
+> # ⚠️ Retired — 2026-08-05
+>
+> **This project is archived and is not maintained.** Do not install it. The
+> daemon holds a bearer token and read access to every registered project's
+> filesystem; running an unmaintained copy is a security surface nobody is
+> watching.
+>
+> **Why:** it worked, and it was never used. Three repos were ever registered
+> (one of them this one), no repo ever supplied the tier-B evidence file that
+> four of the six readiness checks require, and roughly 100,000 lines of source,
+> tests and spec prose accumulated in three months for a fleet of two. More
+> fundamentally, the product is read-only by constitution — it renders state for
+> a human to read, who then opens a terminal and asks an agent to act. An agent
+> that reads the repo directly collapses both hops and can act on what it finds.
+>
+> The full reasoning, the measurements behind it, the alternatives rejected, and
+> what is worth stealing from here:
+> **[ADR-0004 — Retire the dashboard](docs/decisions/0004-retire-the-dashboard.md)**.
+>
+> **If you are looking for one thing to take:** ancestry-based freshness, in
+> [`packages/agent/src/lib/readiness/freshness.ts`](packages/agent/src/lib/readiness/freshness.ts)
+> (42 lines). Evidence is stale when the last commit touching production code is
+> not an ancestor of the evidence commit — never when a timestamp looks old,
+> because a fresh clone stamps every file with checkout time and makes stale
+> evidence look current.
+>
+> The `@agenticapps/dashboard-agent` npm package is deprecated, not unpublished,
+> so existing lockfiles keep resolving.
+
+---
+
+*Everything below describes the product as it stood and is kept for reference.*
 
 ![Multi-project home](docs/img/home.png)
 
@@ -62,7 +93,7 @@ Multi-device access: bind the agent to your Tailscale hostname (`agentic-dashboa
 
 8. **How do I register multiple projects?** `agentic-dashboard register <path>` once per project, OR `agentic-dashboard register --auto <parent-dir>` to scan a parent directory and confirm each match.
 
-9. **What is "impeccable critique" and why is it a CI gate?** A dogfooded design QA. The dashboard's own UI must score ≥ 87 on `impeccable:critique` at the lg (1440×900) breakpoint before merging to main — enforced by [`.github/workflows/impeccable.yml`](.github/workflows/impeccable.yml). v1.1 commits to lifting the floor to ≥ 90.
+9. **What is "impeccable critique" and is it a CI gate?** A dogfooded design QA — but no, it is not a CI gate. The dashboard's own UI must score a composite ≥ 80 on `impeccable:critique` at the lg (1440×900) breakpoint, with a structural-debt waiver clause for a route structurally below floor. Enforcement is a **per-change artifact gate**: every frontend-touching change commits the critique artifact (composite + per-heuristic scores, findings, persona red flags) into its change directory, and a reviewer reads it. There is no `impeccable.yml` workflow; the CI gate was retired in favour of that artifact, and the composite is an LLM-driven heuristic score rather than a deterministic CLI, so it is not mechanizable as a check today. The floor and its process live in [`CLAUDE.md`](CLAUDE.md); the product outcomes it protects live in [`openspec/specs/design-system`](openspec/specs/design-system/spec.md).
 
 10. **Does this work on Windows?** Not in v1.0. macOS (LaunchAgent) and Linux (systemd) only. The Windows install path is deferred to v2 or beyond.
 
@@ -118,7 +149,7 @@ pnpm --filter @agenticapps/dashboard-agent build  # Build the CLI bundle
 pnpm --filter @agenticapps/dashboard-agent test   # Run agent tests only
 ```
 
-CI runs the same five gates (install + lint + typecheck + test + build) on push and PR — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The `Impeccable Critique Gate` workflow enforces the dogfooded ≥ 87 design floor on `main` as a required check. Releases trigger on `v*` tag push — see [`.github/workflows/release.yml`](.github/workflows/release.yml).
+CI runs the same five gates (install + lint + typecheck + test + build) on push and PR — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml); lint runs under `--max-warnings 0`, so a warning fails the build. The design floor is **not** a CI check — see FAQ 9 above. Releases trigger on `v*` tag push — see [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 ## License
 

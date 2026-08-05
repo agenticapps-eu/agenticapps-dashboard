@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { HealthResponseSchema, RegisterPrepareResponseSchema, RegisterConfirmResponseSchema } from '@agenticapps/dashboard-shared'
 
 import { ApiError, apiFetch, parseOrDrift } from './api.js'
+import { getPairing } from './pairing.js'
 
 vi.mock('./pairing.js', () => ({
   getPairing: vi.fn(),
@@ -15,7 +16,6 @@ const VALID_PAIRING = {
   pairedAt: '2026-01-01T00:00:00.000Z',
 }
 
-import { getPairing } from './pairing.js'
 const mockGetPairing = vi.mocked(getPairing)
 
 describe('apiFetch', () => {

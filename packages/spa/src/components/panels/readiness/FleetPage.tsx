@@ -21,9 +21,9 @@
  * - NO hex literals — token names only
  * - NO shadcn aliases
  */
-import type { ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { AlertTriangle, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Plus, ShieldCheck } from 'lucide-react'
 import {
   CHECK_IDS,
   type CheckResult,
@@ -32,7 +32,9 @@ import {
 
 import { SchemaDriftError, useFleet } from '../../../lib/readinessQueries.js'
 import { compareRepoSeverity } from '../../../lib/readinessOrder.js'
+import { RegisterModal } from '../../RegisterModal.js'
 import { SchemaDriftState } from '../../SchemaDriftState.js'
+import { EmDash } from '../../ui/EmDash.js'
 import { EmptyState } from '../../ui/EmptyState.js'
 import { PageHeader } from '../../ui/PageHeader.js'
 
@@ -67,8 +69,15 @@ function plural(count: number): string {
  * `lastCommitAt` is bounded by the wire schema, so this cannot throw on a
  * corrupt committer date.
  */
-function formatLastChange(at: number | null): string {
-  if (at === null) return '—'
+/**
+ * `null` rather than the marker itself: the caller renders `<EmDash />`, so the
+ * absence carries the same tertiary colour here as it does on the detail page.
+ * Returning the character from this function would have produced the right
+ * glyph in the wrong weight, which is the kind of drift "a single canonical
+ * absence marker" exists to stop.
+ */
+function formatLastChange(at: number | null): string | null {
+  if (at === null) return null
   return new Date(at).toISOString().slice(0, 10)
 }
 
@@ -210,8 +219,15 @@ function FleetRow({
         rows the eye should not be drawn to — and it would break further the
         moment a second check becomes advisory and the phrase wraps. Uniform
         height costs 12px per row and makes the fleet scannable at any mix.
+
+        `h-row-max` is the declared density token, not a local choice:
+        `design-system` → Dense Rows And Aligned Figures caps a row at 3.5rem,
+        and rowHeightToken.test.ts holds the utility and the token together. It
+        replaces `h-14`, which measured the same 3.5rem while being bound to
+        nothing — equal by coincidence, and free to drift the moment either
+        number was edited.
       */}
-      <td className="h-14 px-3 py-2 align-middle whitespace-nowrap">
+      <td className="h-row-max px-3 py-2 align-middle whitespace-nowrap">
         <ReadyVerdict ready={repo.ready} checks={repo.checks} />
       </td>
       {/*
@@ -231,9 +247,13 @@ function FleetRow({
           variant="compact"
         />
       </td>
-      {/* Right, to match its own header. They disagreed until now. */}
-      <td className="px-3 py-2 text-right align-middle text-sm text-text-secondary whitespace-nowrap">
-        {formatLastChange(repo.lastCommitAt)}
+      {/* Right, to match its own header. They disagreed until now.
+          Tabular figures because this is the fleet's one numeric column: every
+          value is an equal-length ISO date, so with proportional digits the
+          column still reads ragged — a '1' is narrower than a '0' and the
+          right edge is the only thing holding the rhythm. */}
+      <td className="px-3 py-2 text-right align-middle text-sm tabular-nums text-text-secondary whitespace-nowrap">
+        {formatLastChange(repo.lastCommitAt) ?? <EmDash />}
       </td>
     </tr>
   )
@@ -293,11 +313,34 @@ function FleetTable({
 }
 
 /**
+ * The one register affordance, rendered twice: once in the page header where
+ * it is always in the same place, and once inside the empty state where a
+ * first-time reader is already looking. Both open the same modal.
+ */
+function RegisterButton({ onClick }: { onClick: () => void }): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-md border border-accent bg-accent-bg-strong px-3 py-2 text-sm font-semibold text-white hover:bg-accent-bg-strong-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+    >
+      <Plus size={16} aria-hidden="true" />
+      Register repository
+    </button>
+  )
+}
+
+/**
  * Nothing registered is not the same as nothing to show. An empty table would
  * state that the fleet is clear; this states that the fleet is empty, and says
  * how to change that.
+ *
+ * The CLI line stays, demoted to an alternative. `Register A Project From The
+ * Home Page` survives this change as a promise that a user can register
+ * without leaving the browser, and until the affordance was re-homed here this
+ * state pointed at the CLI as the only route.
  */
-function NoReposState(): ReactElement {
+function NoReposState({ onRegister }: { onRegister: () => void }): ReactElement {
   return (
     <div className="rounded-card bg-card-bg p-6 shadow-card">
       <EmptyState
@@ -305,11 +348,11 @@ function NoReposState(): ReactElement {
         title="No repositories registered yet."
         body={
           <>
-            Readiness is read from repositories on this machine. Run{' '}
-            <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>{' '}
-            to add one.
+            Readiness is read from repositories on this machine. Add one below, or run{' '}
+            <code className="font-mono text-sm">agentic-dashboard register &lt;path&gt;</code>.
           </>
         }
+        action={<RegisterButton onClick={onRegister} />}
       />
     </div>
   )
@@ -343,6 +386,16 @@ export function FleetPage(): ReactElement {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as FleetSearch
   const filters = parseFleetFilters(search)
+  const [registerOpen, setRegisterOpen] = useState(false)
+
+  // The command palette's "Register project" action dispatches this on
+  // `window` rather than calling anything — `MultiProjectHome` was its only
+  // listener, and this change withdraws that surface.
+  useEffect(() => {
+    const onOpenRegister = (): void => setRegisterOpen(true)
+    window.addEventListener('palette:open-register', onOpenRegister)
+    return () => window.removeEventListener('palette:open-register', onOpenRegister)
+  }, [])
 
   // `useNavigate()` without a `from` infers the root route, whose search type is
   // empty, so a concrete search object does not type-check against it. The
@@ -382,7 +435,7 @@ export function FleetPage(): ReactElement {
   } else if (fleet.isError || !fleet.data) {
     content = <ErrorState onRetry={() => void fleet.refetch()} />
   } else if (fleet.data.repos.length === 0) {
-    content = <NoReposState />
+    content = <NoReposState onRegister={() => setRegisterOpen(true)} />
   } else {
     content =
       visible.length === 0 ? (
@@ -402,6 +455,7 @@ export function FleetPage(): ReactElement {
         title="Fleet readiness"
         helper="Six checks per repository. Count the cells — there is no combined score."
         sticky={true}
+        actions={<RegisterButton onClick={() => setRegisterOpen(true)} />}
       />
       {filterable && (
         <div className="flex flex-col gap-3">
@@ -428,6 +482,19 @@ export function FleetPage(): ReactElement {
         </div>
       )}
       {content}
+      {/*
+        `useRegisterConfirm` invalidates ['registry'], which this page does not
+        read — it reads FLEET_QUERY_KEY. Re-reading here is what makes the new
+        repository appear without a reload.
+      */}
+      <RegisterModal
+        isOpen={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onConfirmed={() => {
+          setRegisterOpen(false)
+          void fleet.refetch()
+        }}
+      />
     </div>
   )
 }

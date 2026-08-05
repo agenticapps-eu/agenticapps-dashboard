@@ -1,7 +1,33 @@
 # workflow-fleet-conformance Specification
 
 ## Purpose
-TBD - created by archiving change add-workflow-fleet-conformance. Update Purpose after archive.
+
+The workflow this fleet runs on is itself a product, shipped as one core spec
+and four host implementations. Nothing told anyone whether the five agreed. The
+withdrawn `fleet-coverage` matrix asked a different and weaker question — which
+repos had which tools installed — and answered it with a score whose movement
+nobody could reconstruct.
+
+This capability answers the narrow question instead: **do the four host
+workflows still say what core says?** It compares spec versions across the five
+repositories, reports `implements_spec` per *skill* rather than per repo,
+establishes shared-artefact conformance by **byte equality** rather than by a
+version claim a file makes about itself, distinguishes a pinned artefact from a
+missing one so a legitimate distribution model is not reported as a defect, and
+reports migration position per host.
+
+Two rules carry most of the weight. The first is that a claim and a fact are
+different things: a skill declaring `implements_spec: 0.3.2` is evidence of an
+intention, and byte identity against core is evidence of a state, so the
+capability never lets the first stand in for the second. The second is that the
+conformance harness — the only part of this that runs anything — is **explicitly
+requested, bounded, and never triggered by a page load**; its results carry
+their age and are invalidated by content rather than by a clock.
+
+Scope is deliberately narrow: this surface covers the workflow repositories and
+nothing else. It is not a general fleet score, and it does not reuse the name
+`fleet-conformance`, so that one word does not carry two concepts in one slot.
+
 ## Requirements
 ### Requirement: Core Spec Version Is The Maximum Across Sections
 

@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
+
 import type { PathResolver } from '../coverageResolver.js'
 import type { Containment } from '../containment.js'
 import { DAEMON_NAMED_REASONS } from '../containment.js'
+
 import { WORKFLOW_FLEET } from './workflowFleetScanner.js'
 import type {
   WorkflowArtifactId,

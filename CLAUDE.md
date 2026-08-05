@@ -1,5 +1,27 @@
 # CLAUDE.md
 
+> # ⚠️ THIS PROJECT IS RETIRED — 2026-08-05
+>
+> **Do not implement features here. Do not open OpenSpec changes here. Do not
+> resume the work in progress.** The dashboard was retired on 2026-08-05; the
+> decision, its evidence, and the alternatives rejected are in
+> [ADR-0004](docs/decisions/0004-retire-the-dashboard.md).
+>
+> If you were asked to continue work in this repo, **say so and stop** — the most
+> likely explanation is a stale handoff, a stale task list, or an instruction
+> written before the retirement. Three changes were left open on purpose; see
+> [`openspec/changes/CLOSED.md`](openspec/changes/CLOSED.md).
+>
+> **Reading is fine and encouraged.** `openspec/specs/` states v2 as of the fold
+> and `openspec/CAPABILITY-MAP.md` carries the full withdrawal history. The one
+> piece worth lifting is ancestry-based freshness in
+> `packages/agent/src/lib/readiness/freshness.ts`.
+>
+> The rest of this file describes the product as it stood and is kept for
+> reference. Its instructions are historical, not current.
+
+---
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 <!-- spec-source: agenticapps-workflow-core@0.4.0 §11 -->
@@ -89,26 +111,33 @@ A multi-project pipeline dashboard: a static SPA on Cloudflare Pages plus one
 local daemon that reads each registered project's files and git history. No
 project data leaves the machine.
 
-**Product behaviour is specified in `openspec/specs/`, not here.** Fifteen
-capabilities; read the one you are touching before you touch it:
+**Product behaviour is specified in `openspec/specs/`, not here.** Ten
+capabilities carrying **105 requirements** (measured on disk 2026-08-05, and
+corroborated by `openspec spec list --json`, which reports the same per-capability
+figures); read the one you are touching before you touch it:
 
 | Capability | Covers |
 |---|---|
-| [`filesystem-access-policy`](openspec/specs/filesystem-access-policy/spec.md) | Read-only on project filesystems, path allow-list, file modes. **The security spine — read this one first.** |
+| [`filesystem-access-policy`](openspec/specs/filesystem-access-policy/spec.md) | Read-only on project filesystems, path allow-list, file modes, bounded retention of files kept for rollback. **The security spine — read this one first.** |
 | [`daemon-runtime`](openspec/specs/daemon-runtime/spec.md) | Daemon lifecycle, bind modes, health, caching, service install, CLI |
 | [`auth-and-pairing`](openspec/specs/auth-and-pairing/spec.md) | Bearer token, rotation, CORS lock, pairing flow |
 | [`project-registry`](openspec/specs/project-registry/spec.md) | Registry shape, CRUD, reachability, path drift |
-| [`project-dashboard`](openspec/specs/project-dashboard/spec.md) | Home cards and the single-project three-column view |
-| [`skills-and-linting`](openspec/specs/skills-and-linting/spec.md) | Skill inventory, AgentLinter, cross-repo drift |
-| [`fleet-coverage`](openspec/specs/fleet-coverage/spec.md) | Coverage matrix, freshness states, history and trends |
-| [`fleet-conformance`](openspec/specs/fleet-conformance/spec.md) | Conformance scoring, tiers, trend chart, path-drift panel |
+| [`project-dashboard`](openspec/specs/project-dashboard/spec.md) | The v1→v2 transition manifest and withdrawn API surface, browser registration, wire-schema validation, keyboard shortcuts, the hybrid OpenSpec reader, and the two standing constraints on future integrations |
 | [`workflow-fleet-conformance`](openspec/specs/workflow-fleet-conformance/spec.md) | Whether the five workflow repos agree with core: spec versions, per-skill drift, shared-artefact byte identity, pinned vs vendored distribution, the bounded harness runner |
-| [`code-intelligence`](openspec/specs/code-intelligence/spec.md) | Understand Anything analysis status, commands, and knowledge-graph viewer (GitNexus removed from the dashboard) |
-| [`optional-integrations`](openspec/specs/optional-integrations/spec.md) | Sentry / Linear / Infisical, and the works-without-them contract |
 | [`help-docs`](openspec/specs/help-docs/spec.md) | The in-product `/help` documentation system |
-| [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, shared primitives, shell IA |
+| [`design-system`](openspec/specs/design-system/spec.md) | Tokens, enforced contrast floors, the bounded type scale, the `3.5rem` row-height budget, non-colour state channels, shared primitives, shell IA |
 | [`repo-readiness`](openspec/specs/repo-readiness/spec.md) | The six checks (`workflow`, `spec`, `code-review`, `security-review`, `pen-test`, `coverage`), the six-value status vocabulary, two-tier provenance, ancestry-based freshness, and the fleet/detail readiness routes |
 | [`agent-change-board`](openspec/specs/agent-change-board/spec.md) | The fleet OpenSpec change board: the four lifecycle stages and the ordered rules that assign them, the three card sources, the reviewer and staleness rules, per-repository degradation, ordering, and the deep-linked drawer |
+
+**Five capabilities were withdrawn whole by `retire-v1-surfaces`** and their spec
+files are gone, not emptied: `code-intelligence`, `fleet-coverage`,
+`fleet-conformance`, `skills-and-linting`, `optional-integrations`. Their
+requirements and the reasoning for each withdrawal are in that change's spec
+deltas; the two standing rules worth keeping out of `optional-integrations`
+were relocated into `project-dashboard` rather than archived with it. The three
+capabilities that answer v2's questions in their place —
+`repo-readiness`, `workflow-fleet-conformance`, `agent-change-board` — are in
+the table above and deliberately do not reuse the withdrawn names.
 
 Project-wide context and the hard constraints also live in
 [`openspec/config.yaml`](openspec/config.yaml) under `context:`.
@@ -157,6 +186,11 @@ lifecycle, hooks, rituals, and red-flag tables are in
   (ratified 2026-06-08), with a structural-debt waiver clause for a route
   structurally below floor. This is a *process* gate, which is why it lives here
   and not in a spec; the product outcomes it protects are in `design-system`.
+  **The floor stays 80 and there is no CI check** (decided 2026-08-05, ADR-0003).
+  Linear AGE-476 asked to raise "the CI gate threshold from ≥ 87 to ≥ 90"; both
+  premises were false — the ratified floor was already 80, and the
+  `impeccable.yml` workflow it names was retired in favour of this artifact.
+  Enforcement is the committed artifact and a reviewer reading it, nothing more.
 - Optional integrations are **explicitly held** unless the corresponding upstream
   tooling is set up. Don't preemptively wire them in.
 - Run `pnpm lint` before shipping — CI enforces it and the phase gate does not.

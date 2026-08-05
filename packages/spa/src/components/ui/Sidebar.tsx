@@ -1,14 +1,21 @@
 /**
  * Sidebar — 240px left navigation sidebar (Phase 5.1 Wave 1).
  *
- * Sections (top → bottom): WORKSPACE → Observability → Code Intelligence → ACCOUNT.
- * Projects sub-list sourced from useRegistryList() directly (RESEARCH OQ-4 resolution).
+ * Two sections, top → bottom: WORKSPACE (product content) → UTILITIES.
  *
- * Phase 10 D-10-08 (COV-09): OBSERVE section replaced with Observability section containing
- * a single Coverage entry linking to /coverage. Section architecture allows growth.
+ * `App Shell And Sidebar Information Architecture` (design-system, MODIFIED by
+ * retire-v1-surfaces) reduced this from four sections. Observability and Code
+ * Intelligence are gone with the surfaces they led to, and WORKSPACE no longer
+ * enumerates registered projects: the fleet surface is that list, and a sidebar
+ * that grows with the registry is the thing the requirement forbids by name.
  *
- * Phase 14 D-14-06: Code Intelligence section inserted between Observability and ACCOUNT.
- * Contains Knowledge graphs entry linking to /code-intelligence as a new peer section.
+ * **UTILITIES, not ACCOUNT.** The group holds settings *and* help, and help is
+ * not account-level content — naming the group for the account would misfile
+ * it, which design §5 calls out in as many words.
+ *
+ * **Peer order is inherited, not re-chosen.** Workflow → Fleet readiness →
+ * Changes is the order these three already had. Withdrawing the Projects entry
+ * that sat above them is a removal, and a removal does not license a reorder.
  *
  * Constraints (D-5.1-10):
  * - NO transition utilities
@@ -16,27 +23,22 @@
  */
 import React from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity, Cog, HelpCircle, FolderKanban, KanbanSquare, Layers, ShieldCheck, TrendingUp, Network, Workflow } from 'lucide-react'
-
-import { useRegistryList } from '../../lib/registry.js'
+import { Cog, HelpCircle, KanbanSquare, ShieldCheck, Workflow } from 'lucide-react'
 
 import { SidebarSection } from './SidebarSection.js'
 import { SidebarItem } from './SidebarItem.js'
-import { SidebarSubItem } from './SidebarSubItem.js'
 
 export function Sidebar(): React.JSX.Element {
-  const list = useRegistryList()
-  const projects = list.data ?? []
-  const projectCount = projects.length
-
   return (
     <aside
       aria-label="Primary navigation"
       className="w-60 h-screen bg-sidebar-bg border-r border-border-subtle flex flex-col"
     >
-      {/* Logo */}
+      {/* Logo. Points at the fleet rather than `/`: the origin still answers,
+          by redirecting, but the product should not route its own chrome
+          through a location it withdrew. */}
       <Link
-        to="/"
+        to="/fleet"
         className="flex items-center gap-2 px-4 py-4 h-16 text-base font-semibold text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span
@@ -50,38 +52,20 @@ export function Sidebar(): React.JSX.Element {
       <nav className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col gap-2">
         <SidebarSection label="WORKSPACE">
           <SidebarItem
-            to="/"
-            icon={<FolderKanban size={16} aria-hidden="true" />}
-            label={`Projects (${projectCount})`}
-          />
-          {projects.map((p) => (
-            <SidebarSubItem
-              key={p.id}
-              to="/projects/$projectId"
-              params={{ projectId: p.id }}
-              label={p.name}
-              statusDot={p.status.reachable ? 'green' : 'gray'}
-            />
-          ))}
-          <SidebarItem
             to="/workflow"
             icon={<Workflow size={16} aria-hidden="true" />}
             label="Workflow"
           />
-          {/* Fleet readiness — add-repo-readiness §9. A peer of Workflow in
-              WORKSPACE, which is where the other v2 fleet surface already
-              sits. `/` still belongs to Projects until retire-v1-surfaces. */}
+          {/* Fleet readiness — add-repo-readiness §9. Also owns /repos, which
+              is where a repo detail lives and is reachable only from here. */}
           <SidebarItem
             to="/fleet"
             alsoActiveFor="/repos"
             icon={<ShieldCheck size={16} aria-hidden="true" />}
             label="Fleet readiness"
           />
-          {/* Changes — add-agent-change-board §5.8. One entry, in WORKSPACE
-              beside the other product-content surfaces, because the board
-              answers "what is in flight" about the same repositories Projects
-              and Fleet readiness answer other questions about. Not an
-              Observability entry: it reports work, not instrumentation. */}
+          {/* Changes — add-agent-change-board §5.8. Product content, not
+              instrumentation: the board reports work, not measurement. */}
           <SidebarItem
             to="/changes"
             icon={<KanbanSquare size={16} aria-hidden="true" />}
@@ -89,45 +73,7 @@ export function Sidebar(): React.JSX.Element {
           />
         </SidebarSection>
 
-        {/* Observability section — Phase 10 D-10-08 introduced Coverage; Phase 11 D-11-08
-            added Skill drift as a peer; Phase 12 D-12-01 graduates the section to 3 peer
-            entries: Coverage / Skill drift / Conformance. Order preserves existing IA
-            (user-memory feedback_sidebar_section_architecture: additive growth over
-            reorder — documented deviation from RESEARCH OQ3 which suggested
-            Coverage → Conformance → Skill drift; we keep Phase 11's anchor in place to
-            avoid retraining users already familiar with the existing pattern).
-            All three use the SidebarItem peer primitive (NOT SidebarSubItem).
-            Icons: Activity (Coverage), Layers (Skill drift), TrendingUp (Conformance) —
-            visually distinct lucide-react glyphs. */}
-        <SidebarSection label="Observability">
-          <SidebarItem
-            to="/coverage"
-            icon={<Activity size={16} aria-hidden="true" />}
-            label="Coverage"
-          />
-          <SidebarItem
-            to="/observability/skill-drift"
-            icon={<Layers size={16} aria-hidden="true" />}
-            label="Skill drift"
-          />
-          <SidebarItem
-            to="/observability/conformance"
-            icon={<TrendingUp size={16} aria-hidden="true" />}
-            label="Conformance"
-          />
-        </SidebarSection>
-
-        {/* Code Intelligence section — Phase 14 D-14-06. Inserted between Observability
-            and ACCOUNT as a new section rather than a sub-item. */}
-        <SidebarSection label="Code Intelligence">
-          <SidebarItem
-            to="/code-intelligence"
-            icon={<Network size={16} aria-hidden="true" />}
-            label="Knowledge graphs"
-          />
-        </SidebarSection>
-
-        <SidebarSection label="ACCOUNT">
+        <SidebarSection label="UTILITIES">
           <SidebarItem
             to="/settings"
             icon={<Cog size={16} aria-hidden="true" />}

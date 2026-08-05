@@ -1,15 +1,15 @@
 /**
  * Tests for GET /api/projects/:id/openspec — project-dashboard ›
- * Change Progress Column + Capability Panel.
+ * Hybrid OpenSpec Read Strategy.
  *
- * The registry list already carries an open-change *summary* per project, but
- * it deliberately omits what only the single-project view needs: each change's
- * affected capabilities, the capability names and their requirement counts, and
- * the archive. Putting those on the fleet-wide list would load every home card
- * with detail only one route renders.
+ * The registry list already carries an open-change *summary* per project; this
+ * route adds the capability names and their requirement counts. It used to add
+ * each change's affected capabilities and the archive too — both withdrawn by
+ * the v2 cutover along with the two surfaces that read them, so OS1 now asserts
+ * their absence on the wire rather than their contents.
  *
  * OS1: 200 + valid OpenspecProjectStateSchema for a migrated project
- * OS2: a change with no specs/ is listed with an empty affectedCapabilities
+ * OS2: a change with no specs/ is still listed, not filtered out
  * OS3: a change with no tasks.md is listed with hasTaskArtifact:false
  * OS4: a project with no openspec/ reads as present:false, not as an error
  * OS5: 404 on unknown projectId
@@ -135,7 +135,7 @@ describe('GET /api/projects/:id/openspec', () => {
     })
   }
 
-  it('OS1: 200 + valid state with capabilities and archive for a migrated project', async () => {
+  it('OS1: 200 + valid state carrying capabilities and no withdrawn field', async () => {
     const id = await register(makeMigratedProject())
     const res = await get(id)
     expect(res.status).toBe(200)
@@ -149,24 +149,29 @@ describe('GET /api/projects/:id/openspec', () => {
     ])
 
     const withDelta = parsed.openChanges.find((c) => c.name === 'add-thing')
-    expect(withDelta).toMatchObject({
+    expect(withDelta).toEqual({
+      name: 'add-thing',
       completedTasks: 2,
       totalTasks: 3,
       hasTaskArtifact: true,
-      affectedCapabilities: ['daemon-runtime', 'help-docs'],
     })
 
-    expect(parsed.archived).toEqual([{ name: '2026-07-01-add-old', datePrefix: '2026-07-01' }])
+    // The fixture carries an archive directory and per-change spec deltas on
+    // disk; neither may reach the wire. Asserted on the serialised body rather
+    // than on a key, because the schema is strict and would have thrown first —
+    // this is the assertion that survives a schema regression.
+    const raw = JSON.stringify(await (await get(id)).json())
+    expect(raw).not.toContain('archived')
+    expect(raw).not.toContain('affectedCapabilities')
   })
 
-  it('OS2: a change with no spec delta is listed with no affected capabilities', async () => {
+  it('OS2: a change with no spec delta is still listed', async () => {
     const id = await register(makeMigratedProject())
     const parsed = OpenspecProjectStateSchema.parse(await (await get(id)).json())
 
     const noDelta = parsed.openChanges.find((c) => c.name === 'no-delta-yet')
     expect(noDelta).toBeDefined()
-    expect(noDelta?.affectedCapabilities).toEqual([])
-    // Listed, not filtered out — the column renders a no-spec-delta state.
+    // Listed, not filtered out — an incomplete change is the normal case.
     expect(noDelta?.hasTaskArtifact).toBe(true)
   })
 
@@ -177,7 +182,7 @@ describe('GET /api/projects/:id/openspec', () => {
     const noTasks = parsed.openChanges.find((c) => c.name === 'no-task-list')
     expect(noTasks).toBeDefined()
     expect(noTasks?.hasTaskArtifact).toBe(false)
-    expect(noTasks?.affectedCapabilities).toEqual(['help-docs'])
+    expect(noTasks?.totalTasks).toBe(0)
   })
 
   it('OS4: a project with no openspec/ tree reads as present:false, not as an error', async () => {
@@ -190,7 +195,6 @@ describe('GET /api/projects/:id/openspec', () => {
       present: false,
       openChanges: [],
       capabilities: [],
-      archived: [],
     })
   })
 

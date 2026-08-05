@@ -22,7 +22,6 @@
  * daemon reports what it withheld, and so does this.
  */
 import { useState, type ReactElement } from 'react'
-
 import type { ChangeCard as ChangeCardData, ChangeStage } from '@agenticapps/dashboard-shared'
 
 import { ChangeCard } from './ChangeCard.js'

@@ -147,14 +147,95 @@ relying on archive archaeology, while `optional-integrations` can truthfully end
 
 Known v1 SPA locations may remain in bookmarks. They redirect to the fleet
 surface so a user reaches a valid product surface rather than a blank shell.
-The transition manifest maps the four retired legacy surface routes to fleet and
-maps `/projects/:id` to `/repos/:id` so project context is retained.
+The transition manifest maps the five retired legacy surface routes to fleet and
+maps `/projects/:id` to `/repos/:id` so project context is retained. The fifth is
+the root location `/`, added 2026-08-04: it rendered the withdrawn multi-project
+home, so it is a retired location like the other four rather than a surviving
+surface, and enumerating only the four named pages left the bare origin — the
+product's most likely entry point — as the one URL with no specified behaviour.
 Removed daemon APIs are different: keeping compatibility handlers would preserve
 the withdrawn product surface. They return not-found and expose no stub payload.
 That includes the daemon-hosted knowledge-graph viewer's asset and read URLs:
 they are withdrawn daemon endpoints, not SPA locations, so bookmarked viewer URLs
 deliberately return not-found rather than redirecting to an unrelated dashboard
 surface.
+
+## 8a. Where the register affordance lands, and why it moved first
+
+Decided 2026-08-05, at implementation. The spec requires the affordance survive
+on the fleet; it does not say in what shape. Three were considered:
+
+1. **A persistent action in the fleet's `PageHeader` slot, plus the same button
+   inside the empty state.** Chosen. `PageHeader` already has an `actions` slot
+   and `EmptyState` already has an `action` slot documented as "e.g. Register
+   button", so both call sites exist. The control keeps one address whether or
+   not the fleet is populated.
+2. **Empty state only.** Rejected. It satisfies the third scenario literally and
+   leaves the first — a registration appearing in a populated fleet list —
+   reachable only from the CLI, which is the promise this requirement exists to
+   keep.
+3. **A button in `FleetToolbar`.** Rejected. The toolbar is gated on the
+   registry being non-empty, so the empty state would need a second copy anyway,
+   and the control would move position depending on state.
+
+`RegisterButtonCard` is deleted rather than re-homed: it is a dashed card sized
+for the withdrawn home's card grid, and the fleet is a table. `RegisterModal` is
+reused unchanged.
+
+**This step moved ahead of the redirects.** The tasks list has the redirect
+before the re-home, which would have left the branch with commits where `/`
+redirects to the fleet while `RegisterModal` is still reachable only from the
+now-unreachable `MultiProjectHome` — browser registration broken in the
+intervening state even though every component still existed. The same applies to
+the command palette: `commandPaletteActions.ts` dispatches `palette:open-register`
+on `window` and the withdrawn home was its only listener, so the palette's
+"Register project" action would have started no-opping silently. The listener
+now lives on the fleet.
+
+One thing the re-home had to add rather than move: `useRegisterConfirm`
+invalidates `['registry']` and the fleet reads `FLEET_QUERY_KEY`, so nothing
+connected the two. Without re-reading the fleet on confirm, a newly registered
+repository appears only after a manual reload — which the requirement's first
+scenario forbids in as many words.
+
+**Not fixed here, and not introduced here:** `RegisterModal`'s dialog carries
+`mx-4`, which overrides the UA's `margin: auto` on a `showModal()` dialog and
+pins it to the top-left of the viewport instead of centring it. Measured at
+1440×900 on the fleet. It is a property of the component's own classes, so it
+rendered identically on the withdrawn home; re-homing did not cause it and
+fixing it would widen this change into a component it otherwise reuses
+untouched.
+
+## 8b. The manifest is keyed on a normalised location, not on the identifier
+
+Decided 2026-08-05, at stage-2 code review of the first cutover commits.
+
+The manifest was keyed on the pathname exactly. TanStack matches paths
+case-insensitively and tolerates trailing slashes, but hands `beforeLoad` the
+pathname the visitor typed rather than the one it matched — so `/coverage/` and
+`/COVERAGE` *matched* the retired route while missing the lookup. No redirect
+was thrown, and a retired route has no component, so the visitor got an empty
+Outlet inside the shell: the blank page §8 and the requirement's scenarios
+forbid by name, reached through the most ordinary thing a bookmark does.
+
+Two answers were open. Fold the spelling and redirect, or treat the variant as
+unknown and return not-found. Folding wins because case is already
+insignificant to this router for every *surviving* surface — `/FLEET` renders
+the fleet. A retired location that answered only one spelling would change URL
+semantics for exactly the six addresses this change exists to keep working.
+
+**Only the location is folded, never the identifier.** `/Projects/MyRepo`
+resolves to `/repos/MyRepo`. A repo id is data the URL carries, not a spelling
+of an address; folding it would point a bookmark at a repo that may not exist
+and convert a working deep link into the detail surface's not-found state —
+the same loss §8 refuses when it declines to discard the identifier.
+
+The fallback for an unresolved mounted route now throws `notFound()` rather
+than falling through. Falling through was documented as reaching not-found and
+did not: with no component and no `notFoundComponent`, the route renders an
+empty Outlet. Thrown, it renders not-found and logs a warning naming the route,
+so a manifest that ever stops covering a mounted path fails loudly instead of
+serving a blank page in silence.
 
 ## 9. Historical data becomes inert, not mysteriously abandoned
 

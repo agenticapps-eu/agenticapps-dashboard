@@ -1,6 +1,7 @@
 /**
- * SidebarItem — Top-level navigation link (Phase 5.1 Wave 1).
- * SidebarItemDisabled — Disabled navigation button for Phase 6+ routes.
+ * SidebarItem — Top-level navigation link (Phase 5.1 Wave 1). The sidebar's one
+ * navigation primitive, which `App Shell And Sidebar Information Architecture`
+ * requires every entry in every section to use.
  *
  * UI-SPEC §5: active state = bg-accent-bg-strong + text-white (filled purple pill).
  * Inactive state = text-text-primary + hover:bg-accent-bg.
@@ -54,26 +55,5 @@ export function SidebarItem({
       <span aria-hidden="true" className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
     </Link>
-  )
-}
-
-export interface SidebarItemDisabledProps {
-  icon: React.ReactNode
-  label: string
-}
-
-export function SidebarItemDisabled({ icon, label }: SidebarItemDisabledProps): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      disabled
-      aria-disabled="true"
-      aria-label={`${label} section, available in Phase 6`}
-      title="Available in Phase 6"
-      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-tertiary cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-    >
-      <span aria-hidden="true" className="shrink-0">{icon}</span>
-      <span className="truncate">{label}</span>
-    </button>
   )
 }

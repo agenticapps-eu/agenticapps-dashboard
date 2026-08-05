@@ -9,7 +9,6 @@
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { ChangesFleetResponseSchema } from '@agenticapps/dashboard-shared'
 
 vi.mock('../lib/changes/service.js', () => ({ readChangesFleet: vi.fn() }))

@@ -10,7 +10,6 @@
 import React from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
   cardKey,
   compareChangeCards,
@@ -48,6 +47,7 @@ vi.mock('./boardLayout.js', async (importOriginal) => ({
 import { useChangesFleet } from '../../../lib/changesQueries.js'
 import { ApiError } from '../../../lib/api.js'
 import { SchemaDriftError } from '../../../lib/readinessQueries.js'
+
 import { ChangeBoardPage } from './ChangeBoardPage.js'
 
 const mockUseChangesFleet = vi.mocked(useChangesFleet)

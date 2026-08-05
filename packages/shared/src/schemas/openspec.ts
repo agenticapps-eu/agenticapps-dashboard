@@ -3,23 +3,16 @@ import { z } from 'zod'
 import { OpenChangeSummarySchema } from './registry.js'
 
 /**
- * The single-project OpenSpec state — project-dashboard › Change Progress
- * Column + Capability Panel.
+ * The single-project OpenSpec state — project-dashboard › Hybrid OpenSpec Read
+ * Strategy.
  *
- * This is the home card's `OpenChangeSummary` widened with the one field the
- * detail view needs and the card does not: which capabilities the change's
- * spec deltas touch. Extending rather than redeclaring keeps the two shapes
- * from drifting — the card's fields have exactly one definition.
+ * This is the fleet row's `OpenChangeSummary`, held strict. It used to widen
+ * that shape with `affectedCapabilities`; the v2 cutover withdrew that field
+ * along with the change-progress column that was its only reader. Nothing
+ * extends the summary now, and this stays a named shape rather than collapsing
+ * into it because strictness is the remaining difference between the two.
  */
-export const OpenspecChangeDetailSchema = OpenChangeSummarySchema.extend({
-  /**
-   * Capability ids taken from the change's own `specs/` tree — one per
-   * `specs/<capability>/`. Empty is a legitimate in-progress state, not an
-   * error: a change with no spec delta yet affects no capability, and is still
-   * listed.
-   */
-  affectedCapabilities: z.array(z.string().min(1)),
-}).strict()
+export const OpenspecChangeDetailSchema = OpenChangeSummarySchema.strict()
 export type OpenspecChangeDetail = z.infer<typeof OpenspecChangeDetailSchema>
 
 /** One declared capability and the number of requirements it states. */
@@ -32,33 +25,27 @@ export const OpenspecCapabilitySchema = z
 export type OpenspecCapability = z.infer<typeof OpenspecCapabilitySchema>
 
 /**
- * One archived change. `datePrefix` is the zero-padded ISO prefix that makes
- * lexicographic order chronological by construction, or null when the name
- * does not carry one — in which case no chronological claim is made for it.
- */
-export const OpenspecArchivedChangeSchema = z
-  .object({
-    name: z.string().min(1),
-    datePrefix: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  })
-  .strict()
-export type OpenspecArchivedChange = z.infer<typeof OpenspecArchivedChangeSchema>
-
-/**
  * `present` is false when the project has no `openspec/` directory at all.
  * That is the "not migrated" floor, and it is distinct from a present tree
  * carrying no specs or no open changes — each drives a different empty state,
  * so none of the three may be inferred from an empty collection alone.
  *
+ * There is deliberately no `archived` field. `Hybrid OpenSpec Read Strategy`
+ * withdraws archived-change enumeration from this reader; the lifecycle change
+ * board renders the archive and reads `openspec/changes/archive/`
+ * independently, precisely so this reader — which sits on the `spec` check's
+ * hot path — does not pay for board data.
+ *
  * Strict, following the registry and overview precedent: a silently stripped
- * key is a schema drift no panel ever sees.
+ * key is a schema drift no panel ever sees. Strictness is also what makes the
+ * withdrawal enforceable rather than merely intended — a daemon that kept
+ * emitting a withdrawn field fails its own outbound validation.
  */
 export const OpenspecProjectStateSchema = z
   .object({
     present: z.boolean(),
     openChanges: z.array(OpenspecChangeDetailSchema),
     capabilities: z.array(OpenspecCapabilitySchema),
-    archived: z.array(OpenspecArchivedChangeSchema),
   })
   .strict()
 export type OpenspecProjectState = z.infer<typeof OpenspecProjectStateSchema>

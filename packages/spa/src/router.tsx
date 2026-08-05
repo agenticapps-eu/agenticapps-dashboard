@@ -3,6 +3,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  notFound,
   redirect,
   Outlet,
   type AnyRoute,
@@ -15,6 +16,7 @@ import { AppShellV2 } from './components/AppShellV2.js'
 import { HelpLayout } from './help/components/HelpLayout.js'
 import { buildHelpRoutes } from './help/buildHelpRoutes.js'
 import { getPairing } from './lib/pairing.js'
+import { resolveRetiredLocation } from './lib/retiredLocations.js'
 import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
 
 /**
@@ -26,17 +28,6 @@ import { MalformedPairUrl, RouteError } from './routes/pair-error.js'
 const PairSearchSchema = z.object({
   agent: AgentUrlSchema,
   token: TokenSchema,
-})
-
-/**
- * CoverageSearchSchema validates the optional /coverage?status=&q= search params.
- * COV-06: URL round-trip — filter + search state reflected in the URL so that
- * refreshing / sharing the page preserves the view. Malformed values render
- * pairErrorComponent (Phase 7 Pitfall 8 defense — prevents blank-page failure mode).
- */
-const CoverageSearchSchema = z.object({
-  status: z.string().optional(), // comma-joined statuses e.g. "missing,stale"
-  q: z.string().optional(), // free-text repo search
 })
 
 /**
@@ -99,73 +90,65 @@ const appShellLayoutRoute = createRoute({
   component: AppShellV2,
 })
 
+/**
+ * A retired location is not a page any more — it is an address that still has
+ * to answer. `retiredLocations.ts` owns every destination; this only asks it,
+ * keyed on the pathname the visitor actually typed, so the router never holds
+ * a second copy of the mapping that could drift from the first.
+ *
+ * `resolveRetiredLocation` returning `null` should not happen for a path
+ * mounted here — the route paths and the manifest are the same six locations,
+ * and the manifest answers every spelling this router will match. If they ever
+ * stop agreeing, `notFound()` is the honest answer, and it has to be thrown:
+ * falling through leaves a route with no component, which renders an empty
+ * Outlet inside the shell — the blank page the requirement forbids by name,
+ * and silent, which is worse than wrong.
+ */
+function retiredRoute(path: string) {
+  return createRoute({
+    getParentRoute: () => appShellLayoutRoute,
+    path,
+    beforeLoad: ({ location }: { location: { pathname: string } }) => {
+      const to = resolveRetiredLocation(location.pathname)
+      if (to === null) { throw notFound() }
+      throw redirect({ to, replace: true })
+    },
+  })
+}
+
+/**
+ * The origin owes the unpaired case first. A visitor with no daemon paired is
+ * sent to /onboarding as before; only a paired one is carried on to the fleet,
+ * because the fleet cannot load without a daemon to read.
+ */
 const indexRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,
   path: '/',
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     const pairing = getPairing()
     if (!pairing) { throw redirect({ to: '/onboarding' }) }
+    const to = resolveRetiredLocation(location.pathname)
+    if (to !== null) { throw redirect({ to, replace: true }) }
   },
-}).lazy(() => import('./routes/index.lazy.js').then((m) => m.Route))
+})
 
 const settingsRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,
   path: '/settings',
 }).lazy(() => import('./routes/settings.lazy.js').then((m) => m.Route))
 
-const projectsIdRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/projects/$projectId',
-}).lazy(() => import('./routes/projects.$projectId.lazy.js').then((m) => m.Route))
-
 /**
- * coverageRoute — /coverage page under the _appshell layout.
- * Phase 10 D-10-08: Observability sidebar section links here.
- * validateSearch: COV-06 URL round-trip for filter (status) + search (q) params.
- * errorComponent: Phase 7 Pitfall 8 defense — malformed search params render
- * pairErrorComponent instead of blanking the screen (Assumption A7).
+ * `/projects/:id` and nothing beneath it. `$projectId` matches a single
+ * segment, so `/projects/:id/anything` — an address the product never served —
+ * misses every route and reaches not-found, which is what the requirement
+ * asks. A wildcard here would redirect it somewhere plausible instead.
  */
-const coverageRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/coverage',
-  validateSearch: zodValidator(CoverageSearchSchema),
-  errorComponent: pairErrorComponent,
-}).lazy(() => import('./routes/coverage.lazy.js').then((m) => m.Route))
+const projectsIdRoute = retiredRoute('/projects/$projectId')
 
-/**
- * observabilitySkillDriftRoute — /observability/skill-drift page under the _appshell layout.
- * Phase 11 D-11-08: Observability sidebar section adds this as the SECOND peer entry
- * (after Coverage).
- * PD-11-03 URL round-trip for the scope chip (?scope=family|cross) — validated/normalized
- * inside useSkillDriftScopeFromUrl() so invalid values silently fall back to 'family'.
- */
-const observabilitySkillDriftRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/observability/skill-drift',
-}).lazy(() => import('./routes/observability.skill-drift.lazy.js').then((m) => m.Route))
-
-/**
- * conformanceRoute — /observability/conformance page under the _appshell layout.
- * Phase 12 D-12-01: Observability sidebar section graduates from 2 → 3 peer
- * entries (Coverage / Skill drift / Conformance).
- * D-12-02: sibling route (NOT widening Phase 5's /observability aggregator).
- * NO validateSearch for v1.2.0 — deep-link to a specific day (`?date=...`) is
- * deferred per RESEARCH §REQ-12-PAGE-01.
- */
-const conformanceRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/observability/conformance',
-}).lazy(() => import('./routes/observability.conformance.lazy.js').then((m) => m.Route))
-
-/**
- * codeIntelligenceRoute — /code-intelligence page under the _appshell layout.
- * Phase 14 D-14-06: Code Intelligence sidebar section; knowledge-graph discoverability surface.
- * Section placed between Observability and ACCOUNT.
- */
-const codeIntelligenceRoute = createRoute({
-  getParentRoute: () => appShellLayoutRoute,
-  path: '/code-intelligence',
-}).lazy(() => import('./routes/code-intelligence.lazy.js').then((m) => m.Route))
+const coverageRoute = retiredRoute('/coverage')
+const observabilitySkillDriftRoute = retiredRoute('/observability/skill-drift')
+const conformanceRoute = retiredRoute('/observability/conformance')
+const codeIntelligenceRoute = retiredRoute('/code-intelligence')
 
 const workflowRoute = createRoute({
   getParentRoute: () => appShellLayoutRoute,
@@ -266,13 +249,16 @@ const pairRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   appShellLayoutRoute.addChildren([
+    // The six retired v1 locations stay mounted so they can answer. They
+    // resolve through retiredLocations.ts and render nothing — removing them
+    // would turn a specified redirect into a not-found.
     indexRoute,
-    settingsRoute,
     projectsIdRoute,
-    coverageRoute, // Phase 10 D-10-08 — /coverage under _appshell
-    observabilitySkillDriftRoute, // Phase 11 D-11-08 — /observability/skill-drift under _appshell
-    conformanceRoute, // Phase 12 D-12-01 — /observability/conformance under _appshell
-    codeIntelligenceRoute, // Phase 14 D-14-06 — /code-intelligence under _appshell
+    coverageRoute,
+    observabilitySkillDriftRoute,
+    conformanceRoute,
+    codeIntelligenceRoute,
+    settingsRoute,
     workflowRoute,
     fleetRoute, // add-repo-readiness §9 — /fleet under _appshell
     repoDetailRoute, // add-repo-readiness §9/§10 — /repos/$repoId under _appshell
