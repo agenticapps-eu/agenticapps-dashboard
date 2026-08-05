@@ -1,12 +1,14 @@
 /**
- * SidebarItem.test.tsx — TDD tests for SidebarItem + SidebarItemDisabled (Plan 05.1-02 Task 1).
+ * SidebarItem.test.tsx — TDD tests for SidebarItem (Plan 05.1-02 Task 1).
  *
  * SI1: renders a Link with the `to` prop forwarded
  * SI2: when useMatchRoute matches `to`, applies active classes (bg-accent-bg-strong + text-white)
  * SI3: when not matching, applies inactive classes (text-text-primary + hover:bg-accent-bg)
  * SI4: NO transition utility classes (D-5.1-10)
  * SI5: focus-visible ring uses ring-accent
- * SI6: SidebarItemDisabled renders a <button> with disabled + aria-disabled="true" + cursor-not-allowed; no Link/a rendered
+ *
+ * SI6/SI6b specified SidebarItemDisabled, the second primitive this module no
+ * longer ships; they are replaced by the export assertion below.
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
@@ -25,7 +27,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-import { SidebarItem, SidebarItemDisabled } from './SidebarItem.js'
+import { SidebarItem } from './SidebarItem.js'
 
 beforeEach(() => {
   mockMatchRoute.mockReset()
@@ -190,13 +192,6 @@ describe('D-6.1-04 ARIA additions', () => {
     )
     const link = container.querySelector('a')!
     expect(link.getAttribute('aria-current')).toBeNull()
-  })
-
-  it('SidebarItemDisabled carries aria-label suffixed with "section, available in Phase 6"', () => {
-    render(<SidebarItemDisabled icon={<span />} label="Skills" />)
-    expect(
-      screen.getByRole('button', { name: /Skills section, available in Phase 6/i }),
-    ).toBeInTheDocument()
   })
 
   it('stays active across a subtree it owns', () => {

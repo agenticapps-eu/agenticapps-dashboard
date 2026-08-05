@@ -254,11 +254,13 @@ describe('Sidebar — one primitive, one indentation', () => {
   it('builds every entry from the one navigation primitive', () => {
     // Every other case in this file — including the indentation one below —
     // reaches its entries through `nav a`, so an entry that is not a link is
-    // invisible to all of them. `SidebarItemDisabled` renders a <button> and
-    // ships from this same module, which makes a second primitive in a section
-    // a one-word change that nothing would report. The requirement says
-    // entries within each section use the same navigation primitive; this is
-    // the assertion that says so.
+    // invisible to all of them. `SidebarItemDisabled` was exactly that: a
+    // <button> shipping beside the link from the sidebar's own module, which
+    // made a second primitive in a section a one-word change that nothing
+    // would report. It has since been removed, and `SidebarItem.test.tsx`
+    // asserts the module ships one primitive — but the two guards answer
+    // different questions, and this is the one that would catch a rival
+    // primitive imported from anywhere else.
     registered(makeProject('a', 'agenticapps-dashboard'))
     const { container } = render(<Sidebar />)
     const sections = sectionEntries(container)
