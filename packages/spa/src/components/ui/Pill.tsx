@@ -13,7 +13,7 @@ import React from 'react'
 
 export type PillVariant = 'neutral' | 'accent' | 'success' | 'warning' | 'error'
 
-const VARIANT_CLASSES: Record<PillVariant, string> = {
+export const VARIANT_CLASSES: Record<PillVariant, string> = {
   neutral: 'bg-card-bg-hover text-text-secondary',
   accent:  'bg-accent-bg text-accent',
   success: 'bg-card-bg-hover text-status-success',

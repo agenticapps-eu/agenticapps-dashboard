@@ -49,6 +49,9 @@ import {
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  // The appearance is global state on <html>. A test that sets it and then
+  // fails mid-body would otherwise hand `.dark` to every test after it.
+  document.documentElement.classList.remove('dark')
 })
 
 /**
@@ -158,6 +161,43 @@ describe('ReadinessIndicator', () => {
 
     expect(shapes.size).toBe(CHECK_STATUSES.length)
   })
+
+  it.each(['light', 'dark'] as const)(
+    'keeps all six shapes in the %s appearance, so the channel does not depend on the palette',
+    (appearance) => {
+      // The shape test above renders under whatever appearance happens to be
+      // on the documentElement, which is light. That leaves the one regression
+      // this requirement is most exposed to unguarded: a `dark:` variant that
+      // drops or unifies the glyph, leaving dark readers with six cells told
+      // apart by hue alone while every existing assertion stays green.
+      //
+      // Shapes are palette-independent by construction, so a pass here is
+      // expected rather than surprising — the value is that it now has to
+      // stay that way deliberately.
+      //
+      // The class comes off in afterEach rather than at the end of this body:
+      // an assertion that throws mid-loop would otherwise leave `.dark` on the
+      // documentElement and fail every later test in the file for a reason
+      // that has nothing to do with them. Observed while mutation-testing this
+      // very assertion.
+      document.documentElement.classList.toggle('dark', appearance === 'dark')
+
+      const shapes = new Set<string>()
+      for (const status of CHECK_STATUSES) {
+        cleanup()
+        const checks = CHECK_IDS.map((id) => result(id, status))
+        render(<ReadinessIndicator checks={checks} repoName="repo" />)
+
+        const svg = document.querySelector('[role="figure"] svg')
+        expect(svg, `no icon rendered for status ${status} in ${appearance}`).not.toBeNull()
+        const name = Array.from((svg as SVGElement).classList).find((c) => c.startsWith('lucide-'))
+        expect(name, `no lucide class for status ${status} in ${appearance}`).toBeDefined()
+        shapes.add(name as string)
+      }
+
+      expect(shapes.size).toBe(CHECK_STATUSES.length)
+    },
+  )
 
   it('says when a cell failed to evaluate rather than failed on its merits', () => {
     // readinessOrder.ts claims "a reader can reconstruct any pairwise result by
