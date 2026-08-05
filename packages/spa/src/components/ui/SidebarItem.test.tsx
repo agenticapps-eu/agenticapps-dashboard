@@ -79,20 +79,20 @@ describe('SidebarItem', () => {
   })
 })
 
-describe('SidebarItemDisabled', () => {
-  it('SI6: renders a disabled <button> with aria-disabled="true" + cursor-not-allowed; no <a>', () => {
-    render(<SidebarItemDisabled icon={<span>icon</span>} label="Skills" />)
-    const btn = screen.getByRole('button')
-    expect(btn).toBeDefined()
-    expect(btn.getAttribute('disabled')).toBeDefined()
-    expect(btn.getAttribute('aria-disabled')).toBe('true')
-    expect(btn.className).toContain('cursor-not-allowed')
-    expect(screen.queryByRole('link')).toBeNull()
-  })
+describe('the module ships one navigation primitive', () => {
+  it('exports no second primitive for a section to reach for', async () => {
+    // `App Shell And Sidebar Information Architecture` requires entries within
+    // each section to use the same navigation primitive. `Sidebar.test.tsx`
+    // asserts that of the rendered tree; this asserts it of the module, which
+    // is where the alternative would have to exist first.
+    //
+    // `SidebarItemDisabled` was that alternative — a <button> shipping beside
+    // the link, unreferenced since 755e17d (Phase 10) and still advertising a
+    // "Phase 6" the GSD retirement withdrew. Its own tests labelled it "Skills"
+    // and "Reviews", both surfaces this change retired.
+    const primitives = Object.keys(await import('./SidebarItem.js'))
 
-  it('SI6b: SidebarItemDisabled renders the label text', () => {
-    render(<SidebarItemDisabled icon={<span>icon</span>} label="Reviews" />)
-    expect(screen.getByText('Reviews')).toBeDefined()
+    expect(primitives).toEqual(['SidebarItem'])
   })
 })
 
