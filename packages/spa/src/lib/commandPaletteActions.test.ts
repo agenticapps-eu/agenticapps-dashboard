@@ -124,7 +124,11 @@ describe('useCommandPaletteActions', () => {
     window.removeEventListener('palette:open-register', listener)
   })
 
-  it('Jump action calls navigate with projectId AND calls close', () => {
+  it('Jump action navigates to the repo detail surface AND calls close', () => {
+    // Was `/projects/$projectId`, which still answers — it redirects — so this
+    // passed either way and nothing would have caught the palette routing
+    // through a location `retire-v1-surfaces` withdrew. The identifier is the
+    // same registry id both surfaces take.
     mockRegistryData.mockReturnValue({
       data: [{ id: 'proj-123', name: 'my-project' }],
     })
@@ -136,8 +140,8 @@ describe('useCommandPaletteActions', () => {
     jumpAction.run()
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/projects/$projectId',
-      params: { projectId: 'proj-123' },
+      to: '/repos/$repoId',
+      params: { repoId: 'proj-123' },
     })
     expect(close).toHaveBeenCalledOnce()
   })

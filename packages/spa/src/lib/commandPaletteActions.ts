@@ -51,7 +51,10 @@ export function useCommandPaletteActions(close: () => void): PaletteAction[] {
     },
   ]
 
-  // Dynamic jump actions — one per registered project
+  // Dynamic jump actions — one per registered project. The destination is the
+  // repo detail surface: `/projects/:id` still answers, by redirecting, so
+  // jumping through it worked and cost the reader a hop through a location
+  // `retire-v1-surfaces` withdrew. Same registry id either way.
   for (const item of list.data ?? []) {
     const projectId = item.id
     const name = item.name
@@ -60,7 +63,7 @@ export function useCommandPaletteActions(close: () => void): PaletteAction[] {
       label: `Jump to ${name}`,
       type: 'jump',
       run: () => {
-        void navigate({ to: '/projects/$projectId', params: { projectId } })
+        void navigate({ to: '/repos/$repoId', params: { repoId: projectId } })
         close()
       },
     })
