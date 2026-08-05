@@ -1,6 +1,37 @@
 # AgenticApps Pipeline Dashboard
 
-> **Alpha — v1.0 closing.** Phases 0–6 ship a complete, useful dashboard with zero third-party service dependencies. Desktop-only in v1.0; mobile/tablet support deferred to v1.1+.
+> # ⚠️ Retired — 2026-08-05
+>
+> **This project is archived and is not maintained.** Do not install it. The
+> daemon holds a bearer token and read access to every registered project's
+> filesystem; running an unmaintained copy is a security surface nobody is
+> watching.
+>
+> **Why:** it worked, and it was never used. Three repos were ever registered
+> (one of them this one), no repo ever supplied the tier-B evidence file that
+> four of the six readiness checks require, and roughly 100,000 lines of source,
+> tests and spec prose accumulated in three months for a fleet of two. More
+> fundamentally, the product is read-only by constitution — it renders state for
+> a human to read, who then opens a terminal and asks an agent to act. An agent
+> that reads the repo directly collapses both hops and can act on what it finds.
+>
+> The full reasoning, the measurements behind it, the alternatives rejected, and
+> what is worth stealing from here:
+> **[ADR-0004 — Retire the dashboard](docs/decisions/0004-retire-the-dashboard.md)**.
+>
+> **If you are looking for one thing to take:** ancestry-based freshness, in
+> [`packages/agent/src/lib/readiness/freshness.ts`](packages/agent/src/lib/readiness/freshness.ts)
+> (42 lines). Evidence is stale when the last commit touching production code is
+> not an ancestor of the evidence commit — never when a timestamp looks old,
+> because a fresh clone stamps every file with checkout time and makes stale
+> evidence look current.
+>
+> The `@agenticapps/dashboard-agent` npm package is deprecated, not unpublished,
+> so existing lockfiles keep resolving.
+
+---
+
+*Everything below describes the product as it stood and is kept for reference.*
 
 ![Multi-project home](docs/img/home.png)
 

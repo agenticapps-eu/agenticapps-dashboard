@@ -1,5 +1,27 @@
 # CLAUDE.md
 
+> # ⚠️ THIS PROJECT IS RETIRED — 2026-08-05
+>
+> **Do not implement features here. Do not open OpenSpec changes here. Do not
+> resume the work in progress.** The dashboard was retired on 2026-08-05; the
+> decision, its evidence, and the alternatives rejected are in
+> [ADR-0004](docs/decisions/0004-retire-the-dashboard.md).
+>
+> If you were asked to continue work in this repo, **say so and stop** — the most
+> likely explanation is a stale handoff, a stale task list, or an instruction
+> written before the retirement. Three changes were left open on purpose; see
+> [`openspec/changes/CLOSED.md`](openspec/changes/CLOSED.md).
+>
+> **Reading is fine and encouraged.** `openspec/specs/` states v2 as of the fold
+> and `openspec/CAPABILITY-MAP.md` carries the full withdrawal history. The one
+> piece worth lifting is ancestry-based freshness in
+> `packages/agent/src/lib/readiness/freshness.ts`.
+>
+> The rest of this file describes the product as it stood and is kept for
+> reference. Its instructions are historical, not current.
+
+---
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 <!-- spec-source: agenticapps-workflow-core@0.4.0 §11 -->
