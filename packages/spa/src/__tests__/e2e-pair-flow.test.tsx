@@ -91,11 +91,14 @@ describe('Phase 2 e2e: unpaired → /onboarding redirect (SPA-03)', () => {
   })
 })
 
+/** An empty fleet, which is what both paired-landing tests below read. */
+const EMPTY_FLEET = { generatedAt: Date.UTC(2026, 7, 5, 12, 0), repos: [] }
+
 describe('Phase 2 e2e: /pair happy path (SPA-02)', () => {
-  it('valid pair URL persists pairing and lands on / paired', async () => {
+  it('valid pair URL persists pairing and lands on the fleet', async () => {
     const { apiFetch } = await import('../lib/api.js')
-    // Health check call returns version; registry call returns empty array
     vi.mocked(apiFetch).mockImplementation((path) => {
+      if (path === '/api/v2/fleet') return Promise.resolve({ ok: true, data: EMPTY_FLEET })
       if (path === '/api/registry') return Promise.resolve({ ok: true, data: [] })
       return Promise.resolve({ ok: true, data: { ok: true, version: '1.0.0' } })
     })
@@ -110,21 +113,29 @@ describe('Phase 2 e2e: /pair happy path (SPA-02)', () => {
       { timeout: 3000 },
     )
 
-    // Phase 3: MultiProjectHome renders "No projects registered yet." when registry is empty
+    // Landed on the fleet, not the withdrawn multi-project home: `/` is a
+    // retired location now and resolves through retiredLocations.ts.
     await waitFor(
       () => {
-        expect(screen.getByText('No projects registered yet.')).toBeInTheDocument()
+        expect(screen.getByText('No repositories registered yet.')).toBeInTheDocument()
       },
       { timeout: 3000 },
     )
   })
 })
 
-describe('Phase 2 e2e: paired → / direct render (SPA-03 inverse)', () => {
-  it('paired user visits / and sees MultiProjectHome (no redirect)', async () => {
+describe('Phase 2 e2e: paired → / redirects to the fleet (retire-v1-surfaces)', () => {
+  it('paired user visits / and is carried to the fleet', async () => {
+    // This case used to assert the inverse — that a paired visitor at `/` sees
+    // MultiProjectHome and is NOT redirected. `Retired Locations Have An
+    // Explicit Transition` withdrew that surface and gave the bare origin the
+    // one behaviour it never had specified.
     const { apiFetch } = await import('../lib/api.js')
-    // Registry call returns empty array so MultiProjectHome renders empty state
-    vi.mocked(apiFetch).mockResolvedValue({ ok: true, data: [] })
+    vi.mocked(apiFetch).mockImplementation((path) =>
+      path === '/api/v2/fleet'
+        ? Promise.resolve({ ok: true, data: EMPTY_FLEET })
+        : Promise.resolve({ ok: true, data: [] }),
+    )
     localStorage.setItem(
       'agentic-dashboard:pairing',
       JSON.stringify({
@@ -134,10 +145,13 @@ describe('Phase 2 e2e: paired → / direct render (SPA-03 inverse)', () => {
       }),
     )
     await renderApp('/')
-    // Phase 3: MultiProjectHome renders on /, no redirect for paired users
+
     await waitFor(() => {
-      expect(screen.getByText('No projects registered yet.')).toBeInTheDocument()
+      expect(screen.getByText('No repositories registered yet.')).toBeInTheDocument()
     })
+    // The withdrawn home's empty state, so a future regression that re-mounts
+    // it at `/` fails here rather than passing on a lookalike.
+    expect(screen.queryByText('No projects registered yet.')).not.toBeInTheDocument()
   })
 })
 
@@ -161,13 +175,14 @@ describe('Phase 2 e2e: paired → daemon 401 → RepairBanner visible (AUTH-04 �
     // Render the full app with the live repair bus wired into createQueryClient
     const getHook = await renderAppWithRepairBus('/')
 
-    // Wait for the index route to render — with 401, MultiProjectHome shows DaemonUnreachableState
+    // `/` redirects to the fleet, whose own read 401s too — so the surface
+    // that reports the unreachable daemon is now the fleet's error state.
     await waitFor(() => {
-      expect(screen.getByText('Daemon not running')).toBeInTheDocument()
+      expect(screen.getByText('Could not read the fleet.')).toBeInTheDocument()
     })
 
     // Manually fire the 401 through the repair bus — simulates QueryCache.onError
-    // (MultiProjectHome's useRegistryList already errored; we drive setNeedsRepair directly)
+    // (the fleet's own query already errored; we drive setNeedsRepair directly)
     act(() => {
       getHook().setNeedsRepair(true)
     })
