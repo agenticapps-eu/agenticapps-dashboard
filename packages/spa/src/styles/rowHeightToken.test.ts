@@ -53,7 +53,7 @@ const FLEET_PAGE = resolve(
  */
 function declaredRowMax(): string | null {
   const css = readFileSync(TOKENS_FILE, 'utf8')
-  return /--spacing-row-max:\s*([^;]+);/.exec(css)?.[1].trim() ?? null
+  return /--spacing-row-max:\s*([^;]+);/.exec(css)?.[1]?.trim() ?? null
 }
 
 describe('design-system → Dense Rows And Aligned Figures (the declared maximum)', () => {
