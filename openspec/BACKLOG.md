@@ -313,3 +313,54 @@ are actively instructed to do the wrong thing.
 (the vocabulary has six members and `X` is taken by `fail`), a word other than
 "failing", and an error-aware remedy. The status stays `fail` on the wire, so no
 spec delta is implied — this is conformance to what the spec already separates.
+
+---
+
+## Workflow surface: structural-debt waiver against the design-critique floor
+
+**Status:** OPEN — this is the **named follow-up** the waiver was granted to.
+Waived 2026-08-05 by the operator while closing `retire-v1-surfaces` §3's
+design-critique bullet.
+
+**The waiver.** `/workflow` measures **composite 65.0 (26/40)** against the
+ratified floor of **≥ 80 (32/40)**, and is accepted below floor under the
+per-phase structural-debt waiver clause (D-10.5-03.calibration-2, ratified
+2026-06-08). Evidence:
+`openspec/changes/retire-v1-surfaces/artifacts/CRITIQUE-workflow-2026-08-05.md`.
+
+The precedent is `/code-intelligence`, waived at 74 in Phase 14 and lifted to 81
+in Phase 14.1, which retired its waiver. This entry is the equivalent slot: the
+waiver is retired when the surface measures ≥ 80, not when someone decides it
+looks better.
+
+**What was already done, so the follow-up does not redo it.** The surface was
+first measured at 57.5. Two of its three P1s were fixed in the presentation
+layer (`ba47e07`): it now dates its reading, and the machine skill roots
+collapsed from 34 chips to 4. That was worth 7.5 points. The remaining 15 are
+not presentational, which is the reason a waiver was the right call rather than
+another polish pass.
+
+**What must change to retire it.** Three things, in rough order of contribution:
+
+1. **Row density.** Rows measure up to 100px against the ratified 56px cap and
+   are non-uniform. Tracked separately and in full under *"Workflow surface: rows
+   exceed the declared density budget"* above; that entry owns the design
+   decision (count plus drawer, truncation with disclosure, or a secondary
+   detail row).
+2. **No route from a finding to an action.** The surface carries **zero
+   anchors** and no remedy prose. It reports "codex-workflow: 7 laggards" and
+   offers nowhere to go. Note this is *not* a cheap link fix: the host payload
+   carries neither a path nor a repo id, and none of the four workflow
+   repositories is a registered project, so `/repos/claude-workflow` would 404.
+   Giving these repositories a destination is product design. The daemon already
+   generates remedy sentences for readiness checks
+   (`packages/agent/src/lib/readiness/remedy.ts`) and that is the shape to copy.
+3. **Three comparison models on one page.** Spec conformance, byte-identity of
+   shared artefacts, and a harness runner share a surface whose only common
+   thread is the word "workflow". Whether they should is an open question, not a
+   settled defect.
+
+**Also unaddressed and deliberately not counted against this waiver:** the eight
+harness buttons report no last-attempt time, and the harness section is 523px of
+"No current result" repeated eight times. Both are real; neither was measured as
+a top-three contributor.

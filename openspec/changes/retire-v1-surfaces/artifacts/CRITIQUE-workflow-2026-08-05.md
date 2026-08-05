@@ -337,7 +337,22 @@ presentational fix.
 ## Verdict against the floor
 
 **57.5 as first measured, 65.0 after the two presentational fixes, against a
-ratified floor of 80.** Recorded, not waived — the
+ratified floor of 80.**
+
+**WAIVED 2026-08-05 by the operator, under the per-phase structural-debt waiver
+clause (D-10.5-03.calibration-2, ratified 2026-06-08).** The named follow-up the
+waiver is granted to is the `openspec/BACKLOG.md` entry *"Workflow surface:
+structural-debt waiver against the design-critique floor"*, which records the
+score, what was already fixed so it is not redone, and the three things that
+must change to retire it. The waiver is retired when the surface measures ≥ 80 —
+the same bar `/code-intelligence` cleared at 81 in Phase 14.1 after being waived
+at 74.
+
+The decision was taken *after* the cheap fixes rather than instead of them: the
+two presentational P1s were fixed first, moved the score 7.5 points, and left it
+15 short, which is what established that the remainder is structural.
+
+The original reasoning, retained — the
 structural-debt waiver clause (D-10.5-03.calibration-2, ratified 2026-06-08) is
 the operator's to invoke, and the precedent for it is `/code-intelligence`,
 which was waived at 74 to a named follow-up bundle and later lifted to 81 to
