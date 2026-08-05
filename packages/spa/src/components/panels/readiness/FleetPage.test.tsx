@@ -222,6 +222,25 @@ describe('FleetPage', () => {
     expect(within(row as HTMLElement).queryByText(EM_DASH)).toBeNull()
   })
 
+  it('shows a check value in the fleet row rather than making the reader open the repo', () => {
+    // The fleet-level half of the same requirement. Asserted here as well as
+    // in ReadinessIndicator.test.tsx because the compact variant is a prop the
+    // fleet passes: a cell that renders values correctly in isolation proves
+    // nothing about the surface that has to fit thirty of them in a row.
+    const withCoverage = repo('dashboard')
+    const checks = withCoverage.checks.map((check) =>
+      check.id === 'coverage'
+        ? { ...check, status: 'warn' as CheckStatus, value: 66.42, threshold: 80 }
+        : check,
+    ) as unknown as RepoSummary['checks']
+
+    fleet([{ ...withCoverage, checks }])
+    render(<FleetPage />)
+
+    const [row] = rows()
+    expect(within(row as HTMLElement).getByText('66.42 of 80')).toBeInTheDocument()
+  })
+
   it('renders the last-change column with tabular figures so its digits align', () => {
     // `design-system` → Dense Rows And Aligned Figures. This is the fleet's
     // only numeric column. With proportional digits a '1'-heavy date is

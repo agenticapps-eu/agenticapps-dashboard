@@ -110,6 +110,44 @@ describe('ReadinessIndicator', () => {
     },
   )
 
+  it('shows an underlying value in the compact cell, not only in its accessible name', () => {
+    // `design-system` → A Value Is Shown Where One Exists: "Colour and shape
+    // summarise; they do not substitute for the number."
+    //
+    // The compact variant put the value in `disclose()` alone, so on the fleet
+    // — the product's primary surface — a coverage cell said "amber" and never
+    // said 66.42. A sighted reader had to open the repo to learn the number
+    // that made the cell amber, and a fleet of thirty repos meant thirty
+    // round trips to read a column of figures the daemon had already sent.
+    //
+    // The accessible name is not a substitute: it is reachable by pointer or
+    // screen reader, and the requirement is about what the cell renders.
+    const checks = sixChecks()
+    const withValue = checks.map((check) =>
+      check.id === 'coverage'
+        ? result('coverage', 'warn', { value: 66.42, threshold: 80 })
+        : check,
+    ) as unknown as CheckResult[]
+
+    render(
+      <ReadinessIndicator checks={withValue} repoName="alpha" variant="compact" />,
+    )
+
+    expect(screen.getByText('66.42 of 80')).toBeInTheDocument()
+  })
+
+  it('adds nothing to a compact cell that has no underlying value', () => {
+    // The paired case. A cell with no value must stay the bare glyph rather
+    // than gaining an empty span, a zero, or a stray separator — the same
+    // prohibition the absence marker carries.
+    render(
+      <ReadinessIndicator checks={sixChecks()} repoName="alpha" variant="compact" />,
+    )
+
+    expect(screen.queryByText(/\bof\b/)).toBeNull()
+    expect(screen.queryByText('0')).toBeNull()
+  })
+
   it('never omits a check to close a gap, and holds each position across repos', () => {
     render(
       <ReadinessIndicator checks={sixChecks()} repoName="alpha" variant="compact" />,
