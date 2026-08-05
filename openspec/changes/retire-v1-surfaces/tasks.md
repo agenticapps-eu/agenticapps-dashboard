@@ -58,6 +58,16 @@ no registration reachable by another form (`.use`, nested `.route`, `.on`, or a
 loop). No correction to the table was required. The table now also exists in
 executable form at `packages/agent/src/server/__tests__/withdrawnEndpoints.test.ts`.
 
+**Verified against a live daemon on 2026-08-05, not only in-process.** The
+daemon was restarted onto the post-teardown build and every one of the nineteen
+probed with a valid bearer token: all nineteen answer **404**. Authenticating
+matters — `bearerAuth` sits ahead of `/api`, so an unauthenticated sweep would
+have answered 401 throughout and proved nothing. The four retained v2 surfaces
+answer 200 in the same run (`/api/v2/fleet`, `/api/v2/workflow`,
+`/api/v2/changes/fleet`, plus `/health` and `GET /api/registry`), and the health
+payload comes back as `{ok, version, daemonVersion, registryCount, paired}` with
+no `understand` block.
+
 - [x] Remove the withdrawn route modules and their tests — **`55441df` RED / `20fb34a` GREEN. All eleven, plus the twenty-four libraries they were the only readers of and ten shared schemas: 107 files, −17,527 lines. The set was computed by reachability from `index.ts`/`cli.ts`/`server/app.ts`, not read off directory names; the post-deletion sweep reports zero unreachable production modules and zero tests importing a doomed module**
 - [x] Remove the withdrawn libraries: conformance scan/score/cache including `conformanceScore.ts`, coverage scan/~~resolver~~/cache/history/spawn including `coverageHistory.ts`, all snapshot writers/readers/routes, and the linter runner/cache — **done, except `resolver`, which is struck out as a defect in this bullet rather than followed. `lib/coverageResolver.ts` is not a coverage module: it is the canonical home of `PathResolver`, `PathViolation` and `makeCoverageResolver`, the filesystem-access-policy enforcement seam its own header names ("every scanner reads external filesystem paths through this helper ONLY; direct fs calls inside scanner code are FORBIDDEN"). Sixteen surviving v2 modules import it — `readiness/{assemble,service,workflowDeriver}`, every workflow scanner, `containment.ts`, `workflowScan.ts`, `changes/changeReader.ts`, `paths.ts`. Deleting it would remove the security spine and break every retained surface. This is the same shape as the `paths.ts` family-roots helper the bullet two below already keeps: old coverage vocabulary, shared structure. Renaming it away from that vocabulary is worthwhile and belongs in its own commit with all call sites, exactly as that bullet says. Also kept: `lib/viewerToken.ts` and the viewer-secret rotation — per-repo viewer tokens now have no verifier, but `lib/auth.ts` reaches the rotation and `auth-and-pairing` is named out of scope by this change, so its removal is a separate change and not a silent side effect of this one**
 - [x] Remove the withdrawn shared schemas and their barrel exports — **ten deleted (`agentlinter`, `conformance`, `coverage`, `coverageHistory`, `integrations`, `linear`, `observability`, `secrets`, `sentry`, `skillDrift`) with their barrel blocks replaced by prose recording what went and why. `env.ts` survives this bullet because it is reached through `daemon.ts` and belongs to the `env` CLI group removed further down**
