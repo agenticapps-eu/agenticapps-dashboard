@@ -104,6 +104,49 @@ describe('OpenspecChangeDetailSchema', () => {
   })
 })
 
+/*
+ * `Hybrid OpenSpec Read Strategy` states after the v2 cutover that the reader
+ * SHALL NOT enumerate archived changes or derive affected capabilities. The
+ * wire shape has to enforce that, not merely stop populating it: with a strict
+ * schema, a daemon that kept emitting either field fails its own outbound
+ * validation instead of shipping a payload no consumer reads.
+ */
+describe('the wire shape carries no withdrawn field', () => {
+  it('rejects an archived list on the project state', () => {
+    expect(() =>
+      OpenspecProjectStateSchema.parse({
+        present: true,
+        openChanges: [],
+        capabilities: [],
+        archived: [{ name: '2026-07-26-add-old', datePrefix: '2026-07-26' }],
+      }),
+    ).toThrow()
+  })
+
+  /*
+   * Asserted on the accepted shape's key set rather than by expecting a throw.
+   * A `.toThrow()` here would pass for the wrong reason while `archived` is
+   * still a required field — the parse rejects the payload for the missing
+   * key, not for the extra one, and the test would go green without the field
+   * ever having been withdrawn.
+   */
+  it('carries no affected-capability list on an open change', () => {
+    const parsed = OpenspecProjectStateSchema.parse({
+      present: true,
+      openChanges: [
+        { name: 'add-thing', completedTasks: 2, totalTasks: 3, hasTaskArtifact: true },
+      ],
+      capabilities: [],
+    })
+    expect(Object.keys(parsed.openChanges[0]).sort()).toEqual([
+      'completedTasks',
+      'hasTaskArtifact',
+      'name',
+      'totalTasks',
+    ])
+  })
+})
+
 describe('OpenspecCapabilitySchema', () => {
   it('accepts a capability declaring zero requirements', () => {
     expect(OpenspecCapabilitySchema.parse({ id: 'new-thing', requirementCount: 0 })).toEqual({

@@ -194,6 +194,56 @@ describe('readOpenspecTree — capabilities and archive', () => {
   })
 })
 
+/*
+ * The v2 cutover narrows the reader's output rather than only its callers:
+ * `Hybrid OpenSpec Read Strategy` now states that it SHALL NOT enumerate
+ * archived changes or derive each open change's affected capabilities, because
+ * no v2 surface consumes either. Asserting on the *key set* rather than on the
+ * absence of a value is deliberate — `state.archived === undefined` passes just
+ * as well when the field is present and empty, which is the shape a partial
+ * removal actually produces.
+ */
+describe('readOpenspecTree — withdrawn fields are not retained as dead output', () => {
+  it('returns no archived-change list and no per-change affected-capability list', async () => {
+    const state = await readOpenspecTree(makeProject())
+
+    expect(Object.keys(state).sort()).toEqual(['capabilities', 'openChanges', 'present'])
+    for (const c of state.openChanges) {
+      expect(Object.keys(c).sort()).toEqual([
+        'completedTasks',
+        'hasTaskArtifact',
+        'name',
+        'totalTasks',
+      ])
+    }
+  })
+
+  it('still exposes every field the spec check and repo detail display', async () => {
+    const state = await readOpenspecTree(makeProject())
+
+    expect(state.present).toBe(true)
+    expect(state.openChanges.map((c) => c.name).sort()).toEqual(['add-thing', 'no-delta-yet'])
+    const withDelta = state.openChanges.find((c) => c.name === 'add-thing')!
+    expect(withDelta.completedTasks).toBe(2)
+    expect(withDelta.totalTasks).toBe(3)
+    expect(withDelta.hasTaskArtifact).toBe(true)
+    expect(state.capabilities).toEqual([
+      { id: 'daemon-runtime', requirementCount: 2 },
+      { id: 'help-docs', requirementCount: 1 },
+    ])
+  })
+
+  it('does not read the archive directory even when one is populated', async () => {
+    const root = makeProject()
+    const state = await readOpenspecTree(root)
+
+    // The fixture carries two archived directories; none of them may reach the
+    // output under any key.
+    expect(JSON.stringify(state)).not.toContain('bootstrap')
+    expect(JSON.stringify(state)).not.toContain('panels')
+  })
+})
+
 describe('readOpenspecProject — hybrid parity', () => {
   const PARITY = (s: Awaited<ReturnType<typeof readOpenspecTree>>) => ({
     changeNames: s.openChanges.map((c) => c.name).sort(),
