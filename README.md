@@ -62,7 +62,7 @@ Multi-device access: bind the agent to your Tailscale hostname (`agentic-dashboa
 
 8. **How do I register multiple projects?** `agentic-dashboard register <path>` once per project, OR `agentic-dashboard register --auto <parent-dir>` to scan a parent directory and confirm each match.
 
-9. **What is "impeccable critique" and why is it a CI gate?** A dogfooded design QA. The dashboard's own UI must score ≥ 87 on `impeccable:critique` at the lg (1440×900) breakpoint before merging to main — enforced by [`.github/workflows/impeccable.yml`](.github/workflows/impeccable.yml). v1.1 commits to lifting the floor to ≥ 90.
+9. **What is "impeccable critique" and is it a CI gate?** A dogfooded design QA — but no, it is not a CI gate. The dashboard's own UI must score a composite ≥ 80 on `impeccable:critique` at the lg (1440×900) breakpoint, with a structural-debt waiver clause for a route structurally below floor. Enforcement is a **per-change artifact gate**: every frontend-touching change commits the critique artifact (composite + per-heuristic scores, findings, persona red flags) into its change directory, and a reviewer reads it. There is no `impeccable.yml` workflow; the CI gate was retired in favour of that artifact, and the composite is an LLM-driven heuristic score rather than a deterministic CLI, so it is not mechanizable as a check today. The floor and its process live in [`CLAUDE.md`](CLAUDE.md); the product outcomes it protects live in [`openspec/specs/design-system`](openspec/specs/design-system/spec.md).
 
 10. **Does this work on Windows?** Not in v1.0. macOS (LaunchAgent) and Linux (systemd) only. The Windows install path is deferred to v2 or beyond.
 
@@ -118,7 +118,7 @@ pnpm --filter @agenticapps/dashboard-agent build  # Build the CLI bundle
 pnpm --filter @agenticapps/dashboard-agent test   # Run agent tests only
 ```
 
-CI runs the same five gates (install + lint + typecheck + test + build) on push and PR — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The `Impeccable Critique Gate` workflow enforces the dogfooded ≥ 87 design floor on `main` as a required check. Releases trigger on `v*` tag push — see [`.github/workflows/release.yml`](.github/workflows/release.yml).
+CI runs the same five gates (install + lint + typecheck + test + build) on push and PR — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml); lint runs under `--max-warnings 0`, so a warning fails the build. The design floor is **not** a CI check — see FAQ 9 above. Releases trigger on `v*` tag push — see [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 ## License
 

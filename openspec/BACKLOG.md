@@ -79,7 +79,7 @@ would create drift and be reverted on the next `/update-agenticapps-workflow`. T
 statement remains true of freshly scaffolded projects generally — just no longer
 of this one.
 
-## Impeccable floor: three numbers on disk, and a CI gate that does not exist
+## [RESOLVED] Impeccable floor: three numbers on disk, and a CI gate that does not exist (✅ 2026-08-05)
 
 Found 2026-07-26 while merging the Dashboard v2 plan into this slot. No spec
 delta — the composite floor is process, not product (see *Deliberate exclusions*
@@ -119,3 +119,34 @@ rebuilt surfaces — is sound and unaffected.
 - Decide explicitly whether the raised floor is enforced in CI or stays a
   per-change artifact gate. It is currently the latter, and the docs claim the
   former.
+
+**Resolved 2026-08-05 under AGE-476 §3 — ADR-0003.**
+
+- **The floor stays ≥ 80.** AGE-476's "raise ≥ 87 → ≥ 90" clause is void: both
+  premises were false, and raising a ratified floor is its own ratification
+  rather than a side effect of a ticket that misread the baseline. A second,
+  higher floor for rebuilt surfaces was considered and deferred — it needs its
+  own ratification and its own definition of "rebuilt".
+- **Enforcement stays the per-change artifact gate**, now stated as such.
+  Restoring a CI gate was rejected as not mechanizable today: the composite is
+  an LLM-driven heuristic score from a skill driving a real browser at 1440×900,
+  not a deterministic CLI.
+- `README.md` FAQ 9 and the CI section rewritten; `docs/review-protocol.md:63`
+  rewritten; both dead `impeccable.yml` links removed. `CLAUDE.md` keeps 80 and
+  now records why the raise was declined.
+- `docs/spec/dashboard-prompt.md` deliberately left at ≥ 87 — frozen historical
+  reference, correct as a record of what was true then.
+- A **fifth** floor the entry above did not list: `docs/spec/DASHBOARD-V2-SPEC.md`
+  §550 and §591 said the threshold "bleibt CI-Gate" and rises to ≥ 90. That is
+  the document AGE-476 was derived from, so leaving it would let the same wrong
+  ticket be re-derived. Both passages corrected in place using the document's own
+  ⚠ convention rather than rewritten.
+- **Not fixed, and worth doing:** nothing detects a doc linking a workflow file
+  that does not exist, which is why this survived June→August. A guard test over
+  `.github/workflows/*.yml` references in docs would have caught it — and running
+  that check by hand while closing this entry immediately turned up a second live
+  instance: `docs/WORKFLOW.md:128` links `.github/workflows/openspec-gate.yml`,
+  which does not exist either. Left unedited on purpose — `docs/WORKFLOW.md` is
+  vendored from claude-workflow and a local fix would be reverted by the next
+  `/update-agenticapps-workflow`. It belongs upstream, or in the guard test's
+  allow-list.

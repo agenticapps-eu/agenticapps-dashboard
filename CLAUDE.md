@@ -157,6 +157,11 @@ lifecycle, hooks, rituals, and red-flag tables are in
   (ratified 2026-06-08), with a structural-debt waiver clause for a route
   structurally below floor. This is a *process* gate, which is why it lives here
   and not in a spec; the product outcomes it protects are in `design-system`.
+  **The floor stays 80 and there is no CI check** (decided 2026-08-05, ADR-0003).
+  Linear AGE-476 asked to raise "the CI gate threshold from ≥ 87 to ≥ 90"; both
+  premises were false — the ratified floor was already 80, and the
+  `impeccable.yml` workflow it names was retired in favour of this artifact.
+  Enforcement is the committed artifact and a reviewer reading it, nothing more.
 - Optional integrations are **explicitly held** unless the corresponding upstream
   tooling is set up. Don't preemptively wire them in.
 - Run `pnpm lint` before shipping — CI enforces it and the phase gate does not.
