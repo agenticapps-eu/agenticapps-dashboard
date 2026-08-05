@@ -108,8 +108,8 @@ no `understand` block.
 
 ## 5. Append the supersession note
 
-- [ ] Append a dated supersession section to `openspec/CAPABILITY-MAP.md` recording the withdrawal, the three new capabilities, and the resulting count
-- [ ] **Do not edit** the ratified capability table, the exclusions, or the GAP resolutions. Append only
+- [x] Append a dated supersession section to `openspec/CAPABILITY-MAP.md` recording the withdrawal, the three new capabilities, and the resulting count — **appended as `### v2 supersession — appended 2026-08-05`, under the existing `## Errata` section which already establishes the append convention (§08, "the sections above are ratified and are not edited"). Carries a five-row table of the withdrawn capabilities with their requirement counts and where each question went, the `project-dashboard` retention (8 of 12 withdrawn, 4 survive, 3 added, for 7), the two relocated integration rules and why the second was un-dropped, the three replacements with their counts, and the resulting 105 across 10 with the per-capability breakdown and the before-figure of 145 across 15. **It also discharges the 2026-07-26 blocking note** that recorded this change as blocked until an agent-change surface existed in the product: `add-agent-change-board` archived 2026-08-04, so all four post-cutover content surfaces exist. The note is left standing as the record of a condition that was real, and marked no longer outstanding rather than deleted**
+- [x] **Do not edit** the ratified capability table, the exclusions, or the GAP resolutions. Append only — **honoured, and verified rather than asserted: `git diff --stat` reports `63 ++++`, one file changed, 63 insertions and 0 deletions, and the diff contains no `-` line at all. An append-only claim that nobody checks is how the first quiet edit gets in**
 
 ## 6. Unhook the unused packages · AGE-475
 
