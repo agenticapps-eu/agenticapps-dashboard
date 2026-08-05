@@ -24,6 +24,7 @@ import {
   useEvidence,
   useFleet,
   useOpenInEditor,
+  useRepoDetail,
   useRescanRepo,
 } from './readinessQueries.js'
 
@@ -201,5 +202,99 @@ describe('useEvidence', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * The cross-repo leakage guard.
+ *
+ * `/projects/:id` carried one of these and it was deleted with the surface, in
+ * `projects-detail-e2e.test.tsx` — leaving the surviving `/repos/:id` with no
+ * equivalent. The keys are correct today; what was lost is the thing that
+ * notices if they stop being. A per-repo query keyed without its identifier
+ * shows one repository's readiness under another repository's name, which is
+ * both silent and the worst answer this product can give: every check on the
+ * page is a claim about a named repo.
+ *
+ * One QueryClient across both reads, because a fresh client per read cannot
+ * collide and so cannot fail.
+ */
+describe('per-repo reads do not leak across repositories', () => {
+  function detail(id: string) {
+    return {
+      generatedAt: Date.UTC(2026, 7, 1),
+      repo: {
+        id,
+        name: id,
+        family: 'agenticapps' as const,
+        ready: false,
+        lastCommitAt: null,
+        notice: null,
+        checks: CHECK_IDS.map((checkId) => ({
+          id: checkId,
+          status: 'never' as const,
+          source: 'derived' as const,
+          at: null,
+          value: null,
+          threshold: null,
+          summary: '',
+          evidence: null,
+          error: null,
+          remedy: 'Do the thing.',
+        })),
+      },
+    }
+  }
+
+  /** One client, shared — a per-hook client could not collide. */
+  function sharedClient() {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    })
+    return {
+      qc,
+      wrap: ({ children }: { children: React.ReactNode }) =>
+        React.createElement(QueryClientProvider, { client: qc }, children),
+    }
+  }
+
+  it('gives each repo its own readiness entry, and gives the second reader the second repo', async () => {
+    const { qc, wrap } = sharedClient()
+
+    mockFetch.mockReturnValue(ok(detail('acme')))
+    const acme = renderHook(() => useRepoDetail('acme'), { wrapper: wrap })
+    await waitFor(() => expect(acme.result.current.data).toBeDefined())
+
+    mockFetch.mockReturnValue(ok(detail('beta')))
+    const beta = renderHook(() => useRepoDetail('beta'), { wrapper: wrap })
+    await waitFor(() => expect(beta.result.current.data).toBeDefined())
+
+    // What a reader would see. A shared key hands beta's page acme's checks.
+    expect(beta.result.current.data?.repo.id).toBe('beta')
+    expect(acme.result.current.data?.repo.id).toBe('acme')
+
+    // And the cache underneath it, so a regression is named where it happens.
+    expect(qc.getQueryData(['readiness', 'repo', 'acme'])).toEqual(detail('acme'))
+    expect(qc.getQueryData(['readiness', 'repo', 'beta'])).toEqual(detail('beta'))
+  })
+
+  it('gives the same evidence path under two repos two entries, not one', async () => {
+    // The path repeats across repositories — every repo has a REVIEWS.md — so
+    // this is the key most likely to collide if the identifier is ever dropped.
+    const { qc, wrap } = sharedClient()
+    const PATH = 'openspec/changes/add-repo-readiness/REVIEWS.md'
+
+    mockFetch.mockReturnValue(ok({ ...FILE, content: 'acme approved' }))
+    const acme = renderHook(() => useEvidence('acme', PATH, true), { wrapper: wrap })
+    await waitFor(() => expect(acme.result.current.data).toBeDefined())
+
+    mockFetch.mockReturnValue(ok({ ...FILE, content: 'beta approved' }))
+    const beta = renderHook(() => useEvidence('beta', PATH, true), { wrapper: wrap })
+    await waitFor(() => expect(beta.result.current.data).toBeDefined())
+
+    expect(beta.result.current.data?.content).toBe('beta approved')
+    expect(acme.result.current.data?.content).toBe('acme approved')
+    expect(qc.getQueryData(['readiness', 'evidence', 'acme', PATH])).toBeDefined()
+    expect(qc.getQueryData(['readiness', 'evidence', 'beta', PATH])).toBeDefined()
   })
 })
