@@ -464,6 +464,21 @@ describe('RepoDetailPage evidence blocks', () => {
     expect(within(workflow).getByText(/2026-07-30 09:15 UTC/)).toBeInTheDocument()
   })
 
+  it('renders every observed time with tabular figures so the six stack in a column', () => {
+    // `design-system` → Dense Rows And Aligned Figures. The six check blocks
+    // put their Observed values at the same indent down the page, which makes
+    // them a numeric column even though no `<table>` is involved — the
+    // requirement is about digits aligning vertically, not about the element
+    // that holds them.
+    loaded(detail())
+    render(<RepoDetailPage />)
+
+    for (const id of CHECK_IDS) {
+      const observed = within(block(id)).getByText(/2026-07-30 09:15 UTC/)
+      expect(observed.className).toContain('tabular-nums')
+    }
+  })
+
   it('names where a derived value came from, and names the readiness file for a declared one', () => {
     loaded(withEvidence())
     render(<RepoDetailPage />)

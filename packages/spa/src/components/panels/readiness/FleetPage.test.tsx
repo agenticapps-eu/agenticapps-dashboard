@@ -203,6 +203,23 @@ describe('FleetPage', () => {
     expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument()
   })
 
+  it('renders the last-change column with tabular figures so its digits align', () => {
+    // `design-system` → Dense Rows And Aligned Figures. This is the fleet's
+    // only numeric column. With proportional digits a '1'-heavy date is
+    // visibly narrower than a '0'-heavy one, so a column of equal-length ISO
+    // dates still reads as ragged — the exact defect tabular figures exist to
+    // remove. Asserted on the cell that carries the date, not on an ancestor,
+    // because `font-variant-numeric` inherited from a wrapper is what a
+    // careless fix would produce and it would not survive a restructure.
+    fleet([repo('alpha'), repo('beta')])
+    render(<FleetPage />)
+
+    for (const row of rows()) {
+      const cell = within(row).getByText('2026-07-30')
+      expect(cell.className).toContain('tabular-nums')
+    }
+  })
+
   it('orders rows by severity rather than registry order', () => {
     // Registry order here is the reverse of severity order, so a page that
     // simply rendered `repos` in the order the daemon returned them would pass
