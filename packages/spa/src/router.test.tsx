@@ -12,7 +12,8 @@
  * RT3: no VITE_APPSHELL_V2 env stub needed — always V2, _appshell always present
  * RT4: pairErrorComponent still exported and handles VALIDATE_SEARCH error
  */
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
+import { isRedirect } from '@tanstack/react-router'
 
 // Mock AppShellV2 so the router module can be dynamically imported
 // without a full React/jsdom environment.
@@ -22,7 +23,16 @@ vi.mock('./components/AppShellV2.js', () => ({
 vi.mock('./help/components/HelpLayout.js', () => ({
   HelpLayout: function HelpLayout() { return null },
 }))
-vi.mock('./lib/pairing.js', () => ({ getPairing: () => null }))
+/**
+ * Pairing is controllable rather than fixed: `/` owes two different answers —
+ * an unpaired visitor still goes to /onboarding, a paired one now goes to the
+ * fleet — and a static `null` can only exercise one of them.
+ */
+const pairingState = vi.hoisted(() => ({ paired: false }))
+vi.mock('./lib/pairing.js', () => ({
+  getPairing: () =>
+    pairingState.paired ? { agentUrl: 'http://127.0.0.1:4317', token: 'stub' } : null,
+}))
 vi.mock('./routes/pair-error.js', () => ({
   MalformedPairUrl: function MalformedPairUrl() { return null },
   RouteError: function RouteError() { return null },
@@ -117,5 +127,74 @@ describe('router — single AppShellV2 route tree', () => {
 
     expect(ids.some((id) => id === '/_appshell/workflow')).toBe(true)
     expect(ids.some((id) => id === '/workflow')).toBe(false)
+  })
+})
+
+/**
+ * `Retired Locations Have An Explicit Transition` (project-dashboard).
+ *
+ * The manifest in lib/retiredLocations.ts already resolves these — that is
+ * tested there. What is tested here is that the router asks it, because a
+ * tested manifest nothing calls redirects nobody.
+ *
+ * `beforeLoad` is invoked directly rather than through a navigation: the
+ * redirect is the entire behaviour, and driving a real history would add a
+ * shell, lazy chunks and a query client to a question about one function.
+ */
+describe('router — retired v1 locations resolve through the manifest', () => {
+  beforeEach(() => {
+    pairingState.paired = true
+  })
+
+  /**
+   * Runs a route's beforeLoad and returns the destination it redirected to.
+   * `redirect()` in v1.169 returns `{ options: { to, replace, statusCode } }`,
+   * not a flat `{ to }` — reading `.to` off the thrown value yields undefined
+   * and every assertion below would pass vacuously against a bare `throw`.
+   */
+  async function redirectFrom(routeId: string, pathname: string): Promise<string | undefined> {
+    const { router } = await import('./router.js')
+    const route = router.routesById[routeId as keyof typeof router.routesById]
+    const beforeLoad = route?.options.beforeLoad as
+      | ((opts: { location: { pathname: string } }) => unknown)
+      | undefined
+    expect(beforeLoad).toBeTypeOf('function')
+
+    try {
+      await beforeLoad?.({ location: { pathname } })
+    } catch (thrown) {
+      expect(isRedirect(thrown)).toBe(true)
+      return (thrown as { options: { to?: string } }).options.to
+    }
+    return undefined
+  }
+
+  it.each([
+    ['/_appshell/', '/'],
+    ['/_appshell/coverage', '/coverage'],
+    ['/_appshell/observability/skill-drift', '/observability/skill-drift'],
+    ['/_appshell/observability/conformance', '/observability/conformance'],
+    ['/_appshell/code-intelligence', '/code-intelligence'],
+  ])('sends %s to the fleet', async (routeId, pathname) => {
+    expect(await redirectFrom(routeId, pathname)).toBe('/fleet')
+  })
+
+  it('sends /projects/:id to /repos/:id, preserving the identifier', async () => {
+    expect(await redirectFrom('/_appshell/projects/$projectId', '/projects/dashboard')).toBe(
+      '/repos/dashboard',
+    )
+  })
+
+  it('still sends an unpaired visitor at / to onboarding, not to the fleet', async () => {
+    // The origin owes the unpaired case first. A visitor with no daemon paired
+    // reaches a fleet that cannot load rather than the screen that pairs them.
+    pairingState.paired = false
+    expect(await redirectFrom('/_appshell/', '/')).toBe('/onboarding')
+  })
+
+  it('leaves a surviving surface alone', async () => {
+    const { router } = await import('./router.js')
+    const fleet = router.routesById['/_appshell/fleet' as keyof typeof router.routesById]
+    expect(fleet?.options.beforeLoad).toBeUndefined()
   })
 })
